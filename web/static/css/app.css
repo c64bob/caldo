@@ -1,1 +1,14 @@
-/* Phase 0 stylesheet placeholder. */
+body { font-family: system-ui, sans-serif; margin: 0; background: #f4f6f8; color: #1f2937; }
+.topbar { display:flex; justify-content:space-between; align-items:center; padding: 12px 20px; background:#111827; color:#fff; }
+.topbar a { color:#93c5fd; margin-left: 12px; text-decoration:none; }
+.layout { display:grid; grid-template-columns: 260px 1fr; gap: 16px; padding: 16px; }
+.sidebar { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; }
+.lists { list-style:none; padding:0; margin:0; }
+.lists a { display:block; padding:8px 10px; border-radius:6px; color:#111827; text-decoration:none; }
+.lists a.active { background:#dbeafe; font-weight:600; }
+.content { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:12px; }
+.tasks-table { width:100%; border-collapse: collapse; }
+.tasks-table th, .tasks-table td { padding:8px 10px; border-bottom:1px solid #eef2f7; text-align:left; font-size:14px; }
+.tasks-table th { background:#f9fafb; }
+.empty { color:#6b7280; }
+.flash.error { margin: 12px 16px 0; padding: 10px 12px; border-radius: 8px; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }

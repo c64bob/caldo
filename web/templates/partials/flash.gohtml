@@ -1,1 +1,5 @@
-{{/* Phase 0 flash partial placeholder. */}}
+{{define "flash"}}
+{{if .Error}}
+<div class="flash error">{{.Error}}</div>
+{{end}}
+{{end}}

@@ -1,1 +1,10 @@
-{{/* Phase 0 task row partial placeholder. */}}
+{{define "task_row"}}
+<tr id="task-{{.UID}}">
+  <td>{{.Summary}}</td>
+  <td>{{.Status}}</td>
+  <td>{{.Priority}}</td>
+  <td>{{.PercentComplete}}</td>
+  <td>{{.Due}}</td>
+  <td>{{.Categories}}</td>
+</tr>
+{{end}}

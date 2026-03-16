@@ -1,1 +1,21 @@
-{{/* Phase 0 task table partial placeholder. */}}
+{{define "task_table"}}
+<table class="tasks-table">
+  <thead>
+    <tr>
+      <th>Titel</th>
+      <th>Status</th>
+      <th>Prio</th>
+      <th>%</th>
+      <th>Fällig</th>
+      <th>Kategorien</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Rows}}
+      {{template "task_row" .}}
+    {{else}}
+      <tr><td colspan="6" class="empty">Keine Aufgaben vorhanden.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+{{end}}

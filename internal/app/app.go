@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"caldo/internal/http/render"
 	"caldo/internal/security"
 	"caldo/internal/service"
 	storesqlite "caldo/internal/store/sqlite"
@@ -31,7 +32,12 @@ func New() (*App, error) {
 	}
 	repo := storesqlite.NewDAVAccountsRepo(db)
 	settingsSvc := service.NewSettingsService(repo, key, cfg.CalDAV.ServerURL)
-	router := NewRouter(cfg, settingsSvc)
+	taskSvc := service.NewTaskService(repo, key, cfg.CalDAV.DefaultList)
+	templates, err := render.LoadTemplates()
+	if err != nil {
+		return nil, err
+	}
+	router := NewRouter(cfg, settingsSvc, taskSvc, templates)
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Server.Port),

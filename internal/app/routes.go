@@ -5,22 +5,28 @@ import (
 
 	"caldo/internal/http/handlers"
 	"caldo/internal/http/middleware"
+	"caldo/internal/http/render"
 	"caldo/internal/service"
 )
 
-func NewRouter(cfg Config, settingsSvc *service.SettingsService) http.Handler {
+func NewRouter(cfg Config, settingsSvc *service.SettingsService, taskSvc *service.TaskService, templates *render.Templates) http.Handler {
 	mux := http.NewServeMux()
 	settingsHandler := &handlers.SettingsHandler{
 		Service:          settingsSvc,
 		DefaultServerURL: cfg.CalDAV.ServerURL,
 	}
+	tasksHandler := &handlers.TasksHandler{Service: taskSvc, Templates: templates}
 
 	mux.HandleFunc("GET /health", handlers.Health)
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/settings", http.StatusFound)
+		http.Redirect(w, r, "/tasks", http.StatusFound)
 	})
 	mux.Handle("GET /settings", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(settingsHandler.Page)))
 	mux.Handle("POST /settings/dav-account", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(settingsHandler.SaveDAVAccount)))
+	mux.Handle("GET /tasks", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.Page)))
+	mux.Handle("GET /htmx/tasks/list", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.HTMXTasksList)))
+	mux.Handle("GET /htmx/sidebar/lists", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.HTMXSidebarLists)))
 
 	return mux
 }

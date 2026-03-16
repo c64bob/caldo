@@ -116,3 +116,19 @@ func TestTasksRepo_DeleteTaskReturnsConflictOn412(t *testing.T) {
 		t.Fatalf("expected ErrPreconditionFailed, got %v", err)
 	}
 }
+
+func TestTasksRepo_UpdateTaskFailsWhenETagMissing(t *testing.T) {
+	repo := NewTasksRepo(NewClient())
+	_, err := repo.UpdateTask(context.Background(), "https://caldav.example.com", "alice", "pw", domain.Task{Href: "/tasks/abc.ics", UID: "abc", Summary: "x"})
+	if err == nil || err != ErrMissingETag {
+		t.Fatalf("expected ErrMissingETag, got %v", err)
+	}
+}
+
+func TestTasksRepo_DeleteTaskRejectsAbsoluteHref(t *testing.T) {
+	repo := NewTasksRepo(NewClient())
+	err := repo.DeleteTask(context.Background(), "https://caldav.example.com", "alice", "pw", "https://evil.example.com/pwn.ics", `"v1"`)
+	if err == nil || err != ErrInvalidTaskHref {
+		t.Fatalf("expected ErrInvalidTaskHref, got %v", err)
+	}
+}

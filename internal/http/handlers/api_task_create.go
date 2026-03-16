@@ -64,6 +64,10 @@ func (h *TasksHandler) mutateTask(w http.ResponseWriter, r *http.Request, fn fun
 			http.Error(w, "Konflikt erkannt: Aufgabe wurde auf dem Server geändert. Bitte neu laden.", http.StatusConflict)
 			return
 		}
+		if errors.Is(err, caldav.ErrMissingETag) || errors.Is(err, caldav.ErrInvalidTaskHref) {
+			http.Error(w, "Ungültige Task-Parameter", http.StatusBadRequest)
+			return
+		}
 		http.Error(w, "Task-Änderung fehlgeschlagen", http.StatusBadGateway)
 		return
 	}

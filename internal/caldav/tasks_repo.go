@@ -89,7 +89,7 @@ func (r *TasksRepo) CreateTask(ctx context.Context, serverURL, username, passwor
 }
 
 func (r *TasksRepo) UpdateTask(ctx context.Context, serverURL, username, password string, task domain.Task) (domain.Task, error) {
-	taskURL, err := resolveCollectionURL(serverURL, task.Href)
+	taskURL, err := resolveTaskURL(serverURL, task.Href)
 	if err != nil {
 		return domain.Task{}, err
 	}
@@ -99,9 +99,10 @@ func (r *TasksRepo) UpdateTask(ctx context.Context, serverURL, username, passwor
 	}
 	req.SetBasicAuth(username, password)
 	req.Header.Set("Content-Type", "text/calendar; charset=utf-8")
-	if strings.TrimSpace(task.ETag) != "" {
-		req.Header.Set("If-Match", task.ETag)
+	if strings.TrimSpace(task.ETag) == "" {
+		return domain.Task{}, ErrMissingETag
 	}
+	req.Header.Set("If-Match", task.ETag)
 
 	resp, err := r.client.httpClient.Do(req)
 	if err != nil {
@@ -121,7 +122,7 @@ func (r *TasksRepo) UpdateTask(ctx context.Context, serverURL, username, passwor
 }
 
 func (r *TasksRepo) DeleteTask(ctx context.Context, serverURL, username, password, href, etag string) error {
-	taskURL, err := resolveCollectionURL(serverURL, href)
+	taskURL, err := resolveTaskURL(serverURL, href)
 	if err != nil {
 		return err
 	}
@@ -148,6 +149,24 @@ func (r *TasksRepo) DeleteTask(ctx context.Context, serverURL, username, passwor
 	return nil
 }
 
+func resolveTaskURL(serverURL, href string) (string, error) {
+	base, err := url.Parse(strings.TrimSpace(serverURL))
+	if err != nil {
+		return "", fmt.Errorf("CalDAV server URL ungültig: %w", err)
+	}
+	rel, err := url.Parse(strings.TrimSpace(href))
+	if err != nil {
+		return "", ErrInvalidTaskHref
+	}
+	if rel.Scheme != "" || rel.Host != "" || rel.User != nil {
+		return "", ErrInvalidTaskHref
+	}
+	if !strings.HasPrefix(rel.Path, "/") {
+		return "", ErrInvalidTaskHref
+	}
+	return base.ResolveReference(rel).String(), nil
+}
+
 func buildVTODOCalendar(task domain.Task) string {
 	status := strings.TrimSpace(task.Status)
 	if status == "" {
@@ -172,6 +191,20 @@ func buildVTODOCalendar(task domain.Task) string {
 	}
 	if task.Priority > 0 {
 		lines = append(lines, fmt.Sprintf("PRIORITY:%d", task.Priority))
+	}
+	if task.PercentComplete > 0 {
+		lines = append(lines, fmt.Sprintf("PERCENT-COMPLETE:%d", task.PercentComplete))
+	}
+	if len(task.Categories) > 0 {
+		cats := make([]string, 0, len(task.Categories))
+		for _, cat := range task.Categories {
+			if c := escapeICalText(cat); c != "" {
+				cats = append(cats, c)
+			}
+		}
+		if len(cats) > 0 {
+			lines = append(lines, "CATEGORIES:"+strings.Join(cats, ","))
+		}
 	}
 	if task.Due != nil {
 		if task.DueKind == "date" {

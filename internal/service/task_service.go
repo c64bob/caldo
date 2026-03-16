@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -125,12 +126,26 @@ func (s *TaskService) CreateTask(ctx context.Context, principalID string, in Tas
 }
 
 func (s *TaskService) UpdateTask(ctx context.Context, principalID string, in TaskMutationInput) (domain.Task, error) {
-	account, password, _, err := s.loadCredentialsAndCollection(ctx, principalID, in.ListID)
+	account, password, collection, err := s.loadCredentialsAndCollection(ctx, principalID, in.ListID)
 	if err != nil {
 		return domain.Task{}, err
 	}
-	task := domain.Task{UID: strings.TrimSpace(in.UID), Href: strings.TrimSpace(in.Href), ETag: strings.TrimSpace(in.ETag), Summary: strings.TrimSpace(in.Summary), Status: strings.TrimSpace(in.Status), Priority: in.Priority}
-	return s.tasksRepo.UpdateTask(ctx, account.ServerURL, account.Username, string(password), task)
+	if strings.TrimSpace(in.ETag) == "" {
+		return domain.Task{}, caldav.ErrMissingETag
+	}
+	current, err := s.loadTaskForUpdate(ctx, account, password, collection, in)
+	if err != nil {
+		return domain.Task{}, err
+	}
+	if summary := strings.TrimSpace(in.Summary); summary != "" {
+		current.Summary = summary
+	}
+	if status := strings.TrimSpace(in.Status); status != "" {
+		current.Status = status
+	}
+	current.Priority = in.Priority
+	current.ETag = strings.TrimSpace(in.ETag)
+	return s.tasksRepo.UpdateTask(ctx, account.ServerURL, account.Username, string(password), current)
 }
 
 func (s *TaskService) DeleteTask(ctx context.Context, principalID string, in TaskMutationInput) error {
@@ -139,6 +154,24 @@ func (s *TaskService) DeleteTask(ctx context.Context, principalID string, in Tas
 		return err
 	}
 	return s.tasksRepo.DeleteTask(ctx, account.ServerURL, account.Username, string(password), strings.TrimSpace(in.Href), strings.TrimSpace(in.ETag))
+}
+
+func (s *TaskService) loadTaskForUpdate(ctx context.Context, account sqlite.DAVAccount, password []byte, collection caldav.Collection, in TaskMutationInput) (domain.Task, error) {
+	tasks, err := s.tasksRepo.ListTasks(ctx, account.ServerURL, account.Username, string(password), collection)
+	if err != nil {
+		return domain.Task{}, err
+	}
+	targetHref := strings.TrimSpace(in.Href)
+	targetUID := strings.TrimSpace(in.UID)
+	for _, task := range tasks {
+		if targetHref != "" && strings.TrimSpace(task.Href) == targetHref {
+			return task, nil
+		}
+		if targetUID != "" && strings.TrimSpace(task.UID) == targetUID {
+			return task, nil
+		}
+	}
+	return domain.Task{}, errors.New("Task zum Aktualisieren nicht gefunden")
 }
 
 func ParsePriority(raw string) int {

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -98,5 +99,85 @@ END:VCALENDAR</c:calendar-data>
 	}
 	if data.Tasks[0].UID != "demo-1" {
 		t.Fatalf("expected UID demo-1, got %s", data.Tasks[0].UID)
+	}
+}
+
+func TestUpdateTask_PreservesExistingFieldsFromServer(t *testing.T) {
+	svc, repo, key := newTaskServiceForTest(t)
+	var putBody string
+	caldavServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "REPORT":
+			w.Header().Set("Content-Type", "application/xml")
+			w.WriteHeader(http.StatusMultiStatus)
+			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="utf-8"?>
+<multistatus xmlns="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <response>
+    <href>/tasks/demo-1.ics</href>
+    <propstat>
+      <prop>
+        <getetag>"old"</getetag>
+        <c:calendar-data>BEGIN:VCALENDAR
+BEGIN:VTODO
+UID:demo-1
+SUMMARY:Old summary
+STATUS:NEEDS-ACTION
+DESCRIPTION:Keep me
+CATEGORIES:work,focus
+PERCENT-COMPLETE:40
+END:VTODO
+END:VCALENDAR</c:calendar-data>
+      </prop>
+      <status>HTTP/1.1 200 OK</status>
+    </propstat>
+  </response>
+</multistatus>`))
+		case "PUT":
+			buf, _ := io.ReadAll(r.Body)
+			putBody = string(buf)
+			w.Header().Set("ETag", `"new"`)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected method %s", r.Method)
+		}
+	}))
+	t.Cleanup(caldavServer.Close)
+
+	encrypted, err := security.EncryptAESGCM(key, []byte("pw"))
+	if err != nil {
+		t.Fatalf("encrypt: %v", err)
+	}
+	err = repo.Upsert(context.Background(), sqlite.DAVAccount{PrincipalID: "alice@example.com", ServerURL: caldavServer.URL, Username: "alice", PasswordEncrypted: encrypted})
+	if err != nil {
+		t.Fatalf("upsert: %v", err)
+	}
+
+	_, err = svc.UpdateTask(context.Background(), "alice@example.com", TaskMutationInput{ListID: "tasks", UID: "demo-1", Href: "/tasks/demo-1.ics", ETag: `"old"`, Summary: "New summary", Status: "COMPLETED", Priority: 5})
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+
+	if !strings.Contains(putBody, "DESCRIPTION:Keep me") {
+		t.Fatalf("expected description preserved, body=%s", putBody)
+	}
+	if !strings.Contains(putBody, "CATEGORIES:work,focus") {
+		t.Fatalf("expected categories preserved, body=%s", putBody)
+	}
+}
+
+func TestUpdateTask_FailsWithoutETag(t *testing.T) {
+	svc, repo, key := newTaskServiceForTest(t)
+	caldavServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusMultiStatus)
+		_, _ = w.Write([]byte(`<?xml version="1.0" encoding="utf-8"?>
+<multistatus xmlns="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"></multistatus>`))
+	}))
+	t.Cleanup(caldavServer.Close)
+	encrypted, _ := security.EncryptAESGCM(key, []byte("pw"))
+	_ = repo.Upsert(context.Background(), sqlite.DAVAccount{PrincipalID: "alice@example.com", ServerURL: caldavServer.URL, Username: "alice", PasswordEncrypted: encrypted})
+
+	_, err := svc.UpdateTask(context.Background(), "alice@example.com", TaskMutationInput{ListID: "tasks", UID: "demo-1", Href: "/tasks/demo-1.ics", Summary: "New"})
+	if err == nil || !strings.Contains(err.Error(), "etag") {
+		t.Fatalf("expected missing etag error, got %v", err)
 	}
 }

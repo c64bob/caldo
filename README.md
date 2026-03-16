@@ -110,17 +110,38 @@ GitHub Actions übernimmt Build, Packaging und Release
 
 ## Roadmap
 
-**v1.0** (current)
-- [x] CalDAV CRUD for tasks (Create/Update/Delete inkl. ETag-Konflikterkennung)
-- [x] Folder / list sidebar (Read-first)
-- [ ] Inline editing (title, priority, due date, tags)
-- [ ] Docker deployment
-- [ ] Keyboard shortcuts
-- [ ] Saved filters
-- [ ] Recurrence rules (RRULE)
-- [ ] Subtasks via `RELATED-TO`
-- [ ] Hotlist view
-- [ ] Quick-add with natural language parsing
+Die UI-Roadmap orientiert sich am Umsetzungsplan in `docs/ui-plan-v1.md` und ist hier mit dem aktuellen Stand konsolidiert.
+
+### v1.0 (aktuell) — nach UI, Backend, Funktionalität
+
+#### UI (gemäß `docs/ui-plan-v1.md`)
+- [x] **Phase 1 (teilweise):** Grundlayout mit Sidebar + Hauptbereich und dichter Tabellenansicht ist vorhanden.
+- [x] **Phase 1 (teilweise):** Listen-Navigation via HTMX (Partial-Updates statt Full-Page-Reload).
+- [ ] **Phase 1 (offen):** vollständige Toodledo-ähnliche Sidebar-Sektionen (Hotlist/Main/Folders/Contexts/Goals/Priority/Due/Tags), Sidebar-Collapse und responsive Ausblendung.
+- [ ] **Phase 2:** Vollständiges Inline-Editing der Task-Felder (Summary, Priority, Due, Status, Tags, Percent, Star/Done) inkl. Expand-Panel.
+- [ ] **Phase 2:** Smart-Add/Quick-Add mit Toodledo-Syntax und Natural-Language-Datum.
+- [ ] **Phase 3:** Keyboard-Shortcuts inkl. `?`-Overlay.
+- [ ] **Phase 5:** Filter-Panel, Saved Filters und Hotlist-Ansicht.
+
+#### Backend
+- [x] CalDAV CRUD für Tasks (Create/Update/Delete mit ETag-/If-Match-Konfliktbehandlung).
+- [x] Sync-State pro Collection (WebDAV-Sync bevorzugt, ETag-Fallback als Rückfallebene).
+- [x] Manuelle Synchronisation via `POST /api/sync/now`.
+- [x] Verschlüsselte Persistenz von DAV-Credentials (AES-256-GCM).
+- [x] Docker-Build + `docker-compose` Setup für Self-Hosting.
+- [ ] Erweiterte Konfliktdarstellung für die UI (klarere, strukturierte Konfliktinfos statt generischer Fehlertexte).
+
+#### Funktionalität
+- [x] Thin-Client-Prinzip umgesetzt: CalDAV bleibt Single Source of Truth; SQLite speichert nur Präferenzen, verschlüsselte Credentials und Sync-Metadaten.
+- [ ] Persistente Nutzerpräferenzen für UI-Ansichten/Sortierung/Spalten (über die Basispräferenzen hinaus).
+- [ ] Multi-Level-Sortierung, Batch-Edit und Import/Export (vgl. spätere UI-Plan-Phasen).
+
+### v2+ (mögliche Erweiterungen / bewusst out of scope für v1.0)
+
+- [ ] RRULE/Recurrence-Unterstützung.
+- [ ] Subtasks über `RELATED-TO` inkl. Reordering/Progress-Anzeige.
+- [ ] Komplexe Feld-Merge-Strategien bei Konflikten (statt Reload/Overwrite).
+- [ ] Visuelle Politur/UX-Ausbau (Animationen, erweitertes A11y-Finetuning, Dark Mode).
 
 ## Contributing
 

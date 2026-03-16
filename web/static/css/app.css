@@ -12,3 +12,7 @@ body { font-family: system-ui, sans-serif; margin: 0; background: #f4f6f8; color
 .tasks-table th { background:#f9fafb; }
 .empty { color:#6b7280; }
 .flash.error { margin: 12px 16px 0; padding: 10px 12px; border-radius: 8px; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.inline-form { display:flex; gap:4px; align-items:center; }
+.inline-form input[type="text"], .inline-form input[type="number"], .inline-form input[type="datetime-local"] { width: 100%; min-width: 100px; font-size: 12px; padding: 4px 6px; }
+.inline-form .prio-input { width: 56px !important; min-width: 56px !important; }
+.inline-form button { font-size: 11px; padding: 3px 6px; }

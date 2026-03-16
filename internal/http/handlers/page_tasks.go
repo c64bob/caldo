@@ -23,7 +23,8 @@ func (h *TasksHandler) Page(w http.ResponseWriter, r *http.Request) {
 
 	data, err := h.Service.LoadTaskPage(r.Context(), principal, r.URL.Query().Get("list"))
 	if err != nil {
-		http.Error(w, "Tasks konnten nicht geladen werden", http.StatusBadGateway)
+		message, status := taskLoadError(err)
+		http.Error(w, message, status)
 		return
 	}
 	vm := render.TaskPageViewModel{

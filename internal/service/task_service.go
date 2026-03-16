@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"caldo/internal/caldav"
 	"caldo/internal/domain"
@@ -40,13 +41,17 @@ type TaskPageData struct {
 }
 
 type TaskMutationInput struct {
-	ListID   string
-	UID      string
-	Href     string
-	ETag     string
-	Summary  string
-	Status   string
-	Priority int
+	ListID      string
+	UID         string
+	Href        string
+	ETag        string
+	Summary     string
+	Status      string
+	Priority    int
+	Description string
+	Due         *time.Time
+	DueKind     string
+	Categories  []string
 }
 
 func (s *TaskService) LoadTaskPage(ctx context.Context, principalID string, selectedListID string) (TaskPageData, error) {
@@ -122,6 +127,10 @@ func (s *TaskService) CreateTask(ctx context.Context, principalID string, in Tas
 		prio = 0
 	}
 	task := domain.Task{UID: in.UID, Summary: strings.TrimSpace(in.Summary), Status: strings.TrimSpace(in.Status), Priority: prio}
+	task.Description = strings.TrimSpace(in.Description)
+	task.Due = in.Due
+	task.DueKind = strings.TrimSpace(in.DueKind)
+	task.Categories = in.Categories
 	return s.tasksRepo.CreateTask(ctx, account.ServerURL, account.Username, string(password), collection, task)
 }
 
@@ -144,6 +153,16 @@ func (s *TaskService) UpdateTask(ctx context.Context, principalID string, in Tas
 		current.Status = status
 	}
 	current.Priority = in.Priority
+	if description := strings.TrimSpace(in.Description); description != "" {
+		current.Description = description
+	}
+	if in.Due != nil && strings.TrimSpace(in.DueKind) != "" {
+		current.Due = in.Due
+		current.DueKind = strings.TrimSpace(in.DueKind)
+	}
+	if len(in.Categories) > 0 {
+		current.Categories = in.Categories
+	}
 	current.ETag = strings.TrimSpace(in.ETag)
 	return s.tasksRepo.UpdateTask(ctx, account.ServerURL, account.Username, string(password), current)
 }
@@ -193,6 +212,42 @@ func ParsePriority(raw string) int {
 		return 9
 	}
 	return value
+}
+
+func ParseCategories(raw string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	seen := map[string]struct{}{}
+	for _, part := range parts {
+		c := strings.TrimSpace(part)
+		if c == "" {
+			continue
+		}
+		k := strings.ToLower(c)
+		if _, ok := seen[k]; ok {
+			continue
+		}
+		seen[k] = struct{}{}
+		out = append(out, c)
+	}
+	return out
+}
+
+func ParseDue(raw string) (*time.Time, string) {
+	v := strings.TrimSpace(raw)
+	if v == "" {
+		return nil, ""
+	}
+	if t, err := time.Parse("2006-01-02", v); err == nil {
+		return &t, "date"
+	}
+	if t, err := time.ParseInLocation("2006-01-02T15:04", v, time.Local); err == nil {
+		return &t, "datetime"
+	}
+	return nil, ""
 }
 
 func (s *TaskService) loadCredentialsAndCollection(ctx context.Context, principalID, listID string) (sqlite.DAVAccount, []byte, caldav.Collection, error) {

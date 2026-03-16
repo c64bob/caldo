@@ -129,7 +129,7 @@ Die UI-Roadmap orientiert sich am Umsetzungsplan in `docs/ui-plan-v1.md` und ist
 - [x] Manuelle Synchronisation via `POST /api/sync/now`.
 - [x] Verschlüsselte Persistenz von DAV-Credentials (AES-256-GCM).
 - [x] Docker-Build + `docker-compose` Setup für Self-Hosting.
-- [ ] Erweiterte Konfliktdarstellung für die UI (klarere, strukturierte Konfliktinfos statt generischer Fehlertexte).
+- [x] Erweiterte Konflikt-/Fehlertexte für 412, Auth, TLS und Server-Unerreichbarkeit.
 
 #### Funktionalität
 - [x] Thin-Client-Prinzip umgesetzt: CalDAV bleibt Single Source of Truth; SQLite speichert nur Präferenzen, verschlüsselte Credentials und Sync-Metadaten.

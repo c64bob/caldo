@@ -90,7 +90,7 @@ GitHub Actions übernimmt Build, Packaging und Release:
 - **CI (`.github/workflows/ci.yml`)**: läuft auf Push/PR und führt `go test ./...`, `go build ./cmd/caldo` sowie einen Docker-Build aus.
 - **Release (`.github/workflows/release.yml`)**: läuft bei Git-Tags `v*`, baut Linux-Binaries (`amd64`, `arm64`), erstellt SHA256-Checksums + SBOM (SPDX), veröffentlicht ein GitHub Release und pusht/signiert Multi-Arch-Container nach GHCR (`latest` + Tag) inklusive SLSA-Provenance-Attestations.
 
-Container-Image-Name: `ghcr.io/<owner>/<repo>` (bei diesem Repository typischerweise `ghcr.io/<dein-github-user-oder-org>/caldo`).
+Container-Image-Name: `ghcr.io/c64bob/caldo`
 
 Voraussetzungen:
 - Workflow-Berechtigungen für `contents: write` und `packages: write`.

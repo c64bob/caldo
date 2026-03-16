@@ -1,1 +1,32 @@
-{{/* Phase 0 layout template placeholder. */}}
+{{define "layout"}}
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>Caldo</h1>
+    <nav>
+      <a href="/tasks">Tasks</a>
+      <a href="/settings">Settings</a>
+    </nav>
+  </header>
+
+  {{template "flash" .}}
+
+  <main class="layout">
+    <aside id="sidebar" class="sidebar">
+      {{template "sidebar_lists" .}}
+    </aside>
+    <section class="content" id="tasks-content">
+      {{template "task_table" .}}
+    </section>
+  </main>
+</body>
+</html>
+{{end}}

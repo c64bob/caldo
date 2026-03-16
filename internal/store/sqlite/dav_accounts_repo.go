@@ -49,3 +49,28 @@ func (r *DAVAccountsRepo) Upsert(_ context.Context, account DAVAccount) error {
 	}
 	return nil
 }
+
+func (r *DAVAccountsRepo) GetByPrincipal(_ context.Context, principalID string) (DAVAccount, bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	data, err := os.ReadFile(r.filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return DAVAccount{}, false, nil
+		}
+		return DAVAccount{}, false, fmt.Errorf("read account store: %w", err)
+	}
+
+	if len(data) == 0 {
+		return DAVAccount{}, false, nil
+	}
+
+	accounts := map[string]DAVAccount{}
+	if err := json.Unmarshal(data, &accounts); err != nil {
+		return DAVAccount{}, false, fmt.Errorf("decode account store: %w", err)
+	}
+
+	account, ok := accounts[principalID]
+	return account, ok, nil
+}

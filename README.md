@@ -55,6 +55,9 @@ Danach unter `/settings` den DAV-Account speichern; der Zugang wird beim Speiche
 über `PROPFIND` streng als WebDAV validiert (HTTP 207 erwartet) und verschlüsselt persistiert.
 Die eingetragene Server-URL muss dabei auf den konfigurierten CalDAV-Host zeigen.
 
+Die Aufgabenansicht ist unter `/tasks` verfügbar und lädt Listen/Task-Tabelle in einer
+dichten HTMX-Struktur (Sidebar + Tabellen-Partial).
+
 ## CalDAV Compatibility
 
 Tested against:
@@ -91,7 +94,7 @@ GitHub Actions übernimmt Build, Packaging und Release
 
 **v1.0** (current)
 - [ ] CalDAV CRUD for tasks
-- [ ] Folder / list sidebar
+- [x] Folder / list sidebar (Read-first)
 - [ ] Inline editing (title, priority, due date, tags)
 - [ ] Docker deployment
 - [ ] Keyboard shortcuts

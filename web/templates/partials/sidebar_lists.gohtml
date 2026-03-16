@@ -1,1 +1,14 @@
-{{/* Phase 0 sidebar partial placeholder. */}}
+{{define "sidebar_lists"}}
+<h2>Listen</h2>
+<ul class="lists">
+  {{range .Lists}}
+  <li>
+    <a href="/tasks?list={{.ID}}"
+       class="{{if .IsActive}}active{{end}}"
+       hx-get="/htmx/tasks/list?list={{.ID}}"
+       hx-target="#tasks-content"
+       hx-push-url="/tasks?list={{.ID}}">{{.DisplayName}}</a>
+  </li>
+  {{end}}
+</ul>
+{{end}}

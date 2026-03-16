@@ -83,6 +83,17 @@ database:
   path: "/data/caldo.db"
 ```
 
+## CI / Build- und Release-Automatisierung
+
+GitHub Actions übernimmt Build, Packaging und Release:
+
+- **CI (`.github/workflows/ci.yml`)**: läuft auf Push/PR und führt `go test ./...`, `go build ./cmd/caldo` sowie einen Docker-Build aus.
+- **Release (`.github/workflows/release.yml`)**: läuft bei Git-Tags `v*`, baut Linux-Binaries (`amd64`, `arm64`), erstellt SHA256-Checksums, veröffentlicht ein GitHub Release und pusht Multi-Arch-Container nach GHCR (`latest` + Tag).
+
+Voraussetzungen:
+- Workflow-Berechtigungen für `contents: write` und `packages: write`.
+- Für Container-Pushes reicht das bereitgestellte `GITHUB_TOKEN`.
+
 ## Roadmap
 
 **v1.0** (current)

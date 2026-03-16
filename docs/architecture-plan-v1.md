@@ -310,41 +310,41 @@ Die folgenden Punkte sind auf Basis der Review-Kommentare konkret entschieden.
 5. Settings-UI + Speicherung DAV-Account (verschlüsselt).
 6. Connectivity-Check (Credential-Test gegen DAV-Server).
 
-### Phase 2 — CalDAV-Leseweg (Read First)
-7. Discovery: Principal + Home Set + Task-Collections.
-8. Task-Listing (REPORT/PROPFIND) inkl. Mapping auf Domain-`Task`.
-9. HTMX-Listenseite (Sidebar + Tabelle, sortier-/filterbar basic).
-
-### Phase 3 — CRUD mit Konfliktsicherheit
-10. Create Task (VTODO schreiben).
-11. Update Task (If-Match mit ETag, 412-Handling im UI).
-12. Delete Task (If-Match/sauberes Fehlerhandling).
-
-### Phase 4 — Sync und Robustheit
-13. Sync-Service mit WebDAV-Sync (wenn verfügbar).
-14. ETag-basierter Fallback-Sync (wenn kein sync-token).
-15. Hintergrund-Job + manuelles „Jetzt synchronisieren“.
-
-### Phase 5 — UX-Feinschliff + Härtung
-16. Inline-Editing für Priorität, Due Date, Tags, Status, Notes.
-17. Verbesserte Fehlertexte (Auth, TLS, 412, Server-unreachable).
-18. Interop-Tests gegen Nextcloud (Pflicht), Radicale/Baikal (Best Effort).
-19. Container-Härtung + docker-compose Produktivprofil.
-
-### Phase 6 — Release-Vorbereitung v1.0
-20. Dokumentation (Admin-Guide, Proxy-Beispiele, Secret-Handling).
-21. Monitoring-Basics (Sync-Erfolg/Fehler, Latenz).
-22. Lizenz-/Compliance-Check (AGPL-Hinweise, Third-Party Notices).
-
-### Phase 7 — Build-, Packaging- und Release-Automatisierung (v1.0)
-23. CI baut und testet bei jedem Push/PR (`go test ./...`, `go build`).
-24. Go-Binary-Artefakte automatisiert für `linux/amd64` und `linux/arm64` erzeugen.
-25. Multi-Stage-Docker-Build verwenden (Build in Builder-Stage, Runtime-Image ohne Go-Toolchain und ohne `go run`).
-26. Container-Images automatisiert taggen/publishen (mindestens `latest` und `vX.Y.Z`).
-27. Release-Automatisierung über GitHub Actions:
+### Phase 2 — Build-, Packaging- und Release-Automatisierung (v1.0)
+7. CI baut und testet bei jedem Push/PR (`go test ./...`, `go build`).
+8. Go-Binary-Artefakte automatisiert für `linux/amd64` und `linux/arm64` erzeugen.
+9. Multi-Stage-Docker-Build verwenden (Build in Builder-Stage, Runtime-Image ohne Go-Toolchain und ohne `go run`).
+10. Container-Images automatisiert taggen/publishen (mindestens `latest` und `vX.Y.Z`).
+11. Release-Automatisierung über GitHub Actions:
     - Bei Git-Tag (`v*`) GitHub Release erstellen,
     - Binary-Artefakte + Checksums anhängen,
     - Artefakt-Signierung/SLSA- und SBOM-Checks als Teil des Release-Prozesses einplanen.
+
+### Phase 3 — CalDAV-Leseweg (Read First)
+12. Discovery: Principal + Home Set + Task-Collections.
+13. Task-Listing (REPORT/PROPFIND) inkl. Mapping auf Domain-`Task`.
+14. HTMX-Listenseite (Sidebar + Tabelle, sortier-/filterbar basic).
+
+### Phase 4 — CRUD mit Konfliktsicherheit
+15. Create Task (VTODO schreiben).
+16. Update Task (If-Match mit ETag, 412-Handling im UI).
+17. Delete Task (If-Match/sauberes Fehlerhandling).
+
+### Phase 5 — Sync und Robustheit
+18. Sync-Service mit WebDAV-Sync (wenn verfügbar).
+19. ETag-basierter Fallback-Sync (wenn kein sync-token).
+20. Hintergrund-Job + manuelles „Jetzt synchronisieren“.
+
+### Phase 6 — UX-Feinschliff + Härtung
+21. Inline-Editing für Priorität, Due Date, Tags, Status, Notes.
+22. Verbesserte Fehlertexte (Auth, TLS, 412, Server-unreachable).
+23. Interop-Tests gegen Nextcloud (Pflicht), Radicale/Baikal (Best Effort).
+24. Container-Härtung + docker-compose Produktivprofil.
+
+### Phase 7 — Release-Vorbereitung v1.0
+25. Dokumentation (Admin-Guide, Proxy-Beispiele, Secret-Handling).
+26. Monitoring-Basics (Sync-Erfolg/Fehler, Latenz).
+27. Lizenz-/Compliance-Check (AGPL-Hinweise, Third-Party Notices).
 
 ---
 

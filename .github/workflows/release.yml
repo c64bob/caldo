@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag to release (e.g. v0.1.0). Required for manual runs."
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -15,7 +21,22 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  validate-manual-tag:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate manual release tag format
+        run: |
+          TAG="${{ inputs.release_tag }}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.].*)?$ ]]; then
+            echo "Invalid tag: $TAG"
+            echo "Expected format like v0.1.0"
+            exit 1
+          fi
+
   build-binaries:
+    needs: validate-manual-tag
+    if: always() && (github.event_name != 'workflow_dispatch' || needs.validate-manual-tag.result == 'success')
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -85,6 +106,8 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+          target_commitish: ${{ github.sha }}
           files: |
             dist/caldo-*
             dist/checksums.txt
@@ -121,6 +144,7 @@ jobs:
           tags: |
             type=raw,value=latest
             type=ref,event=tag
+            type=raw,value=${{ inputs.release_tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
 
       - name: Build and push
         id: build

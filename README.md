@@ -99,3 +99,7 @@ All contributions must be licensed under AGPL-3.0.
 
 In short: you can use, modify and distribute Caldo freely, but modifications must be
 released under the same license — including if you run it as a network service.
+
+## Architekturplanung
+
+Siehe den initialen Analyse- und Umsetzungsplan: [docs/architecture-plan-v1.md](docs/architecture-plan-v1.md).

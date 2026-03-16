@@ -88,11 +88,41 @@ database:
 GitHub Actions übernimmt Build, Packaging und Release:
 
 - **CI (`.github/workflows/ci.yml`)**: läuft auf Push/PR und führt `go test ./...`, `go build ./cmd/caldo` sowie einen Docker-Build aus.
-- **Release (`.github/workflows/release.yml`)**: läuft bei Git-Tags `v*`, baut Linux-Binaries (`amd64`, `arm64`), erstellt SHA256-Checksums, veröffentlicht ein GitHub Release und pusht Multi-Arch-Container nach GHCR (`latest` + Tag).
+- **Release (`.github/workflows/release.yml`)**: läuft bei Git-Tags `v*` (oder manuell via `workflow_dispatch`), baut Linux-Binaries (`amd64`, `arm64`), erstellt SHA256-Checksums + SBOM (SPDX), veröffentlicht ein GitHub Release und pusht/signiert Multi-Arch-Container nach GHCR (`latest` + Tag) inklusive SLSA-Provenance-Attestations.
+
+Container-Image-Name: `ghcr.io/<owner>/<repo>` (bei diesem Repository typischerweise `ghcr.io/<dein-github-user-oder-org>/caldo`).
 
 Voraussetzungen:
 - Workflow-Berechtigungen für `contents: write` und `packages: write`.
 - Für Container-Pushes reicht das bereitgestellte `GITHUB_TOKEN`.
+
+### Release-Workflow manuell oder per Tag starten
+
+**Option A (empfohlen, reproduzierbar): per Git-Tag**
+
+```bash
+git checkout main
+git pull
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Das startet automatisch den Release-Workflow.
+
+**Option B: manuell in GitHub Actions (`workflow_dispatch`)**
+
+1. GitHub → **Actions** → Workflow **Release** öffnen.
+2. **Run workflow** klicken.
+3. Branch/Commit auswählen (oben im Dialog).
+4. Input `release_tag` setzen (z. B. `v0.1.0`).
+5. Workflow starten.
+
+Pflicht-Input:
+- `release_tag`: muss dem Muster `vX.Y.Z` entsprechen (optional mit Suffix wie `-rc.1`).
+
+Ergebnis bei erfolgreichem Lauf:
+- GitHub Release mit Assets (`caldo-linux-amd64`, `caldo-linux-arm64`, `checksums.txt`, `sbom.spdx.json`)
+- GHCR Image unter `ghcr.io/<owner>/<repo>:latest` und `:vX.Y.Z`
 
 ## Roadmap
 

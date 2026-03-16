@@ -4,16 +4,39 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag to release (e.g. v0.1.0). Required for manual runs."
+        required: true
+        type: string
 
 permissions:
   contents: write
   packages: write
+  id-token: write
+  attestations: write
 
 env:
   REGISTRY: ghcr.io
 
 jobs:
+  validate-manual-tag:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate manual release tag format
+        run: |
+          TAG="${{ inputs.release_tag }}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.].*)?$ ]]; then
+            echo "Invalid tag: $TAG"
+            echo "Expected format like v0.1.0"
+            exit 1
+          fi
+
   build-binaries:
+    needs: validate-manual-tag
+    if: always() && (github.event_name != 'workflow_dispatch' || needs.validate-manual-tag.result == 'success')
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -65,12 +88,30 @@ jobs:
           cd dist
           sha256sum caldo-* > checksums.txt
 
+      - name: Generate SBOM for release artifacts
+        uses: anchore/sbom-action@v0
+        with:
+          path: dist
+          format: spdx-json
+          output-file: dist/sbom.spdx.json
+
+      - name: Attest release artifacts provenance (SLSA)
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/caldo-*
+            dist/checksums.txt
+            dist/sbom.spdx.json
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+          target_commitish: ${{ github.sha }}
           files: |
             dist/caldo-*
             dist/checksums.txt
+            dist/sbom.spdx.json
 
   docker:
     runs-on: ubuntu-latest
@@ -103,8 +144,10 @@ jobs:
           tags: |
             type=raw,value=latest
             type=ref,event=tag
+            type=raw,value=${{ inputs.release_tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -113,3 +156,19 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign image (keyless)
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+
+      - name: Attest container provenance (SLSA)
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true

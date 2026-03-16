@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 type DAVAccount struct {
@@ -17,6 +18,7 @@ type DAVAccount struct {
 
 type DAVAccountsRepo struct {
 	filePath string
+	mu       sync.Mutex
 }
 
 func NewDAVAccountsRepo(db *DB) *DAVAccountsRepo {
@@ -24,6 +26,9 @@ func NewDAVAccountsRepo(db *DB) *DAVAccountsRepo {
 }
 
 func (r *DAVAccountsRepo) Upsert(_ context.Context, account DAVAccount) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	accounts := map[string]DAVAccount{}
 	if data, err := os.ReadFile(r.filePath); err == nil && len(data) > 0 {
 		if err := json.Unmarshal(data, &accounts); err != nil {

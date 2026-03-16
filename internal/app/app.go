@@ -30,7 +30,7 @@ func New() (*App, error) {
 		return nil, err
 	}
 	repo := storesqlite.NewDAVAccountsRepo(db)
-	settingsSvc := service.NewSettingsService(repo, key)
+	settingsSvc := service.NewSettingsService(repo, key, cfg.CalDAV.ServerURL)
 	router := NewRouter(cfg, settingsSvc)
 
 	server := &http.Server{

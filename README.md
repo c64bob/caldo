@@ -52,7 +52,8 @@ docker compose -f deployments/docker-compose.yml up -d --build
    `X-Forwarded-User: alice@example.com`.
 
 Danach unter `/settings` den DAV-Account speichern; der Zugang wird beim Speichern
-gegen den CalDAV-Server validiert und verschlüsselt persistiert.
+über `PROPFIND` streng als WebDAV validiert (HTTP 207 erwartet) und verschlüsselt persistiert.
+Die eingetragene Server-URL muss dabei auf den konfigurierten CalDAV-Host zeigen.
 
 ## CalDAV Compatibility
 

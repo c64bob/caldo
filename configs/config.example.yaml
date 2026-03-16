@@ -1,1 +1,14 @@
-# Caldo configuration placeholder for Phase 0.
+server:
+  port: 8080
+  auth_header: "X-Forwarded-User"
+
+caldav:
+  server_url: "https://nextcloud.example.com/remote.php/dav/calendars/<user>/tasks/"
+  default_list: "Tasks"
+
+security:
+  # 32-Byte-Key als Base64 in Datei, alternativ via Env CALDO_MASTER_KEY
+  encryption_key_file: "./secrets/caldo_key"
+
+database:
+  path: "./data/caldo.db"

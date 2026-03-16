@@ -1,1 +1,16 @@
-# Docker configuration placeholder for Phase 0.
+# Beispielkonfiguration für Phase-1-Dockerbetrieb mit bestehender Nextcloud.
+server:
+  port: 8080
+  auth_header: "X-Forwarded-User"
+
+caldav:
+  # Auf deine existierende Nextcloud-CalDAV-URL anpassen.
+  server_url: "https://nextcloud.example.com/remote.php/dav/calendars/<user>/tasks/"
+  default_list: "Tasks"
+
+security:
+  # In Docker Compose standardmäßig über CALDO_MASTER_KEY gesetzt.
+  encryption_key_file: "/run/secrets/caldo_key"
+
+database:
+  path: "/data/caldo.db"

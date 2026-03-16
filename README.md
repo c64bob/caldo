@@ -62,10 +62,8 @@ dichten HTMX-Struktur (Sidebar + Tabellen-Partial).
 
 Tested against:
 
-- ✅ Nextcloud (Tasks app)
-
-
-**Android:** Sync via [Tasks.org](https://tasks.org) (direct CalDAV) or [jtx Board](https://jtx.techbee.at/) (via DAVx⁵)
+- Nextcloud (Caldav Provider, Tasks app)
+- Android Sync via [Tasks.org](https://tasks.org) (direct CalDAV)
 
 ## Configuration
 
@@ -99,8 +97,6 @@ GitHub Actions übernimmt Build, Packaging und Release
 - [ ] Docker deployment
 - [ ] Keyboard shortcuts
 - [ ] Saved filters
-
-**v2.0** (planned)
 - [ ] Recurrence rules (RRULE)
 - [ ] Subtasks via `RELATED-TO`
 - [ ] Hotlist view

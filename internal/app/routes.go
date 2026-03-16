@@ -9,13 +9,13 @@ import (
 	"caldo/internal/service"
 )
 
-func NewRouter(cfg Config, settingsSvc *service.SettingsService, taskSvc *service.TaskService, templates *render.Templates) http.Handler {
+func NewRouter(cfg Config, settingsSvc *service.SettingsService, taskSvc *service.TaskService, syncSvc *service.SyncService, templates *render.Templates) http.Handler {
 	mux := http.NewServeMux()
 	settingsHandler := &handlers.SettingsHandler{
 		Service:          settingsSvc,
 		DefaultServerURL: cfg.CalDAV.ServerURL,
 	}
-	tasksHandler := &handlers.TasksHandler{Service: taskSvc, Templates: templates}
+	tasksHandler := &handlers.TasksHandler{Service: taskSvc, SyncService: syncSvc, Templates: templates}
 
 	mux.HandleFunc("GET /health", handlers.Health)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
@@ -30,6 +30,7 @@ func NewRouter(cfg Config, settingsSvc *service.SettingsService, taskSvc *servic
 	mux.Handle("POST /api/tasks", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.APITaskCreate)))
 	mux.Handle("POST /api/tasks/update", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.APITaskUpdate)))
 	mux.Handle("POST /api/tasks/delete", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.APITaskDelete)))
+	mux.Handle("POST /api/sync/now", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.APISyncNow)))
 
 	return mux
 }

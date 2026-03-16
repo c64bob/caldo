@@ -1,8 +1,7 @@
 # syntax=docker/dockerfile:1
 
-FROM golang:1.22-alpine
-
-WORKDIR /app
+FROM golang:1.22-alpine AS builder
+WORKDIR /src
 
 RUN apk add --no-cache ca-certificates tzdata
 
@@ -10,9 +9,18 @@ COPY go.mod go.sum* ./
 RUN go mod download
 
 COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o /out/caldo ./cmd/caldo
+
+FROM alpine:3.20
+WORKDIR /app
+
+RUN apk add --no-cache ca-certificates tzdata
+
+COPY --from=builder /out/caldo /usr/local/bin/caldo
+COPY configs/docker/config.docker.yaml /app/configs/docker/config.docker.yaml
 
 ENV CALDO_CONFIG=/app/configs/docker/config.docker.yaml
 
 EXPOSE 8080
 
-CMD ["go", "run", "./cmd/caldo"]
+CMD ["caldo"]

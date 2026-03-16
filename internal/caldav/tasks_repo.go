@@ -144,17 +144,15 @@ func (r reportResponse) calendarDataAndETag() (etag, calendarData string, ok boo
 
 func parseVTODO(calendarData string) domain.Task {
 	var task domain.Task
-	for _, rawLine := range strings.Split(calendarData, "\n") {
-		line := strings.TrimRight(strings.TrimSpace(rawLine), "\r")
+	for _, line := range unfoldICalLines(calendarData) {
 		if line == "" {
 			continue
 		}
-		key, value, ok := strings.Cut(line, ":")
+		name, params, value, ok := parseICalProperty(line)
 		if !ok {
 			continue
 		}
-		baseKey := strings.ToUpper(strings.Split(key, ";")[0])
-		switch baseKey {
+		switch name {
 		case "UID":
 			task.UID = strings.TrimSpace(value)
 		case "SUMMARY":
@@ -175,16 +173,16 @@ func parseVTODO(calendarData string) domain.Task {
 				}
 			}
 		case "DUE":
-			if due, dueKind, ok := parseICalTime(strings.TrimSpace(value)); ok {
+			if due, dueKind, ok := parseICalTime(strings.TrimSpace(value), params["TZID"]); ok {
 				task.Due = &due
 				task.DueKind = dueKind
 			}
 		case "CREATED":
-			if created, _, ok := parseICalTime(strings.TrimSpace(value)); ok {
+			if created, _, ok := parseICalTime(strings.TrimSpace(value), params["TZID"]); ok {
 				task.CreatedAt = &created
 			}
 		case "LAST-MODIFIED":
-			if modified, _, ok := parseICalTime(strings.TrimSpace(value)); ok {
+			if modified, _, ok := parseICalTime(strings.TrimSpace(value), params["TZID"]); ok {
 				task.UpdatedAt = &modified
 			}
 		}
@@ -195,7 +193,7 @@ func parseVTODO(calendarData string) domain.Task {
 	return task
 }
 
-func parseICalTime(value string) (time.Time, string, bool) {
+func parseICalTime(value, tzid string) (time.Time, string, bool) {
 	if value == "" {
 		return time.Time{}, "", false
 	}
@@ -209,12 +207,80 @@ func parseICalTime(value string) (time.Time, string, bool) {
 	layout := "20060102T150405"
 	if strings.HasSuffix(value, "Z") {
 		layout += "Z"
+		t, err := time.Parse(layout, value)
+		if err != nil {
+			return time.Time{}, "", false
+		}
+		return t, "datetime", true
 	}
-	t, err := time.Parse(layout, value)
+
+	loc := time.Local
+	if strings.TrimSpace(tzid) != "" {
+		loadedLoc, err := time.LoadLocation(strings.TrimSpace(tzid))
+		if err == nil {
+			loc = loadedLoc
+		}
+	}
+
+	t, err := time.ParseInLocation(layout, value, loc)
 	if err != nil {
 		return time.Time{}, "", false
 	}
 	return t, "datetime", true
+}
+
+func unfoldICalLines(calendarData string) []string {
+	rawLines := strings.Split(calendarData, "\n")
+	if len(rawLines) == 0 {
+		return nil
+	}
+
+	lines := make([]string, 0, len(rawLines))
+	for _, rawLine := range rawLines {
+		line := strings.TrimRight(rawLine, "\r")
+		if len(line) > 0 && (line[0] == ' ' || line[0] == '\t') {
+			if len(lines) == 0 {
+				continue
+			}
+			lines[len(lines)-1] += strings.TrimLeft(line, " \t")
+			continue
+		}
+		lines = append(lines, strings.TrimSpace(line))
+	}
+
+	return lines
+}
+
+func parseICalProperty(line string) (name string, params map[string]string, value string, ok bool) {
+	left, value, ok := strings.Cut(line, ":")
+	if !ok {
+		return "", nil, "", false
+	}
+
+	parts := strings.Split(left, ";")
+	if len(parts) == 0 {
+		return "", nil, "", false
+	}
+
+	name = strings.ToUpper(strings.TrimSpace(parts[0]))
+	if name == "" {
+		return "", nil, "", false
+	}
+
+	params = map[string]string{}
+	for _, part := range parts[1:] {
+		k, v, found := strings.Cut(part, "=")
+		if !found {
+			continue
+		}
+		key := strings.ToUpper(strings.TrimSpace(k))
+		val := strings.TrimSpace(v)
+		if key != "" && val != "" {
+			params[key] = strings.Trim(val, `"`)
+		}
+	}
+
+	return name, params, value, true
 }
 
 func resolveCollectionURL(serverURL, href string) (string, error) {

@@ -149,11 +149,18 @@ func (s *TaskService) UpdateTask(ctx context.Context, principalID string, in Tas
 }
 
 func (s *TaskService) DeleteTask(ctx context.Context, principalID string, in TaskMutationInput) error {
-	account, password, _, err := s.loadCredentialsAndCollection(ctx, principalID, in.ListID)
+	account, password, collection, err := s.loadCredentialsAndCollection(ctx, principalID, in.ListID)
 	if err != nil {
 		return err
 	}
-	return s.tasksRepo.DeleteTask(ctx, account.ServerURL, account.Username, string(password), strings.TrimSpace(in.Href), strings.TrimSpace(in.ETag))
+	if strings.TrimSpace(in.ETag) == "" {
+		return caldav.ErrMissingETag
+	}
+	current, err := s.loadTaskForUpdate(ctx, account, password, collection, in)
+	if err != nil {
+		return err
+	}
+	return s.tasksRepo.DeleteTask(ctx, account.ServerURL, account.Username, string(password), strings.TrimSpace(current.Href), strings.TrimSpace(in.ETag))
 }
 
 func (s *TaskService) loadTaskForUpdate(ctx context.Context, account sqlite.DAVAccount, password []byte, collection caldav.Collection, in TaskMutationInput) (domain.Task, error) {

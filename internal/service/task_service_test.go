@@ -181,3 +181,57 @@ func TestUpdateTask_FailsWithoutETag(t *testing.T) {
 		t.Fatalf("expected missing etag error, got %v", err)
 	}
 }
+
+func TestDeleteTask_UsesServerTaskHrefInsteadOfRawInput(t *testing.T) {
+	svc, repo, key := newTaskServiceForTest(t)
+	var deletePath string
+	caldavServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "REPORT":
+			w.Header().Set("Content-Type", "application/xml")
+			w.WriteHeader(http.StatusMultiStatus)
+			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="utf-8"?>
+<multistatus xmlns="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <response>
+    <href>/tasks/demo-1.ics</href>
+    <propstat>
+      <prop>
+        <getetag>"old"</getetag>
+        <c:calendar-data>BEGIN:VCALENDAR
+BEGIN:VTODO
+UID:demo-1
+SUMMARY:Task
+STATUS:NEEDS-ACTION
+END:VTODO
+END:VCALENDAR</c:calendar-data>
+      </prop>
+      <status>HTTP/1.1 200 OK</status>
+    </propstat>
+  </response>
+</multistatus>`))
+		case "DELETE":
+			deletePath = r.URL.Path
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected method %s", r.Method)
+		}
+	}))
+	t.Cleanup(caldavServer.Close)
+
+	encrypted, err := security.EncryptAESGCM(key, []byte("pw"))
+	if err != nil {
+		t.Fatalf("encrypt: %v", err)
+	}
+	err = repo.Upsert(context.Background(), sqlite.DAVAccount{PrincipalID: "alice@example.com", ServerURL: caldavServer.URL, Username: "alice", PasswordEncrypted: encrypted})
+	if err != nil {
+		t.Fatalf("upsert: %v", err)
+	}
+
+	err = svc.DeleteTask(context.Background(), "alice@example.com", TaskMutationInput{ListID: "tasks", UID: "demo-1", Href: "/evil.ics", ETag: `"old"`})
+	if err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	if deletePath != "/tasks/demo-1.ics" {
+		t.Fatalf("expected delete on server task href, got %s", deletePath)
+	}
+}

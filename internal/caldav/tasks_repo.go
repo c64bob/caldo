@@ -131,9 +131,10 @@ func (r *TasksRepo) DeleteTask(ctx context.Context, serverURL, username, passwor
 		return fmt.Errorf("CalDAV DELETE request erstellen: %w", err)
 	}
 	req.SetBasicAuth(username, password)
-	if strings.TrimSpace(etag) != "" {
-		req.Header.Set("If-Match", etag)
+	if strings.TrimSpace(etag) == "" {
+		return ErrMissingETag
 	}
+	req.Header.Set("If-Match", etag)
 	resp, err := r.client.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("CalDAV DELETE ausführen: %w", err)
@@ -162,6 +163,12 @@ func resolveTaskURL(serverURL, href string) (string, error) {
 		return "", ErrInvalidTaskHref
 	}
 	if !strings.HasPrefix(rel.Path, "/") {
+		return "", ErrInvalidTaskHref
+	}
+	if rel.RawQuery != "" || rel.Fragment != "" {
+		return "", ErrInvalidTaskHref
+	}
+	if !strings.HasSuffix(strings.ToLower(rel.Path), ".ics") {
 		return "", ErrInvalidTaskHref
 	}
 	return base.ResolveReference(rel).String(), nil

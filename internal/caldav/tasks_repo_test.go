@@ -132,3 +132,19 @@ func TestTasksRepo_DeleteTaskRejectsAbsoluteHref(t *testing.T) {
 		t.Fatalf("expected ErrInvalidTaskHref, got %v", err)
 	}
 }
+
+func TestTasksRepo_DeleteTaskFailsWhenETagMissing(t *testing.T) {
+	repo := NewTasksRepo(NewClient())
+	err := repo.DeleteTask(context.Background(), "https://caldav.example.com", "alice", "pw", "/tasks/abc.ics", "")
+	if err == nil || err != ErrMissingETag {
+		t.Fatalf("expected ErrMissingETag, got %v", err)
+	}
+}
+
+func TestTasksRepo_DeleteTaskRejectsHrefWithQuery(t *testing.T) {
+	repo := NewTasksRepo(NewClient())
+	err := repo.DeleteTask(context.Background(), "https://caldav.example.com", "alice", "pw", "/tasks/abc.ics?x=1", `"v1"`)
+	if err == nil || err != ErrInvalidTaskHref {
+		t.Fatalf("expected ErrInvalidTaskHref, got %v", err)
+	}
+}

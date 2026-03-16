@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"caldo/internal/caldav"
@@ -35,6 +37,16 @@ type TaskPageData struct {
 	Tasks          []domain.Task
 	ActiveListID   string
 	HasCredentials bool
+}
+
+type TaskMutationInput struct {
+	ListID   string
+	UID      string
+	Href     string
+	ETag     string
+	Summary  string
+	Status   string
+	Priority int
 }
 
 func (s *TaskService) LoadTaskPage(ctx context.Context, principalID string, selectedListID string) (TaskPageData, error) {
@@ -98,4 +110,117 @@ func (s *TaskService) LoadTaskPage(ctx context.Context, principalID string, sele
 		ActiveListID:   activeListID,
 		HasCredentials: true,
 	}, nil
+}
+
+func (s *TaskService) CreateTask(ctx context.Context, principalID string, in TaskMutationInput) (domain.Task, error) {
+	account, password, collection, err := s.loadCredentialsAndCollection(ctx, principalID, in.ListID)
+	if err != nil {
+		return domain.Task{}, err
+	}
+	prio := in.Priority
+	if prio < 0 {
+		prio = 0
+	}
+	task := domain.Task{UID: in.UID, Summary: strings.TrimSpace(in.Summary), Status: strings.TrimSpace(in.Status), Priority: prio}
+	return s.tasksRepo.CreateTask(ctx, account.ServerURL, account.Username, string(password), collection, task)
+}
+
+func (s *TaskService) UpdateTask(ctx context.Context, principalID string, in TaskMutationInput) (domain.Task, error) {
+	account, password, collection, err := s.loadCredentialsAndCollection(ctx, principalID, in.ListID)
+	if err != nil {
+		return domain.Task{}, err
+	}
+	if strings.TrimSpace(in.ETag) == "" {
+		return domain.Task{}, caldav.ErrMissingETag
+	}
+	current, err := s.loadTaskForUpdate(ctx, account, password, collection, in)
+	if err != nil {
+		return domain.Task{}, err
+	}
+	if summary := strings.TrimSpace(in.Summary); summary != "" {
+		current.Summary = summary
+	}
+	if status := strings.TrimSpace(in.Status); status != "" {
+		current.Status = status
+	}
+	current.Priority = in.Priority
+	current.ETag = strings.TrimSpace(in.ETag)
+	return s.tasksRepo.UpdateTask(ctx, account.ServerURL, account.Username, string(password), current)
+}
+
+func (s *TaskService) DeleteTask(ctx context.Context, principalID string, in TaskMutationInput) error {
+	account, password, collection, err := s.loadCredentialsAndCollection(ctx, principalID, in.ListID)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(in.ETag) == "" {
+		return caldav.ErrMissingETag
+	}
+	current, err := s.loadTaskForUpdate(ctx, account, password, collection, in)
+	if err != nil {
+		return err
+	}
+	return s.tasksRepo.DeleteTask(ctx, account.ServerURL, account.Username, string(password), strings.TrimSpace(current.Href), strings.TrimSpace(in.ETag))
+}
+
+func (s *TaskService) loadTaskForUpdate(ctx context.Context, account sqlite.DAVAccount, password []byte, collection caldav.Collection, in TaskMutationInput) (domain.Task, error) {
+	tasks, err := s.tasksRepo.ListTasks(ctx, account.ServerURL, account.Username, string(password), collection)
+	if err != nil {
+		return domain.Task{}, err
+	}
+	targetHref := strings.TrimSpace(in.Href)
+	targetUID := strings.TrimSpace(in.UID)
+	for _, task := range tasks {
+		if targetHref != "" && strings.TrimSpace(task.Href) == targetHref {
+			return task, nil
+		}
+		if targetUID != "" && strings.TrimSpace(task.UID) == targetUID {
+			return task, nil
+		}
+	}
+	return domain.Task{}, errors.New("Task zum Aktualisieren nicht gefunden")
+}
+
+func ParsePriority(raw string) int {
+	value, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil {
+		return 0
+	}
+	if value < 0 {
+		return 0
+	}
+	if value > 9 {
+		return 9
+	}
+	return value
+}
+
+func (s *TaskService) loadCredentialsAndCollection(ctx context.Context, principalID, listID string) (sqlite.DAVAccount, []byte, caldav.Collection, error) {
+	if strings.TrimSpace(principalID) == "" {
+		return sqlite.DAVAccount{}, nil, caldav.Collection{}, fmt.Errorf("missing principal")
+	}
+	account, ok, err := s.accountsRepo.GetByPrincipal(ctx, principalID)
+	if err != nil {
+		return sqlite.DAVAccount{}, nil, caldav.Collection{}, fmt.Errorf("load dav account: %w", err)
+	}
+	if !ok {
+		return sqlite.DAVAccount{}, nil, caldav.Collection{}, fmt.Errorf("kein DAV-Account hinterlegt")
+	}
+	password, err := security.DecryptAESGCM(s.key, account.PasswordEncrypted)
+	if err != nil {
+		return sqlite.DAVAccount{}, nil, caldav.Collection{}, fmt.Errorf("decrypt dav password: %w", err)
+	}
+	discovery, err := s.caldavClient.DiscoverTaskCollections(ctx, account.ServerURL, account.Username, string(password), s.defaultList)
+	if err != nil {
+		return sqlite.DAVAccount{}, nil, caldav.Collection{}, err
+	}
+	for _, c := range discovery.Collections {
+		if !c.SupportsVTODO {
+			continue
+		}
+		if strings.TrimSpace(listID) == "" || c.ID == listID {
+			return account, password, c, nil
+		}
+	}
+	return sqlite.DAVAccount{}, nil, caldav.Collection{}, fmt.Errorf("Task-Liste nicht gefunden")
 }

@@ -1,8 +1,14 @@
 package caldav
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
+
+	"caldo/internal/domain"
 )
 
 func TestParseVTODO_UnfoldsFoldedLines(t *testing.T) {
@@ -50,5 +56,95 @@ func TestParseICalTime_FloatingDateTimeUsesLocal(t *testing.T) {
 	}
 	if parsed.Location().String() != "TestLocal" {
 		t.Fatalf("expected TestLocal, got %s", parsed.Location())
+	}
+}
+
+func TestTasksRepo_CreateTaskUsesIfNoneMatch(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			t.Fatalf("expected PUT, got %s", r.Method)
+		}
+		if got := r.Header.Get("If-None-Match"); got != "*" {
+			t.Fatalf("expected If-None-Match '*', got %q", got)
+		}
+		if !strings.HasSuffix(r.URL.Path, ".ics") {
+			t.Fatalf("expected .ics target, got %s", r.URL.Path)
+		}
+		w.Header().Set("ETag", `"etag-new"`)
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer server.Close()
+
+	repo := NewTasksRepo(NewClient())
+	created, err := repo.CreateTask(context.Background(), server.URL, "alice", "pw", Collection{ID: "tasks", Href: "/tasks/", SupportsVTODO: true}, domain.Task{UID: "abc", Summary: "hello"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if created.ETag != `"etag-new"` {
+		t.Fatalf("expected etag from server, got %q", created.ETag)
+	}
+}
+
+func TestTasksRepo_UpdateTaskReturnsConflictOn412(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("If-Match"); got != `"v1"` {
+			t.Fatalf("expected If-Match header, got %q", got)
+		}
+		w.WriteHeader(http.StatusPreconditionFailed)
+	}))
+	defer server.Close()
+
+	repo := NewTasksRepo(NewClient())
+	_, err := repo.UpdateTask(context.Background(), server.URL, "alice", "pw", domain.Task{Href: "/tasks/abc.ics", ETag: `"v1"`, UID: "abc", Summary: "x"})
+	if err == nil || err != ErrPreconditionFailed {
+		t.Fatalf("expected ErrPreconditionFailed, got %v", err)
+	}
+}
+
+func TestTasksRepo_DeleteTaskReturnsConflictOn412(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			t.Fatalf("expected DELETE, got %s", r.Method)
+		}
+		w.WriteHeader(http.StatusPreconditionFailed)
+	}))
+	defer server.Close()
+
+	repo := NewTasksRepo(NewClient())
+	err := repo.DeleteTask(context.Background(), server.URL, "alice", "pw", "/tasks/abc.ics", `"v1"`)
+	if err == nil || err != ErrPreconditionFailed {
+		t.Fatalf("expected ErrPreconditionFailed, got %v", err)
+	}
+}
+
+func TestTasksRepo_UpdateTaskFailsWhenETagMissing(t *testing.T) {
+	repo := NewTasksRepo(NewClient())
+	_, err := repo.UpdateTask(context.Background(), "https://caldav.example.com", "alice", "pw", domain.Task{Href: "/tasks/abc.ics", UID: "abc", Summary: "x"})
+	if err == nil || err != ErrMissingETag {
+		t.Fatalf("expected ErrMissingETag, got %v", err)
+	}
+}
+
+func TestTasksRepo_DeleteTaskRejectsAbsoluteHref(t *testing.T) {
+	repo := NewTasksRepo(NewClient())
+	err := repo.DeleteTask(context.Background(), "https://caldav.example.com", "alice", "pw", "https://evil.example.com/pwn.ics", `"v1"`)
+	if err == nil || err != ErrInvalidTaskHref {
+		t.Fatalf("expected ErrInvalidTaskHref, got %v", err)
+	}
+}
+
+func TestTasksRepo_DeleteTaskFailsWhenETagMissing(t *testing.T) {
+	repo := NewTasksRepo(NewClient())
+	err := repo.DeleteTask(context.Background(), "https://caldav.example.com", "alice", "pw", "/tasks/abc.ics", "")
+	if err == nil || err != ErrMissingETag {
+		t.Fatalf("expected ErrMissingETag, got %v", err)
+	}
+}
+
+func TestTasksRepo_DeleteTaskRejectsHrefWithQuery(t *testing.T) {
+	repo := NewTasksRepo(NewClient())
+	err := repo.DeleteTask(context.Background(), "https://caldav.example.com", "alice", "pw", "/tasks/abc.ics?x=1", `"v1"`)
+	if err == nil || err != ErrInvalidTaskHref {
+		t.Fatalf("expected ErrInvalidTaskHref, got %v", err)
 	}
 }

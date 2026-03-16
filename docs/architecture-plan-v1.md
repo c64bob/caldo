@@ -336,6 +336,16 @@ Die folgenden Punkte sind auf Basis der Review-Kommentare konkret entschieden.
 21. Monitoring-Basics (Sync-Erfolg/Fehler, Latenz).
 22. Lizenz-/Compliance-Check (AGPL-Hinweise, Third-Party Notices).
 
+### Phase 7 — Build-, Packaging- und Release-Automatisierung (v1.0)
+23. CI baut und testet bei jedem Push/PR (`go test ./...`, `go build`).
+24. Go-Binary-Artefakte automatisiert für `linux/amd64` und `linux/arm64` erzeugen.
+25. Multi-Stage-Docker-Build verwenden (Build in Builder-Stage, Runtime-Image ohne Go-Toolchain und ohne `go run`).
+26. Container-Images automatisiert taggen/publishen (mindestens `latest` und `vX.Y.Z`).
+27. Release-Automatisierung über GitHub Actions:
+    - Bei Git-Tag (`v*`) GitHub Release erstellen,
+    - Binary-Artefakte + Checksums anhängen,
+    - Artefakt-Signierung/SLSA- und SBOM-Checks als Teil des Release-Prozesses einplanen.
+
 ---
 
 ## Empfohlene Definition of Done für v1.0

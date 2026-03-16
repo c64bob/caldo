@@ -5,7 +5,7 @@
 **Layout:**
 - Zweispaltig: Sidebar 220px fest links, Hauptbereich flexibel rechts
 - Header: App-Logo, globale Suchbox, Account-Icon — keine überladene Toolbar
-- Sidebar-Sektionen: Hotlist, Main, Folders, Contexts, Goals, Priority-View, Due-Date-View, Tags — exakt Toodledo-Reihenfolge [toodledo](https://www.toodledo.com/forums/3/1874/0/keyboard-shortcuts.html)
+- Sidebar-Sektionen: Hotlist, Main, Folders, Contexts, Goals, Priority-View, Due-Date-View, Tags — exakt Toodledo-Reihenfolge [toodledo](https://www.toodledo.com/products.php)
 - Aktiver View wird in Sidebar hervorgehoben
 - Sidebar collapsible via Button (nicht per Keyboard in Phase 1)
 - Responsive: Sidebar blendet auf schmalen Screens aus
@@ -28,7 +28,7 @@ Caldo sieht strukturell wie Toodledo aus. Alle Views sind navigierbar. Noch kein
 **Task-Zeile Felder:**
 - `SUMMARY` — editierbar inline per Klick, Enter speichert, Escape bricht ab
 - `PRIORITY` — Dropdown (Top / High / Medium / Low / Negative) mit Farbvorschau
-- `DUE` / `DTSTART` — Datepicker mit Natural Language: `today`, `tomorrow`, `mon`, `1 week`, `next month` → wird zu ISO-Datum aufgelöst [toodledo](https://www.toodledo.com/forums/3/1874/0/keyboard-shortcuts.html)
+- `DUE` / `DTSTART` — Datepicker mit Natural Language: `today`, `tomorrow`, `mon`, `1 week`, `next month` → wird zu ISO-Datum aufgelöst
 - `STATUS` — Dropdown: None / Next Action / Active / Planning / Delegated / Waiting / Hold / Someday / Cancelled / Reference
 - `CATEGORIES` (Tags) — Chip-Input: Tippen, Enter fügt hinzu, × entfernt
 - `PERCENT-COMPLETE` — Schieberegler 0–100% oder Direkteingabe
@@ -82,12 +82,12 @@ Vollständige Task-CRUD-Operationen im UI ohne Mausklick auf Menüpunkte. Smart 
 | `Escape` | Aktiven Inline-Edit abbrechen |
 | `Enter` | Inline-Edit bestätigen |
 | `Tab` | Nächstes Feld in Inline-Edit |
-| `Shift+Tab` | Vorheriges Feld  [toodledo](https://www.toodledo.com/forums/3/1874/0/keyboard-shortcuts.html) |
+| `Shift+Tab` | Vorheriges Feld |
 | `↑` / `↓` | Zwischen Tasks navigieren |
 | `Space` | Ausgewählte Task als erledigt markieren |
 | `x` | Ausgewählte Task für Batch-Edit markieren |
 | `Del` | Ausgewählte Task löschen (mit Confirm) |
-| `?` | Keyboard-Shortcut-Overlay anzeigen (Gmail-Stil)  [toodledo](https://www.toodledo.com/forums/3/1874/0/keyboard-shortcuts.html) |
+| `?` | Keyboard-Shortcut-Overlay anzeigen (Gmail-Stil) |
 
 **Implementation-Detail:** Shortcuts via `document.addEventListener('keydown')` in einem kleinen Vanilla-JS-Modul (~80 Zeilen). Deaktivierung wenn Fokus in Inputfeld — `event.target.tagName !== 'INPUT'` check. HTMX-kompatibel, kein Framework nötig.
 

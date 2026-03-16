@@ -93,7 +93,7 @@ GitHub Actions übernimmt Build, Packaging und Release
 ## Roadmap
 
 **v1.0** (current)
-- [ ] CalDAV CRUD for tasks
+- [x] CalDAV CRUD for tasks (Create/Update/Delete inkl. ETag-Konflikterkennung)
 - [x] Folder / list sidebar (Read-first)
 - [ ] Inline editing (title, priority, due date, tags)
 - [ ] Docker deployment

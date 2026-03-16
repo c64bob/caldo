@@ -51,6 +51,144 @@ func (r *TasksRepo) ListTasks(ctx context.Context, serverURL, username, password
 	return tasks, nil
 }
 
+func (r *TasksRepo) CreateTask(ctx context.Context, serverURL, username, password string, collection Collection, task domain.Task) (domain.Task, error) {
+	if strings.TrimSpace(task.UID) == "" {
+		task.UID = fmt.Sprintf("caldo-%d", time.Now().UnixNano())
+	}
+	collectionURL, err := resolveCollectionURL(serverURL, collection.Href)
+	if err != nil {
+		return domain.Task{}, err
+	}
+	resourceURL := strings.TrimRight(collectionURL, "/") + "/" + task.UID + ".ics"
+	task.CollectionID = collection.ID
+	task.CollectionHref = collection.Href
+	task.Href = resourceURL
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, resourceURL, strings.NewReader(buildVTODOCalendar(task)))
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("CalDAV PUT request erstellen: %w", err)
+	}
+	req.SetBasicAuth(username, password)
+	req.Header.Set("Content-Type", "text/calendar; charset=utf-8")
+	req.Header.Set("If-None-Match", "*")
+
+	resp, err := r.client.httpClient.Do(req)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("CalDAV PUT ausführen: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNoContent {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<10))
+		return domain.Task{}, fmt.Errorf("CalDAV PUT fehlgeschlagen (%d): %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	task.ETag = strings.TrimSpace(resp.Header.Get("ETag"))
+	if task.Status == "" {
+		task.Status = "NEEDS-ACTION"
+	}
+	return task, nil
+}
+
+func (r *TasksRepo) UpdateTask(ctx context.Context, serverURL, username, password string, task domain.Task) (domain.Task, error) {
+	taskURL, err := resolveCollectionURL(serverURL, task.Href)
+	if err != nil {
+		return domain.Task{}, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, taskURL, strings.NewReader(buildVTODOCalendar(task)))
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("CalDAV PUT request erstellen: %w", err)
+	}
+	req.SetBasicAuth(username, password)
+	req.Header.Set("Content-Type", "text/calendar; charset=utf-8")
+	if strings.TrimSpace(task.ETag) != "" {
+		req.Header.Set("If-Match", task.ETag)
+	}
+
+	resp, err := r.client.httpClient.Do(req)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("CalDAV PUT ausführen: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusPreconditionFailed {
+		return domain.Task{}, ErrPreconditionFailed
+	}
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<10))
+		return domain.Task{}, fmt.Errorf("CalDAV PUT fehlgeschlagen (%d): %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	task.ETag = strings.TrimSpace(resp.Header.Get("ETag"))
+	return task, nil
+}
+
+func (r *TasksRepo) DeleteTask(ctx context.Context, serverURL, username, password, href, etag string) error {
+	taskURL, err := resolveCollectionURL(serverURL, href)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, taskURL, nil)
+	if err != nil {
+		return fmt.Errorf("CalDAV DELETE request erstellen: %w", err)
+	}
+	req.SetBasicAuth(username, password)
+	if strings.TrimSpace(etag) != "" {
+		req.Header.Set("If-Match", etag)
+	}
+	resp, err := r.client.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("CalDAV DELETE ausführen: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusPreconditionFailed {
+		return ErrPreconditionFailed
+	}
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<10))
+		return fmt.Errorf("CalDAV DELETE fehlgeschlagen (%d): %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	return nil
+}
+
+func buildVTODOCalendar(task domain.Task) string {
+	status := strings.TrimSpace(task.Status)
+	if status == "" {
+		status = "NEEDS-ACTION"
+	}
+	summary := escapeICalText(task.Summary)
+	if summary == "" {
+		summary = task.UID
+	}
+	lines := []string{
+		"BEGIN:VCALENDAR",
+		"VERSION:2.0",
+		"PRODID:-//caldo//task//EN",
+		"BEGIN:VTODO",
+		"UID:" + escapeICalText(task.UID),
+		"SUMMARY:" + summary,
+		"STATUS:" + status,
+		"DTSTAMP:" + time.Now().UTC().Format("20060102T150405Z"),
+	}
+	if strings.TrimSpace(task.Description) != "" {
+		lines = append(lines, "DESCRIPTION:"+escapeICalText(task.Description))
+	}
+	if task.Priority > 0 {
+		lines = append(lines, fmt.Sprintf("PRIORITY:%d", task.Priority))
+	}
+	if task.Due != nil {
+		if task.DueKind == "date" {
+			lines = append(lines, "DUE;VALUE=DATE:"+task.Due.Format("20060102"))
+		} else {
+			lines = append(lines, "DUE:"+task.Due.UTC().Format("20060102T150405Z"))
+		}
+	}
+	lines = append(lines, "END:VTODO", "END:VCALENDAR", "")
+	return strings.Join(lines, "\r\n")
+}
+
+func escapeICalText(v string) string {
+	r := strings.NewReplacer("\\", "\\\\", ";", "\\;", ",", "\\,", "\n", "\\n", "\r", "")
+	return r.Replace(strings.TrimSpace(v))
+}
+
 func (r *TasksRepo) fetchTasks(ctx context.Context, collectionURL, username, password string, collection Collection) ([]domain.Task, error) {
 	reqBody := `<?xml version="1.0" encoding="utf-8"?>
 <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">

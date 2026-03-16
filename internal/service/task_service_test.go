@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"caldo/internal/security"
@@ -35,13 +38,44 @@ func TestLoadTaskPage_NoCredentials(t *testing.T) {
 
 func TestLoadTaskPage_WithCredentialsReturnsListsAndTasks(t *testing.T) {
 	svc, repo, key := newTaskServiceForTest(t)
+	caldavServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "REPORT" {
+			t.Fatalf("expected REPORT request, got %s", r.Method)
+		}
+		if !strings.Contains(r.URL.Path, "/tasks/") {
+			t.Fatalf("expected tasks collection request, got %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/xml")
+		w.WriteHeader(http.StatusMultiStatus)
+		_, _ = w.Write([]byte(`<?xml version="1.0" encoding="utf-8"?>
+<multistatus xmlns="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <response>
+    <href>/remote.php/dav/tasks/demo-1.ics</href>
+    <propstat>
+      <prop>
+        <getetag>"demo-1"</getetag>
+        <c:calendar-data>BEGIN:VCALENDAR
+BEGIN:VTODO
+UID:demo-1
+SUMMARY:Remote task
+STATUS:NEEDS-ACTION
+END:VTODO
+END:VCALENDAR</c:calendar-data>
+      </prop>
+      <status>HTTP/1.1 200 OK</status>
+    </propstat>
+  </response>
+</multistatus>`))
+	}))
+	t.Cleanup(caldavServer.Close)
+
 	encrypted, err := security.EncryptAESGCM(key, []byte("pw"))
 	if err != nil {
 		t.Fatalf("encrypt: %v", err)
 	}
 	err = repo.Upsert(context.Background(), sqlite.DAVAccount{
 		PrincipalID:       "alice@example.com",
-		ServerURL:         "https://nextcloud.example.com/remote.php/dav",
+		ServerURL:         caldavServer.URL,
 		Username:          "alice",
 		PasswordEncrypted: encrypted,
 	})
@@ -60,6 +94,9 @@ func TestLoadTaskPage_WithCredentialsReturnsListsAndTasks(t *testing.T) {
 		t.Fatal("expected at least one list")
 	}
 	if len(data.Tasks) == 0 {
-		t.Fatal("expected demo tasks")
+		t.Fatal("expected tasks from CalDAV server")
+	}
+	if data.Tasks[0].UID != "demo-1" {
+		t.Fatalf("expected UID demo-1, got %s", data.Tasks[0].UID)
 	}
 }

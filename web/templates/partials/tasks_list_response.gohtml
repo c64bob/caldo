@@ -1,0 +1,6 @@
+{{define "tasks_list_response"}}
+{{template "task_table" .}}
+<aside id="sidebar" class="sidebar" hx-swap-oob="outerHTML">
+  {{template "sidebar_lists" .}}
+</aside>
+{{end}}

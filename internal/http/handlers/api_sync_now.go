@@ -1,11 +1,9 @@
 package handlers
 
 import (
+	"caldo/internal/http/middleware"
 	"encoding/json"
 	"net/http"
-	"strings"
-
-	"caldo/internal/http/middleware"
 )
 
 func (h *TasksHandler) APISyncNow(w http.ResponseWriter, r *http.Request) {
@@ -17,9 +15,6 @@ func (h *TasksHandler) APISyncNow(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		http.Error(w, "Authentifizierungsheader fehlt", http.StatusUnauthorized)
 		return
-	}
-	if forced := strings.TrimSpace(r.FormValue("principal_id")); forced != "" {
-		principal = forced
 	}
 	result, err := h.SyncService.SyncNow(r.Context(), principal)
 	if err != nil {

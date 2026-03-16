@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type Templates struct {
@@ -66,7 +67,10 @@ func templateFile(root, name string) string {
 }
 
 func resolveTemplateRoot() (string, error) {
-	candidates := make([]string, 0, 4)
+	candidates := make([]string, 0, 8)
+	if configured := strings.TrimSpace(os.Getenv("CALDO_TEMPLATE_DIR")); configured != "" {
+		candidates = append(candidates, configured)
+	}
 	if wd, err := os.Getwd(); err == nil {
 		candidates = append(candidates, filepath.Join(wd, "web", "templates"))
 	}
@@ -75,8 +79,10 @@ func resolveTemplateRoot() (string, error) {
 		candidates = append(candidates,
 			filepath.Join(exeDir, "web", "templates"),
 			filepath.Join(exeDir, "..", "web", "templates"),
+			filepath.Join(exeDir, "..", "..", "web", "templates"),
 		)
 	}
+	candidates = append(candidates, "/app/web/templates")
 
 	for _, candidate := range candidates {
 		if _, err := os.Stat(filepath.Join(candidate, "layout.gohtml")); err == nil {

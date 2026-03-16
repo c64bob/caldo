@@ -18,13 +18,11 @@ type SyncSnapshot struct {
 }
 
 func (r *TasksRepo) SyncCollection(ctx context.Context, serverURL, username, password string, collection Collection, previousToken string) (SyncSnapshot, error) {
-	if strings.TrimSpace(previousToken) != "" {
-		if snap, err := r.syncWithWebDAVToken(ctx, serverURL, username, password, collection, previousToken); err == nil {
-			return snap, nil
-		}
+	if strings.TrimSpace(previousToken) == "" {
+		return r.syncWithETagFallback(ctx, serverURL, username, password, collection)
 	}
 
-	snap, err := r.syncWithWebDAVToken(ctx, serverURL, username, password, collection, "")
+	snap, err := r.syncWithWebDAVToken(ctx, serverURL, username, password, collection, previousToken)
 	if err == nil {
 		return snap, nil
 	}

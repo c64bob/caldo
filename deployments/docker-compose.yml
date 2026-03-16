@@ -1,1 +1,21 @@
-# Phase 0 placeholder docker-compose configuration.
+version: "3.9"
+
+services:
+  caldo:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile
+    container_name: caldo-app
+    restart: unless-stopped
+    environment:
+      CALDO_CONFIG: /app/configs/docker/config.docker.yaml
+      # Nur für lokale Tests: 32 Byte Base64-Schlüssel
+      CALDO_MASTER_KEY: "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+    ports:
+      - "8080:8080"
+    volumes:
+      - ..:/app
+      - caldo_data:/data
+
+volumes:
+  caldo_data:

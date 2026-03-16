@@ -31,18 +31,29 @@ sync and zero vendor lock-in. Your tasks stay on your infrastructure.
 | Auth | Reverse Proxy (`X-Forwarded-User` header) |
 | Deployment | Docker + docker-compose |
 
-## Quick Start
+## Quick Start (Docker mit bestehender Nextcloud)
+
+1. Docker-Config anpassen:
 
 ```bash
-git clone https://github.com/your-user/caldo
-cd caldo
-cp config.example.yaml config.yaml
-# Edit config.yaml: set your CalDAV server URL
-docker compose up -d
+cp configs/docker/config.docker.yaml configs/docker/config.local.yaml
+# server_url auf deine Nextcloud-CalDAV-URL setzen
 ```
 
-Then open `http://localhost:8080` in your browser.
-Your reverse proxy (Traefik, Caddy, nginx) handles authentication.
+2. Stack starten:
+
+```bash
+docker compose -f deployments/docker-compose.yml up -d --build
+```
+
+3. Im Browser öffnen: `http://localhost:8080`
+
+4. Reverse-Proxy-Identität für Tests mitgeben (erforderlich in Phase 1), z. B. Header
+   `X-Forwarded-User: alice@example.com`.
+
+Danach unter `/settings` den DAV-Account speichern; der Zugang wird beim Speichern
+über `PROPFIND` streng als WebDAV validiert (HTTP 207 erwartet) und verschlüsselt persistiert.
+Die eingetragene Server-URL muss dabei auf den konfigurierten CalDAV-Host zeigen.
 
 ## CalDAV Compatibility
 

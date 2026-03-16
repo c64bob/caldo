@@ -18,7 +18,8 @@ func (h *TasksHandler) APISyncNow(w http.ResponseWriter, r *http.Request) {
 	}
 	result, err := h.SyncService.SyncNow(r.Context(), principal)
 	if err != nil {
-		http.Error(w, "Synchronisierung fehlgeschlagen: "+err.Error(), http.StatusBadGateway)
+		message, status := taskLoadError(err)
+		http.Error(w, "Synchronisierung fehlgeschlagen: "+message, status)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")

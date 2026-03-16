@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -233,5 +234,24 @@ END:VCALENDAR</c:calendar-data>
 	}
 	if deletePath != "/tasks/demo-1.ics" {
 		t.Fatalf("expected delete on server task href, got %s", deletePath)
+	}
+}
+
+func TestParseCategories_DeduplicatesAndTrims(t *testing.T) {
+	got := ParseCategories(" work, focus,Work, , home ")
+	want := []string{"work", "focus", "home"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("expected %v, got %v", want, got)
+	}
+}
+
+func TestParseDue_AcceptsDateAndDatetime(t *testing.T) {
+	due, kind := ParseDue("2026-03-16")
+	if due == nil || kind != "date" {
+		t.Fatalf("expected date parse, got due=%v kind=%q", due, kind)
+	}
+	due, kind = ParseDue("2026-03-16T09:45")
+	if due == nil || kind != "datetime" {
+		t.Fatalf("expected datetime parse, got due=%v kind=%q", due, kind)
 	}
 }

@@ -26,11 +26,16 @@ type TaskListItem struct {
 
 type TaskRow struct {
 	UID             string
+	ListID          string
+	Href            string
+	ETag            string
 	Summary         string
+	Description     string
 	Status          string
 	Priority        int
 	PercentComplete int
 	Due             string
+	DueInput        string
 	Categories      string
 }
 
@@ -39,15 +44,30 @@ func BuildTaskRows(tasks []domain.Task) []TaskRow {
 	for _, t := range tasks {
 		rows = append(rows, TaskRow{
 			UID:             t.UID,
+			ListID:          t.CollectionID,
+			Href:            t.Href,
+			ETag:            t.ETag,
 			Summary:         t.Summary,
+			Description:     t.Description,
 			Status:          t.Status,
 			Priority:        t.Priority,
 			PercentComplete: t.PercentComplete,
 			Due:             formatDue(t.Due, t.DueKind),
+			DueInput:        formatDueInput(t.Due, t.DueKind),
 			Categories:      strings.Join(t.Categories, ", "),
 		})
 	}
 	return rows
+}
+
+func formatDueInput(due *time.Time, kind string) string {
+	if due == nil {
+		return ""
+	}
+	if kind == "date" {
+		return due.Format("2006-01-02")
+	}
+	return due.Local().Format("2006-01-02T15:04")
 }
 
 func formatDue(due *time.Time, kind string) string {

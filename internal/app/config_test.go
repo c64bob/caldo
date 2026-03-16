@@ -30,6 +30,9 @@ func TestLoadConfig_UsesDefaultsWhenValuesMissing(t *testing.T) {
 	if cfg.Database.Path != "./data/caldo.db" {
 		t.Fatalf("expected default db path, got %q", cfg.Database.Path)
 	}
+	if cfg.Sync.IntervalSeconds != 300 || cfg.Sync.Enabled {
+		t.Fatalf("unexpected default sync config: %+v", cfg.Sync)
+	}
 }
 
 func TestLoadConfig_ParsesConfiguredValues(t *testing.T) {
@@ -45,6 +48,10 @@ security:
   encryption_key_file: "/tmp/key"
 database:
   path: "/tmp/caldo.db"
+sync:
+  enabled: true
+  interval_seconds: 42
+  default_principal: "alice@example.com"
 `
 	if err := os.WriteFile(cfgPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("write config: %v", err)
@@ -66,6 +73,9 @@ database:
 	}
 	if cfg.Database.Path != "/tmp/caldo.db" {
 		t.Fatalf("unexpected db path: %q", cfg.Database.Path)
+	}
+	if !cfg.Sync.Enabled || cfg.Sync.IntervalSeconds != 42 || cfg.Sync.DefaultPrincipal != "alice@example.com" {
+		t.Fatalf("unexpected sync config: %+v", cfg.Sync)
 	}
 }
 

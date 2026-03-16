@@ -58,6 +58,24 @@ Die eingetragene Server-URL muss dabei auf den konfigurierten CalDAV-Host zeigen
 Die Aufgabenansicht ist unter `/tasks` verfügbar und lädt Listen/Task-Tabelle in einer
 dichten HTMX-Struktur (Sidebar + Tabellen-Partial).
 
+
+### Sync (Phase 5)
+
+Caldo speichert Sync-Metadaten pro Collection und unterstützt zwei Modi:
+
+- `webdav-sync` (bevorzugt)
+- `etag-fallback` (Fallback, wenn kein Sync-Token nutzbar ist)
+
+Manuelle Synchronisierung ist über `POST /api/sync/now` möglich (authentifiziert via Proxy-Header). Der Endpoint nutzt ausschließlich die authentifizierte Principal-Identität (kein Principal-Override per Request).
+Optional kann ein Hintergrundjob aktiviert werden:
+
+```yaml
+sync:
+  enabled: false
+  interval_seconds: 300
+  default_principal: "alice@example.com"
+```
+
 ## CalDAV Compatibility
 
 Tested against:
@@ -83,6 +101,8 @@ security:
 database:
   path: "/data/caldo.db"
 ```
+
+Für Container/ungewöhnliche Arbeitsverzeichnisse kann das Template-Verzeichnis optional per Environment `CALDO_TEMPLATE_DIR` gesetzt werden.
 
 ## CI / Build- und Release-Automatisierung
 

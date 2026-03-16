@@ -12,3 +12,8 @@ security:
 
 database:
   path: "./data/caldo.db"
+
+sync:
+  enabled: false
+  interval_seconds: 300
+  default_principal: ""

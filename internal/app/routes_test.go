@@ -9,7 +9,7 @@ import (
 )
 
 func TestNewRouter_HealthEndpoint(t *testing.T) {
-	r := NewRouter(Config{}, &service.SettingsService{}, &service.TaskService{}, nil)
+	r := NewRouter(Config{}, &service.SettingsService{}, &service.TaskService{}, &service.SyncService{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rr := httptest.NewRecorder()
 
@@ -24,7 +24,7 @@ func TestNewRouter_HealthEndpoint(t *testing.T) {
 }
 
 func TestNewRouter_RootRedirectsToTasks(t *testing.T) {
-	r := NewRouter(Config{}, &service.SettingsService{}, &service.TaskService{}, nil)
+	r := NewRouter(Config{}, &service.SettingsService{}, &service.TaskService{}, &service.SyncService{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
 
@@ -41,7 +41,7 @@ func TestNewRouter_RootRedirectsToTasks(t *testing.T) {
 func TestNewRouter_SettingsRequiresProxyHeader(t *testing.T) {
 	cfg := Config{}
 	cfg.Server.AuthHeader = "X-Forwarded-User"
-	r := NewRouter(cfg, &service.SettingsService{}, &service.TaskService{}, nil)
+	r := NewRouter(cfg, &service.SettingsService{}, &service.TaskService{}, &service.SyncService{}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	rr := httptest.NewRecorder()
 

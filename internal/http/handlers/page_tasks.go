@@ -9,8 +9,9 @@ import (
 )
 
 type TasksHandler struct {
-	Service   *service.TaskService
-	Templates *render.Templates
+	Service     *service.TaskService
+	SyncService *service.SyncService
+	Templates   *render.Templates
 }
 
 func (h *TasksHandler) Page(w http.ResponseWriter, r *http.Request) {

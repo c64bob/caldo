@@ -23,6 +23,11 @@ type Config struct {
 	Database struct {
 		Path string
 	}
+	Sync struct {
+		Enabled          bool
+		IntervalSeconds  int
+		DefaultPrincipal string
+	}
 }
 
 func LoadConfig() (Config, error) {
@@ -31,6 +36,7 @@ func LoadConfig() (Config, error) {
 	cfg.Server.AuthHeader = "X-Forwarded-User"
 	cfg.CalDAV.DefaultList = "Tasks"
 	cfg.Database.Path = "./data/caldo.db"
+	cfg.Sync.IntervalSeconds = 300
 
 	path := os.Getenv("CALDO_CONFIG")
 	if path == "" {
@@ -83,6 +89,17 @@ func LoadConfig() (Config, error) {
 		case "database":
 			if key == "path" {
 				cfg.Database.Path = value
+			}
+		case "sync":
+			switch key {
+			case "enabled":
+				cfg.Sync.Enabled = strings.EqualFold(value, "true")
+			case "interval_seconds":
+				if n, err := strconv.Atoi(value); err == nil && n > 0 {
+					cfg.Sync.IntervalSeconds = n
+				}
+			case "default_principal":
+				cfg.Sync.DefaultPrincipal = value
 			}
 		}
 	}

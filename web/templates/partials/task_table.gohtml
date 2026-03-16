@@ -8,13 +8,14 @@
       <th>%</th>
       <th>Fällig</th>
       <th>Kategorien</th>
+      <th>Notizen</th>
     </tr>
   </thead>
   <tbody>
     {{range .Rows}}
       {{template "task_row" .}}
     {{else}}
-      <tr><td colspan="6" class="empty">Keine Aufgaben vorhanden.</td></tr>
+      <tr><td colspan="7" class="empty">Keine Aufgaben vorhanden.</td></tr>
     {{end}}
   </tbody>
 </table>

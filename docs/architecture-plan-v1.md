@@ -341,6 +341,12 @@ Die folgenden Punkte sind auf Basis der Review-Kommentare konkret entschieden.
 23. Interop-Tests gegen Nextcloud (Pflicht), Radicale/Baikal (Best Effort).
 24. Container-Härtung + docker-compose Produktivprofil.
 
+Status (aktuell):
+- [x] 21 umgesetzt (Inline-Editing für Priorität, Due Date, Tags, Status, Notes in der Task-Tabelle).
+- [x] 22 umgesetzt (benutzerverständliche Fehlertexte für Auth/TLS/412/Server-unreachable).
+- [ ] 23 offen (dedizierte Interop-Tests gegen mehrere Server ausstehend).
+- [ ] 24 offen (zusätzliche Container-Härtung/Produktivprofil ausstehend).
+
 ### Phase 7 — Release-Vorbereitung v1.0
 25. Dokumentation (Admin-Guide, Proxy-Beispiele, Secret-Handling).
 26. Monitoring-Basics (Sync-Erfolg/Fehler, Latenz).

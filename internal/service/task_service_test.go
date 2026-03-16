@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"caldo/internal/security"
 	"caldo/internal/store/sqlite"
@@ -233,5 +235,45 @@ END:VCALENDAR</c:calendar-data>
 	}
 	if deletePath != "/tasks/demo-1.ics" {
 		t.Fatalf("expected delete on server task href, got %s", deletePath)
+	}
+}
+
+func TestParseCategories_DeduplicatesAndTrims(t *testing.T) {
+	got := ParseCategories(" work, focus,Work, , home ")
+	want := []string{"work", "focus", "home"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("expected %v, got %v", want, got)
+	}
+}
+
+func TestParseDue_AcceptsDateAndDatetime(t *testing.T) {
+	due, kind := ParseDue("2026-03-16")
+	if due == nil || kind != "date" {
+		t.Fatalf("expected date parse, got due=%v kind=%q", due, kind)
+	}
+	due, kind = ParseDue("2026-03-16T09:45")
+	if due == nil || kind != "datetime" {
+		t.Fatalf("expected datetime parse, got due=%v kind=%q", due, kind)
+	}
+}
+
+func TestParseDue_UsesLocalTimezoneForDatetime(t *testing.T) {
+	originalLocal := time.Local
+	loc := time.FixedZone("UTC+02", 2*60*60)
+	time.Local = loc
+	t.Cleanup(func() { time.Local = originalLocal })
+
+	due, kind := ParseDue("2026-03-16T09:45")
+	if due == nil {
+		t.Fatal("expected due to be parsed")
+	}
+	if kind != "datetime" {
+		t.Fatalf("expected kind datetime, got %q", kind)
+	}
+	if gotOffset := due.Format("-0700"); gotOffset != "+0200" {
+		t.Fatalf("expected local timezone offset +0200, got %s", gotOffset)
+	}
+	if due.Hour() != 9 || due.Minute() != 45 {
+		t.Fatalf("expected local wall time 09:45, got %02d:%02d", due.Hour(), due.Minute())
 	}
 }

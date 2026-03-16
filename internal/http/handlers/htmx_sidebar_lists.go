@@ -16,7 +16,8 @@ func (h *TasksHandler) HTMXSidebarLists(w http.ResponseWriter, r *http.Request) 
 
 	data, err := h.Service.LoadTaskPage(r.Context(), principal, r.URL.Query().Get("list"))
 	if err != nil {
-		http.Error(w, "Listen konnten nicht geladen werden", http.StatusBadGateway)
+		message, status := taskLoadError(err)
+		http.Error(w, message, status)
 		return
 	}
 

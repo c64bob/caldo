@@ -6,7 +6,7 @@
        class="sidebar-link {{if eq .ActiveView "hotlist"}}active{{end}}"
        hx-get="/htmx/tasks/list?view=hotlist&list={{.ActiveListID}}"
        hx-target="#tasks-content"
-       hx-push-url="/tasks?view=hotlist&list={{.ActiveListID}}">Hotlist</a>
+       hx-push-url="/tasks?view=hotlist&list={{.ActiveListID}}" data-shortcut-view="h">Hotlist</a>
   </div>
 
   <div class="sidebar-section">
@@ -15,7 +15,7 @@
        class="sidebar-link {{if eq .ActiveView "main"}}active{{end}}"
        hx-get="/htmx/tasks/list?view=main&list={{.ActiveListID}}"
        hx-target="#tasks-content"
-       hx-push-url="/tasks?view=main&list={{.ActiveListID}}">Main</a>
+       hx-push-url="/tasks?view=main&list={{.ActiveListID}}" data-shortcut-view="m">Main</a>
   </div>
 
   <div class="sidebar-section">
@@ -27,7 +27,7 @@
            class="sidebar-link {{if and (eq $.ActiveView "folders") .IsActive}}active{{end}}"
            hx-get="/htmx/tasks/list?view=folders&list={{.ID}}"
            hx-target="#tasks-content"
-           hx-push-url="/tasks?view=folders&list={{.ID}}">{{.DisplayName}}</a>
+           hx-push-url="/tasks?view=folders&list={{.ID}}" data-shortcut-view="o">{{.DisplayName}}</a>
       </li>
       {{end}}
     </ul>
@@ -39,7 +39,7 @@
        class="sidebar-link {{if eq .ActiveView "contexts"}}active{{end}}"
        hx-get="/htmx/tasks/list?view=contexts&list={{.ActiveListID}}"
        hx-target="#tasks-content"
-       hx-push-url="/tasks?view=contexts&list={{.ActiveListID}}">All Contexts</a>
+       hx-push-url="/tasks?view=contexts&list={{.ActiveListID}}" data-shortcut-view="c">All Contexts</a>
   </div>
 
   <div class="sidebar-section">
@@ -48,7 +48,7 @@
        class="sidebar-link {{if eq .ActiveView "goals"}}active{{end}}"
        hx-get="/htmx/tasks/list?view=goals&list={{.ActiveListID}}"
        hx-target="#tasks-content"
-       hx-push-url="/tasks?view=goals&list={{.ActiveListID}}">All Goals</a>
+       hx-push-url="/tasks?view=goals&list={{.ActiveListID}}" data-shortcut-view="g">All Goals</a>
   </div>
 
   <div class="sidebar-section">
@@ -57,7 +57,7 @@
        class="sidebar-link {{if eq .ActiveView "priority"}}active{{end}}"
        hx-get="/htmx/tasks/list?view=priority&list={{.ActiveListID}}"
        hx-target="#tasks-content"
-       hx-push-url="/tasks?view=priority&list={{.ActiveListID}}">Priority View</a>
+       hx-push-url="/tasks?view=priority&list={{.ActiveListID}}" data-shortcut-view="p">Priority View</a>
   </div>
 
   <div class="sidebar-section">
@@ -66,7 +66,16 @@
        class="sidebar-link {{if eq .ActiveView "due"}}active{{end}}"
        hx-get="/htmx/tasks/list?view=due&list={{.ActiveListID}}"
        hx-target="#tasks-content"
-       hx-push-url="/tasks?view=due&list={{.ActiveListID}}">Due Date View</a>
+       hx-push-url="/tasks?view=due&list={{.ActiveListID}}" data-shortcut-view="d">Due Date View</a>
+  </div>
+
+  <div class="sidebar-section">
+    <h2>Search</h2>
+    <a href="/tasks?view=search&list={{.ActiveListID}}"
+       class="sidebar-link {{if eq .ActiveView "search"}}active{{end}}"
+       hx-get="/htmx/tasks/list?view=search&list={{.ActiveListID}}"
+       hx-target="#tasks-content"
+       hx-push-url="/tasks?view=search&list={{.ActiveListID}}" data-shortcut-view="e">Search</a>
   </div>
 
   <div class="sidebar-section">

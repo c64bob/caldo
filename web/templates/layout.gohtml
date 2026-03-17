@@ -19,7 +19,7 @@
       <button id="sidebar-toggle" class="sidebar-toggle" type="button" aria-label="Sidebar ein-/ausblenden" @click="if (window.matchMedia('(max-width: 960px)').matches) { sidebarOpen = !sidebarOpen } else { sidebarCollapsed = !sidebarCollapsed }">☰</button>
       <strong class="app-logo">Caldo</strong>
     </div>
-    <input class="global-search" type="search" placeholder="Suche Aufgaben ..." aria-label="Globale Suche">
+    <input id="global-search-input" class="global-search" type="search" placeholder="Suche Aufgaben ..." aria-label="Globale Suche">
     <a href="/settings" class="account-icon" aria-label="Zu den Einstellungen">⚙️</a>
   </header>
 
@@ -33,6 +33,23 @@
       {{template "task_table" .}}
     </section>
   </main>
+
+  <section id="shortcut-overlay" class="shortcut-overlay" hidden aria-hidden="true">
+    <div class="shortcut-overlay-card" role="dialog" aria-modal="true" aria-labelledby="shortcut-overlay-title">
+      <h2 id="shortcut-overlay-title">Keyboard-Shortcuts</h2>
+      <ul>
+        <li><kbd>m/o/c/d/g/p/h/e</kbd> Ansicht wechseln</li>
+        <li><kbd>1-9</kbd> Tabs im aktiven View</li>
+        <li><kbd>n</kbd> Smart-Add fokussieren</li>
+        <li><kbd>f</kbd> Globale Suche fokussieren</li>
+        <li><kbd>↑/↓</kbd> Zwischen Tasks navigieren</li>
+        <li><kbd>Space</kbd> Task als erledigt markieren</li>
+        <li><kbd>x</kbd> Task für Batch markieren</li>
+        <li><kbd>Del</kbd> Task löschen (mit Bestätigung)</li>
+        <li><kbd>?</kbd> Diese Hilfe anzeigen</li>
+      </ul>
+    </div>
+  </section>
 </body>
 </html>
 {{end}}

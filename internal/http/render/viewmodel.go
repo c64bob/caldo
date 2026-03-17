@@ -254,7 +254,7 @@ func (vm TaskPageViewModel) ShowColumn(name string) bool {
 	}
 	show, ok := vm.VisibleColumns[name]
 	if !ok {
-		return true
+		return false
 	}
 	return show
 }

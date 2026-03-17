@@ -3,12 +3,12 @@ package handlers
 import (
 	"html/template"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"caldo/internal/http/middleware"
+	"caldo/internal/http/render"
 	"caldo/internal/service"
 )
 
@@ -32,13 +32,11 @@ type settingsPageData struct {
 }
 
 func loadSettingsTemplate() *template.Template {
-	candidates := []string{
-		filepath.Join("web", "templates", "pages", "settings.gohtml"),
-		"/app/web/templates/pages/settings.gohtml",
-	}
-	for _, candidate := range candidates {
-		if _, err := os.Stat(candidate); err == nil {
-			return template.Must(template.ParseFiles(candidate))
+	templateRoot, err := render.ResolveTemplateRoot()
+	if err == nil {
+		settingsPath := filepath.Join(templateRoot, "pages", "settings.gohtml")
+		if tpl, parseErr := template.ParseFiles(settingsPath); parseErr == nil {
+			return tpl
 		}
 	}
 	return template.Must(template.New("settings_page").Parse(`<html><body><h1>Settings template missing</h1></body></html>`))

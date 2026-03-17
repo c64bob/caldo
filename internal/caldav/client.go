@@ -3,6 +3,7 @@ package caldav
 import (
 	"bytes"
 	"context"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"net/http"
@@ -37,11 +38,15 @@ func (c *Client) CreateCollection(ctx context.Context, serverURL, username, pass
 		return fmt.Errorf("Collection-Name fehlt")
 	}
 	u.Path = path.Join(u.Path, name) + "/"
+	escapedDisplayName, err := xmlEscapeText(strings.TrimSpace(displayName))
+	if err != nil {
+		return fmt.Errorf("CalDAV displayname escapen: %w", err)
+	}
 	body := []byte(`<?xml version="1.0" encoding="utf-8"?>
 <c:mkcalendar xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
   <d:set>
     <d:prop>
-      <d:displayname>` + strings.TrimSpace(displayName) + `</d:displayname>
+      <d:displayname>` + escapedDisplayName + `</d:displayname>
       <c:supported-calendar-component-set><c:comp name="VTODO"/></c:supported-calendar-component-set>
     </d:prop>
   </d:set>
@@ -63,4 +68,12 @@ func (c *Client) CreateCollection(ctx context.Context, serverURL, username, pass
 		return fmt.Errorf("CalDAV MKCALENDAR fehlgeschlagen (%d): %s", resp.StatusCode, strings.TrimSpace(string(raw)))
 	}
 	return nil
+}
+
+func xmlEscapeText(value string) (string, error) {
+	var b bytes.Buffer
+	if err := xml.EscapeText(&b, []byte(value)); err != nil {
+		return "", err
+	}
+	return b.String(), nil
 }

@@ -156,6 +156,66 @@ sync:
 	}
 }
 
+func TestLoadConfig_StripsInlineCommentsFromValues(t *testing.T) {
+	tmp := t.TempDir()
+	cfgPath := filepath.Join(tmp, "config.yaml")
+	content := `server:
+  auth_header: "X-Forwarded-User" # ENV: CALDO_SERVER_AUTH_HEADER
+security:
+  encryption_key_file: "/run/secrets/caldo_key" # ENV: CALDO_SECURITY_ENCRYPTION_KEY_FILE
+sync:
+  default_principal: "alice@example.com" # comment
+`
+	if err := os.WriteFile(cfgPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	t.Setenv("CALDO_CONFIG", cfgPath)
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	if cfg.Server.AuthHeader != "X-Forwarded-User" {
+		t.Fatalf("unexpected auth header: %q", cfg.Server.AuthHeader)
+	}
+	if cfg.Security.EncryptionKeyFile != "/run/secrets/caldo_key" {
+		t.Fatalf("unexpected key file: %q", cfg.Security.EncryptionKeyFile)
+	}
+	if cfg.Sync.DefaultPrincipal != "alice@example.com" {
+		t.Fatalf("unexpected default principal: %q", cfg.Sync.DefaultPrincipal)
+	}
+}
+
+func TestLoadConfig_AllowsClearingStringOverrideWithEmptyValue(t *testing.T) {
+	tmp := t.TempDir()
+	cfgPath := filepath.Join(tmp, "config.yaml")
+	content := `sync:
+  default_principal: "alice@example.com"
+`
+	if err := os.WriteFile(cfgPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	t.Setenv("CALDO_CONFIG", cfgPath)
+	t.Setenv("CALDO_SYNC_DEFAULT_PRINCIPAL", "")
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	if cfg.Sync.DefaultPrincipal != "" {
+		t.Fatalf("expected empty default principal override, got %q", cfg.Sync.DefaultPrincipal)
+	}
+
+	persisted, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatalf("read persisted config: %v", err)
+	}
+	if !strings.Contains(string(persisted), "default_principal: \"\"") {
+		t.Fatalf("expected cleared principal in persisted config, got:\n%s", string(persisted))
+	}
+}
+
 func TestLoadConfig_InvalidEnvironmentOverrideFails(t *testing.T) {
 	tmp := t.TempDir()
 	cfgPath := filepath.Join(tmp, "config.yaml")

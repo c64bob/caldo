@@ -38,9 +38,11 @@ type TaskRow struct {
 	Due             string
 	DueInput        string
 	Categories      string
+	CategoryItems   []string
 	Folder          string
 	Context         string
 	IsCompleted     bool
+	IsStarred       bool
 	PriorityClass   string
 }
 
@@ -56,6 +58,7 @@ func BuildTaskRows(tasks []domain.Task, lists []domain.List) []TaskRow {
 
 	rows := make([]TaskRow, 0, len(tasks))
 	for _, t := range tasks {
+		starred, categories := splitStarCategory(t.Categories)
 		rows = append(rows, TaskRow{
 			UID:             t.UID,
 			ListID:          t.CollectionID,
@@ -68,14 +71,30 @@ func BuildTaskRows(tasks []domain.Task, lists []domain.List) []TaskRow {
 			PercentComplete: t.PercentComplete,
 			Due:             formatDue(t.Due, t.DueKind),
 			DueInput:        formatDueInput(t.Due, t.DueKind),
-			Categories:      strings.Join(t.Categories, ", "),
+			Categories:      strings.Join(categories, ", "),
+			CategoryItems:   categories,
 			Folder:          foldersByID[t.CollectionID],
-			Context:         deriveContext(t.Categories),
+			Context:         deriveContext(categories),
 			IsCompleted:     strings.EqualFold(t.Status, "completed"),
+			IsStarred:       starred,
 			PriorityClass:   priorityClass(t.Priority),
 		})
 	}
 	return rows
+}
+
+func splitStarCategory(categories []string) (bool, []string) {
+	out := make([]string, 0, len(categories))
+	starred := false
+	for _, c := range categories {
+		trimmed := strings.TrimSpace(c)
+		if strings.EqualFold(trimmed, "starred") {
+			starred = true
+			continue
+		}
+		out = append(out, trimmed)
+	}
+	return starred, out
 }
 
 func deriveContext(categories []string) string {

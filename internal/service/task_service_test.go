@@ -277,3 +277,32 @@ func TestParseDue_UsesLocalTimezoneForDatetime(t *testing.T) {
 		t.Fatalf("expected local wall time 09:45, got %02d:%02d", due.Hour(), due.Minute())
 	}
 }
+
+func TestParseDue_AcceptsNaturalLanguage(t *testing.T) {
+	due, kind := ParseDue("tomorrow")
+	if due == nil || kind != "date" {
+		t.Fatalf("expected natural date parse, got due=%v kind=%q", due, kind)
+	}
+}
+
+func TestParseSmartAdd_ParsesTokens(t *testing.T) {
+	in, err := ParseSmartAdd(`"Arzt" /folder:Privat /context:@Telefon /due:friday !high #Gesundheit`)
+	if err != nil {
+		t.Fatalf("parse smart add: %v", err)
+	}
+	if in.Summary != "Arzt" {
+		t.Fatalf("expected summary Arzt, got %q", in.Summary)
+	}
+	if in.ListID != "Privat" {
+		t.Fatalf("expected folder Privat, got %q", in.ListID)
+	}
+	if in.Priority != 7 {
+		t.Fatalf("expected priority 7, got %d", in.Priority)
+	}
+	if in.Due == nil || in.DueKind != "date" {
+		t.Fatalf("expected due date from natural language, got due=%v kind=%q", in.Due, in.DueKind)
+	}
+	if !reflect.DeepEqual(in.Categories, []string{"@Telefon", "Gesundheit"}) {
+		t.Fatalf("unexpected categories: %v", in.Categories)
+	}
+}

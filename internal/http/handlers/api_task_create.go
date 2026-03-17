@@ -15,16 +15,31 @@ import (
 func (h *TasksHandler) APITaskCreate(w http.ResponseWriter, r *http.Request) {
 	h.mutateTask(w, r, func(principal string) error {
 		_, err := h.Service.CreateTask(r.Context(), principal, service.TaskMutationInput{
-			ListID:      strings.TrimSpace(r.FormValue("list_id")),
-			UID:         strings.TrimSpace(r.FormValue("uid")),
-			Summary:     strings.TrimSpace(r.FormValue("summary")),
-			Status:      strings.TrimSpace(r.FormValue("status")),
-			Priority:    service.ParsePriority(r.FormValue("priority")),
-			Description: strings.TrimSpace(r.FormValue("description")),
-			Categories:  service.ParseCategories(r.FormValue("categories")),
-			Due:         parseDueOrNil(r.FormValue("due")),
-			DueKind:     parseDueKind(r.FormValue("due")),
+			ListID:          strings.TrimSpace(r.FormValue("list_id")),
+			UID:             strings.TrimSpace(r.FormValue("uid")),
+			Summary:         strings.TrimSpace(r.FormValue("summary")),
+			Status:          strings.TrimSpace(r.FormValue("status")),
+			Priority:        service.ParsePriority(r.FormValue("priority")),
+			Description:     strings.TrimSpace(r.FormValue("description")),
+			Categories:      service.ParseCategories(r.FormValue("categories")),
+			PercentComplete: service.ParsePercentComplete(r.FormValue("percent_complete")),
+			Due:             parseDueOrNil(r.FormValue("due")),
+			DueKind:         parseDueKind(r.FormValue("due")),
 		})
+		return err
+	})
+}
+
+func (h *TasksHandler) APITaskQuickAdd(w http.ResponseWriter, r *http.Request) {
+	h.mutateTask(w, r, func(principal string) error {
+		in, err := service.ParseSmartAdd(r.FormValue("smart_add"))
+		if err != nil {
+			return err
+		}
+		if in.ListID == "" {
+			in.ListID = strings.TrimSpace(r.FormValue("list_id"))
+		}
+		_, err = h.Service.CreateTask(r.Context(), principal, in)
 		return err
 	})
 }
@@ -32,17 +47,18 @@ func (h *TasksHandler) APITaskCreate(w http.ResponseWriter, r *http.Request) {
 func (h *TasksHandler) APITaskUpdate(w http.ResponseWriter, r *http.Request) {
 	h.mutateTask(w, r, func(principal string) error {
 		_, err := h.Service.UpdateTask(r.Context(), principal, service.TaskMutationInput{
-			ListID:      strings.TrimSpace(r.FormValue("list_id")),
-			UID:         strings.TrimSpace(r.FormValue("uid")),
-			Href:        strings.TrimSpace(r.FormValue("href")),
-			ETag:        strings.TrimSpace(r.FormValue("etag")),
-			Summary:     strings.TrimSpace(r.FormValue("summary")),
-			Status:      strings.TrimSpace(r.FormValue("status")),
-			Priority:    service.ParsePriority(r.FormValue("priority")),
-			Description: strings.TrimSpace(r.FormValue("description")),
-			Categories:  service.ParseCategories(r.FormValue("categories")),
-			Due:         parseDueOrNil(r.FormValue("due")),
-			DueKind:     parseDueKind(r.FormValue("due")),
+			ListID:          strings.TrimSpace(r.FormValue("list_id")),
+			UID:             strings.TrimSpace(r.FormValue("uid")),
+			Href:            strings.TrimSpace(r.FormValue("href")),
+			ETag:            strings.TrimSpace(r.FormValue("etag")),
+			Summary:         strings.TrimSpace(r.FormValue("summary")),
+			Status:          strings.TrimSpace(r.FormValue("status")),
+			Priority:        service.ParsePriority(r.FormValue("priority")),
+			Description:     strings.TrimSpace(r.FormValue("description")),
+			Categories:      service.ParseCategories(r.FormValue("categories")),
+			PercentComplete: service.ParsePercentComplete(r.FormValue("percent_complete")),
+			Due:             parseDueOrNil(r.FormValue("due")),
+			DueKind:         parseDueKind(r.FormValue("due")),
 		})
 		return err
 	})
@@ -102,6 +118,9 @@ func taskMutationError(err error) (string, int) {
 	}
 	if errors.Is(err, caldav.ErrMissingETag) || errors.Is(err, caldav.ErrInvalidTaskHref) {
 		return "Ungültige Task-Parameter", http.StatusBadRequest
+	}
+	if strings.Contains(strings.ToLower(err.Error()), "quick add") {
+		return err.Error(), http.StatusBadRequest
 	}
 	message := strings.ToLower(err.Error())
 	if strings.Contains(message, "nicht erreichbar") {

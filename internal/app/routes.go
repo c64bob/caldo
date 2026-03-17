@@ -28,6 +28,7 @@ func NewRouter(cfg Config, settingsSvc *service.SettingsService, taskSvc *servic
 	mux.Handle("GET /htmx/tasks/list", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.HTMXTasksList)))
 	mux.Handle("GET /htmx/sidebar/lists", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.HTMXSidebarLists)))
 	mux.Handle("POST /api/tasks", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.APITaskCreate)))
+	mux.Handle("POST /api/tasks/quick-add", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.APITaskQuickAdd)))
 	mux.Handle("POST /api/tasks/update", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.APITaskUpdate)))
 	mux.Handle("POST /api/tasks/delete", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.APITaskDelete)))
 	mux.Handle("POST /api/sync/now", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.APISyncNow)))

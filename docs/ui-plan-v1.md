@@ -216,3 +216,10 @@ Vollständiger Datenimport aus Toodledo oder anderen Apps. Batch-Operationen mac
 
 **Erreichtes nach Phase 7:**
 Caldo ist visuell poliert und in der täglichen Nutzung nicht von Toodledo unterscheidbar — mit Dark Mode als echtem Mehrwert.
+
+
+## Implementierungsnotizen (Stand aktuell)
+
+- Phase 2 wurde als HTMX-basierter Inline-Workflow umgesetzt: Smart Add, Inline-Summary-Editing, Priority-/Due-Updates, Status-/Tags-/Notes-Edit im Expand-Panel sowie Star-/Completed-Toggle.
+- Natural-Language-Datumsausdrücke (`today`, `tomorrow`, Wochentage, `1 week`, `next month`) werden serverseitig in ISO-Datum aufgelöst.
+- Smart-Add-Tokens unterstützt: `/folder:`, `/context:@`, `/due:`, `!priority`, `#tag`.

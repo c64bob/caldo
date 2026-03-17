@@ -53,6 +53,28 @@ Die eingetragene Server-URL muss dabei auf den konfigurierten CalDAV-Host zeigen
 Die Aufgabenansicht ist unter `/tasks` verfügbar und lädt Listen/Task-Tabelle in einer
 dichten HTMX-Struktur (Sidebar + Tabellen-Partial).
 
+### Troubleshooting: `Tasks konnten nicht geladen werden` (HTTP 502)
+
+- Caldo mappt CalDAV-/Netzwerk-/TLS-/Auth-Fehler beim Task-Laden auf HTTP `502` mit
+  nutzerfreundlichen Meldungen.
+- Zusätzlich schreibt der Server jetzt Diagnosezeilen nach Stdout/Stderr, z. B.:
+  `task load failed scope=tasks.page app_principal=alice@example.com list=tasks err=...`
+- `app_principal` kommt aus dem Reverse-Proxy-Header (z. B. `X-Forwarded-User`) und
+  ist **nicht automatisch** der Nextcloud-DAV-Benutzername.
+- Im Docker-Setup findest du diese Logs über:
+
+```bash
+docker logs caldo-app
+docker compose -f deployments/docker-compose.yml logs -f caldo
+```
+
+Typische Ursachen:
+- Falsche `CALDO_CALDAV_SERVER_URL` (für Nextcloud typischerweise
+  `https://<host>/remote.php/dav/calendars/<user>/tasks/`)
+- Ungültige DAV-Credentials/App-Passwort
+- TLS-Zertifikats-/Truststore-Probleme
+- Netzwerk-/DNS-Erreichbarkeit zwischen Caldo und Nextcloud
+
 
 ### Sync
 

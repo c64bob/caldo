@@ -76,7 +76,7 @@ func (s *TaskService) LoadTaskPage(ctx context.Context, principalID string, sele
 
 	discovery, err := s.caldavClient.DiscoverTaskCollections(ctx, account.ServerURL, account.Username, string(password), s.defaultList)
 	if err != nil {
-		return TaskPageData{}, err
+		return TaskPageData{}, fmt.Errorf("CalDAV Discovery fehlgeschlagen (dav_user=%s): %w", strings.TrimSpace(account.Username), err)
 	}
 
 	lists := make([]domain.List, 0, len(discovery.Collections))
@@ -109,7 +109,7 @@ func (s *TaskService) LoadTaskPage(ctx context.Context, principalID string, sele
 
 	tasks, err := s.tasksRepo.ListTasks(ctx, account.ServerURL, account.Username, string(password), activeCollection)
 	if err != nil {
-		return TaskPageData{}, err
+		return TaskPageData{}, fmt.Errorf("CalDAV Task-Listing fehlgeschlagen (dav_user=%s, list_id=%s): %w", strings.TrimSpace(account.Username), strings.TrimSpace(activeCollection.ID), err)
 	}
 
 	return TaskPageData{

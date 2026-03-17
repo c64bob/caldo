@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"caldo/internal/http/middleware"
 	"caldo/internal/http/render"
@@ -31,7 +32,8 @@ func (h *TasksHandler) Page(w http.ResponseWriter, r *http.Request) {
 		PrincipalID:    principal,
 		Lists:          render.BuildTaskLists(data.Lists, data.ActiveListID),
 		ActiveListID:   data.ActiveListID,
-		Rows:           render.BuildTaskRows(data.Tasks),
+		ActiveView:     activeView(r.URL.Query().Get("view")),
+		Rows:           render.BuildTaskRows(data.Tasks, data.Lists),
 		HasCredentials: data.HasCredentials,
 	}
 	if !data.HasCredentials {
@@ -43,4 +45,12 @@ func (h *TasksHandler) Page(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Template-Rendering fehlgeschlagen", http.StatusInternalServerError)
 		return
 	}
+}
+
+func activeView(view string) string {
+	v := strings.TrimSpace(view)
+	if v == "" {
+		return "main"
+	}
+	return v
 }

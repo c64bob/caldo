@@ -1,55 +1,17 @@
 {{define "task_row"}}
-<tr id="task-{{.UID}}">
-  <td>
-    <form method="post" action="/api/tasks/update" class="inline-form" hx-post="/api/tasks/update" hx-swap="none">
-      <input type="hidden" name="list_id" value="{{.ListID}}">
-      <input type="hidden" name="uid" value="{{.UID}}">
-      <input type="hidden" name="href" value="{{.Href}}">
-      <input type="hidden" name="etag" value="{{.ETag}}">
-      <input type="hidden" name="status" value="{{.Status}}">
-      <input type="hidden" name="priority" value="{{.Priority}}">
-      <input type="hidden" name="description" value="{{.Description}}">
-      <input type="hidden" name="due" value="{{.DueInput}}">
-      <input type="hidden" name="categories" value="{{.Categories}}">
-      <input type="text" name="summary" value="{{.Summary}}">
-      <button type="submit">💾</button>
-    </form>
-  </td>
-  <td>
-    <form method="post" action="/api/tasks/update" class="inline-form" hx-post="/api/tasks/update" hx-swap="none">
-      <input type="hidden" name="list_id" value="{{.ListID}}"><input type="hidden" name="uid" value="{{.UID}}"><input type="hidden" name="href" value="{{.Href}}"><input type="hidden" name="etag" value="{{.ETag}}"><input type="hidden" name="summary" value="{{.Summary}}"><input type="hidden" name="priority" value="{{.Priority}}"><input type="hidden" name="description" value="{{.Description}}"><input type="hidden" name="due" value="{{.DueInput}}"><input type="hidden" name="categories" value="{{.Categories}}">
-      <input type="text" name="status" value="{{.Status}}">
-      <button type="submit">💾</button>
-    </form>
-  </td>
-  <td>
-    <form method="post" action="/api/tasks/update" class="inline-form" hx-post="/api/tasks/update" hx-swap="none">
-      <input type="hidden" name="list_id" value="{{.ListID}}"><input type="hidden" name="uid" value="{{.UID}}"><input type="hidden" name="href" value="{{.Href}}"><input type="hidden" name="etag" value="{{.ETag}}"><input type="hidden" name="summary" value="{{.Summary}}"><input type="hidden" name="status" value="{{.Status}}"><input type="hidden" name="description" value="{{.Description}}"><input type="hidden" name="due" value="{{.DueInput}}"><input type="hidden" name="categories" value="{{.Categories}}">
-      <input type="number" min="0" max="9" name="priority" value="{{.Priority}}" class="prio-input">
-      <button type="submit">💾</button>
-    </form>
-  </td>
-  <td>{{.PercentComplete}}</td>
-  <td>
-    <form method="post" action="/api/tasks/update" class="inline-form" hx-post="/api/tasks/update" hx-swap="none">
-      <input type="hidden" name="list_id" value="{{.ListID}}"><input type="hidden" name="uid" value="{{.UID}}"><input type="hidden" name="href" value="{{.Href}}"><input type="hidden" name="etag" value="{{.ETag}}"><input type="hidden" name="summary" value="{{.Summary}}"><input type="hidden" name="status" value="{{.Status}}"><input type="hidden" name="priority" value="{{.Priority}}"><input type="hidden" name="description" value="{{.Description}}"><input type="hidden" name="categories" value="{{.Categories}}">
-      <input type="datetime-local" name="due" value="{{.DueInput}}">
-      <button type="submit">💾</button>
-    </form>
-  </td>
-  <td>
-    <form method="post" action="/api/tasks/update" class="inline-form" hx-post="/api/tasks/update" hx-swap="none">
-      <input type="hidden" name="list_id" value="{{.ListID}}"><input type="hidden" name="uid" value="{{.UID}}"><input type="hidden" name="href" value="{{.Href}}"><input type="hidden" name="etag" value="{{.ETag}}"><input type="hidden" name="summary" value="{{.Summary}}"><input type="hidden" name="status" value="{{.Status}}"><input type="hidden" name="priority" value="{{.Priority}}"><input type="hidden" name="description" value="{{.Description}}"><input type="hidden" name="due" value="{{.DueInput}}">
-      <input type="text" name="categories" value="{{.Categories}}" placeholder="tag1, tag2">
-      <button type="submit">💾</button>
-    </form>
-  </td>
-  <td>
-    <form method="post" action="/api/tasks/update" class="inline-form" hx-post="/api/tasks/update" hx-swap="none">
-      <input type="hidden" name="list_id" value="{{.ListID}}"><input type="hidden" name="uid" value="{{.UID}}"><input type="hidden" name="href" value="{{.Href}}"><input type="hidden" name="etag" value="{{.ETag}}"><input type="hidden" name="summary" value="{{.Summary}}"><input type="hidden" name="status" value="{{.Status}}"><input type="hidden" name="priority" value="{{.Priority}}"><input type="hidden" name="due" value="{{.DueInput}}"><input type="hidden" name="categories" value="{{.Categories}}">
-      <input type="text" name="description" value="{{.Description}}">
-      <button type="submit">💾</button>
-    </form>
+<tr id="task-{{.UID}}" class="task-row {{.PriorityClass}}">
+  <td class="col-star">☆</td>
+  <td class="col-check"><input type="checkbox" disabled {{if .IsCompleted}}checked{{end}} aria-label="Task abgeschlossen"></td>
+  <td class="task-name">{{if .Summary}}{{.Summary}}{{else}}(ohne Titel){{end}}</td>
+  <td class="col-folder">{{if .Folder}}{{.Folder}}{{else}}—{{end}}</td>
+  <td class="col-context">{{.Context}}</td>
+  <td class="col-due">{{if .Due}}{{.Due}}{{else}}—{{end}}</td>
+  <td class="col-priority">
+    {{if ge .Priority 8}}Top
+    {{else if ge .Priority 6}}High
+    {{else if ge .Priority 4}}Medium
+    {{else if ge .Priority 2}}Low
+    {{else}}Negative{{end}}
   </td>
 </tr>
 {{end}}

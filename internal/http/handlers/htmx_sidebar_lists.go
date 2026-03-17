@@ -25,7 +25,8 @@ func (h *TasksHandler) HTMXSidebarLists(w http.ResponseWriter, r *http.Request) 
 		PrincipalID:    principal,
 		Lists:          render.BuildTaskLists(data.Lists, data.ActiveListID),
 		ActiveListID:   data.ActiveListID,
-		Rows:           render.BuildTaskRows(data.Tasks),
+		ActiveView:     activeView(r.URL.Query().Get("view")),
+		Rows:           render.BuildTaskRows(data.Tasks, data.Lists),
 		HasCredentials: data.HasCredentials,
 	}
 

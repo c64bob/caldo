@@ -25,7 +25,8 @@ func (h *TasksHandler) HTMXTasksList(w http.ResponseWriter, r *http.Request) {
 		PrincipalID:    principal,
 		Lists:          render.BuildTaskLists(data.Lists, data.ActiveListID),
 		ActiveListID:   data.ActiveListID,
-		Rows:           render.BuildTaskRows(data.Tasks),
+		ActiveView:     activeView(r.URL.Query().Get("view")),
+		Rows:           render.BuildTaskRows(data.Tasks, data.Lists),
 		HasCredentials: data.HasCredentials,
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

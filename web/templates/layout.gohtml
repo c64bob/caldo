@@ -7,19 +7,21 @@
   <title>{{.Title}}</title>
   <link rel="stylesheet" href="/static/css/app.css">
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="/static/js/app.js" defer></script>
 </head>
 <body>
   <header class="topbar">
-    <h1>Caldo</h1>
-    <nav>
-      <a href="/tasks">Tasks</a>
-      <a href="/settings">Settings</a>
-    </nav>
+    <div class="topbar-left">
+      <button id="sidebar-toggle" class="sidebar-toggle" type="button" aria-label="Sidebar ein-/ausblenden">☰</button>
+      <strong class="app-logo">Caldo</strong>
+    </div>
+    <input class="global-search" type="search" placeholder="Suche Aufgaben ..." aria-label="Globale Suche">
+    <div class="account-icon" aria-label="Account">👤</div>
   </header>
 
   {{template "flash" .}}
 
-  <main class="layout">
+  <main id="app-shell" class="layout">
     <aside id="sidebar" class="sidebar">
       {{template "sidebar_lists" .}}
     </aside>

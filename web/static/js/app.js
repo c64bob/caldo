@@ -127,6 +127,9 @@
     }
 
     if (isShortcutOverlayOpen()) {
+      if (event.key === "Escape" || event.key === "?" || event.key === "Enter") {
+        event.preventDefault();
+      }
       toggleShortcutOverlay(false);
       return;
     }
@@ -250,17 +253,22 @@
     document.addEventListener("keydown", onKeydown);
 
     const overlay = document.getElementById("shortcut-overlay");
+    const closeButton = document.getElementById("shortcut-overlay-close");
+    toggleShortcutOverlay(false);
+
     if (overlay) {
       overlay.addEventListener("click", function (event) {
-        toggleShortcutOverlay(false);
+        if (event.target === overlay) {
+          toggleShortcutOverlay(false);
+        }
       });
     }
 
-    document.addEventListener("click", function () {
-      if (isShortcutOverlayOpen()) {
+    if (closeButton) {
+      closeButton.addEventListener("click", function () {
         toggleShortcutOverlay(false);
-      }
-    });
+      });
+    }
   });
 
   document.addEventListener("htmx:afterSwap", function (e) {

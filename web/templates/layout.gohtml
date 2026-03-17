@@ -6,20 +6,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{.Title}}</title>
   <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/air-datepicker@3.5.3/air-datepicker.css">
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/air-datepicker@3.5.3/air-datepicker.js"></script>
+  <script src="/static/js/app.js" defer></script>
 </head>
-<body>
+<body x-data="{ sidebarCollapsed: false, sidebarOpen: false }"
+  :class="{ 'sidebar-collapsed': sidebarCollapsed, 'sidebar-open': sidebarOpen }">
   <header class="topbar">
-    <h1>Caldo</h1>
-    <nav>
-      <a href="/tasks">Tasks</a>
-      <a href="/settings">Settings</a>
-    </nav>
+    <div class="topbar-left">
+      <button id="sidebar-toggle" class="sidebar-toggle" type="button" aria-label="Sidebar ein-/ausblenden" @click="if (window.matchMedia('(max-width: 960px)').matches) { sidebarOpen = !sidebarOpen } else { sidebarCollapsed = !sidebarCollapsed }">☰</button>
+      <strong class="app-logo">Caldo</strong>
+    </div>
+    <input class="global-search" type="search" placeholder="Suche Aufgaben ..." aria-label="Globale Suche">
+    <a href="/settings" class="account-icon" aria-label="Zu den Einstellungen">⚙️</a>
   </header>
 
   {{template "flash" .}}
 
-  <main class="layout">
+  <main id="app-shell" class="layout">
     <aside id="sidebar" class="sidebar">
       {{template "sidebar_lists" .}}
     </aside>

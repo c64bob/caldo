@@ -12,6 +12,7 @@ type TaskPageViewModel struct {
 	PrincipalID    string
 	Lists          []TaskListItem
 	ActiveListID   string
+	ActiveView     string
 	Rows           []TaskRow
 	HasCredentials bool
 	Error          string
@@ -37,9 +38,22 @@ type TaskRow struct {
 	Due             string
 	DueInput        string
 	Categories      string
+	Folder          string
+	Context         string
+	IsCompleted     bool
+	PriorityClass   string
 }
 
-func BuildTaskRows(tasks []domain.Task) []TaskRow {
+func BuildTaskRows(tasks []domain.Task, lists []domain.List) []TaskRow {
+	foldersByID := make(map[string]string, len(lists))
+	for _, l := range lists {
+		name := strings.TrimSpace(l.DisplayName)
+		if name == "" {
+			name = l.ID
+		}
+		foldersByID[l.ID] = name
+	}
+
 	rows := make([]TaskRow, 0, len(tasks))
 	for _, t := range tasks {
 		rows = append(rows, TaskRow{
@@ -55,9 +69,38 @@ func BuildTaskRows(tasks []domain.Task) []TaskRow {
 			Due:             formatDue(t.Due, t.DueKind),
 			DueInput:        formatDueInput(t.Due, t.DueKind),
 			Categories:      strings.Join(t.Categories, ", "),
+			Folder:          foldersByID[t.CollectionID],
+			Context:         deriveContext(t.Categories),
+			IsCompleted:     strings.EqualFold(t.Status, "completed"),
+			PriorityClass:   priorityClass(t.Priority),
 		})
 	}
 	return rows
+}
+
+func deriveContext(categories []string) string {
+	for _, c := range categories {
+		trimmed := strings.TrimSpace(c)
+		if strings.HasPrefix(trimmed, "@") {
+			return trimmed
+		}
+	}
+	return "—"
+}
+
+func priorityClass(priority int) string {
+	switch {
+	case priority >= 8:
+		return "priority-top"
+	case priority >= 6:
+		return "priority-high"
+	case priority >= 4:
+		return "priority-medium"
+	case priority >= 2:
+		return "priority-low"
+	default:
+		return "priority-negative"
+	}
 }
 
 func formatDueInput(due *time.Time, kind string) string {

@@ -115,9 +115,10 @@ Die UI-Roadmap orientiert sich am Umsetzungsplan in `docs/ui-plan-v1.md` und ist
 ### v1.0 (aktuell) — nach UI, Backend, Funktionalität
 
 #### UI (gemäß `docs/ui-plan-v1.md`)
-- [x] **Phase 1 (teilweise):** Grundlayout mit Sidebar + Hauptbereich und dichter Tabellenansicht ist vorhanden.
-- [x] **Phase 1 (teilweise):** Listen-Navigation via HTMX (Partial-Updates statt Full-Page-Reload).
-- [ ] **Phase 1 (offen):** vollständige Toodledo-ähnliche Sidebar-Sektionen (Hotlist/Main/Folders/Contexts/Goals/Priority/Due/Tags), Sidebar-Collapse und responsive Ausblendung.
+- [x] **Phase 1:** Toodledo-ähnliches Grundlayout mit Header, Sidebar (220px) und flexiblem Hauptbereich ist umgesetzt.
+- [x] **Phase 1:** Sidebar-Sektionen in Toodledo-Reihenfolge (Hotlist/Main/Folders/Contexts/Goals/Priority/Due Date/Tags) sind navigierbar und der aktive View wird hervorgehoben.
+- [x] **Phase 1:** Sidebar-Collapse per Button sowie responsive Ausblendung auf schmalen Screens sind umgesetzt.
+- [x] **Phase 1:** Task-Tabelle nutzt das definierte Default-Spalten-Set inkl. Zebra-Striping, Hover-Highlight und Priority-Farbindikator.
 - [ ] **Phase 2:** Vollständiges Inline-Editing der Task-Felder (Summary, Priority, Due, Status, Tags, Percent, Star/Done) inkl. Expand-Panel.
 - [ ] **Phase 2:** Smart-Add/Quick-Add mit Toodledo-Syntax und Natural-Language-Datum.
 - [ ] **Phase 3:** Keyboard-Shortcuts inkl. `?`-Overlay.

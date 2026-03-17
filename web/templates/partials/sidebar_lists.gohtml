@@ -1,14 +1,81 @@
 {{define "sidebar_lists"}}
-<h2>Listen</h2>
-<ul class="lists">
-  {{range .Lists}}
-  <li>
-    <a href="/tasks?list={{.ID}}"
-       class="{{if .IsActive}}active{{end}}"
-       hx-get="/htmx/tasks/list?list={{.ID}}"
+<nav class="sidebar-sections" aria-label="Views">
+  <div class="sidebar-section">
+    <h2>Hotlist</h2>
+    <a href="/tasks?view=hotlist&list={{.ActiveListID}}"
+       class="sidebar-link {{if eq .ActiveView "hotlist"}}active{{end}}"
+       hx-get="/htmx/tasks/list?view=hotlist&list={{.ActiveListID}}"
        hx-target="#tasks-content"
-       hx-push-url="/tasks?list={{.ID}}">{{.DisplayName}}</a>
-  </li>
-  {{end}}
-</ul>
+       hx-push-url="/tasks?view=hotlist&list={{.ActiveListID}}">Hotlist</a>
+  </div>
+
+  <div class="sidebar-section">
+    <h2>Main</h2>
+    <a href="/tasks?view=main&list={{.ActiveListID}}"
+       class="sidebar-link {{if eq .ActiveView "main"}}active{{end}}"
+       hx-get="/htmx/tasks/list?view=main&list={{.ActiveListID}}"
+       hx-target="#tasks-content"
+       hx-push-url="/tasks?view=main&list={{.ActiveListID}}">Main</a>
+  </div>
+
+  <div class="sidebar-section">
+    <h2>Folders</h2>
+    <ul class="lists">
+      {{range .Lists}}
+      <li>
+        <a href="/tasks?view=folders&list={{.ID}}"
+           class="sidebar-link {{if and (eq $.ActiveView "folders") .IsActive}}active{{end}}"
+           hx-get="/htmx/tasks/list?view=folders&list={{.ID}}"
+           hx-target="#tasks-content"
+           hx-push-url="/tasks?view=folders&list={{.ID}}">{{.DisplayName}}</a>
+      </li>
+      {{end}}
+    </ul>
+  </div>
+
+  <div class="sidebar-section">
+    <h2>Contexts</h2>
+    <a href="/tasks?view=contexts&list={{.ActiveListID}}"
+       class="sidebar-link {{if eq .ActiveView "contexts"}}active{{end}}"
+       hx-get="/htmx/tasks/list?view=contexts&list={{.ActiveListID}}"
+       hx-target="#tasks-content"
+       hx-push-url="/tasks?view=contexts&list={{.ActiveListID}}">All Contexts</a>
+  </div>
+
+  <div class="sidebar-section">
+    <h2>Goals</h2>
+    <a href="/tasks?view=goals&list={{.ActiveListID}}"
+       class="sidebar-link {{if eq .ActiveView "goals"}}active{{end}}"
+       hx-get="/htmx/tasks/list?view=goals&list={{.ActiveListID}}"
+       hx-target="#tasks-content"
+       hx-push-url="/tasks?view=goals&list={{.ActiveListID}}">All Goals</a>
+  </div>
+
+  <div class="sidebar-section">
+    <h2>Priority</h2>
+    <a href="/tasks?view=priority&list={{.ActiveListID}}"
+       class="sidebar-link {{if eq .ActiveView "priority"}}active{{end}}"
+       hx-get="/htmx/tasks/list?view=priority&list={{.ActiveListID}}"
+       hx-target="#tasks-content"
+       hx-push-url="/tasks?view=priority&list={{.ActiveListID}}">Priority View</a>
+  </div>
+
+  <div class="sidebar-section">
+    <h2>Due Date</h2>
+    <a href="/tasks?view=due&list={{.ActiveListID}}"
+       class="sidebar-link {{if eq .ActiveView "due"}}active{{end}}"
+       hx-get="/htmx/tasks/list?view=due&list={{.ActiveListID}}"
+       hx-target="#tasks-content"
+       hx-push-url="/tasks?view=due&list={{.ActiveListID}}">Due Date View</a>
+  </div>
+
+  <div class="sidebar-section">
+    <h2>Tags</h2>
+    <a href="/tasks?view=tags&list={{.ActiveListID}}"
+       class="sidebar-link {{if eq .ActiveView "tags"}}active{{end}}"
+       hx-get="/htmx/tasks/list?view=tags&list={{.ActiveListID}}"
+       hx-target="#tasks-content"
+       hx-push-url="/tasks?view=tags&list={{.ActiveListID}}">All Tags</a>
+  </div>
+</nav>
 {{end}}

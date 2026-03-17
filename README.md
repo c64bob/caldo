@@ -11,10 +11,12 @@ sync and zero vendor lock-in. Your tasks stay on your infrastructure.
 ## Features
 
 - **Toodledo-inspired UI** — compact list view, inline editing, priority colors, folder sidebar
+- **HTMX Partial Mutations** — task updates render partials instead of full-page redirects
 - **CalDAV Sync** — bidirectional sync via VTODO standard (RFC 5545)
 - **Thin Architecture** — no proprietary task database; CalDAV server is the single source of truth
 - **Reverse Proxy Auth** — no built-in user management; delegates identity to your reverse proxy (`X-Forwarded-User`)
 - **Lightweight** — single Go binary, HTMX frontend, SQLite for preferences only
+- **Configurable UI Preferences** — default view, sync interval hint, and column visibility in Settings
 - **Self-Hosted** — Docker-ready, minimal resource footprint
 - **Open Source** — AGPL-3.0
 
@@ -49,6 +51,9 @@ docker compose -f deployments/docker-compose.yml up -d --build
 Danach unter `/settings` den DAV-Account speichern; der Zugang wird beim Speichern
 über `PROPFIND` streng als WebDAV validiert (HTTP 207 erwartet) und verschlüsselt persistiert.
 Die eingetragene Server-URL muss dabei auf den konfigurierten CalDAV-Host zeigen.
+
+Über `/settings` können außerdem eine neue CalDAV-Liste (Collection) angelegt sowie
+UI-Präferenzen (Default-View, sichtbare Spalten, Sync-Intervall-Hinweis) gespeichert werden.
 
 Die Aufgabenansicht ist unter `/tasks` verfügbar und lädt Listen/Task-Tabelle in einer
 dichten HTMX-Struktur (Sidebar + Tabellen-Partial).
@@ -185,7 +190,7 @@ Die UI-Roadmap orientiert sich am Umsetzungsplan in `docs/ui-plan-v1.md` und ist
 
 #### Funktionalität
 - [x] Thin-Client-Prinzip umgesetzt: CalDAV bleibt Single Source of Truth; SQLite speichert nur Präferenzen, verschlüsselte Credentials und Sync-Metadaten.
-- [ ] Persistente Nutzerpräferenzen für UI-Ansichten/Sortierung/Spalten (über die Basispräferenzen hinaus).
+- [x] Persistente Nutzerpräferenzen für Default-View und Spalten-Sichtbarkeit.
 - [ ] Multi-Level-Sortierung, Batch-Edit und Import/Export (vgl. spätere UI-Plan-Phasen).
 
 ### v2+ (mögliche Erweiterungen / bewusst out of scope für v1.0)

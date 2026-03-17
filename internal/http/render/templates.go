@@ -96,3 +96,7 @@ func resolveTemplateRoot() (string, error) {
 
 	return "", fmt.Errorf("template-Dateien nicht gefunden (erwartet: %s)", templateFile(standardTemplateRoot, "layout.gohtml"))
 }
+
+func ResolveTemplateRoot() (string, error) {
+	return resolveTemplateRoot()
+}

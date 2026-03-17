@@ -25,8 +25,8 @@ func TestMutateTask_NonHTMXRedirectsWithLocation(t *testing.T) {
 	if rr.Code != http.StatusSeeOther {
 		t.Fatalf("expected status 303, got %d", rr.Code)
 	}
-	if got := rr.Header().Get("Location"); got != "/tasks?list=tasks" {
-		t.Fatalf("expected redirect location /tasks?list=tasks, got %q", got)
+	if got := rr.Header().Get("Location"); got != "/tasks?list=tasks&view=main" {
+		t.Fatalf("expected redirect location /tasks?list=tasks&view=main, got %q", got)
 	}
 }
 
@@ -47,7 +47,7 @@ func TestMutateTask_HTMXSetsHXRedirect(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", rr.Code)
 	}
-	if got := rr.Header().Get("HX-Redirect"); got != "/tasks?list=tasks" {
-		t.Fatalf("expected HX-Redirect /tasks?list=tasks, got %q", got)
+	if got := rr.Header().Get("HX-Redirect"); got != "/tasks?list=tasks&view=main" {
+		t.Fatalf("expected HX-Redirect /tasks?list=tasks&view=main, got %q", got)
 	}
 }

@@ -13,12 +13,104 @@
         return;
       }
 
-      new AirDatepicker(input, {
+      const picker = new AirDatepicker(input, {
         autoClose: true,
         dateFormat: "yyyy-MM-dd",
+        onSelect: function () {
+          if (input.dataset.submitOnDatepicker === "1" && input.form) {
+            input.form.requestSubmit();
+          }
+        },
+      });
+      input.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" && input.form) {
+          event.preventDefault();
+          input.form.requestSubmit();
+        }
+      });
+      input.addEventListener("focus", function () {
+        picker.show();
       });
       input.dataset.airDatepickerReady = "1";
     });
+  }
+
+  function initTagEditors(root) {
+    const scope = root || document;
+    scope.querySelectorAll("[data-tag-editor]").forEach(function (editor) {
+      if (editor.dataset.tagEditorReady === "1") {
+        return;
+      }
+      const hidden = editor.querySelector("[data-tag-hidden]");
+      const input = editor.querySelector("[data-tag-input]");
+      const chips = editor.querySelector("[data-tag-chips]");
+      if (!hidden || !input || !chips) {
+        return;
+      }
+      function parseTags() {
+        return hidden.value.split(",").map(function (v) { return v.trim(); }).filter(Boolean);
+      }
+      function writeTags(tags) {
+        hidden.value = tags.join(", ");
+        chips.innerHTML = "";
+        tags.forEach(function (tag, idx) {
+          const chip = document.createElement("button");
+          chip.type = "button";
+          chip.className = "tag-chip";
+          chip.textContent = tag + " ×";
+          chip.addEventListener("click", function () {
+            const next = parseTags().filter(function (_, i) { return i !== idx; });
+            writeTags(next);
+          });
+          chips.appendChild(chip);
+        });
+      }
+      writeTags(parseTags());
+      input.addEventListener("keydown", function (event) {
+        if (event.key !== "Enter") {
+          return;
+        }
+        event.preventDefault();
+        const value = input.value.trim();
+        if (!value) {
+          return;
+        }
+        const tags = parseTags();
+        if (!tags.some(function (tag) { return tag.toLowerCase() === value.toLowerCase(); })) {
+          tags.push(value);
+          writeTags(tags);
+        }
+        input.value = "";
+      });
+      editor.dataset.tagEditorReady = "1";
+    });
+  }
+
+  function initLiveSearch() {
+    const search = document.getElementById("global-search-input");
+    if (!search || search.dataset.liveSearchReady === "1") {
+      return;
+    }
+    let timer;
+    search.addEventListener("input", function () {
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        const url = new URL(window.location.href);
+        const q = search.value.trim();
+        if (q) {
+          url.searchParams.set("q", q);
+          url.searchParams.set("view", "search");
+        } else {
+          url.searchParams.delete("q");
+          if (url.searchParams.get("view") === "search") {
+            url.searchParams.set("view", "main");
+          }
+        }
+        htmx.ajax("GET", "/htmx/tasks/list?" + url.searchParams.toString(), "#tasks-content");
+        window.history.replaceState({}, "", "/tasks?" + url.searchParams.toString());
+      }, 250);
+    });
+    search.dataset.liveSearchReady = "1";
   }
 
   function taskRows() {
@@ -249,6 +341,8 @@
 
   document.addEventListener("DOMContentLoaded", function () {
     initDatepickers(document);
+    initTagEditors(document);
+    initLiveSearch();
     initTaskKeyboard(document);
     document.addEventListener("keydown", onKeydown);
 
@@ -276,6 +370,8 @@
       Alpine.initTree(e.detail.target);
     }
     initDatepickers(e.detail.target);
+    initTagEditors(e.detail.target);
+    initLiveSearch();
     initTaskKeyboard(e.detail.target);
   });
 })();

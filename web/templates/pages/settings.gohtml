@@ -1,0 +1,64 @@
+{{define "settings_page"}}
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Caldo Settings</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body class="settings-page">
+  <main class="settings-container">
+    <h1>Einstellungen</h1>
+    <p>Angemeldet als: <strong>{{.PrincipalID}}</strong>{{if .DAVUsername}} (DAV: {{.DAVUsername}}){{end}}</p>
+    {{if .Message}}<p class="ok">{{.Message}}</p>{{end}}
+    {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
+
+    <section>
+      <h2>CalDAV Verbindung</h2>
+      <form method="post" action="/settings/dav-account">
+        <label>Server URL <input name="server_url" value="{{.DefaultServerURL}}" required></label>
+        <label>Benutzername <input name="username" required></label>
+        <label>Passwort <input type="password" name="password" required></label>
+        <button type="submit">Speichern &amp; Testen</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Ansicht &amp; Sync</h2>
+      <form method="post" action="/settings/preferences">
+        <label>Default View
+          <select name="default_view">
+            <option value="main" {{if eq .DefaultView "main"}}selected{{end}}>Main</option>
+            <option value="hotlist" {{if eq .DefaultView "hotlist"}}selected{{end}}>Hotlist</option>
+            <option value="priority" {{if eq .DefaultView "priority"}}selected{{end}}>Priority</option>
+            <option value="due" {{if eq .DefaultView "due"}}selected{{end}}>Due</option>
+            <option value="search" {{if eq .DefaultView "search"}}selected{{end}}>Search</option>
+          </select>
+        </label>
+        <label>Sync Intervall (Sekunden)
+          <input type="number" min="30" step="30" name="sync_interval_seconds" value="{{.SyncInterval}}">
+        </label>
+        <fieldset>
+          <legend>Sichtbare Spalten</legend>
+          {{range .AllColumns}}
+          <label><input type="checkbox" name="columns" value="{{.}}" {{if index $.VisibleColumns .}}checked{{end}}> {{.}}</label>
+          {{end}}
+        </fieldset>
+        <button type="submit">Präferenzen speichern</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Neue Liste</h2>
+      <form method="post" action="/settings/collections">
+        <label>Listenname <input type="text" name="collection_name" required></label>
+        <button type="submit">Liste anlegen</button>
+      </form>
+    </section>
+
+    <p><a href="/tasks">Zurück zu Aufgaben</a></p>
+  </main>
+</body>
+</html>
+{{end}}

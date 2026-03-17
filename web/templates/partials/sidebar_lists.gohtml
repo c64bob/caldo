@@ -73,11 +73,11 @@
 
   <div class="sidebar-section">
     <h2>Search</h2>
-    <a href="/tasks?view=search&list={{.ActiveListID}}"
+    <a href="/tasks?view=search&list={{.ActiveListID}}{{if .Query}}&q={{.Query}}{{end}}"
        class="sidebar-link {{if eq .ActiveView "search"}}active{{end}}"
-       hx-get="/htmx/tasks/list?view=search&list={{.ActiveListID}}"
+       hx-get="/htmx/tasks/list?view=search&list={{.ActiveListID}}{{if .Query}}&q={{.Query}}{{end}}"
        hx-target="#tasks-content"
-       hx-push-url="/tasks?view=search&list={{.ActiveListID}}" data-shortcut-view="e">Search</a>
+       hx-push-url="/tasks?view=search&list={{.ActiveListID}}{{if .Query}}&q={{.Query}}{{end}}" data-shortcut-view="e">Search</a>
   </div>
 
   <div class="sidebar-section">

@@ -64,6 +64,10 @@ func (s *SettingsService) SaveDAVAccount(ctx context.Context, in SaveDAVAccountI
 	})
 }
 
+func (s *SettingsService) GetDAVAccount(ctx context.Context, principalID string) (sqlite.DAVAccount, bool, error) {
+	return s.repo.GetByPrincipal(ctx, principalID)
+}
+
 func (s *SettingsService) validateSubmittedServerURL(serverURL string) (string, error) {
 	u, err := parseAndValidateServerURL(serverURL)
 	if err != nil {

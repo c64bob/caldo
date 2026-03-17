@@ -16,6 +16,10 @@ type TaskPageViewModel struct {
 	Goals          []string
 	ActiveListID   string
 	ActiveView     string
+	ActiveContext  string
+	ActiveGoal     string
+	Query          string
+	VisibleColumns map[string]bool
 	Rows           []TaskRow
 	HasCredentials bool
 	Error          string
@@ -242,4 +246,15 @@ func (vm TaskPageViewModel) Title() string {
 		}
 	}
 	return "Aufgaben"
+}
+
+func (vm TaskPageViewModel) ShowColumn(name string) bool {
+	if len(vm.VisibleColumns) == 0 {
+		return true
+	}
+	show, ok := vm.VisibleColumns[name]
+	if !ok {
+		return false
+	}
+	return show
 }

@@ -22,6 +22,7 @@ func (h *TasksHandler) APITaskCreate(w http.ResponseWriter, r *http.Request) {
 			Priority:        service.ParsePriority(r.FormValue("priority")),
 			Description:     strings.TrimSpace(r.FormValue("description")),
 			Categories:      service.ParseCategories(r.FormValue("categories")),
+			CategoriesSet:   formFieldProvided(r, "categories"),
 			PercentComplete: service.ParsePercentComplete(r.FormValue("percent_complete")),
 			Due:             parseDueOrNil(r.FormValue("due")),
 			DueKind:         parseDueKind(r.FormValue("due")),
@@ -56,6 +57,7 @@ func (h *TasksHandler) APITaskUpdate(w http.ResponseWriter, r *http.Request) {
 			Priority:        service.ParsePriority(r.FormValue("priority")),
 			Description:     strings.TrimSpace(r.FormValue("description")),
 			Categories:      service.ParseCategories(r.FormValue("categories")),
+			CategoriesSet:   formFieldProvided(r, "categories"),
 			PercentComplete: service.ParsePercentComplete(r.FormValue("percent_complete")),
 			Due:             parseDueOrNil(r.FormValue("due")),
 			DueKind:         parseDueKind(r.FormValue("due")),
@@ -133,4 +135,9 @@ func taskMutationError(err error) (string, int) {
 		return "Authentifizierung fehlgeschlagen. Bitte Zugangsdaten prüfen.", http.StatusBadGateway
 	}
 	return "Task-Änderung fehlgeschlagen", http.StatusBadGateway
+}
+
+func formFieldProvided(r *http.Request, key string) bool {
+	_, ok := r.PostForm[key]
+	return ok
 }

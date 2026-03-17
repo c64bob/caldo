@@ -53,6 +53,7 @@ type TaskMutationInput struct {
 	Due             *time.Time
 	DueKind         string
 	Categories      []string
+	CategoriesSet   bool
 	PercentComplete int
 }
 
@@ -169,7 +170,7 @@ func (s *TaskService) UpdateTask(ctx context.Context, principalID string, in Tas
 		current.Due = in.Due
 		current.DueKind = strings.TrimSpace(in.DueKind)
 	}
-	if len(in.Categories) > 0 {
+	if in.CategoriesSet {
 		current.Categories = in.Categories
 	}
 	current.ETag = strings.TrimSpace(in.ETag)

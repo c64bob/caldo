@@ -15,6 +15,56 @@ import (
 	"caldo/internal/store/sqlite"
 )
 
+func respondDiscoveryPropfind(w http.ResponseWriter, r *http.Request) bool {
+	if r.Method != "PROPFIND" {
+		return false
+	}
+	w.Header().Set("Content-Type", "application/xml")
+	w.WriteHeader(http.StatusMultiStatus)
+	switch r.URL.Path {
+	case "", "/":
+		_, _ = w.Write([]byte(`<?xml version="1.0" encoding="utf-8"?>
+<multistatus xmlns="DAV:">
+  <response>
+    <href>/</href>
+    <propstat>
+      <prop><current-user-principal><href>/principals/alice/</href></current-user-principal></prop>
+      <status>HTTP/1.1 200 OK</status>
+    </propstat>
+  </response>
+</multistatus>`))
+	case "/principals/alice/":
+		_, _ = w.Write([]byte(`<?xml version="1.0" encoding="utf-8"?>
+<multistatus xmlns="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <response>
+    <href>/principals/alice/</href>
+    <propstat>
+      <prop><c:calendar-home-set><href>/tasks/</href></c:calendar-home-set></prop>
+      <status>HTTP/1.1 200 OK</status>
+    </propstat>
+  </response>
+</multistatus>`))
+	case "/tasks/":
+		_, _ = w.Write([]byte(`<?xml version="1.0" encoding="utf-8"?>
+<multistatus xmlns="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <response>
+    <href>/tasks/</href>
+    <propstat>
+      <prop>
+        <displayname>Tasks</displayname>
+        <resourcetype><collection/><c:calendar/></resourcetype>
+        <c:supported-calendar-component-set><c:comp name="VTODO"/></c:supported-calendar-component-set>
+      </prop>
+      <status>HTTP/1.1 200 OK</status>
+    </propstat>
+  </response>
+</multistatus>`))
+	default:
+		w.WriteHeader(http.StatusNotFound)
+	}
+	return true
+}
+
 func newTaskServiceForTest(t *testing.T) (*TaskService, *sqlite.DAVAccountsRepo, []byte) {
 	t.Helper()
 	tmp := t.TempDir()
@@ -42,6 +92,9 @@ func TestLoadTaskPage_NoCredentials(t *testing.T) {
 func TestLoadTaskPage_WithCredentialsReturnsListsAndTasks(t *testing.T) {
 	svc, repo, key := newTaskServiceForTest(t)
 	caldavServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if respondDiscoveryPropfind(w, r) {
+			return
+		}
 		if r.Method != "REPORT" {
 			t.Fatalf("expected REPORT request, got %s", r.Method)
 		}
@@ -108,6 +161,9 @@ func TestUpdateTask_PreservesExistingFieldsFromServer(t *testing.T) {
 	svc, repo, key := newTaskServiceForTest(t)
 	var putBody string
 	caldavServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if respondDiscoveryPropfind(w, r) {
+			return
+		}
 		switch r.Method {
 		case "REPORT":
 			w.Header().Set("Content-Type", "application/xml")
@@ -170,6 +226,9 @@ END:VCALENDAR</c:calendar-data>
 func TestUpdateTask_FailsWithoutETag(t *testing.T) {
 	svc, repo, key := newTaskServiceForTest(t)
 	caldavServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if respondDiscoveryPropfind(w, r) {
+			return
+		}
 		w.WriteHeader(http.StatusMultiStatus)
 		_, _ = w.Write([]byte(`<?xml version="1.0" encoding="utf-8"?>
 <multistatus xmlns="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"></multistatus>`))
@@ -188,6 +247,9 @@ func TestDeleteTask_UsesServerTaskHrefInsteadOfRawInput(t *testing.T) {
 	svc, repo, key := newTaskServiceForTest(t)
 	var deletePath string
 	caldavServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if respondDiscoveryPropfind(w, r) {
+			return
+		}
 		switch r.Method {
 		case "REPORT":
 			w.Header().Set("Content-Type", "application/xml")
@@ -242,6 +304,9 @@ func TestUpdateTask_AllowsClearingCategoriesWhenExplicitlyProvided(t *testing.T)
 	svc, repo, key := newTaskServiceForTest(t)
 	var putBody string
 	caldavServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if respondDiscoveryPropfind(w, r) {
+			return
+		}
 		switch r.Method {
 		case "REPORT":
 			w.Header().Set("Content-Type", "application/xml")

@@ -80,6 +80,24 @@
        hx-push-url="/tasks?view=search&list={{.ActiveListID}}{{if .Query}}&q={{.Query}}{{end}}" data-shortcut-view="e">Search</a>
   </div>
 
+
+  <div class="sidebar-section">
+    <h2>Saved Filters</h2>
+    <ul class="lists">
+      {{range .SavedFilters}}
+      <li>
+        <a href="/filter/{{.Slug}}"
+           class="sidebar-link"
+           hx-get="/filter/{{.Slug}}"
+           hx-target="#tasks-content"
+           hx-push-url="/filter/{{.Slug}}">{{.Name}}</a>
+      </li>
+      {{else}}
+      <li><span class="sidebar-link">Keine gespeichert</span></li>
+      {{end}}
+    </ul>
+  </div>
+
   <div class="sidebar-section">
     <h2>Tags</h2>
     <a href="/tasks?view=tags&list={{.ActiveListID}}"

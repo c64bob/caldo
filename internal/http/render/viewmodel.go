@@ -23,6 +23,8 @@ type TaskPageViewModel struct {
 	Rows           []TaskRow
 	HasCredentials bool
 	Error          string
+	Filter         TaskFilterState
+	SavedFilters   []SavedFilterItem
 }
 
 type TaskListItem struct {
@@ -56,6 +58,53 @@ type TaskRow struct {
 	SubtaskTotal    int
 	SubtaskDone     int
 	PriorityClass   string
+}
+
+type TaskFilterState struct {
+	Priority []string
+	Status   []string
+	DueFrom  string
+	DueTo    string
+	Folder   string
+	Context  string
+	Goal     string
+	Tags     string
+	Star     string
+	Query    string
+}
+
+type SavedFilterItem struct {
+	Name string
+	Slug string
+}
+
+func (f TaskFilterState) HasPriority(value int) bool {
+	if len(f.Priority) == 0 {
+		return false
+	}
+	target := fmt.Sprintf("%d", value)
+	for _, p := range f.Priority {
+		if strings.TrimSpace(p) == target {
+			return true
+		}
+	}
+	return false
+}
+
+func (f TaskFilterState) HasStatus(value string) bool {
+	if len(f.Status) == 0 {
+		return false
+	}
+	for _, s := range f.Status {
+		if strings.EqualFold(strings.TrimSpace(s), strings.TrimSpace(value)) {
+			return true
+		}
+	}
+	return false
+}
+
+func (f TaskFilterState) IsStar(value string) bool {
+	return strings.EqualFold(strings.TrimSpace(f.Star), strings.TrimSpace(value))
 }
 
 func BuildTaskRows(tasks []domain.Task, lists []domain.List) []TaskRow {

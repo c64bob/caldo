@@ -12,10 +12,11 @@ import (
 )
 
 type TasksHandler struct {
-	Service            *service.TaskService
-	PreferencesService *service.PreferencesService
-	SyncService        *service.SyncService
-	Templates          *render.Templates
+	Service             *service.TaskService
+	PreferencesService  *service.PreferencesService
+	SavedFiltersService *service.SavedFiltersService
+	SyncService         *service.SyncService
+	Templates           *render.Templates
 }
 
 func (h *TasksHandler) Page(w http.ResponseWriter, r *http.Request) {
@@ -48,6 +49,7 @@ func (h *TasksHandler) buildTaskVM(r *http.Request, principal string) (render.Ta
 	allRows := render.BuildTaskRows(data.Tasks, data.Lists)
 	view := activeView(r.URL.Query().Get("view"))
 	rows := filterRows(allRows, view, r.URL.Query().Get("context"), r.URL.Query().Get("goal"), r.URL.Query().Get("q"))
+	rows = applyTaskFilter(rows, parseTaskFilter(r))
 	vm := render.TaskPageViewModel{
 		PrincipalID:    principal,
 		Lists:          render.BuildTaskLists(data.Lists, data.ActiveListID),
@@ -61,6 +63,7 @@ func (h *TasksHandler) buildTaskVM(r *http.Request, principal string) (render.Ta
 		Rows:           rows,
 		HasCredentials: data.HasCredentials,
 		VisibleColumns: map[string]bool{},
+		Filter:         parseTaskFilter(r),
 	}
 	if h.PreferencesService != nil {
 		prefs, prefErr := h.PreferencesService.GetOrDefault(r.Context(), principal)
@@ -74,6 +77,14 @@ func (h *TasksHandler) buildTaskVM(r *http.Request, principal string) (render.Ta
 			}
 			for _, col := range prefs.VisibleColumns {
 				vm.VisibleColumns[col] = true
+			}
+		}
+	}
+	if h.SavedFiltersService != nil {
+		if saved, savedErr := h.SavedFiltersService.List(r.Context(), principal); savedErr == nil {
+			vm.SavedFilters = make([]render.SavedFilterItem, 0, len(saved))
+			for _, item := range saved {
+				vm.SavedFilters = append(vm.SavedFilters, render.SavedFilterItem{Name: item.Name, Slug: item.Slug})
 			}
 		}
 	}
@@ -108,7 +119,7 @@ func filterRows(rows []render.TaskRow, view, contextValue, goalValue, query stri
 			continue
 		}
 		if view == "hotlist" {
-			if !(row.IsStarred || row.Priority >= 6 || isDueSoon(row.DueInput, now)) {
+			if hotlistScore(row, now) < 5 {
 				continue
 			}
 		}
@@ -134,6 +145,9 @@ func filterRows(rows []render.TaskRow, view, contextValue, goalValue, query stri
 	}
 	if view == "due" {
 		sort.SliceStable(out, func(i, j int) bool { return out[i].DueInput < out[j].DueInput })
+	}
+	if view == "hotlist" {
+		sortByHotlist(out)
 	}
 	return out
 }

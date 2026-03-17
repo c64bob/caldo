@@ -147,3 +147,26 @@ body.sidebar-collapsed .sidebar { display: none; }
 .settings-container label { display: grid; gap: 4px; }
 .settings-container .ok { color: #166534; }
 .settings-container .err { color: #b91c1c; }
+
+.filter-panel {
+  margin: 0.75rem 0 1rem;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  background: #f8fafc;
+}
+
+.filter-form,
+.save-filter-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.filter-form label,
+.save-filter-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+}

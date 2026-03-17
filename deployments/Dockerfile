@@ -22,6 +22,7 @@ RUN apk add --no-cache ca-certificates tzdata
 COPY --from=builder /out/caldo /usr/local/bin/caldo
 COPY configs/docker/config.docker.yaml /app/configs/docker/config.docker.yaml
 COPY web/templates /app/web/templates
+COPY web/static /app/web/static
 
 ENV CALDO_CONFIG=/app/configs/docker/config.docker.yaml
 

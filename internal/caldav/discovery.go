@@ -131,7 +131,8 @@ func (c *Client) discoverCollections(ctx context.Context, serverURL, homeSetHref
 		return nil, err
 	}
 	collections := make([]Collection, 0, len(result.Responses))
-	usedIDs := map[string]int{}
+	usedIDs := map[string]struct{}{}
+	baseIDCounts := map[string]int{}
 	for _, response := range result.Responses {
 		href := strings.TrimSpace(response.Href)
 		if href == "" {
@@ -145,11 +146,8 @@ func (c *Client) discoverCollections(ctx context.Context, serverURL, homeSetHref
 			if !supportsVTODO {
 				continue
 			}
-			id := deriveCollectionID(href, len(collections)+1)
-			if seen := usedIDs[id]; seen > 0 {
-				id = id + "-" + strconv.Itoa(seen+1)
-			}
-			usedIDs[id]++
+			baseID := deriveCollectionID(href, len(collections)+1)
+			id := uniqueCollectionID(baseID, usedIDs, baseIDCounts)
 			displayName := strings.TrimSpace(propstat.Prop.DisplayName)
 			if displayName == "" {
 				displayName = id
@@ -159,6 +157,24 @@ func (c *Client) discoverCollections(ctx context.Context, serverURL, homeSetHref
 		}
 	}
 	return collections, nil
+}
+
+func uniqueCollectionID(baseID string, usedIDs map[string]struct{}, baseIDCounts map[string]int) string {
+	baseIDCounts[baseID]++
+	sequence := baseIDCounts[baseID]
+	candidate := baseID
+	if sequence > 1 {
+		candidate = baseID + "-" + strconv.Itoa(sequence)
+	}
+	for {
+		if _, exists := usedIDs[candidate]; !exists {
+			usedIDs[candidate] = struct{}{}
+			baseIDCounts[baseID] = sequence
+			return candidate
+		}
+		sequence++
+		candidate = baseID + "-" + strconv.Itoa(sequence)
+	}
 }
 
 func deriveCollectionID(href string, idx int) string {

@@ -106,12 +106,28 @@
     overlay.setAttribute("aria-hidden", shouldOpen ? "false" : "true");
   }
 
+  function isShortcutOverlayOpen() {
+    const overlay = document.getElementById("shortcut-overlay");
+    return !!(overlay && !overlay.hidden);
+  }
+
+  function isTaskSummaryEditorOpen() {
+    return Array.from(document.querySelectorAll("td.task-name form")).some(function (form) {
+      return form.offsetParent !== null;
+    });
+  }
+
   function isEditableTarget(target) {
     return !!(target && target.closest("input, textarea, select, [contenteditable='true']"));
   }
 
   function onKeydown(event) {
     if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) {
+      return;
+    }
+
+    if (isShortcutOverlayOpen()) {
+      toggleShortcutOverlay(false);
       return;
     }
 
@@ -125,6 +141,9 @@
     }
 
     if (event.key === "?") {
+      if (isTaskSummaryEditorOpen()) {
+        return;
+      }
       event.preventDefault();
       toggleShortcutOverlay();
       return;
@@ -233,11 +252,15 @@
     const overlay = document.getElementById("shortcut-overlay");
     if (overlay) {
       overlay.addEventListener("click", function (event) {
-        if (event.target === overlay) {
-          toggleShortcutOverlay(false);
-        }
+        toggleShortcutOverlay(false);
       });
     }
+
+    document.addEventListener("click", function () {
+      if (isShortcutOverlayOpen()) {
+        toggleShortcutOverlay(false);
+      }
+    });
   });
 
   document.addEventListener("htmx:afterSwap", function (e) {

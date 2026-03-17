@@ -20,6 +20,52 @@ func TestAPISyncNow_IgnoresPrincipalOverrideFromForm(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u, _, _ := r.BasicAuth()
 		usedUser = u
+		if r.Method == "PROPFIND" {
+			w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+			w.WriteHeader(http.StatusMultiStatus)
+			switch r.URL.Path {
+			case "", "/":
+				_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<multistatus xmlns="DAV:">
+  <response>
+    <href>/</href>
+    <propstat>
+      <prop><current-user-principal><href>/principals/alice/</href></current-user-principal></prop>
+      <status>HTTP/1.1 200 OK</status>
+    </propstat>
+  </response>
+</multistatus>`))
+			case "/principals/alice/":
+				_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<multistatus xmlns="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <response>
+    <href>/principals/alice/</href>
+    <propstat>
+      <prop><c:calendar-home-set><href>/tasks/</href></c:calendar-home-set></prop>
+      <status>HTTP/1.1 200 OK</status>
+    </propstat>
+  </response>
+</multistatus>`))
+			case "/tasks/":
+				_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<multistatus xmlns="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <response>
+    <href>/tasks/</href>
+    <propstat>
+      <prop>
+        <displayname>Tasks</displayname>
+        <resourcetype><collection/><c:calendar/></resourcetype>
+        <c:supported-calendar-component-set><c:comp name="VTODO"/></c:supported-calendar-component-set>
+      </prop>
+      <status>HTTP/1.1 200 OK</status>
+    </propstat>
+  </response>
+</multistatus>`))
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+			return
+		}
 		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 		w.WriteHeader(http.StatusMultiStatus)
 		_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>

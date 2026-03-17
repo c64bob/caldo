@@ -38,6 +38,9 @@ func newSyncServiceForTest(t *testing.T, serverURL string) (*SyncService, *sqlit
 
 func TestSyncNow_SuccessPersistsSyncState(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if respondDiscoveryPropfind(w, r) {
+			return
+		}
 		if r.Method != "REPORT" {
 			t.Fatalf("expected REPORT, got %s", r.Method)
 		}

@@ -6,18 +6,38 @@ import (
 	"testing"
 )
 
-func TestResolveTemplateRoot_UsesEnvironmentOverride(t *testing.T) {
-	tmp := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tmp, "layout.gohtml"), []byte("{{define \"layout\"}}{{end}}"), 0o600); err != nil {
-		t.Fatalf("write template: %v", err)
+func TestResolveTemplateRoot_IgnoresEnvironmentOverride(t *testing.T) {
+	base := t.TempDir()
+	root := filepath.Join(base, "web", "templates")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("mkdir templates: %v", err)
 	}
-	t.Setenv("CALDO_TEMPLATE_DIR", tmp)
+	if err := os.WriteFile(filepath.Join(root, "layout.gohtml"), []byte("{{define \"layout\"}}{{end}}"), 0o600); err != nil {
+		t.Fatalf("write layout template: %v", err)
+	}
 
-	root, err := resolveTemplateRoot()
+	envOverride := t.TempDir()
+	if err := os.WriteFile(filepath.Join(envOverride, "layout.gohtml"), []byte("{{define \"layout\"}}{{end}}"), 0o600); err != nil {
+		t.Fatalf("write override template: %v", err)
+	}
+	// Wird bewusst ignoriert: Template-Pfad bleibt einheitlich über Standard-/Autodetect-Logik.
+	t.Setenv("CALDO_TEMPLATE_DIR", envOverride)
+	originalWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(base); err != nil {
+		t.Fatalf("chdir to temp dir: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(originalWD)
+	})
+
+	resolved, err := resolveTemplateRoot()
 	if err != nil {
 		t.Fatalf("resolve template root: %v", err)
 	}
-	if root != tmp {
-		t.Fatalf("expected %q, got %q", tmp, root)
+	if resolved != root {
+		t.Fatalf("expected %q, got %q", root, resolved)
 	}
 }

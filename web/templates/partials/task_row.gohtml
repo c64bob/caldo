@@ -1,17 +1,116 @@
 {{define "task_row"}}
-<tr id="task-{{.UID}}" class="task-row {{.PriorityClass}}">
-  <td class="col-star">☆</td>
-  <td class="col-check"><input type="checkbox" disabled {{if .IsCompleted}}checked{{end}} aria-label="Task abgeschlossen"></td>
-  <td class="task-name">{{if .Summary}}{{.Summary}}{{else}}(ohne Titel){{end}}</td>
-  <td class="col-folder">{{if .Folder}}{{.Folder}}{{else}}—{{end}}</td>
-  <td class="col-context">{{.Context}}</td>
-  <td class="col-due">{{if .Due}}{{.Due}}{{else}}—{{end}}</td>
-  <td class="col-priority">
-    {{if ge .Priority 8}}Top
-    {{else if ge .Priority 6}}High
-    {{else if ge .Priority 4}}Medium
-    {{else if ge .Priority 2}}Low
-    {{else}}Negative{{end}}
-  </td>
-</tr>
+<tbody x-data="{ expanded: false, editingSummary: false }">
+  <tr id="task-{{.UID}}" class="task-row {{.PriorityClass}}">
+    <td class="col-expand">
+      <button type="button" class="icon-button" @click="expanded = !expanded" :aria-expanded="expanded.toString()">▸</button>
+    </td>
+    <td class="col-star">
+      <form method="post" action="/api/tasks/update" hx-post="/api/tasks/update" hx-target="#tasks-content" hx-swap="innerHTML">
+        <input type="hidden" name="list_id" value="{{.ListID}}">
+        <input type="hidden" name="uid" value="{{.UID}}">
+        <input type="hidden" name="href" value="{{.Href}}">
+        <input type="hidden" name="etag" value="{{.ETag}}">
+        <input type="hidden" name="summary" value="{{.Summary}}">
+        <input type="hidden" name="status" value="{{.Status}}">
+        <input type="hidden" name="priority" value="{{.Priority}}">
+        <input type="hidden" name="due" value="{{.DueInput}}">
+        <input type="hidden" name="categories" value="{{if .IsStarred}}{{.Categories}}{{else}}starred{{if .Categories}}, {{.Categories}}{{end}}{{end}}">
+        <input type="hidden" name="percent_complete" value="{{.PercentComplete}}">
+        <button type="submit" class="icon-button" aria-label="Task markieren">{{if .IsStarred}}★{{else}}☆{{end}}</button>
+      </form>
+    </td>
+    <td class="col-check">
+      <form method="post" action="/api/tasks/update" hx-post="/api/tasks/update" hx-target="#tasks-content" hx-swap="innerHTML">
+        <input type="hidden" name="list_id" value="{{.ListID}}">
+        <input type="hidden" name="uid" value="{{.UID}}">
+        <input type="hidden" name="href" value="{{.Href}}">
+        <input type="hidden" name="etag" value="{{.ETag}}">
+        <input type="hidden" name="summary" value="{{.Summary}}">
+        <input type="hidden" name="priority" value="{{.Priority}}">
+        <input type="hidden" name="due" value="{{.DueInput}}">
+        <input type="hidden" name="categories" value="{{if .IsStarred}}starred{{if .Categories}}, {{.Categories}}{{end}}{{else}}{{.Categories}}{{end}}">
+        <input type="hidden" name="status" value="{{if .IsCompleted}}NEEDS-ACTION{{else}}COMPLETED{{end}}">
+        <input type="hidden" name="percent_complete" value="{{.PercentComplete}}">
+        <input type="checkbox" onchange="this.form.requestSubmit()" {{if .IsCompleted}}checked{{end}} aria-label="Task abgeschlossen">
+      </form>
+    </td>
+    <td class="task-name" @click="editingSummary = true" @keydown.escape.window="editingSummary = false">
+      <form method="post" action="/api/tasks/update" hx-post="/api/tasks/update" hx-target="#tasks-content" hx-swap="innerHTML" x-show="editingSummary" @submit="editingSummary = false">
+        <input type="hidden" name="list_id" value="{{.ListID}}">
+        <input type="hidden" name="uid" value="{{.UID}}">
+        <input type="hidden" name="href" value="{{.Href}}">
+        <input type="hidden" name="etag" value="{{.ETag}}">
+        <input type="hidden" name="status" value="{{.Status}}">
+        <input type="hidden" name="priority" value="{{.Priority}}">
+        <input type="hidden" name="due" value="{{.DueInput}}">
+        <input type="hidden" name="categories" value="{{if .IsStarred}}starred{{if .Categories}}, {{.Categories}}{{end}}{{else}}{{.Categories}}{{end}}">
+        <input type="hidden" name="percent_complete" value="{{.PercentComplete}}">
+        <input type="text" name="summary" value="{{if .Summary}}{{.Summary}}{{end}}" @keydown.enter.prevent="$el.form.requestSubmit()" @keydown.escape.prevent="editingSummary=false" autofocus>
+      </form>
+      <span x-show="!editingSummary">{{if .Summary}}{{.Summary}}{{else}}(ohne Titel){{end}}</span>
+    </td>
+    <td class="col-folder">{{if .Folder}}{{.Folder}}{{else}}—{{end}}</td>
+    <td class="col-context">{{.Context}}</td>
+    <td class="col-due">
+      <form method="post" action="/api/tasks/update" hx-post="/api/tasks/update" hx-target="#tasks-content" hx-swap="innerHTML">
+        <input type="hidden" name="list_id" value="{{.ListID}}">
+        <input type="hidden" name="uid" value="{{.UID}}">
+        <input type="hidden" name="href" value="{{.Href}}">
+        <input type="hidden" name="etag" value="{{.ETag}}">
+        <input type="hidden" name="summary" value="{{.Summary}}">
+        <input type="hidden" name="status" value="{{.Status}}">
+        <input type="hidden" name="priority" value="{{.Priority}}">
+        <input type="hidden" name="categories" value="{{if .IsStarred}}starred{{if .Categories}}, {{.Categories}}{{end}}{{else}}{{.Categories}}{{end}}">
+        <input type="hidden" name="percent_complete" value="{{.PercentComplete}}">
+        <input type="text" name="due" value="{{.DueInput}}" data-air-datepicker data-natural-language @change="$el.form.requestSubmit()" placeholder="today / 2026-01-30">
+      </form>
+    </td>
+    <td class="col-priority">
+      <form method="post" action="/api/tasks/update" hx-post="/api/tasks/update" hx-target="#tasks-content" hx-swap="innerHTML">
+        <input type="hidden" name="list_id" value="{{.ListID}}">
+        <input type="hidden" name="uid" value="{{.UID}}">
+        <input type="hidden" name="href" value="{{.Href}}">
+        <input type="hidden" name="etag" value="{{.ETag}}">
+        <input type="hidden" name="summary" value="{{.Summary}}">
+        <input type="hidden" name="status" value="{{.Status}}">
+        <input type="hidden" name="due" value="{{.DueInput}}">
+        <input type="hidden" name="categories" value="{{if .IsStarred}}starred{{if .Categories}}, {{.Categories}}{{end}}{{else}}{{.Categories}}{{end}}">
+        <input type="hidden" name="percent_complete" value="{{.PercentComplete}}">
+        <select name="priority" onchange="this.form.requestSubmit()">
+          <option value="9" {{if ge .Priority 8}}selected{{end}}>Top</option>
+          <option value="7" {{if and (lt .Priority 8) (ge .Priority 6)}}selected{{end}}>High</option>
+          <option value="5" {{if and (lt .Priority 6) (ge .Priority 4)}}selected{{end}}>Medium</option>
+          <option value="2" {{if and (lt .Priority 4) (ge .Priority 2)}}selected{{end}}>Low</option>
+          <option value="0" {{if lt .Priority 2}}selected{{end}}>Negative</option>
+        </select>
+      </form>
+    </td>
+  </tr>
+  <tr class="task-detail" x-show="expanded" x-cloak>
+    <td colspan="8">
+      <form class="task-detail-form" method="post" action="/api/tasks/update" hx-post="/api/tasks/update" hx-target="#tasks-content" hx-swap="innerHTML">
+        <input type="hidden" name="list_id" value="{{.ListID}}">
+        <input type="hidden" name="uid" value="{{.UID}}">
+        <input type="hidden" name="href" value="{{.Href}}">
+        <input type="hidden" name="etag" value="{{.ETag}}">
+        <input type="hidden" name="summary" value="{{.Summary}}">
+        <input type="hidden" name="priority" value="{{.Priority}}">
+        <label>Status
+          <select name="status">
+            <option value="">None</option>
+            <option value="NEEDS-ACTION" {{if eq .Status "NEEDS-ACTION"}}selected{{end}}>Next Action</option>
+            <option value="IN-PROCESS" {{if eq .Status "IN-PROCESS"}}selected{{end}}>Active</option>
+            <option value="CANCELLED" {{if eq .Status "CANCELLED"}}selected{{end}}>Cancelled</option>
+            <option value="COMPLETED" {{if eq .Status "COMPLETED"}}selected{{end}}>Completed</option>
+          </select>
+        </label>
+        <label>Tags <input type="text" name="categories" value="{{if .IsStarred}}starred{{if .Categories}}, {{.Categories}}{{end}}{{else}}{{.Categories}}{{end}}" placeholder="#tag1, @context"></label>
+        <label>Progress <input type="number" min="0" max="100" name="percent_complete" value="{{.PercentComplete}}"></label>
+        <label>Notizen <textarea name="description" rows="3">{{.Description}}</textarea></label>
+        <div class="meta">UID: {{.UID}}</div>
+        <button type="submit">Details speichern</button>
+      </form>
+    </td>
+  </tr>
+</tbody>
 {{end}}

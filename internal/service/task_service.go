@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -41,17 +42,19 @@ type TaskPageData struct {
 }
 
 type TaskMutationInput struct {
-	ListID      string
-	UID         string
-	Href        string
-	ETag        string
-	Summary     string
-	Status      string
-	Priority    int
-	Description string
-	Due         *time.Time
-	DueKind     string
-	Categories  []string
+	ListID          string
+	UID             string
+	Href            string
+	ETag            string
+	Summary         string
+	Status          string
+	Priority        int
+	Description     string
+	Due             *time.Time
+	DueKind         string
+	Categories      []string
+	CategoriesSet   bool
+	PercentComplete int
 }
 
 func (s *TaskService) LoadTaskPage(ctx context.Context, principalID string, selectedListID string) (TaskPageData, error) {
@@ -126,7 +129,11 @@ func (s *TaskService) CreateTask(ctx context.Context, principalID string, in Tas
 	if prio < 0 {
 		prio = 0
 	}
-	task := domain.Task{UID: in.UID, Summary: strings.TrimSpace(in.Summary), Status: strings.TrimSpace(in.Status), Priority: prio}
+	pct := in.PercentComplete
+	if pct < 0 {
+		pct = 0
+	}
+	task := domain.Task{UID: in.UID, Summary: strings.TrimSpace(in.Summary), Status: strings.TrimSpace(in.Status), Priority: prio, PercentComplete: pct}
 	task.Description = strings.TrimSpace(in.Description)
 	task.Due = in.Due
 	task.DueKind = strings.TrimSpace(in.DueKind)
@@ -153,6 +160,9 @@ func (s *TaskService) UpdateTask(ctx context.Context, principalID string, in Tas
 		current.Status = status
 	}
 	current.Priority = in.Priority
+	if in.PercentComplete >= 0 {
+		current.PercentComplete = in.PercentComplete
+	}
 	if description := strings.TrimSpace(in.Description); description != "" {
 		current.Description = description
 	}
@@ -160,7 +170,7 @@ func (s *TaskService) UpdateTask(ctx context.Context, principalID string, in Tas
 		current.Due = in.Due
 		current.DueKind = strings.TrimSpace(in.DueKind)
 	}
-	if len(in.Categories) > 0 {
+	if in.CategoriesSet {
 		current.Categories = in.Categories
 	}
 	current.ETag = strings.TrimSpace(in.ETag)
@@ -241,6 +251,9 @@ func ParseDue(raw string) (*time.Time, string) {
 	if v == "" {
 		return nil, ""
 	}
+	if t, ok := parseNaturalDue(v, time.Now().In(time.Local)); ok {
+		return &t, "date"
+	}
 	if t, err := time.Parse("2006-01-02", v); err == nil {
 		return &t, "date"
 	}
@@ -248,6 +261,111 @@ func ParseDue(raw string) (*time.Time, string) {
 		return &t, "datetime"
 	}
 	return nil, ""
+}
+
+func ParseSmartAdd(raw string) (TaskMutationInput, error) {
+	tokens := tokenizeSmartAdd(raw)
+	if len(tokens) == 0 {
+		return TaskMutationInput{}, fmt.Errorf("quick add darf nicht leer sein")
+	}
+
+	in := TaskMutationInput{Status: "NEEDS-ACTION"}
+	summaryParts := make([]string, 0, len(tokens))
+	tags := make([]string, 0, 4)
+
+	for _, token := range tokens {
+		switch {
+		case strings.HasPrefix(token, "/folder:"):
+			in.ListID = strings.TrimSpace(strings.TrimPrefix(token, "/folder:"))
+		case strings.HasPrefix(token, "/due:"):
+			dueText := strings.TrimSpace(strings.TrimPrefix(token, "/due:"))
+			in.Due, in.DueKind = ParseDue(dueText)
+		case strings.HasPrefix(token, "/context:@"):
+			tags = append(tags, strings.TrimSpace(strings.TrimPrefix(token, "/context:")))
+		case strings.HasPrefix(token, "!"):
+			in.Priority = mapPriorityToken(strings.TrimPrefix(token, "!"))
+		case strings.HasPrefix(token, "#"):
+			tags = append(tags, strings.TrimSpace(strings.TrimPrefix(token, "#")))
+		default:
+			summaryParts = append(summaryParts, token)
+		}
+	}
+
+	in.Summary = strings.TrimSpace(strings.Join(summaryParts, " "))
+	if in.Summary == "" {
+		return TaskMutationInput{}, fmt.Errorf("quick add benötigt einen Titel")
+	}
+	in.Categories = ParseCategories(strings.Join(tags, ","))
+	return in, nil
+}
+
+func tokenizeSmartAdd(raw string) []string {
+	matches := regexp.MustCompile(`"[^"]+"|'[^']+'|\S+`).FindAllString(raw, -1)
+	out := make([]string, 0, len(matches))
+	for _, m := range matches {
+		trimmed := strings.TrimSpace(strings.Trim(m, `"'`))
+		if trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
+}
+
+func mapPriorityToken(raw string) int {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "top":
+		return 9
+	case "high":
+		return 7
+	case "medium":
+		return 5
+	case "low":
+		return 2
+	case "negative":
+		return 0
+	default:
+		return ParsePriority(raw)
+	}
+}
+
+func parseNaturalDue(raw string, now time.Time) (time.Time, bool) {
+	v := strings.ToLower(strings.TrimSpace(raw))
+	base := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	switch v {
+	case "today":
+		return base, true
+	case "tomorrow":
+		return base.AddDate(0, 0, 1), true
+	case "next month":
+		return base.AddDate(0, 1, 0), true
+	case "1 week":
+		return base.AddDate(0, 0, 7), true
+	}
+
+	weekdays := map[string]time.Weekday{
+		"mon":       time.Monday,
+		"tue":       time.Tuesday,
+		"wed":       time.Wednesday,
+		"thu":       time.Thursday,
+		"fri":       time.Friday,
+		"sat":       time.Saturday,
+		"sun":       time.Sunday,
+		"monday":    time.Monday,
+		"tuesday":   time.Tuesday,
+		"wednesday": time.Wednesday,
+		"thursday":  time.Thursday,
+		"friday":    time.Friday,
+		"saturday":  time.Saturday,
+		"sunday":    time.Sunday,
+	}
+	if wd, ok := weekdays[v]; ok {
+		delta := int(wd - base.Weekday())
+		if delta <= 0 {
+			delta += 7
+		}
+		return base.AddDate(0, 0, delta), true
+	}
+	return time.Time{}, false
 }
 
 func (s *TaskService) loadCredentialsAndCollection(ctx context.Context, principalID, listID string) (sqlite.DAVAccount, []byte, caldav.Collection, error) {
@@ -278,4 +396,22 @@ func (s *TaskService) loadCredentialsAndCollection(ctx context.Context, principa
 		}
 	}
 	return sqlite.DAVAccount{}, nil, caldav.Collection{}, fmt.Errorf("Task-Liste nicht gefunden")
+}
+
+func ParsePercentComplete(raw string) int {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return -1
+	}
+	v, err := strconv.Atoi(trimmed)
+	if err != nil {
+		return -1
+	}
+	if v < 0 {
+		return 0
+	}
+	if v > 100 {
+		return 100
+	}
+	return v
 }

@@ -238,6 +238,63 @@ END:VCALENDAR</c:calendar-data>
 	}
 }
 
+func TestUpdateTask_AllowsClearingCategoriesWhenExplicitlyProvided(t *testing.T) {
+	svc, repo, key := newTaskServiceForTest(t)
+	var putBody string
+	caldavServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "REPORT":
+			w.Header().Set("Content-Type", "application/xml")
+			w.WriteHeader(http.StatusMultiStatus)
+			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="utf-8"?>
+<multistatus xmlns="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <response>
+    <href>/tasks/demo-1.ics</href>
+    <propstat>
+      <prop>
+        <getetag>"old"</getetag>
+        <c:calendar-data>BEGIN:VCALENDAR
+BEGIN:VTODO
+UID:demo-1
+SUMMARY:Task
+STATUS:NEEDS-ACTION
+CATEGORIES:starred
+END:VTODO
+END:VCALENDAR</c:calendar-data>
+      </prop>
+      <status>HTTP/1.1 200 OK</status>
+    </propstat>
+  </response>
+</multistatus>`))
+		case "PUT":
+			buf, _ := io.ReadAll(r.Body)
+			putBody = string(buf)
+			w.Header().Set("ETag", `"new"`)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected method %s", r.Method)
+		}
+	}))
+	t.Cleanup(caldavServer.Close)
+
+	encrypted, err := security.EncryptAESGCM(key, []byte("pw"))
+	if err != nil {
+		t.Fatalf("encrypt: %v", err)
+	}
+	err = repo.Upsert(context.Background(), sqlite.DAVAccount{PrincipalID: "alice@example.com", ServerURL: caldavServer.URL, Username: "alice", PasswordEncrypted: encrypted})
+	if err != nil {
+		t.Fatalf("upsert: %v", err)
+	}
+
+	_, err = svc.UpdateTask(context.Background(), "alice@example.com", TaskMutationInput{ListID: "tasks", UID: "demo-1", Href: "/tasks/demo-1.ics", ETag: `"old"`, Summary: "Task", Status: "NEEDS-ACTION", Priority: 5, Categories: []string{}, CategoriesSet: true})
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if strings.Contains(putBody, "CATEGORIES:") {
+		t.Fatalf("expected categories to be cleared, body=%s", putBody)
+	}
+}
+
 func TestParseCategories_DeduplicatesAndTrims(t *testing.T) {
 	got := ParseCategories(" work, focus,Work, , home ")
 	want := []string{"work", "focus", "home"}
@@ -275,5 +332,34 @@ func TestParseDue_UsesLocalTimezoneForDatetime(t *testing.T) {
 	}
 	if due.Hour() != 9 || due.Minute() != 45 {
 		t.Fatalf("expected local wall time 09:45, got %02d:%02d", due.Hour(), due.Minute())
+	}
+}
+
+func TestParseDue_AcceptsNaturalLanguage(t *testing.T) {
+	due, kind := ParseDue("tomorrow")
+	if due == nil || kind != "date" {
+		t.Fatalf("expected natural date parse, got due=%v kind=%q", due, kind)
+	}
+}
+
+func TestParseSmartAdd_ParsesTokens(t *testing.T) {
+	in, err := ParseSmartAdd(`"Arzt" /folder:Privat /context:@Telefon /due:friday !high #Gesundheit`)
+	if err != nil {
+		t.Fatalf("parse smart add: %v", err)
+	}
+	if in.Summary != "Arzt" {
+		t.Fatalf("expected summary Arzt, got %q", in.Summary)
+	}
+	if in.ListID != "Privat" {
+		t.Fatalf("expected folder Privat, got %q", in.ListID)
+	}
+	if in.Priority != 7 {
+		t.Fatalf("expected priority 7, got %d", in.Priority)
+	}
+	if in.Due == nil || in.DueKind != "date" {
+		t.Fatalf("expected due date from natural language, got due=%v kind=%q", in.Due, in.DueKind)
+	}
+	if !reflect.DeepEqual(in.Categories, []string{"@Telefon", "Gesundheit"}) {
+		t.Fatalf("unexpected categories: %v", in.Categories)
 	}
 }

@@ -1,7 +1,18 @@
 {{define "task_table"}}
+<section class="quick-add-panel">
+  <form class="quick-add-form" method="post" action="/api/tasks/quick-add"
+    hx-post="/api/tasks/quick-add" hx-target="#tasks-content" hx-swap="innerHTML" hx-push-url="false">
+    <input type="hidden" name="list_id" value="{{.ActiveListID}}">
+    <label for="quick-add-input" class="quick-add-label">Smart Add</label>
+    <input id="quick-add-input" class="quick-add-input" type="text" name="smart_add" placeholder="Arzt /folder:Privat /context:@Telefon /due:friday !high #Gesundheit" autocomplete="off">
+    <button type="submit">Hinzufügen</button>
+  </form>
+</section>
+
 <table class="tasks-table">
   <thead>
     <tr>
+      <th class="col-expand"></th>
       <th class="col-star">☆</th>
       <th class="col-check">✓</th>
       <th>Task-Name</th>
@@ -15,7 +26,7 @@
     {{range .Rows}}
       {{template "task_row" .}}
     {{else}}
-      <tr><td colspan="7" class="empty">Keine Aufgaben vorhanden.</td></tr>
+      <tr><td colspan="8" class="empty">Keine Aufgaben vorhanden.</td></tr>
     {{end}}
   </tbody>
 </table>

@@ -26,7 +26,7 @@ body { font-family: system-ui, sans-serif; margin: 0; background: var(--bg); col
 .app-logo { letter-spacing: 0.02em; }
 .sidebar-toggle { border: 1px solid var(--line); background: #f9fafb; border-radius: 6px; padding: 4px 8px; cursor: pointer; }
 .global-search { width: 100%; max-width: 720px; border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; font-size: 14px; }
-.account-icon { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: #f9fafb; }
+.account-icon { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: #f9fafb; text-decoration: none; color: var(--text); }
 
 .layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 14px; padding: 14px; }
 .sidebar { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; max-height: calc(100vh - 86px); overflow: auto; }

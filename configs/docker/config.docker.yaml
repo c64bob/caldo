@@ -1,21 +1,22 @@
 # Beispielkonfiguration für Phase-1-Dockerbetrieb mit bestehender Nextcloud.
+# Alle Werte können via CALDO_* Environment-Variablen überschrieben werden.
 server:
-  port: 8080
-  auth_header: "X-Forwarded-User"
+  port: 8080 # ENV: CALDO_SERVER_PORT
+  auth_header: "X-Forwarded-User" # ENV: CALDO_SERVER_AUTH_HEADER
 
 caldav:
   # Auf deine existierende Nextcloud-CalDAV-URL anpassen.
-  server_url: "https://nextcloud.example.com/remote.php/dav/calendars/<user>/tasks/"
-  default_list: "Tasks"
+  server_url: "https://nextcloud.example.com/remote.php/dav/calendars/<user>/tasks/" # ENV: CALDO_CALDAV_SERVER_URL
+  default_list: "Tasks" # ENV: CALDO_CALDAV_DEFAULT_LIST
 
 security:
   # In Docker Compose standardmäßig über CALDO_MASTER_KEY gesetzt.
-  encryption_key_file: "/run/secrets/caldo_key"
+  encryption_key_file: "/run/secrets/caldo_key" # ENV: CALDO_SECURITY_ENCRYPTION_KEY_FILE
 
 database:
-  path: "/data/caldo.db"
+  path: "/data/caldo.db" # ENV: CALDO_DATABASE_PATH
 
 sync:
-  enabled: false
-  interval_seconds: 300
-  default_principal: ""
+  enabled: false # ENV: CALDO_SYNC_ENABLED
+  interval_seconds: 300 # ENV: CALDO_SYNC_INTERVAL_SECONDS
+  default_principal: "" # ENV: CALDO_SYNC_DEFAULT_PRINCIPAL

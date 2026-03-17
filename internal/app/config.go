@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -42,6 +43,7 @@ func LoadConfig() (Config, error) {
 	if path == "" {
 		path = "configs/config.example.yaml"
 	}
+	path = filepath.Clean(path)
 	f, err := os.Open(path)
 	if err != nil {
 		return Config{}, fmt.Errorf("read config %q: %w", path, err)
@@ -64,7 +66,7 @@ func LoadConfig() (Config, error) {
 			continue
 		}
 		key := strings.TrimSpace(parts[0])
-		value := strings.Trim(strings.TrimSpace(parts[1]), "\"")
+		value := parseYAMLValue(parts[1])
 		switch section {
 		case "server":
 			switch key {
@@ -106,5 +108,122 @@ func LoadConfig() (Config, error) {
 	if err := scanner.Err(); err != nil {
 		return Config{}, fmt.Errorf("parse config %q: %w", path, err)
 	}
+
+	overridden, err := applyEnvironmentOverrides(&cfg)
+	if err != nil {
+		return Config{}, err
+	}
+	if overridden {
+		if err := writeConfig(path, cfg); err != nil {
+			return Config{}, fmt.Errorf("persist env config %q: %w", path, err)
+		}
+	}
 	return cfg, nil
+}
+
+func parseYAMLValue(raw string) string {
+	value := strings.TrimSpace(raw)
+	inSingleQuotes := false
+	inDoubleQuotes := false
+	for i, r := range value {
+		switch r {
+		case '\'':
+			if !inDoubleQuotes {
+				inSingleQuotes = !inSingleQuotes
+			}
+		case '"':
+			if !inSingleQuotes {
+				inDoubleQuotes = !inDoubleQuotes
+			}
+		case '#':
+			if !inSingleQuotes && !inDoubleQuotes {
+				value = strings.TrimSpace(value[:i])
+				return strings.Trim(value, "\"'")
+			}
+		}
+	}
+	return strings.Trim(value, "\"'")
+}
+
+func applyEnvironmentOverrides(cfg *Config) (bool, error) {
+	overridden := false
+
+	if v, ok := os.LookupEnv("CALDO_SERVER_PORT"); ok {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return false, fmt.Errorf("parse CALDO_SERVER_PORT: %w", err)
+		}
+		cfg.Server.Port = n
+		overridden = true
+	}
+	if v, ok := os.LookupEnv("CALDO_SERVER_AUTH_HEADER"); ok {
+		cfg.Server.AuthHeader = v
+		overridden = true
+	}
+	if v, ok := os.LookupEnv("CALDO_CALDAV_SERVER_URL"); ok {
+		cfg.CalDAV.ServerURL = v
+		overridden = true
+	}
+	if v, ok := os.LookupEnv("CALDO_CALDAV_DEFAULT_LIST"); ok {
+		cfg.CalDAV.DefaultList = v
+		overridden = true
+	}
+	if v, ok := os.LookupEnv("CALDO_SECURITY_ENCRYPTION_KEY_FILE"); ok {
+		cfg.Security.EncryptionKeyFile = v
+		overridden = true
+	}
+	if v, ok := os.LookupEnv("CALDO_DATABASE_PATH"); ok {
+		cfg.Database.Path = v
+		overridden = true
+	}
+	if v, ok := os.LookupEnv("CALDO_SYNC_ENABLED"); ok {
+		b, err := strconv.ParseBool(v)
+		if err != nil {
+			return false, fmt.Errorf("parse CALDO_SYNC_ENABLED: %w", err)
+		}
+		cfg.Sync.Enabled = b
+		overridden = true
+	}
+	if v, ok := os.LookupEnv("CALDO_SYNC_INTERVAL_SECONDS"); ok {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return false, fmt.Errorf("parse CALDO_SYNC_INTERVAL_SECONDS: %w", err)
+		}
+		if n > 0 {
+			cfg.Sync.IntervalSeconds = n
+		}
+		overridden = true
+	}
+	if v, ok := os.LookupEnv("CALDO_SYNC_DEFAULT_PRINCIPAL"); ok {
+		cfg.Sync.DefaultPrincipal = v
+		overridden = true
+	}
+
+	return overridden, nil
+}
+
+func writeConfig(path string, cfg Config) error {
+	content := fmt.Sprintf(`server:
+  port: %d
+  auth_header: %q
+
+caldav:
+  server_url: %q
+  default_list: %q
+
+security:
+  encryption_key_file: %q
+
+database:
+  path: %q
+
+sync:
+  enabled: %t
+  interval_seconds: %d
+  default_principal: %q
+`, cfg.Server.Port, cfg.Server.AuthHeader, cfg.CalDAV.ServerURL, cfg.CalDAV.DefaultList,
+		cfg.Security.EncryptionKeyFile, cfg.Database.Path,
+		cfg.Sync.Enabled, cfg.Sync.IntervalSeconds, cfg.Sync.DefaultPrincipal)
+
+	return os.WriteFile(path, []byte(content), 0o600)
 }

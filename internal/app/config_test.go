@@ -3,6 +3,7 @@ package app
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -76,6 +77,157 @@ sync:
 	}
 	if !cfg.Sync.Enabled || cfg.Sync.IntervalSeconds != 42 || cfg.Sync.DefaultPrincipal != "alice@example.com" {
 		t.Fatalf("unexpected sync config: %+v", cfg.Sync)
+	}
+}
+
+func TestLoadConfig_AppliesAndPersistsEnvironmentOverrides(t *testing.T) {
+	tmp := t.TempDir()
+	cfgPath := filepath.Join(tmp, "config.yaml")
+	content := `server:
+  port: 8080
+  auth_header: "X-Forwarded-User"
+caldav:
+  server_url: "https://old.example.com"
+  default_list: "Tasks"
+security:
+  encryption_key_file: "/old/key"
+database:
+  path: "/old/db.sqlite"
+sync:
+  enabled: false
+  interval_seconds: 300
+  default_principal: ""
+`
+	if err := os.WriteFile(cfgPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	t.Setenv("CALDO_CONFIG", cfgPath)
+	t.Setenv("CALDO_SERVER_PORT", "8181")
+	t.Setenv("CALDO_SERVER_AUTH_HEADER", "X-Auth-User")
+	t.Setenv("CALDO_CALDAV_SERVER_URL", "https://env.example.com")
+	t.Setenv("CALDO_CALDAV_DEFAULT_LIST", "Inbox")
+	t.Setenv("CALDO_SECURITY_ENCRYPTION_KEY_FILE", "/env/key")
+	t.Setenv("CALDO_DATABASE_PATH", "/env/caldo.db")
+	t.Setenv("CALDO_SYNC_ENABLED", "true")
+	t.Setenv("CALDO_SYNC_INTERVAL_SECONDS", "120")
+	t.Setenv("CALDO_SYNC_DEFAULT_PRINCIPAL", "bob@example.com")
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+
+	if cfg.Server.Port != 8181 || cfg.Server.AuthHeader != "X-Auth-User" {
+		t.Fatalf("unexpected server config: %+v", cfg.Server)
+	}
+	if cfg.CalDAV.ServerURL != "https://env.example.com" || cfg.CalDAV.DefaultList != "Inbox" {
+		t.Fatalf("unexpected caldav config: %+v", cfg.CalDAV)
+	}
+	if cfg.Security.EncryptionKeyFile != "/env/key" {
+		t.Fatalf("unexpected key file: %q", cfg.Security.EncryptionKeyFile)
+	}
+	if cfg.Database.Path != "/env/caldo.db" {
+		t.Fatalf("unexpected db path: %q", cfg.Database.Path)
+	}
+	if !cfg.Sync.Enabled || cfg.Sync.IntervalSeconds != 120 || cfg.Sync.DefaultPrincipal != "bob@example.com" {
+		t.Fatalf("unexpected sync config: %+v", cfg.Sync)
+	}
+
+	persisted, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatalf("read persisted config: %v", err)
+	}
+	text := string(persisted)
+	for _, expected := range []string{
+		"port: 8181",
+		"auth_header: \"X-Auth-User\"",
+		"server_url: \"https://env.example.com\"",
+		"default_list: \"Inbox\"",
+		"encryption_key_file: \"/env/key\"",
+		"path: \"/env/caldo.db\"",
+		"enabled: true",
+		"interval_seconds: 120",
+		"default_principal: \"bob@example.com\"",
+	} {
+		if !strings.Contains(text, expected) {
+			t.Fatalf("expected persisted config to contain %q, got:\n%s", expected, text)
+		}
+	}
+}
+
+func TestLoadConfig_StripsInlineCommentsFromValues(t *testing.T) {
+	tmp := t.TempDir()
+	cfgPath := filepath.Join(tmp, "config.yaml")
+	content := `server:
+  auth_header: "X-Forwarded-User" # ENV: CALDO_SERVER_AUTH_HEADER
+security:
+  encryption_key_file: "/run/secrets/caldo_key" # ENV: CALDO_SECURITY_ENCRYPTION_KEY_FILE
+sync:
+  default_principal: "alice@example.com" # comment
+`
+	if err := os.WriteFile(cfgPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	t.Setenv("CALDO_CONFIG", cfgPath)
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	if cfg.Server.AuthHeader != "X-Forwarded-User" {
+		t.Fatalf("unexpected auth header: %q", cfg.Server.AuthHeader)
+	}
+	if cfg.Security.EncryptionKeyFile != "/run/secrets/caldo_key" {
+		t.Fatalf("unexpected key file: %q", cfg.Security.EncryptionKeyFile)
+	}
+	if cfg.Sync.DefaultPrincipal != "alice@example.com" {
+		t.Fatalf("unexpected default principal: %q", cfg.Sync.DefaultPrincipal)
+	}
+}
+
+func TestLoadConfig_AllowsClearingStringOverrideWithEmptyValue(t *testing.T) {
+	tmp := t.TempDir()
+	cfgPath := filepath.Join(tmp, "config.yaml")
+	content := `sync:
+  default_principal: "alice@example.com"
+`
+	if err := os.WriteFile(cfgPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	t.Setenv("CALDO_CONFIG", cfgPath)
+	t.Setenv("CALDO_SYNC_DEFAULT_PRINCIPAL", "")
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	if cfg.Sync.DefaultPrincipal != "" {
+		t.Fatalf("expected empty default principal override, got %q", cfg.Sync.DefaultPrincipal)
+	}
+
+	persisted, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatalf("read persisted config: %v", err)
+	}
+	if !strings.Contains(string(persisted), "default_principal: \"\"") {
+		t.Fatalf("expected cleared principal in persisted config, got:\n%s", string(persisted))
+	}
+}
+
+func TestLoadConfig_InvalidEnvironmentOverrideFails(t *testing.T) {
+	tmp := t.TempDir()
+	cfgPath := filepath.Join(tmp, "config.yaml")
+	if err := os.WriteFile(cfgPath, []byte("server:\n  port: 8080\n"), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	t.Setenv("CALDO_CONFIG", cfgPath)
+	t.Setenv("CALDO_SERVER_PORT", "not-a-number")
+
+	if _, err := LoadConfig(); err == nil {
+		t.Fatal("expected invalid env override error")
 	}
 }
 

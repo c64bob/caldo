@@ -1,19 +1,19 @@
 server:
-  port: 8080
-  auth_header: "X-Forwarded-User"
+  port: 8080 # ENV: CALDO_SERVER_PORT
+  auth_header: "X-Forwarded-User" # ENV: CALDO_SERVER_AUTH_HEADER
 
 caldav:
-  server_url: "https://nextcloud.example.com/remote.php/dav/calendars/<user>/tasks/"
-  default_list: "Tasks"
+  server_url: "https://nextcloud.example.com/remote.php/dav/calendars/<user>/tasks/" # ENV: CALDO_CALDAV_SERVER_URL
+  default_list: "Tasks" # ENV: CALDO_CALDAV_DEFAULT_LIST
 
 security:
   # 32-Byte-Key als Base64 in Datei, alternativ via Env CALDO_MASTER_KEY
-  encryption_key_file: "./secrets/caldo_key"
+  encryption_key_file: "./secrets/caldo_key" # ENV: CALDO_SECURITY_ENCRYPTION_KEY_FILE
 
 database:
-  path: "./data/caldo.db"
+  path: "./data/caldo.db" # ENV: CALDO_DATABASE_PATH
 
 sync:
-  enabled: false
-  interval_seconds: 300
-  default_principal: ""
+  enabled: false # ENV: CALDO_SYNC_ENABLED
+  interval_seconds: 300 # ENV: CALDO_SYNC_INTERVAL_SECONDS
+  default_principal: "" # ENV: CALDO_SYNC_DEFAULT_PRINCIPAL

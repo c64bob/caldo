@@ -11,6 +11,17 @@ services:
       CALDO_CONFIG: /app/configs/docker/config.docker.yaml
       # Nur für lokale Tests: 32 Byte Base64-Schlüssel
       CALDO_MASTER_KEY: "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+
+      # Alle config.yaml-Felder können per Environment gesetzt werden.
+      CALDO_SERVER_PORT: "8080"
+      CALDO_SERVER_AUTH_HEADER: "X-Forwarded-User"
+      CALDO_CALDAV_SERVER_URL: "https://nextcloud.example.com/remote.php/dav/calendars/<user>/tasks/"
+      CALDO_CALDAV_DEFAULT_LIST: "Tasks"
+      CALDO_SECURITY_ENCRYPTION_KEY_FILE: "/run/secrets/caldo_key"
+      CALDO_DATABASE_PATH: "/data/caldo.db"
+      CALDO_SYNC_ENABLED: "false"
+      CALDO_SYNC_INTERVAL_SECONDS: "300"
+      CALDO_SYNC_DEFAULT_PRINCIPAL: ""
     ports:
       - "8080:8080"
     volumes:

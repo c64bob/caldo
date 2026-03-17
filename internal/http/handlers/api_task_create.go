@@ -24,6 +24,8 @@ func (h *TasksHandler) APITaskCreate(w http.ResponseWriter, r *http.Request) {
 			Categories:      service.ParseCategories(r.FormValue("categories")),
 			CategoriesSet:   formFieldProvided(r, "categories"),
 			PercentComplete: service.ParsePercentComplete(r.FormValue("percent_complete")),
+			ParentUID:       strings.TrimSpace(r.FormValue("parent_uid")),
+			Goal:            strings.TrimSpace(r.FormValue("goal")),
 			Due:             parseDueOrNil(r.FormValue("due")),
 			DueKind:         parseDueKind(r.FormValue("due")),
 		})
@@ -59,6 +61,8 @@ func (h *TasksHandler) APITaskUpdate(w http.ResponseWriter, r *http.Request) {
 			Categories:      service.ParseCategories(r.FormValue("categories")),
 			CategoriesSet:   formFieldProvided(r, "categories"),
 			PercentComplete: service.ParsePercentComplete(r.FormValue("percent_complete")),
+			ParentUID:       strings.TrimSpace(r.FormValue("parent_uid")),
+			Goal:            strings.TrimSpace(r.FormValue("goal")),
 			Due:             parseDueOrNil(r.FormValue("due")),
 			DueKind:         parseDueKind(r.FormValue("due")),
 		})

@@ -22,12 +22,16 @@ func (h *TasksHandler) HTMXTasksList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	allRows := render.BuildTaskRows(data.Tasks, data.Lists)
+	rows := filterRows(allRows, activeView(r.URL.Query().Get("view")), r.URL.Query().Get("context"), r.URL.Query().Get("goal"))
 	vm := render.TaskPageViewModel{
 		PrincipalID:    principal,
 		Lists:          render.BuildTaskLists(data.Lists, data.ActiveListID),
+		Contexts:       render.BuildContexts(allRows),
+		Goals:          render.BuildGoals(allRows),
 		ActiveListID:   data.ActiveListID,
 		ActiveView:     activeView(r.URL.Query().Get("view")),
-		Rows:           render.BuildTaskRows(data.Tasks, data.Lists),
+		Rows:           rows,
 		HasCredentials: data.HasCredentials,
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

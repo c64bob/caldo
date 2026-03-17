@@ -76,6 +76,8 @@ type TaskMutationInput struct {
 	Categories      []string
 	CategoriesSet   bool
 	PercentComplete int
+	ParentUID       string
+	Goal            string
 }
 
 func (s *TaskService) LoadTaskPage(ctx context.Context, principalID string, selectedListID string) (TaskPageData, error) {
@@ -125,21 +127,35 @@ func (s *TaskService) LoadTaskPage(ctx context.Context, principalID string, sele
 		activeListID = lists[0].ID
 	}
 
-	activeCollection := discovery.Collections[0]
-	for _, c := range discovery.Collections {
-		if c.ID == activeListID {
-			activeCollection = c
-			break
+	tasks := make([]domain.Task, 0)
+	if activeListID == "all" {
+		for _, c := range discovery.Collections {
+			if !c.SupportsVTODO {
+				continue
+			}
+			listTasks, listErr := s.tasksRepo.ListTasks(ctx, account.ServerURL, account.Username, string(password), c)
+			if listErr != nil {
+				return TaskPageData{}, &TaskLoadContextError{AuthPrincipal: principalID, DAVUsername: account.Username, ListID: "all", Err: listErr}
+			}
+			tasks = append(tasks, listTasks...)
 		}
-	}
-
-	tasks, err := s.tasksRepo.ListTasks(ctx, account.ServerURL, account.Username, string(password), activeCollection)
-	if err != nil {
-		return TaskPageData{}, &TaskLoadContextError{
-			AuthPrincipal: principalID,
-			DAVUsername:   account.Username,
-			ListID:        firstNonEmpty(activeListID, selectedListID, s.defaultList),
-			Err:           err,
+	} else {
+		activeCollection := discovery.Collections[0]
+		for _, c := range discovery.Collections {
+			if c.ID == activeListID {
+				activeCollection = c
+				break
+			}
+		}
+		var err error
+		tasks, err = s.tasksRepo.ListTasks(ctx, account.ServerURL, account.Username, string(password), activeCollection)
+		if err != nil {
+			return TaskPageData{}, &TaskLoadContextError{
+				AuthPrincipal: principalID,
+				DAVUsername:   account.Username,
+				ListID:        firstNonEmpty(activeListID, selectedListID, s.defaultList),
+				Err:           err,
+			}
 		}
 	}
 
@@ -164,7 +180,7 @@ func (s *TaskService) CreateTask(ctx context.Context, principalID string, in Tas
 	if pct < 0 {
 		pct = 0
 	}
-	task := domain.Task{UID: in.UID, Summary: strings.TrimSpace(in.Summary), Status: strings.TrimSpace(in.Status), Priority: prio, PercentComplete: pct}
+	task := domain.Task{UID: in.UID, Summary: strings.TrimSpace(in.Summary), Status: strings.TrimSpace(in.Status), Priority: prio, PercentComplete: pct, ParentUID: strings.TrimSpace(in.ParentUID), Goal: strings.TrimSpace(in.Goal)}
 	task.Description = strings.TrimSpace(in.Description)
 	task.Due = in.Due
 	task.DueKind = strings.TrimSpace(in.DueKind)
@@ -203,6 +219,12 @@ func (s *TaskService) UpdateTask(ctx context.Context, principalID string, in Tas
 	}
 	if in.CategoriesSet {
 		current.Categories = in.Categories
+	}
+	if strings.TrimSpace(in.ParentUID) != "" {
+		current.ParentUID = strings.TrimSpace(in.ParentUID)
+	}
+	if strings.TrimSpace(in.Goal) != "" {
+		current.Goal = strings.TrimSpace(in.Goal)
 	}
 	current.ETag = strings.TrimSpace(in.ETag)
 	return s.tasksRepo.UpdateTask(ctx, account.ServerURL, account.Username, string(password), current)
@@ -325,6 +347,10 @@ func ParseSmartAdd(raw string) (TaskMutationInput, error) {
 			tags = append(tags, strings.TrimSpace(strings.TrimPrefix(token, "/context:")))
 		case strings.HasPrefix(token, "!"):
 			in.Priority = mapPriorityToken(strings.TrimPrefix(token, "!"))
+		case strings.HasPrefix(token, "/goal:"):
+			in.Goal = strings.TrimSpace(strings.TrimPrefix(token, "/goal:"))
+		case strings.HasPrefix(token, "/parent:"):
+			in.ParentUID = strings.TrimSpace(strings.TrimPrefix(token, "/parent:"))
 		case strings.HasPrefix(token, "#"):
 			tags = append(tags, strings.TrimSpace(strings.TrimPrefix(token, "#")))
 		default:

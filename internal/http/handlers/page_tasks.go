@@ -29,12 +29,16 @@ func (h *TasksHandler) Page(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, message, status)
 		return
 	}
+	allRows := render.BuildTaskRows(data.Tasks, data.Lists)
+	rows := filterRows(allRows, activeView(r.URL.Query().Get("view")), r.URL.Query().Get("context"), r.URL.Query().Get("goal"))
 	vm := render.TaskPageViewModel{
 		PrincipalID:    principal,
 		Lists:          render.BuildTaskLists(data.Lists, data.ActiveListID),
+		Contexts:       render.BuildContexts(allRows),
+		Goals:          render.BuildGoals(allRows),
 		ActiveListID:   data.ActiveListID,
 		ActiveView:     activeView(r.URL.Query().Get("view")),
-		Rows:           render.BuildTaskRows(data.Tasks, data.Lists),
+		Rows:           rows,
 		HasCredentials: data.HasCredentials,
 	}
 	if !data.HasCredentials {
@@ -54,4 +58,28 @@ func activeView(view string) string {
 		return "main"
 	}
 	return v
+}
+
+func filterRows(rows []render.TaskRow, view, contextValue, goalValue string) []render.TaskRow {
+	if view != "contexts" && view != "goals" {
+		return rows
+	}
+	ctx := strings.TrimSpace(contextValue)
+	goal := strings.TrimSpace(goalValue)
+	if view == "contexts" && ctx == "" {
+		return rows
+	}
+	if view == "goals" && goal == "" {
+		return rows
+	}
+	out := make([]render.TaskRow, 0, len(rows))
+	for _, row := range rows {
+		if view == "contexts" && strings.EqualFold(row.Context, ctx) {
+			out = append(out, row)
+		}
+		if view == "goals" && strings.EqualFold(row.Goal, goal) {
+			out = append(out, row)
+		}
+	}
+	return out
 }

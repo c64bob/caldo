@@ -213,6 +213,12 @@ func buildVTODOCalendar(task domain.Task) string {
 			lines = append(lines, "CATEGORIES:"+strings.Join(cats, ","))
 		}
 	}
+	if strings.TrimSpace(task.ParentUID) != "" {
+		lines = append(lines, "RELATED-TO:"+escapeICalText(task.ParentUID))
+	}
+	if strings.TrimSpace(task.Goal) != "" {
+		lines = append(lines, "X-CALDO-GOAL:"+escapeICalText(task.Goal))
+	}
 	if task.Due != nil {
 		if task.DueKind == "date" {
 			lines = append(lines, "DUE;VALUE=DATE:"+task.Due.Format("20060102"))
@@ -355,6 +361,10 @@ func parseVTODO(calendarData string) domain.Task {
 				task.Due = &due
 				task.DueKind = dueKind
 			}
+		case "RELATED-TO":
+			task.ParentUID = strings.TrimSpace(value)
+		case "X-CALDO-GOAL":
+			task.Goal = strings.TrimSpace(value)
 		case "CREATED":
 			if created, _, ok := parseICalTime(strings.TrimSpace(value), params["TZID"]); ok {
 				task.CreatedAt = &created

@@ -4,6 +4,8 @@ import "time"
 
 type Task struct {
 	UID             string
+	ParentUID       string
+	Goal            string
 	CollectionID    string
 	CollectionHref  string
 	Href            string

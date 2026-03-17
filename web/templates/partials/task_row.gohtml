@@ -1,6 +1,6 @@
 {{define "task_row"}}
 <tbody x-data="{ expanded: false, editingSummary: false }">
-  <tr id="task-{{.UID}}" class="task-row {{.PriorityClass}}" data-task-row tabindex="0">
+  <tr id="task-{{.UID}}" class="task-row {{.PriorityClass}} {{if .IsSubtask}}is-subtask{{end}}" data-task-row tabindex="0">
     <td class="col-expand">
       <button type="button" class="icon-button js-expand-toggle" @click="expanded = !expanded" :aria-expanded="expanded.toString()">▸</button>
     </td>
@@ -47,7 +47,7 @@
         <input type="hidden" name="percent_complete" value="{{.PercentComplete}}">
         <input class="js-summary-input" type="text" name="summary" value="{{if .Summary}}{{.Summary}}{{end}}" @keydown.enter.prevent="$el.form.requestSubmit()" @keydown.escape.prevent="editingSummary=false" autofocus>
       </form>
-      <span x-show="!editingSummary">{{if .Summary}}{{.Summary}}{{else}}(ohne Titel){{end}}</span>
+      <span x-show="!editingSummary">{{if .Summary}}{{.Summary}}{{else}}(ohne Titel){{end}}{{if gt .SubtaskTotal 0}} <small>({{.SubtaskDone}}/{{.SubtaskTotal}})</small>{{end}}</span>
     </td>
     <td class="col-folder">{{if .Folder}}{{.Folder}}{{else}}—{{end}}</td>
     <td class="col-context">{{.Context}}</td>
@@ -115,6 +115,8 @@
         </label>
         <label>Tags <input type="text" name="categories" value="{{if .IsStarred}}starred{{if .Categories}}, {{.Categories}}{{end}}{{else}}{{.Categories}}{{end}}" placeholder="#tag1, @context"></label>
         <label>Progress <input type="number" min="0" max="100" name="percent_complete" value="{{.PercentComplete}}"></label>
+        <label>Parent UID <input type="text" name="parent_uid" value="{{.ParentUID}}" placeholder="UID der Parent-Task"></label>
+        <label>Goal <input type="text" name="goal" value="{{.Goal}}" placeholder="z. B. Long-term: Gesundheit"></label>
         <label>Notizen <textarea name="description" rows="3">{{.Description}}</textarea></label>
         <div class="meta">UID: {{.UID}}</div>
         <button type="submit">Details speichern</button>

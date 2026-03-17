@@ -2,6 +2,7 @@ package render
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -11,6 +12,8 @@ import (
 type TaskPageViewModel struct {
 	PrincipalID    string
 	Lists          []TaskListItem
+	Contexts       []string
+	Goals          []string
 	ActiveListID   string
 	ActiveView     string
 	Rows           []TaskRow
@@ -27,6 +30,8 @@ type TaskListItem struct {
 
 type TaskRow struct {
 	UID             string
+	ParentUID       string
+	Goal            string
 	ListID          string
 	Href            string
 	ETag            string
@@ -43,6 +48,9 @@ type TaskRow struct {
 	Context         string
 	IsCompleted     bool
 	IsStarred       bool
+	IsSubtask       bool
+	SubtaskTotal    int
+	SubtaskDone     int
 	PriorityClass   string
 }
 
@@ -56,11 +64,14 @@ func BuildTaskRows(tasks []domain.Task, lists []domain.List) []TaskRow {
 		foldersByID[l.ID] = name
 	}
 
-	rows := make([]TaskRow, 0, len(tasks))
+	flatRows := make([]TaskRow, 0, len(tasks))
+	byParent := make(map[string][]TaskRow)
 	for _, t := range tasks {
 		starred, categories := splitStarCategory(t.Categories)
-		rows = append(rows, TaskRow{
+		row := TaskRow{
 			UID:             t.UID,
+			ParentUID:       strings.TrimSpace(t.ParentUID),
+			Goal:            strings.TrimSpace(t.Goal),
 			ListID:          t.CollectionID,
 			Href:            t.Href,
 			ETag:            t.ETag,
@@ -77,10 +88,76 @@ func BuildTaskRows(tasks []domain.Task, lists []domain.List) []TaskRow {
 			Context:         deriveContext(categories),
 			IsCompleted:     strings.EqualFold(t.Status, "completed"),
 			IsStarred:       starred,
+			IsSubtask:       strings.TrimSpace(t.ParentUID) != "",
 			PriorityClass:   priorityClass(t.Priority),
-		})
+		}
+		flatRows = append(flatRows, row)
+		if row.IsSubtask {
+			byParent[row.ParentUID] = append(byParent[row.ParentUID], row)
+		}
 	}
-	return rows
+
+	for i := range flatRows {
+		flatRows[i].SubtaskTotal = len(byParent[flatRows[i].UID])
+		done := 0
+		for _, sub := range byParent[flatRows[i].UID] {
+			if sub.IsCompleted {
+				done++
+			}
+		}
+		flatRows[i].SubtaskDone = done
+	}
+
+	sort.Slice(flatRows, func(i, j int) bool {
+		if flatRows[i].Summary == flatRows[j].Summary {
+			return flatRows[i].UID < flatRows[j].UID
+		}
+		return flatRows[i].Summary < flatRows[j].Summary
+	})
+
+	ordered := make([]TaskRow, 0, len(flatRows))
+	for _, row := range flatRows {
+		if row.IsSubtask {
+			continue
+		}
+		ordered = append(ordered, row)
+		children := byParent[row.UID]
+		sort.Slice(children, func(i, j int) bool { return children[i].Summary < children[j].Summary })
+		ordered = append(ordered, children...)
+	}
+	for _, row := range flatRows {
+		if row.IsSubtask {
+			if _, hasParent := byParent[row.ParentUID]; !hasParent {
+				ordered = append(ordered, row)
+			}
+		}
+	}
+	return ordered
+}
+
+func BuildContexts(rows []TaskRow) []string {
+	return uniqueFromRows(rows, func(r TaskRow) string { return r.Context })
+}
+func BuildGoals(rows []TaskRow) []string {
+	return uniqueFromRows(rows, func(r TaskRow) string { return r.Goal })
+}
+
+func uniqueFromRows(rows []TaskRow, getter func(TaskRow) string) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0)
+	for _, row := range rows {
+		v := strings.TrimSpace(getter(row))
+		if v == "" || v == "—" {
+			continue
+		}
+		if _, ok := seen[strings.ToLower(v)]; ok {
+			continue
+		}
+		seen[strings.ToLower(v)] = struct{}{}
+		out = append(out, v)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func splitStarCategory(categories []string) (bool, []string) {
@@ -143,7 +220,8 @@ func formatDue(due *time.Time, kind string) string {
 }
 
 func BuildTaskLists(lists []domain.List, activeListID string) []TaskListItem {
-	out := make([]TaskListItem, 0, len(lists))
+	out := make([]TaskListItem, 0, len(lists)+1)
+	out = append(out, TaskListItem{ID: "all", DisplayName: "Alle Tasks", IsActive: activeListID == "all"})
 	for _, l := range lists {
 		display := strings.TrimSpace(l.DisplayName)
 		if display == "" {
@@ -151,7 +229,7 @@ func BuildTaskLists(lists []domain.List, activeListID string) []TaskListItem {
 		}
 		out = append(out, TaskListItem{ID: l.ID, DisplayName: display, Href: l.Href, IsActive: l.ID == activeListID})
 	}
-	if len(out) == 0 {
+	if len(out) == 1 {
 		out = append(out, TaskListItem{ID: "tasks", DisplayName: "Tasks", IsActive: true})
 	}
 	return out

@@ -148,3 +148,24 @@ func TestTasksRepo_DeleteTaskRejectsHrefWithQuery(t *testing.T) {
 		t.Fatalf("expected ErrInvalidTaskHref, got %v", err)
 	}
 }
+
+func TestParseVTODO_ParsesParentAndGoal(t *testing.T) {
+	raw := "BEGIN:VCALENDAR\nBEGIN:VTODO\nUID:task-3\nRELATED-TO:parent-1\nX-CALDO-GOAL:Long-term\nEND:VTODO\nEND:VCALENDAR"
+	task := parseVTODO(raw)
+	if task.ParentUID != "parent-1" {
+		t.Fatalf("expected parent uid, got %q", task.ParentUID)
+	}
+	if task.Goal != "Long-term" {
+		t.Fatalf("expected goal, got %q", task.Goal)
+	}
+}
+
+func TestBuildVTODOCalendar_IncludesParentAndGoal(t *testing.T) {
+	cal := buildVTODOCalendar(domain.Task{UID: "u-1", Summary: "x", ParentUID: "parent-1", Goal: "Lifetime"})
+	if !strings.Contains(cal, "RELATED-TO:parent-1") {
+		t.Fatalf("expected RELATED-TO in calendar: %s", cal)
+	}
+	if !strings.Contains(cal, "X-CALDO-GOAL:Lifetime") {
+		t.Fatalf("expected X-CALDO-GOAL in calendar: %s", cal)
+	}
+}

@@ -96,13 +96,83 @@ func (h *TasksHandler) mutateTask(w http.ResponseWriter, r *http.Request, fn fun
 		return
 	}
 	listID := strings.TrimSpace(r.FormValue("list_id"))
+	view := activeView(r.FormValue("view"))
+	contextValue := strings.TrimSpace(r.FormValue("context"))
+	goalValue := strings.TrimSpace(r.FormValue("goal"))
+	query := strings.TrimSpace(r.FormValue("q"))
+	refSource := strings.TrimSpace(r.Header.Get("HX-Current-URL"))
+	if refSource == "" {
+		refSource = strings.TrimSpace(r.Referer())
+	}
+	if ref := refSource; ref != "" {
+		if u, err := url.Parse(ref); err == nil {
+			if listID == "" {
+				listID = strings.TrimSpace(u.Query().Get("list"))
+			}
+			if view == "main" && strings.TrimSpace(r.FormValue("view")) == "" {
+				view = activeView(u.Query().Get("view"))
+			}
+			if contextValue == "" {
+				contextValue = strings.TrimSpace(u.Query().Get("context"))
+			}
+			if goalValue == "" {
+				goalValue = strings.TrimSpace(u.Query().Get("goal"))
+			}
+			if query == "" {
+				query = strings.TrimSpace(u.Query().Get("q"))
+			}
+		}
+	}
 	redirectTarget := "/tasks"
 	if listID != "" {
 		redirectTarget += "?list=" + url.QueryEscape(listID)
 	}
+	queryParts := make([]string, 0, 4)
+	if view != "" {
+		queryParts = append(queryParts, "view="+url.QueryEscape(view))
+	}
+	if contextValue != "" {
+		queryParts = append(queryParts, "context="+url.QueryEscape(contextValue))
+	}
+	if goalValue != "" {
+		queryParts = append(queryParts, "goal="+url.QueryEscape(goalValue))
+	}
+	if query != "" {
+		queryParts = append(queryParts, "q="+url.QueryEscape(query))
+	}
+	if len(queryParts) > 0 {
+		sep := "?"
+		if strings.Contains(redirectTarget, "?") {
+			sep = "&"
+		}
+		redirectTarget += sep + strings.Join(queryParts, "&")
+	}
 	if r.Header.Get("HX-Request") == "true" {
-		w.Header().Set("HX-Redirect", redirectTarget)
-		w.WriteHeader(http.StatusOK)
+		if h.Templates == nil || h.Service == nil {
+			w.Header().Set("HX-Redirect", redirectTarget)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		reqURL := *r.URL
+		parts := strings.SplitN(redirectTarget, "?", 2)
+		if len(parts) == 2 {
+			reqURL.RawQuery = parts[1]
+		} else {
+			reqURL.RawQuery = ""
+		}
+		proxyReq := r.Clone(r.Context())
+		proxyReq.URL = &reqURL
+		vm, err := h.buildTaskVM(proxyReq, principal)
+		if err != nil {
+			message, status := taskLoadError(err)
+			http.Error(w, message, status)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := h.Templates.RenderTasksList(w, vm); err != nil {
+			http.Error(w, "Template-Rendering fehlgeschlagen", http.StatusInternalServerError)
+			return
+		}
 		return
 	}
 	http.Redirect(w, r, redirectTarget, http.StatusSeeOther)

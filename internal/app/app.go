@@ -36,15 +36,17 @@ func New() (*App, error) {
 		return nil, err
 	}
 	repo := storesqlite.NewDAVAccountsRepo(db)
+	prefsRepo := storesqlite.NewPreferencesRepo(db)
 	syncRepo := storesqlite.NewSyncStateRepo(db)
 	settingsSvc := service.NewSettingsService(repo, key, cfg.CalDAV.ServerURL)
+	prefsSvc := service.NewPreferencesService(prefsRepo)
 	taskSvc := service.NewTaskService(repo, key, cfg.CalDAV.DefaultList)
 	syncSvc := service.NewSyncService(repo, syncRepo, key, cfg.CalDAV.DefaultList)
 	templates, err := render.LoadTemplates()
 	if err != nil {
 		return nil, err
 	}
-	router := NewRouter(cfg, settingsSvc, taskSvc, syncSvc, templates)
+	router := NewRouter(cfg, settingsSvc, prefsSvc, taskSvc, syncSvc, templates)
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Server.Port),

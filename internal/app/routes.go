@@ -11,13 +11,15 @@ import (
 	"caldo/internal/service"
 )
 
-func NewRouter(cfg Config, settingsSvc *service.SettingsService, taskSvc *service.TaskService, syncSvc *service.SyncService, templates *render.Templates) http.Handler {
+func NewRouter(cfg Config, settingsSvc *service.SettingsService, prefsSvc *service.PreferencesService, taskSvc *service.TaskService, syncSvc *service.SyncService, templates *render.Templates) http.Handler {
 	mux := http.NewServeMux()
 	settingsHandler := &handlers.SettingsHandler{
-		Service:          settingsSvc,
-		DefaultServerURL: cfg.CalDAV.ServerURL,
+		Service:            settingsSvc,
+		PreferencesService: prefsSvc,
+		TaskService:        taskSvc,
+		DefaultServerURL:   cfg.CalDAV.ServerURL,
 	}
-	tasksHandler := &handlers.TasksHandler{Service: taskSvc, SyncService: syncSvc, Templates: templates}
+	tasksHandler := &handlers.TasksHandler{Service: taskSvc, PreferencesService: prefsSvc, SyncService: syncSvc, Templates: templates}
 
 	mux.HandleFunc("GET /health", handlers.Health)
 	staticHandler := http.FileServer(http.Dir(resolveStaticRoot()))
@@ -28,6 +30,8 @@ func NewRouter(cfg Config, settingsSvc *service.SettingsService, taskSvc *servic
 	})
 	mux.Handle("GET /settings", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(settingsHandler.Page)))
 	mux.Handle("POST /settings/dav-account", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(settingsHandler.SaveDAVAccount)))
+	mux.Handle("POST /settings/preferences", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(settingsHandler.SavePreferences)))
+	mux.Handle("POST /settings/collections", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(settingsHandler.CreateCollection)))
 	mux.Handle("GET /tasks", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.Page)))
 	mux.Handle("GET /htmx/tasks/list", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.HTMXTasksList)))
 	mux.Handle("GET /htmx/sidebar/lists", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.HTMXSidebarLists)))

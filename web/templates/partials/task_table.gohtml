@@ -9,17 +9,28 @@
   </form>
 </section>
 
-<table class="tasks-table">
+<datalist id="tag-suggestions">
+  {{range .Contexts}}
+  <option value="{{.}}"></option>
+  {{end}}
+  {{range .Rows}}
+    {{range .CategoryItems}}
+    <option value="{{.}}"></option>
+    {{end}}
+  {{end}}
+</datalist>
+
+<table class="tasks-table {{if not (.ShowColumn "star")}}hide-col-star{{end}} {{if not (.ShowColumn "check")}}hide-col-check{{end}} {{if not (.ShowColumn "name")}}hide-col-name{{end}} {{if not (.ShowColumn "folder")}}hide-col-folder{{end}} {{if not (.ShowColumn "context")}}hide-col-context{{end}} {{if not (.ShowColumn "due")}}hide-col-due{{end}} {{if not (.ShowColumn "priority")}}hide-col-priority{{end}}">
   <thead>
     <tr>
       <th class="col-expand"></th>
-      <th class="col-star">☆</th>
-      <th class="col-check">✓</th>
-      <th>Task-Name</th>
-      <th class="col-folder">Folder</th>
-      <th class="col-context">Context</th>
-      <th class="col-due">Due Date</th>
-      <th class="col-priority">Priority</th>
+      <th class="col-star {{if not (.ShowColumn "star")}}is-hidden{{end}}">☆</th>
+      <th class="col-check {{if not (.ShowColumn "check")}}is-hidden{{end}}">✓</th>
+      <th class="{{if not (.ShowColumn "name")}}is-hidden{{end}}">Task-Name</th>
+      <th class="col-folder {{if not (.ShowColumn "folder")}}is-hidden{{end}}">Folder</th>
+      <th class="col-context {{if not (.ShowColumn "context")}}is-hidden{{end}}">Context</th>
+      <th class="col-due {{if not (.ShowColumn "due")}}is-hidden{{end}}">Due Date</th>
+      <th class="col-priority {{if not (.ShowColumn "priority")}}is-hidden{{end}}">Priority</th>
     </tr>
   </thead>
   <tbody>

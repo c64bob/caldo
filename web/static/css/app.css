@@ -119,3 +119,31 @@ body.sidebar-collapsed .sidebar { display: none; }
 .tasks-table .task-row.is-subtask .task-name { padding-left: 1.5rem; }
 .tasks-table .task-row.is-subtask .col-expand .icon-button { visibility: hidden; }
 
+
+.current-user { font-size: 12px; color: var(--muted); }
+.is-hidden { display: none; }
+
+.tasks-table.hide-col-star th:nth-child(2),
+.tasks-table.hide-col-star td:nth-child(2),
+.tasks-table.hide-col-check th:nth-child(3),
+.tasks-table.hide-col-check td:nth-child(3),
+.tasks-table.hide-col-name th:nth-child(4),
+.tasks-table.hide-col-name td:nth-child(4),
+.tasks-table.hide-col-folder th:nth-child(5),
+.tasks-table.hide-col-folder td:nth-child(5),
+.tasks-table.hide-col-context th:nth-child(6),
+.tasks-table.hide-col-context td:nth-child(6),
+.tasks-table.hide-col-due th:nth-child(7),
+.tasks-table.hide-col-due td:nth-child(7),
+.tasks-table.hide-col-priority th:nth-child(8),
+.tasks-table.hide-col-priority td:nth-child(8) { display: none; }
+
+.tag-chip-editor { display: grid; gap: 6px; }
+.tag-chip-editor .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag-chip { border: 1px solid var(--line); border-radius: 999px; background: #eef2ff; padding: 2px 8px; cursor: pointer; }
+
+.settings-container { max-width: 820px; margin: 20px auto; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 16px; }
+.settings-container form { display: grid; gap: 10px; }
+.settings-container label { display: grid; gap: 4px; }
+.settings-container .ok { color: #166534; }
+.settings-container .err { color: #b91c1c; }

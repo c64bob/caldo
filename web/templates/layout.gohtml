@@ -19,7 +19,8 @@
       <button id="sidebar-toggle" class="sidebar-toggle" type="button" aria-label="Sidebar ein-/ausblenden" @click="if (window.matchMedia('(max-width: 960px)').matches) { sidebarOpen = !sidebarOpen } else { sidebarCollapsed = !sidebarCollapsed }">☰</button>
       <strong class="app-logo">Caldo</strong>
     </div>
-    <input id="global-search-input" class="global-search" type="search" placeholder="Suche Aufgaben ..." aria-label="Globale Suche">
+    <input id="global-search-input" class="global-search" type="search" value="{{.Query}}" placeholder="Suche Aufgaben ..." aria-label="Globale Suche" autocomplete="off">
+    <span class="current-user">{{.PrincipalID}}</span>
     <a href="/settings" class="account-icon" aria-label="Zu den Einstellungen">⚙️</a>
   </header>
 

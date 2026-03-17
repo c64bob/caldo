@@ -1,5 +1,5 @@
 {{define "task_row"}}
-<tbody x-data="{ expanded: false, editingSummary: false }">
+<tbody x-data="{ expanded: false, editingSummary: false, startEdit() { this.editingSummary = true; this.$nextTick(() => { const input = this.$el.querySelector('.js-summary-input'); if (input) { input.focus(); input.select(); } }); } }">
   <tr id="task-{{.UID}}" class="task-row {{.PriorityClass}} {{if .IsSubtask}}is-subtask{{end}}" data-task-row tabindex="0">
     <td class="col-expand">
       <button type="button" class="icon-button js-expand-toggle" @click="expanded = !expanded" :aria-expanded="expanded.toString()">▸</button>
@@ -34,7 +34,7 @@
         <input class="js-complete-toggle" type="checkbox" onchange="this.form.requestSubmit()" {{if .IsCompleted}}checked{{end}} aria-label="Task abgeschlossen">
       </form>
     </td>
-    <td class="task-name" @click="editingSummary = true" @keydown.escape.window="editingSummary = false">
+    <td class="task-name" @click="startEdit()" @keydown.escape.window="editingSummary = false">
       <form method="post" action="/api/tasks/update" hx-post="/api/tasks/update" hx-target="#tasks-content" hx-swap="innerHTML" x-show="editingSummary" @submit="editingSummary = false">
         <input type="hidden" name="list_id" value="{{.ListID}}">
         <input type="hidden" name="uid" value="{{.UID}}">
@@ -62,7 +62,7 @@
         <input type="hidden" name="priority" value="{{.Priority}}">
         <input type="hidden" name="categories" value="{{if .IsStarred}}starred{{if .Categories}}, {{.Categories}}{{end}}{{else}}{{.Categories}}{{end}}">
         <input type="hidden" name="percent_complete" value="{{.PercentComplete}}">
-        <input class="js-due-input" type="text" name="due" value="{{.DueInput}}" data-air-datepicker data-natural-language @change="$el.form.requestSubmit()" placeholder="today / 2026-01-30">
+        <input class="js-due-input" type="text" name="due" value="{{.DueInput}}" data-air-datepicker data-natural-language data-submit-on-datepicker="1" @blur="$el.form.requestSubmit()" placeholder="today / 2026-01-30">
       </form>
     </td>
     <td class="col-priority">
@@ -113,7 +113,12 @@
             <option value="COMPLETED" {{if eq .Status "COMPLETED"}}selected{{end}}>Completed</option>
           </select>
         </label>
-        <label>Tags <input type="text" name="categories" value="{{if .IsStarred}}starred{{if .Categories}}, {{.Categories}}{{end}}{{else}}{{.Categories}}{{end}}" placeholder="#tag1, @context"></label>
+        <label>Tags</label>
+        <div class="tag-chip-editor" data-tag-editor>
+          <div class="chips" data-tag-chips></div>
+          <input type="hidden" name="categories" value="{{if .IsStarred}}starred{{if .Categories}}, {{.Categories}}{{end}}{{else}}{{.Categories}}{{end}}" data-tag-hidden>
+          <input type="text" data-tag-input list="tag-suggestions" placeholder="#tag1, @context">
+        </div>
         <label>Progress <input type="number" min="0" max="100" name="percent_complete" value="{{.PercentComplete}}"></label>
         <label>Parent UID <input type="text" name="parent_uid" value="{{.ParentUID}}" placeholder="UID der Parent-Task"></label>
         <label>Goal <input type="text" name="goal" value="{{.Goal}}" placeholder="z. B. Long-term: Gesundheit"></label>

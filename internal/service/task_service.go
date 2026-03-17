@@ -245,6 +245,28 @@ func (s *TaskService) DeleteTask(ctx context.Context, principalID string, in Tas
 	return s.tasksRepo.DeleteTask(ctx, account.ServerURL, account.Username, string(password), strings.TrimSpace(current.Href), strings.TrimSpace(in.ETag))
 }
 
+func (s *TaskService) CreateCollection(ctx context.Context, principalID, collectionID, displayName string) error {
+	if strings.TrimSpace(principalID) == "" {
+		return fmt.Errorf("missing principal")
+	}
+	account, ok, err := s.accountsRepo.GetByPrincipal(ctx, principalID)
+	if err != nil {
+		return fmt.Errorf("load dav account: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf("kein DAV-Account hinterlegt")
+	}
+	password, err := security.DecryptAESGCM(s.key, account.PasswordEncrypted)
+	if err != nil {
+		return fmt.Errorf("decrypt dav password: %w", err)
+	}
+	discovery, err := s.caldavClient.DiscoverTaskCollections(ctx, account.ServerURL, account.Username, string(password), s.defaultList)
+	if err != nil {
+		return err
+	}
+	return s.caldavClient.CreateCollection(ctx, account.ServerURL, account.Username, string(password), discovery.CalendarHomeSet, collectionID, displayName)
+}
+
 func (s *TaskService) loadTaskForUpdate(ctx context.Context, account sqlite.DAVAccount, password []byte, collection caldav.Collection, in TaskMutationInput) (domain.Task, error) {
 	tasks, err := s.tasksRepo.ListTasks(ctx, account.ServerURL, account.Username, string(password), collection)
 	if err != nil {

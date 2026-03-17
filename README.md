@@ -149,10 +149,13 @@ Die UI-Roadmap orientiert sich am Umsetzungsplan in `docs/ui-plan-v1.md` und ist
 - [x] **Phase 1:** Sidebar-Sektionen in Toodledo-Reihenfolge (Hotlist/Main/Folders/Contexts/Goals/Priority/Due Date/Tags) sind navigierbar und der aktive View wird hervorgehoben.
 - [x] **Phase 1:** Sidebar-Collapse per Button sowie responsive Ausblendung auf schmalen Screens sind umgesetzt.
 - [x] **Phase 1:** Task-Tabelle nutzt das definierte Default-Spalten-Set inkl. Zebra-Striping, Hover-Highlight und Priority-Farbindikator.
-- [ ] **Phase 2:** Vollständiges Inline-Editing der Task-Felder (Summary, Priority, Due, Status, Tags, Percent, Star/Done) inkl. Expand-Panel.
-- [ ] **Phase 2:** Smart-Add/Quick-Add mit Toodledo-Syntax und Natural-Language-Datum.
+- [x] **Phase 2:** Vollständiges Inline-Editing der Task-Felder (Summary, Priority, Due, Status, Tags, Percent, Star/Done) inkl. Expand-Panel.
+- [x] **Phase 2:** Smart-Add/Quick-Add mit Toodledo-Syntax und Natural-Language-Datum.
 - [ ] **Phase 3:** Keyboard-Shortcuts inkl. `?`-Overlay.
+- [ ] **Phase 4:** Subtasks, Folders, Contexts, Goals.
 - [ ] **Phase 5:** Filter-Panel, Saved Filters und Hotlist-Ansicht.
+- [ ] **Phase 6:** Sortierung, Batch-Edit, Import/Export.
+- [ ] **Phase 7:** Visuelle Politur & UX-Details.
 
 #### Backend
 - [x] CalDAV CRUD für Tasks (Create/Update/Delete mit ETag-/If-Match-Konfliktbehandlung).

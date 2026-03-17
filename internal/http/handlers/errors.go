@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"regexp"
 	"strings"
+
+	"caldo/internal/service"
 )
 
 var (
@@ -33,14 +36,26 @@ func logTaskLoadError(scope, principalID, listID string, err error) {
 	if err == nil {
 		return
 	}
+
 	principal := strings.TrimSpace(principalID)
 	if principal == "" {
 		principal = "unknown"
 	}
 	list := strings.TrimSpace(listID)
 	if list == "" {
-		list = "default"
+		list = "auto"
 	}
+
+	var loadErr *service.TaskLoadContextError
+	if errors.As(err, &loadErr) {
+		if davUser := strings.TrimSpace(loadErr.DAVUsername); davUser != "" {
+			principal = davUser
+		}
+		if resolvedList := strings.TrimSpace(loadErr.ListID); resolvedList != "" {
+			list = resolvedList
+		}
+	}
+
 	sanitizedErr := sanitizeLogError(err.Error())
 	log.Printf("task load failed scope=%s principal=%s list=%s err=%s", scope, principal, list, sanitizedErr)
 }

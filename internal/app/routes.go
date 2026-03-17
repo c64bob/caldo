@@ -20,7 +20,9 @@ func NewRouter(cfg Config, settingsSvc *service.SettingsService, taskSvc *servic
 	tasksHandler := &handlers.TasksHandler{Service: taskSvc, SyncService: syncSvc, Templates: templates}
 
 	mux.HandleFunc("GET /health", handlers.Health)
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir(resolveStaticRoot()))))
+	staticHandler := http.FileServer(http.Dir(resolveStaticRoot()))
+	mux.Handle("GET /static/", http.StripPrefix("/static/", staticHandler))
+	mux.Handle("GET /tasks/static/", http.StripPrefix("/tasks/static/", staticHandler))
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/tasks", http.StatusFound)
 	})

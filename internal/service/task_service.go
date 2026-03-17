@@ -41,6 +41,27 @@ type TaskPageData struct {
 	HasCredentials bool
 }
 
+type TaskLoadContextError struct {
+	AuthPrincipal string
+	DAVUsername   string
+	ListID        string
+	Err           error
+}
+
+func (e *TaskLoadContextError) Error() string {
+	if e == nil || e.Err == nil {
+		return "task load context error"
+	}
+	return e.Err.Error()
+}
+
+func (e *TaskLoadContextError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Err
+}
+
 type TaskMutationInput struct {
 	ListID          string
 	UID             string
@@ -76,7 +97,12 @@ func (s *TaskService) LoadTaskPage(ctx context.Context, principalID string, sele
 
 	discovery, err := s.caldavClient.DiscoverTaskCollections(ctx, account.ServerURL, account.Username, string(password), s.defaultList)
 	if err != nil {
-		return TaskPageData{}, err
+		return TaskPageData{}, &TaskLoadContextError{
+			AuthPrincipal: principalID,
+			DAVUsername:   account.Username,
+			ListID:        firstNonEmpty(selectedListID, s.defaultList),
+			Err:           err,
+		}
 	}
 
 	lists := make([]domain.List, 0, len(discovery.Collections))
@@ -109,7 +135,12 @@ func (s *TaskService) LoadTaskPage(ctx context.Context, principalID string, sele
 
 	tasks, err := s.tasksRepo.ListTasks(ctx, account.ServerURL, account.Username, string(password), activeCollection)
 	if err != nil {
-		return TaskPageData{}, err
+		return TaskPageData{}, &TaskLoadContextError{
+			AuthPrincipal: principalID,
+			DAVUsername:   account.Username,
+			ListID:        firstNonEmpty(activeListID, selectedListID, s.defaultList),
+			Err:           err,
+		}
 	}
 
 	return TaskPageData{
@@ -208,6 +239,16 @@ func (s *TaskService) loadTaskForUpdate(ctx context.Context, account sqlite.DAVA
 		}
 	}
 	return domain.Task{}, errors.New("Task zum Aktualisieren nicht gefunden")
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }
 
 func ParsePriority(raw string) int {

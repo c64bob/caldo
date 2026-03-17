@@ -97,8 +97,6 @@ database:
   path: "/data/caldo.db"
 ```
 
-Für Container/ungewöhnliche Arbeitsverzeichnisse kann das Template-Verzeichnis optional per Environment `CALDO_TEMPLATE_DIR` gesetzt werden.
-
 
 ### Environment Overrides (inkl. Persistenz nach config.yaml)
 

@@ -16,6 +16,7 @@ func (h *TasksHandler) HTMXTasksList(w http.ResponseWriter, r *http.Request) {
 
 	data, err := h.Service.LoadTaskPage(r.Context(), principal, r.URL.Query().Get("list"))
 	if err != nil {
+		logTaskLoadError("tasks.htmx_list", principal, r.URL.Query().Get("list"), err)
 		message, status := taskLoadError(err)
 		http.Error(w, message, status)
 		return

@@ -18,6 +18,7 @@ func (h *TasksHandler) APISyncNow(w http.ResponseWriter, r *http.Request) {
 	}
 	result, err := h.SyncService.SyncNow(r.Context(), principal)
 	if err != nil {
+		logTaskLoadError("sync.now", principal, r.URL.Query().Get("list"), err)
 		message, status := taskLoadError(err)
 		http.Error(w, "Synchronisierung fehlgeschlagen: "+message, status)
 		return

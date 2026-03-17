@@ -81,3 +81,35 @@ func TestResolveStaticRoot_PrefersWorkingDirectory(t *testing.T) {
 		t.Fatalf("expected %q, got %q", expected, resolved)
 	}
 }
+
+func TestNewRouter_ServesTaskStaticAlias(t *testing.T) {
+	base := t.TempDir()
+	staticRoot := filepath.Join(base, "web", "static", "css")
+	if err := os.MkdirAll(staticRoot, 0o755); err != nil {
+		t.Fatalf("mkdir static dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(staticRoot, "app.css"), []byte("body{}"), 0o600); err != nil {
+		t.Fatalf("write app.css: %v", err)
+	}
+
+	originalWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(base); err != nil {
+		t.Fatalf("chdir to temp dir: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(originalWD)
+	})
+
+	r := NewRouter(Config{}, &service.SettingsService{}, &service.TaskService{}, &service.SyncService{}, nil)
+	req := httptest.NewRequest(http.MethodGet, "/tasks/static/css/app.css", nil)
+	rr := httptest.NewRecorder()
+
+	r.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+}

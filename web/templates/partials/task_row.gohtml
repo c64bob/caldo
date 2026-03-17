@@ -1,8 +1,8 @@
 {{define "task_row"}}
 <tbody x-data="{ expanded: false, editingSummary: false }">
-  <tr id="task-{{.UID}}" class="task-row {{.PriorityClass}}">
+  <tr id="task-{{.UID}}" class="task-row {{.PriorityClass}}" data-task-row tabindex="0">
     <td class="col-expand">
-      <button type="button" class="icon-button" @click="expanded = !expanded" :aria-expanded="expanded.toString()">▸</button>
+      <button type="button" class="icon-button js-expand-toggle" @click="expanded = !expanded" :aria-expanded="expanded.toString()">▸</button>
     </td>
     <td class="col-star">
       <form method="post" action="/api/tasks/update" hx-post="/api/tasks/update" hx-target="#tasks-content" hx-swap="innerHTML">
@@ -16,7 +16,7 @@
         <input type="hidden" name="due" value="{{.DueInput}}">
         <input type="hidden" name="categories" value="{{if .IsStarred}}{{.Categories}}{{else}}starred{{if .Categories}}, {{.Categories}}{{end}}{{end}}">
         <input type="hidden" name="percent_complete" value="{{.PercentComplete}}">
-        <button type="submit" class="icon-button" aria-label="Task markieren">{{if .IsStarred}}★{{else}}☆{{end}}</button>
+        <button type="submit" class="icon-button js-star-toggle" aria-label="Task markieren">{{if .IsStarred}}★{{else}}☆{{end}}</button>
       </form>
     </td>
     <td class="col-check">
@@ -31,7 +31,7 @@
         <input type="hidden" name="categories" value="{{if .IsStarred}}starred{{if .Categories}}, {{.Categories}}{{end}}{{else}}{{.Categories}}{{end}}">
         <input type="hidden" name="status" value="{{if .IsCompleted}}NEEDS-ACTION{{else}}COMPLETED{{end}}">
         <input type="hidden" name="percent_complete" value="{{.PercentComplete}}">
-        <input type="checkbox" onchange="this.form.requestSubmit()" {{if .IsCompleted}}checked{{end}} aria-label="Task abgeschlossen">
+        <input class="js-complete-toggle" type="checkbox" onchange="this.form.requestSubmit()" {{if .IsCompleted}}checked{{end}} aria-label="Task abgeschlossen">
       </form>
     </td>
     <td class="task-name" @click="editingSummary = true" @keydown.escape.window="editingSummary = false">
@@ -45,7 +45,7 @@
         <input type="hidden" name="due" value="{{.DueInput}}">
         <input type="hidden" name="categories" value="{{if .IsStarred}}starred{{if .Categories}}, {{.Categories}}{{end}}{{else}}{{.Categories}}{{end}}">
         <input type="hidden" name="percent_complete" value="{{.PercentComplete}}">
-        <input type="text" name="summary" value="{{if .Summary}}{{.Summary}}{{end}}" @keydown.enter.prevent="$el.form.requestSubmit()" @keydown.escape.prevent="editingSummary=false" autofocus>
+        <input class="js-summary-input" type="text" name="summary" value="{{if .Summary}}{{.Summary}}{{end}}" @keydown.enter.prevent="$el.form.requestSubmit()" @keydown.escape.prevent="editingSummary=false" autofocus>
       </form>
       <span x-show="!editingSummary">{{if .Summary}}{{.Summary}}{{else}}(ohne Titel){{end}}</span>
     </td>
@@ -62,7 +62,7 @@
         <input type="hidden" name="priority" value="{{.Priority}}">
         <input type="hidden" name="categories" value="{{if .IsStarred}}starred{{if .Categories}}, {{.Categories}}{{end}}{{else}}{{.Categories}}{{end}}">
         <input type="hidden" name="percent_complete" value="{{.PercentComplete}}">
-        <input type="text" name="due" value="{{.DueInput}}" data-air-datepicker data-natural-language @change="$el.form.requestSubmit()" placeholder="today / 2026-01-30">
+        <input class="js-due-input" type="text" name="due" value="{{.DueInput}}" data-air-datepicker data-natural-language @change="$el.form.requestSubmit()" placeholder="today / 2026-01-30">
       </form>
     </td>
     <td class="col-priority">
@@ -76,13 +76,22 @@
         <input type="hidden" name="due" value="{{.DueInput}}">
         <input type="hidden" name="categories" value="{{if .IsStarred}}starred{{if .Categories}}, {{.Categories}}{{end}}{{else}}{{.Categories}}{{end}}">
         <input type="hidden" name="percent_complete" value="{{.PercentComplete}}">
-        <select name="priority" onchange="this.form.requestSubmit()">
+        <select class="js-priority-select" name="priority" onchange="this.form.requestSubmit()">
           <option value="9" {{if ge .Priority 8}}selected{{end}}>Top</option>
           <option value="7" {{if and (lt .Priority 8) (ge .Priority 6)}}selected{{end}}>High</option>
           <option value="5" {{if and (lt .Priority 6) (ge .Priority 4)}}selected{{end}}>Medium</option>
           <option value="2" {{if and (lt .Priority 4) (ge .Priority 2)}}selected{{end}}>Low</option>
           <option value="0" {{if lt .Priority 2}}selected{{end}}>Negative</option>
         </select>
+      </form>
+    </td>
+  </tr>
+  <tr class="visually-hidden" aria-hidden="true">
+    <td colspan="8">
+      <form class="js-delete-task-form" method="post" action="/api/tasks/delete" hx-post="/api/tasks/delete" hx-target="#tasks-content" hx-swap="innerHTML">
+        <input type="hidden" name="list_id" value="{{.ListID}}">
+        <input type="hidden" name="href" value="{{.Href}}">
+        <input type="hidden" name="etag" value="{{.ETag}}">
       </form>
     </td>
   </tr>

@@ -33,12 +33,9 @@ sync and zero vendor lock-in. Your tasks stay on your infrastructure.
 
 ## Quick Start (Docker mit bestehender Nextcloud)
 
-1. Docker-Config anpassen:
+1. Stack per Environment konfigurieren (ohne manuelles Editieren der YAML):
 
-```bash
-cp configs/docker/config.docker.yaml configs/docker/config.local.yaml
-# server_url auf deine Nextcloud-CalDAV-URL setzen
-```
+Passe in `deployments/docker-compose.yml` die `CALDO_*`-Variablen (mindestens `CALDO_CALDAV_SERVER_URL` und `CALDO_MASTER_KEY`) an deine Umgebung an.
 
 2. Stack starten:
 
@@ -103,6 +100,45 @@ database:
 ```
 
 Für Container/ungewöhnliche Arbeitsverzeichnisse kann das Template-Verzeichnis optional per Environment `CALDO_TEMPLATE_DIR` gesetzt werden.
+
+
+### Environment Overrides (inkl. Persistenz nach config.yaml)
+
+Alle Felder aus `config.yaml` können über Environment-Variablen gesetzt werden. Beim Start lädt Caldo zuerst die YAML-Datei und überschreibt danach die gesetzten `CALDO_*`-Variablen. Falls mindestens ein Override vorhanden ist, schreibt Caldo die effektiven Werte zurück in die konfigurierte Datei (`CALDO_CONFIG`).
+
+> Wichtig für Docker: Die Config-Datei muss im Container **schreibbar** sein, wenn Overrides persistent in die Datei zurückgeschrieben werden sollen.
+
+| YAML-Pfad | Environment-Variable |
+|---|---|
+| `server.port` | `CALDO_SERVER_PORT` |
+| `server.auth_header` | `CALDO_SERVER_AUTH_HEADER` |
+| `caldav.server_url` | `CALDO_CALDAV_SERVER_URL` |
+| `caldav.default_list` | `CALDO_CALDAV_DEFAULT_LIST` |
+| `security.encryption_key_file` | `CALDO_SECURITY_ENCRYPTION_KEY_FILE` |
+| `database.path` | `CALDO_DATABASE_PATH` |
+| `sync.enabled` | `CALDO_SYNC_ENABLED` |
+| `sync.interval_seconds` | `CALDO_SYNC_INTERVAL_SECONDS` |
+| `sync.default_principal` | `CALDO_SYNC_DEFAULT_PRINCIPAL` |
+
+Beispiel für ein vollständig Environment-gesteuertes Deployment:
+
+```yaml
+services:
+  caldo:
+    environment:
+      CALDO_CONFIG: /app/configs/docker/config.docker.yaml
+      CALDO_MASTER_KEY: "<32-byte-base64-key>"
+      CALDO_SERVER_PORT: "8080"
+      CALDO_SERVER_AUTH_HEADER: "X-Forwarded-User"
+      CALDO_CALDAV_SERVER_URL: "https://nextcloud.example.com/remote.php/dav/calendars/alice/tasks/"
+      CALDO_CALDAV_DEFAULT_LIST: "Tasks"
+      CALDO_SECURITY_ENCRYPTION_KEY_FILE: "/run/secrets/caldo_key"
+      CALDO_DATABASE_PATH: "/data/caldo.db"
+      CALDO_SYNC_ENABLED: "false"
+      CALDO_SYNC_INTERVAL_SECONDS: "300"
+      CALDO_SYNC_DEFAULT_PRINCIPAL: "alice@example.com"
+```
+
 
 ## CI / Build- und Release-Automatisierung
 

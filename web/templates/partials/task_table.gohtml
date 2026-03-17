@@ -9,6 +9,65 @@
   </form>
 </section>
 
+<details class="filter-panel" {{if or .Filter.Priority .Filter.Status .Filter.DueFrom .Filter.DueTo .Filter.Folder .Filter.Context .Filter.Goal .Filter.Tags .Filter.Star .Filter.Query}}open{{end}}>
+  <summary>Filter</summary>
+  <form class="filter-form" method="get" action="/tasks">
+    <input type="hidden" name="view" value="{{.ActiveView}}">
+    <input type="hidden" name="list" value="{{.ActiveListID}}">
+    <label>Priority
+      <select name="priority" multiple>
+        <option value="9" {{if .Filter.HasPriority 9}}selected{{end}}>9</option>
+        <option value="7" {{if .Filter.HasPriority 7}}selected{{end}}>7</option>
+        <option value="5" {{if .Filter.HasPriority 5}}selected{{end}}>5</option>
+        <option value="3" {{if .Filter.HasPriority 3}}selected{{end}}>3</option>
+        <option value="1" {{if .Filter.HasPriority 1}}selected{{end}}>1</option>
+      </select>
+    </label>
+    <label>Status
+      <select name="status" multiple>
+        <option value="NEEDS-ACTION" {{if .Filter.HasStatus "NEEDS-ACTION"}}selected{{end}}>Needs Action</option>
+        <option value="IN-PROCESS" {{if .Filter.HasStatus "IN-PROCESS"}}selected{{end}}>In Process</option>
+        <option value="COMPLETED" {{if .Filter.HasStatus "COMPLETED"}}selected{{end}}>Completed</option>
+      </select>
+    </label>
+    <label>Due from <input type="date" name="due_from" value="{{.Filter.DueFrom}}"></label>
+    <label>Due to <input type="date" name="due_to" value="{{.Filter.DueTo}}"></label>
+    <label>Folder <input type="text" name="folder" value="{{.Filter.Folder}}"></label>
+    <label>Context <input type="text" name="context" value="{{.Filter.Context}}"></label>
+    <label>Goal <input type="text" name="goal" value="{{.Filter.Goal}}"></label>
+    <label>Tags <input type="text" name="tags" value="{{.Filter.Tags}}" placeholder="tag1, tag2"></label>
+    <label>Star
+      <select name="star">
+        <option value="" {{if .Filter.IsStar ""}}selected{{end}}>egal</option>
+        <option value="yes" {{if .Filter.IsStar "yes"}}selected{{end}}>ja</option>
+        <option value="no" {{if .Filter.IsStar "no"}}selected{{end}}>nein</option>
+      </select>
+    </label>
+    <label>Textsuche <input type="search" name="q" value="{{.Filter.Query}}"></label>
+    <div>
+      <button type="submit">Filter anwenden</button>
+      <a href="/tasks?view={{.ActiveView}}&list={{.ActiveListID}}">Zurücksetzen</a>
+    </div>
+  </form>
+  <form class="save-filter-form" method="post" action="/tasks/filters">
+    <input type="hidden" name="list" value="{{.ActiveListID}}">
+    {{range .Filter.Priority}}<input type="hidden" name="priority" value="{{.}}">{{end}}
+    {{range .Filter.Status}}<input type="hidden" name="status" value="{{.}}">{{end}}
+    <input type="hidden" name="due_from" value="{{.Filter.DueFrom}}">
+    <input type="hidden" name="due_to" value="{{.Filter.DueTo}}">
+    <input type="hidden" name="folder" value="{{.Filter.Folder}}">
+    <input type="hidden" name="context" value="{{.Filter.Context}}">
+    <input type="hidden" name="goal" value="{{.Filter.Goal}}">
+    <input type="hidden" name="tags" value="{{.Filter.Tags}}">
+    <input type="hidden" name="star" value="{{.Filter.Star}}">
+    <input type="hidden" name="q" value="{{.Filter.Query}}">
+    <label>Als Saved Filter speichern
+      <input type="text" name="name" placeholder="Mein Filter" required>
+    </label>
+    <button type="submit">Speichern</button>
+  </form>
+</details>
+
 <datalist id="tag-suggestions">
   {{range .Contexts}}
   <option value="{{.}}"></option>

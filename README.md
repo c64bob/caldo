@@ -176,7 +176,7 @@ Die UI-Roadmap orientiert sich am Umsetzungsplan in `docs/ui-plan-v1.md` und ist
 - [x] **Phase 2:** Smart-Add/Quick-Add mit Toodledo-Syntax und Natural-Language-Datum.
 - [x] **Phase 3:** Keyboard-Shortcuts inkl. `?`-Overlay.
 - [x] **Phase 4:** Subtasks, Folders, Contexts, Goals.
-- [ ] **Phase 5:** Filter-Panel, Saved Filters und Hotlist-Ansicht.
+- [x] **Phase 5:** Filter-Panel, Saved Filters und Hotlist-Ansicht.
 - [ ] **Phase 6:** Sortierung, Batch-Edit, Import/Export.
 - [ ] **Phase 7:** Visuelle Politur & UX-Details.
 

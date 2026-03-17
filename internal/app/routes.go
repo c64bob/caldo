@@ -11,7 +11,7 @@ import (
 	"caldo/internal/service"
 )
 
-func NewRouter(cfg Config, settingsSvc *service.SettingsService, prefsSvc *service.PreferencesService, taskSvc *service.TaskService, syncSvc *service.SyncService, templates *render.Templates) http.Handler {
+func NewRouter(cfg Config, settingsSvc *service.SettingsService, prefsSvc *service.PreferencesService, savedFiltersSvc *service.SavedFiltersService, taskSvc *service.TaskService, syncSvc *service.SyncService, templates *render.Templates) http.Handler {
 	mux := http.NewServeMux()
 	settingsHandler := &handlers.SettingsHandler{
 		Service:            settingsSvc,
@@ -19,7 +19,7 @@ func NewRouter(cfg Config, settingsSvc *service.SettingsService, prefsSvc *servi
 		TaskService:        taskSvc,
 		DefaultServerURL:   cfg.CalDAV.ServerURL,
 	}
-	tasksHandler := &handlers.TasksHandler{Service: taskSvc, PreferencesService: prefsSvc, SyncService: syncSvc, Templates: templates}
+	tasksHandler := &handlers.TasksHandler{Service: taskSvc, PreferencesService: prefsSvc, SavedFiltersService: savedFiltersSvc, SyncService: syncSvc, Templates: templates}
 
 	mux.HandleFunc("GET /health", handlers.Health)
 	staticHandler := http.FileServer(http.Dir(resolveStaticRoot()))
@@ -33,6 +33,8 @@ func NewRouter(cfg Config, settingsSvc *service.SettingsService, prefsSvc *servi
 	mux.Handle("POST /settings/preferences", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(settingsHandler.SavePreferences)))
 	mux.Handle("POST /settings/collections", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(settingsHandler.CreateCollection)))
 	mux.Handle("GET /tasks", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.Page)))
+	mux.Handle("POST /tasks/filters", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.SaveFilter)))
+	mux.Handle("GET /filter/{slug}", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.PageSavedFilter)))
 	mux.Handle("GET /htmx/tasks/list", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.HTMXTasksList)))
 	mux.Handle("GET /htmx/sidebar/lists", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.HTMXSidebarLists)))
 	mux.Handle("POST /api/tasks", middleware.ProxyAuth(cfg.Server.AuthHeader)(http.HandlerFunc(tasksHandler.APITaskCreate)))

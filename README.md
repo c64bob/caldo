@@ -8,8 +8,6 @@ Most task managers are either too simple, too complex, or rely on proprietary cl
 Caldo gives you a dense, productivity-focused UI in the style of Toodledo — with full CalDAV
 sync and zero vendor lock-in. Your tasks stay on your infrastructure.
 
-**Works out of the box with [Tasks.org](https://tasks.org) on Android.**
-
 ## Features
 
 - **Toodledo-inspired UI** — compact list view, inline editing, priority colors, folder sidebar
@@ -33,7 +31,7 @@ sync and zero vendor lock-in. Your tasks stay on your infrastructure.
 
 ## Quick Start (Docker mit bestehender Nextcloud)
 
-1. Stack per Environment konfigurieren (ohne manuelles Editieren der YAML):
+1. Stack per Environment konfigurieren:
 
 Passe in `deployments/docker-compose.yml` die `CALDO_*`-Variablen (mindestens `CALDO_CALDAV_SERVER_URL` und `CALDO_MASTER_KEY`) an deine Umgebung an.
 
@@ -45,7 +43,7 @@ docker compose -f deployments/docker-compose.yml up -d --build
 
 3. Im Browser öffnen: `http://localhost:8080`
 
-4. Reverse-Proxy-Identität für Tests mitgeben (erforderlich in Phase 1), z. B. Header
+4. Reverse-Proxy-Identität für Tests mitgeben, z. B. Header
    `X-Forwarded-User: alice@example.com`.
 
 Danach unter `/settings` den DAV-Account speichern; der Zugang wird beim Speichern
@@ -56,7 +54,7 @@ Die Aufgabenansicht ist unter `/tasks` verfügbar und lädt Listen/Task-Tabelle 
 dichten HTMX-Struktur (Sidebar + Tabellen-Partial).
 
 
-### Sync (Phase 5)
+### Sync
 
 Caldo speichert Sync-Metadaten pro Collection und unterstützt zwei Modi:
 
@@ -139,10 +137,6 @@ services:
       CALDO_SYNC_DEFAULT_PRINCIPAL: "alice@example.com"
 ```
 
-
-## CI / Build- und Release-Automatisierung
-
-GitHub Actions übernimmt Build, Packaging und Release
 
 ## Roadmap
 

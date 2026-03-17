@@ -3,6 +3,8 @@ package app
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"caldo/internal/service"
@@ -49,5 +51,33 @@ func TestNewRouter_SettingsRequiresProxyHeader(t *testing.T) {
 
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", rr.Code)
+	}
+}
+
+func TestResolveStaticRoot_PrefersWorkingDirectory(t *testing.T) {
+	base := t.TempDir()
+	staticRoot := filepath.Join(base, "web", "static", "css")
+	if err := os.MkdirAll(staticRoot, 0o755); err != nil {
+		t.Fatalf("mkdir static dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(staticRoot, "app.css"), []byte(":root{}"), 0o600); err != nil {
+		t.Fatalf("write app.css: %v", err)
+	}
+
+	originalWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	if err := os.Chdir(base); err != nil {
+		t.Fatalf("chdir to temp dir: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(originalWD)
+	})
+
+	resolved := resolveStaticRoot()
+	expected := filepath.Join(base, "web", "static")
+	if resolved != expected {
+		t.Fatalf("expected %q, got %q", expected, resolved)
 	}
 }

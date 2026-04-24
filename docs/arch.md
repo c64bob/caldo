@@ -76,6 +76,68 @@ Nicht verwendet:
 - React/Vue als App-Framework
 - CDN zur Laufzeit
 
+### 2.3 Asset-Build-Pipeline
+
+#### Build-Schritte (Reihenfolge im Makefile / Dockerfile)
+
+```text
+1. templ generate          – .templ → _templ.go
+2. tailwind build          – web/static/app.css (minified für Production)
+3. go build                – Binary mit eingebetteten Migrations-SQL
+```
+
+Assets unter `web/static/` sind nicht eingebettet – sie liegen im Container-Image.
+
+#### Statische Routen
+
+```text
+GET /static/*   → web/static/ (Go http.FileServer)
+```
+
+Cache-Header für statische Assets:
+
+```text
+Cache-Control: public, max-age=31536000, immutable
+```
+
+#### Cache-Busting
+
+Dateinamen-basiertes Cache-Busting:
+
+```text
+app.<hash>.css
+app.<hash>.js
+```
+
+Der Hash ist ein SHA-256-Prefix über den Dateiinhalt, berechnet beim Build.
+Templates referenzieren den gehashten Dateinamen über eine eingebettete Build-Manifest-Datei:
+
+```text
+web/static/manifest.json
+{ "app.css": "app.a3f9b2.css", "app.js": "app.7c1d44.js" }
+```
+
+`manifest.json` wird beim Build erzeugt und von der Template-Schicht beim Start geladen.
+
+#### JS-Bundles
+
+| Datei | Inhalt |
+|---|---|
+| `htmx.min.js` | HTMX, lokal gebündelt, kein CDN |
+| `htmx-sse.js` | Offizielles HTMX-SSE-Extension (`htmx-ext/server-sent-events`), lokal gebündelt |
+| `alpine.min.js` | Alpine.js, lokal gebündelt |
+| `app.js` | Vanilla JS: Tastaturkürzel, `beforeunload`, Tab-ID, HTMX-Header-Injection |
+
+Alle JS-Dateien werden lokal im Repository versioniert.
+Kein CDN zur Laufzeit. Kein npm, kein Bundler außer Tailwind CSS.
+
+#### Invarianten
+
+1. Kein Laufzeit-CDN. Alle Assets kommen vom eigenen Server.
+2. Cache-Busting erfolgt über Dateinamen-Hash, nicht über Query-Parameter.
+3. `manifest.json` wird beim Start einmal geladen und im Speicher gehalten.
+4. Fehlt `manifest.json` beim Start: harter Startabbruch mit `os.Exit(1)`.
+
 ---
 
 ## 3. Laufzeit- und Prozessmodell
@@ -296,6 +358,84 @@ Ab diesem Zeitpunkt wird beim nächsten Start die normale Startup-Sequenz ab Sch
 
 
 ---
+### 4.5 Routing im Normalbetrieb
+
+Wenn `settings.setup_complete == true`, startet der HTTP-Server mit dem normalen App-Route-Set. Setup-Routen werden dann nicht mehr als Wizard-Betriebsmodus verwendet; spätere Konfigurationsänderungen laufen ausschließlich über die Einstellungen.
+
+Die folgende Tabelle ist die kanonische Routing-Übersicht für den MVP. Sie legt fest, welche Routen vollständige HTML-Seiten, HTMX-Fragmente, JSON-Antworten oder SSE-Streams liefern und welche technischen Schutzmechanismen pro Route gelten.
+
+| Methode | Pfad | Zweck | Response-Typ | Auth | CSRF | `X-Tab-ID` | `expected_version` |
+|---|---|---|---|---|---|---|---|
+| `GET` | `/` | Einstieg in die App; Weiterleitung oder Rendern der Default-Ansicht | HTML | ja | nein | optional | nein |
+| `GET` | `/today` | Heute-Ansicht inklusive überfälliger Aufgaben | HTML | ja | nein | optional | nein |
+| `GET` | `/upcoming` | Demnächst-Ansicht für den konfigurierten Zeitraum | HTML | ja | nein | optional | nein |
+| `GET` | `/projects` | Projektliste beziehungsweise Projekt-Navigation | HTML/Fragment | ja | nein | optional | nein |
+| `GET` | `/projects/{project_id}` | Aufgabenansicht eines Projekts | HTML | ja | nein | optional | nein |
+| `POST` | `/projects` | Neues Projekt und damit neuen CalDAV-Kalender anlegen | HTML/Fragment | ja | ja | ja | nein |
+| `PATCH` | `/projects/{project_id}` | Projekt umbenennen oder Projekteinstellungen ändern | HTML/Fragment | ja | ja | ja | ja |
+| `DELETE` | `/projects/{project_id}` | Projekt nach starker Bestätigung löschen | HTML/Fragment | ja | ja | ja | ja |
+| `GET` | `/labels` | Labelübersicht | HTML/Fragment | ja | nein | optional | nein |
+| `GET` | `/labels/{label_id}` | Aufgabenansicht eines Labels | HTML | ja | nein | optional | nein |
+| `GET` | `/filters` | Gespeicherte Filter anzeigen | HTML/Fragment | ja | nein | optional | nein |
+| `GET` | `/filters/{filter_id}` | Aufgabenansicht eines gespeicherten Filters | HTML | ja | nein | optional | nein |
+| `POST` | `/filters` | Gespeicherten Filter anlegen | HTML/Fragment | ja | ja | ja | nein |
+| `PATCH` | `/filters/{filter_id}` | Gespeicherten Filter ändern oder favorisieren | HTML/Fragment | ja | ja | ja | ja |
+| `DELETE` | `/filters/{filter_id}` | Gespeicherten Filter löschen | HTML/Fragment | ja | ja | ja | ja |
+| `GET` | `/favorites` | Favoritenansicht | HTML | ja | nein | optional | nein |
+| `GET` | `/search` | Globale Suche und Suchergebnisse | HTML/Fragment | ja | nein | optional | nein |
+| `GET` | `/tasks/{task_id}` | Task-Detailansicht oder editierbares Fragment | HTML/Fragment | ja | nein | optional | nein |
+| `POST` | `/tasks` | Aufgabe erstellen, inklusive Quick Add | HTML/Fragment | ja | ja | ja | nein |
+| `PATCH` | `/tasks/{task_id}` | Aufgabe bearbeiten | HTML/Fragment | ja | ja | ja | ja |
+| `POST` | `/tasks/{task_id}/complete` | Aufgabe erledigen oder wieder öffnen | HTML/Fragment | ja | ja | ja | ja |
+| `POST` | `/tasks/{task_id}/move` | Aufgabe in ein anderes Projekt verschieben | HTML/Fragment | ja | ja | ja | ja |
+| `POST` | `/tasks/{task_id}/labels` | Labels einer Aufgabe setzen oder ändern | HTML/Fragment | ja | ja | ja | ja |
+| `POST` | `/tasks/{task_id}/favorite` | Favoritenstatus setzen oder entfernen | HTML/Fragment | ja | ja | ja | ja |
+| `DELETE` | `/tasks/{task_id}` | Aufgabe löschen | HTML/Fragment | ja | ja | ja | ja |
+| `POST` | `/tasks/{task_id}/undo` | Letzte Undo-fähige Aktion dieses Tabs rückgängig machen | HTML/Fragment | ja | ja | ja | indirekt über Snapshot |
+| `GET` | `/api/tasks/versions` | Fokus-Refresh für bekannte Task-Versionen | JSON | ja | nein | ja | nein |
+| `GET` | `/events` | Globaler SSE-Stream für Task-, Projekt-, Sync- und Konflikt-Events | `text/event-stream` | ja | nein | ja | nein |
+| `POST` | `/sync` | Manuellen Sync starten | HTML/Fragment oder JSON | ja | ja | ja | nein |
+| `GET` | `/conflicts` | Globale Konfliktansicht | HTML | ja | nein | optional | nein |
+| `GET` | `/conflicts/{conflict_id}` | Konfliktdetailansicht | HTML/Fragment | ja | nein | optional | nein |
+| `POST` | `/conflicts/{conflict_id}/resolve` | Konflikt manuell lösen | HTML/Fragment | ja | ja | ja | ja |
+| `GET` | `/settings` | Einstellungen anzeigen | HTML | ja | nein | optional | nein |
+| `POST` | `/settings/caldav` | CalDAV-Konfiguration speichern und Verbindung testen | HTML/Fragment | ja | ja | ja | nein |
+| `POST` | `/settings/calendars` | Kalenderauswahl und Projekt-Mapping ändern | HTML/Fragment | ja | ja | ja | nein |
+| `POST` | `/settings/sync` | Sync-Intervall und Sync-Einstellungen ändern | HTML/Fragment | ja | ja | ja | nein |
+| `POST` | `/settings/ui` | UI-Sprache, Dark Mode und Anzeigeeinstellungen ändern | HTML/Fragment | ja | ja | ja | nein |
+| `GET` | `/health` | Liveness-Healthcheck | Text oder JSON | nein | nein | nein | nein |
+
+#### 4.5.1 Routing-Invarianten im Normalbetrieb
+
+1. Alle normalen App-Routen außer `GET /health` benötigen Proxy-Auth.
+2. Alle mutierenden Routen verwenden CSRF-Schutz.
+3. Alle mutierenden HTMX-Requests senden `X-Tab-ID`.
+4. Task-mutierende Routen enthalten immer `expected_version`.
+5. Projekt- und Filteränderungen verwenden ebenfalls Optimistic Locking, wenn die jeweilige Ressource eine `server_version` besitzt.
+6. Mutierende Routen liefern nach Möglichkeit ein HTMX-Fragment zurück, das den gespeicherten Zustand nach erfolgreichem DB-Commit und CalDAV-Write widerspiegelt.
+7. JSON-Routen sind auf technische Hilfsendpunkte begrenzt, insbesondere Fokus-Refresh und optional manuelle Sync-Statusabfragen.
+8. `GET /events` ist der einzige normale SSE-Endpunkt.
+9. SSE-Broadcasts erfolgen erst nach erfolgreichem DB-Commit.
+10. Setup-Routen sind im Normalbetrieb nicht der Pfad für spätere Konfigurationsänderungen; dafür sind ausschließlich `/settings/*`-Routen zuständig.
+
+#### 4.5.2 Middleware-Reihenfolge
+
+Normale App-Routen verwenden folgende Middleware-Reihenfolge:
+
+```text
+request_id → recovery → safe logging → security headers → proxy auth → session → csrf → route handler
+```
+
+Regeln:
+
+- `request_id` wird so früh wie möglich gesetzt und als `X-Request-ID` zurückgegeben.
+- Recovery darf keine Task-Inhalte, Secrets oder Headerwerte mit Auth-Bezug loggen.
+- Safe Logging protokolliert HTTP-Pfad ohne Query-Parameter.
+- Proxy-Auth läuft vor Session- und Handlerlogik.
+- CSRF prüft nur mutierende Methoden.
+- `GET /health` darf die Proxy-Auth- und Session-Middleware umgehen, bleibt aber in Recovery, Safe Logging und Security Headers eingebettet.
+
+---
 ## 5. Authentifizierung, Sessions und CSRF
 
 ### 5.1 Reverse-Proxy-Authentifizierung
@@ -371,6 +511,69 @@ HTMX-Requests senden:
 - `X-Tab-ID`
 
 Fehlender oder ungültiger CSRF-Token ergibt `403 Forbidden`.
+
+### 5.5 Middleware-Stack und Reihenfolge
+
+Die Middleware-Reihenfolge ist eine Architektur-Invariante.
+Jede Änderung erfordert explizite Begründung.
+
+#### Globale Middleware (alle Routen inkl. `/health` und Setup)
+
+```text
+1. request_id        – UUID pro Request generieren, in Context und Response-Header setzen
+2. recovery          – panic abfangen, strukturierten 500-Logeintrag schreiben, keine Details leaken
+3. safe_logging      – Request/Response loggen; Pfad, Methode, Status, Dauer, request_id
+                       Niemals: Header-Werte, Body-Inhalte, Query-Parameter mit Nutzdaten
+4. security_headers  – X-Frame-Options: DENY
+                       X-Content-Type-Options: nosniff
+                       Referrer-Policy: strict-origin-when-cross-origin
+                       Content-Security-Policy (siehe unten)
+```
+
+#### Authentifizierte Middleware (alle Routen außer `/health`)
+
+```text
+5. proxy_auth        – PROXY_USER_HEADER prüfen; fehlt → 403, kein Redirect
+6. session           – session_id Cookie lesen oder neu setzen
+```
+
+#### Mutierende Middleware (POST, PUT, PATCH, DELETE)
+
+```text
+7. csrf              – Double-Submit-Cookie validieren; ungültig → 403
+```
+
+#### Route Handler
+
+```text
+8. handler           – fachliche Verarbeitung
+```
+
+#### Content-Security-Policy
+
+```text
+default-src 'self';
+script-src  'self';
+style-src   'self';
+img-src     'self' data:;
+connect-src 'self';
+frame-ancestors 'none';
+```
+
+`img-src` erlaubt `data:` für inline SVG-Darstellung.
+Externe Quellen sind explizit nicht erlaubt – kein CDN zur Laufzeit.
+
+#### Invarianten
+
+1. `request_id` ist immer die erste Middleware. Alle nachfolgenden Logs enthalten die ID.
+2. `recovery` ist immer die zweite Middleware. Panics aus jeder nachfolgenden Schicht
+   werden abgefangen.
+3. `safe_logging` loggt niemals Header-Werte, Body-Inhalte oder Credentials.
+4. `proxy_auth` kommt nach Security Headers, damit auch abgelehnte Requests
+   korrekte Security Headers erhalten.
+5. `csrf` kommt nach `session`, weil der CSRF-Token an die Session gebunden ist.
+6. `/health` durchläuft ausschließlich Middleware-Schichten 1–4.
+7. Setup-Routen durchlaufen Schichten 1–7 (inkl. CSRF bei mutierenden Setup-Routen).
 
 ---
 
@@ -635,18 +838,50 @@ CREATE TABLE task_labels (
 
 ### 9.4 Settings
 
-Die `settings`-Tabelle enthält lokale App-Einstellungen:
+Settings werden als typisierte Singleton-Tabelle gespeichert.
+Es gibt genau eine Zeile mit `id = 'default'`.
 
-- Sync-Intervall
-- Default-Projekt
-- UI-Sprache
-- Demnächst-Zeitraum
-- erledigte Aufgaben anzeigen
-- Dark Mode
-- verschlüsselte CalDAV-Credentials
-- CalDAV-URL und Benutzername, soweit nicht als Secret behandelt
-- Setup-Status: `setup_complete`, `setup_step`
-- gespeicherte CalDAV-Capabilities für Sync-Strategiewahl
+```sql
+CREATE TABLE settings (
+  id                        TEXT PRIMARY KEY DEFAULT 'default',
+
+  -- Setup
+  setup_complete            BOOLEAN NOT NULL DEFAULT FALSE,
+  setup_step                TEXT NOT NULL DEFAULT 'caldav',
+                            -- 'caldav' | 'calendars' | 'import' | 'complete'
+
+  -- CalDAV
+  caldav_url                TEXT,
+  caldav_username           TEXT,
+  caldav_password_enc       TEXT,     -- AES-256-GCM verschlüsselt, Format v1:<nonce>:<ct>
+  caldav_capability         TEXT,     -- 'webdav_sync' | 'ctag' | 'fullscan'
+
+  -- Sync
+  sync_interval_minutes     INTEGER NOT NULL DEFAULT 15,
+  default_project_id        TEXT REFERENCES projects(id) ON DELETE SET NULL,
+
+  -- UI
+  ui_language               TEXT NOT NULL DEFAULT 'de',
+  dark_mode                 TEXT NOT NULL DEFAULT 'system',
+                            -- 'light' | 'dark' | 'system'
+  upcoming_days             INTEGER NOT NULL DEFAULT 7,
+  show_completed            BOOLEAN NOT NULL DEFAULT FALSE,
+
+  updated_at                DATETIME NOT NULL
+);
+```
+
+Invarianten:
+
+1. Es gibt immer genau eine Zeile. Die initiale Migration legt sie mit `INSERT OR IGNORE` an.
+2. `caldav_password_enc` wird niemals geloggt und niemals im Klartext gespeichert.
+3. `caldav_capability` wird beim Setup-Wizard gesetzt und nicht automatisch geändert.
+   Manuelle Änderung ist nur über erneuten CalDAV-Test möglich.
+4. `default_project_id` darf `NULL` sein, wenn noch kein Default-Projekt existiert.
+   Die UI zeigt in diesem Fall Inbox als virtuellen Fallback.
+5. `dark_mode = 'system'` bedeutet: Browser-Präferenz (`prefers-color-scheme`) ist maßgeblich.
+6. `sync_interval_minutes` darf nicht unter 5 liegen. Werte darunter werden beim Laden
+   auf 5 korrigiert, nicht abgelehnt.
 
 ### 9.5 Undo-Snapshots
 
@@ -690,6 +925,34 @@ CREATE TABLE conflicts (
 ```
 
 `local_vtodo` und `remote_vtodo` sind nullable, weil Löschkonflikte jeweils eine Seite ohne VTODO enthalten können.
+
+### 9.7 Saved Filters
+
+```sql
+CREATE TABLE saved_filters (
+  id           TEXT PRIMARY KEY,
+  name         TEXT NOT NULL,
+  query        TEXT NOT NULL,        -- serialisierte Query-Engine-Syntax
+  is_favorite  BOOLEAN NOT NULL DEFAULT FALSE,
+  sort_order   INTEGER NOT NULL DEFAULT 0,
+  created_at   DATETIME NOT NULL,
+  updated_at   DATETIME NOT NULL
+);
+```
+
+Hinweise:
+
+- `query` enthält die rohe Filterquery in der Syntax der Query-Engine (Abschnitt 20).
+  Beispiel: `@wichtig AND #Arbeit AND NOT completed:true`
+- `sort_order` bestimmt die Anzeigereihenfolge in der Sidebar.
+- `is_favorite` steuert, ob der Filter in der Sidebar-Hauptnavigation erscheint.
+- Gespeicherte Filter sind rein lokal. Sie werden nicht zu CalDAV synchronisiert.
+- Beim Laden eines Filters wird `query` durch die Query-Engine kompiliert.
+  Syntaxfehler in gespeicherten Queries werden zur Laufzeit als leere Ergebnisliste behandelt,
+  nicht als harter Fehler.
+- Projekt- und Labelnamen in `query` werden zum Ausführungszeitpunkt gegen IDs aufgelöst.
+  Wenn ein Projekt oder Label inzwischen gelöscht wurde, ergibt die entsprechende Bedingung
+  leere Ergebnisse (konsistent mit SQL-Compiler-Invariante 5 in Abschnitt 20.5).
 
 ---
 
@@ -805,6 +1068,81 @@ Remote-Änderungen werden in Chunks verarbeitet:
 4. `server_version` wird bei importierten Änderungen erhöht.
 5. `etag`, `ctag` und/oder `sync_token` werden aktualisiert.
 6. SSE-Events werden nach Commit gesendet.
+
+### 11.7 Timeout-, Retry- und Backoff-Policy
+
+#### Timeouts
+
+Alle CalDAV-Operationen verwenden einen `context.WithTimeout`.
+
+| Operation | Timeout |
+|---|---|
+| PROPFIND (Capability-Erkennung, Setup) | 10 s |
+| REPORT / WebDAV-Sync | 30 s |
+| PROPFIND (CTag/ETag-Vergleich) | 15 s |
+| GET einzelne VTODO | 10 s |
+| PUT einzelne VTODO | 10 s |
+| DELETE einzelne VTODO | 10 s |
+| MKCALENDAR (Projekt anlegen) | 15 s |
+| Full-Scan (gesamter Kalender) | 60 s |
+
+Timeouts gelten pro Operation, nicht pro Sync-Lauf.
+Ein Timeout eines einzelnen PUT gilt nicht als Sync-Lauf-Fehler,
+sondern als Fehler der betroffenen Ressource.
+
+#### Retry-Policy
+
+| Operationstyp | Retry | Begründung |
+|---|---|---|
+| GET / REPORT / PROPFIND | ja | sicher idempotent |
+| PUT (Create) | nein | Ressource könnte angelegt worden sein; Retry würde Duplikat riskieren |
+| PUT (Update mit `If-Match`) | ja | `If-Match` macht PUT idempotent; bei 412 kein Retry, sondern Konfliktbehandlung |
+| DELETE mit `If-Match` | ja | idempotent wenn ETag stimmt |
+| DELETE ohne `If-Match` | nein | Gefahr unbeabsichtigter Löschung |
+| MKCALENDAR | nein | nicht idempotent |
+
+Maximale Retry-Versuche: **3**.
+Nach 3 fehlgeschlagenen Versuchen wird die Operation als dauerhaft fehlgeschlagen markiert.
+
+#### Backoff
+
+Zwischen Retry-Versuchen gilt exponentieller Backoff mit Jitter:
+
+```text
+Versuch 1: sofort
+Versuch 2: 1 s + jitter (0–500 ms)
+Versuch 3: 2 s + jitter (0–1000 ms)
+```
+
+Kein Retry bei:
+- `401 Unauthorized`
+- `403 Forbidden`
+- `404 Not Found` (bei DELETE: Ressource bereits gelöscht → Erfolg)
+- `412 Precondition Failed` (ETag-Konflikt → Konfliktbehandlung statt Retry)
+
+#### Schutz gegen Sync-Schleifen
+
+Eine Sync-Schleife entsteht, wenn ein Sync-Lauf eine lokale Änderung auslöst,
+die den nächsten Sync-Lauf triggert.
+
+Invarianten:
+
+1. Remote-Sync-Imports setzen `sync_status = synced` direkt,
+   ohne einen neuen Sofort-nach-Write-Trigger auszulösen.
+2. Der Scheduler startet keinen neuen Sync-Lauf, solange ein Lauf aktiv ist.
+3. SSE-Events aus Remote-Imports lösen keinen erneuten Sync aus.
+4. `server_version`-Inkremente durch Remote-Imports gelten nicht als
+   lokale Nutzeränderung und triggern keinen CalDAV-Write.
+
+#### `404 Not Found` bei DELETE
+
+Eine `404`-Antwort auf DELETE bedeutet, dass die Ressource auf dem Server
+bereits nicht mehr existiert. Dies wird als Erfolg behandelt:
+
+- `sync_status = synced`
+- kein Konflikt
+- kein Fehler
+- kein Retry
 
 ---
 
@@ -1149,17 +1487,34 @@ Bestätigungsdialog zeigt:
 
 ### 16.4 Remote gelöschte Kalender
 
+> **Bewusste Abweichung vom PRD.**
+> Das PRD erwähnt Konflikte bei lokal/remote geänderten oder gelöschten Projekten/Kalendern.
+> Die Architektur entscheidet sich dagegen: Remote-Kalenderlöschung ist autoritativ
+> und erzeugt keinen Konflikt. Begründung: CalDAV-Server sind die führende Quelle
+> für Kalenderstruktur. Ein lokal existierendes Projekt ohne Remote-Kalender ist
+> ein inkonsistenter Zustand, der nicht durch Konfliktdialoge aufgelöst werden soll,
+> sondern durch konsequentes Cleanup bereinigt wird.
+
 Remote gelöschte Kalender sind autoritativ.
 
 Regeln:
 
-- lokales Cleanup
-- kein Konflikt
-- lokales Projekt verschwindet
-- zugehörige lokale Tasks verschwinden
-- FTS5-Einträge werden gelöscht
+- Lokales Cleanup ohne Konflikt.
+- Lokales Projekt wird gelöscht.
+- Zugehörige lokale Tasks werden gelöscht.
+- FTS5-Einträge werden gelöscht.
+- Keine offenen Task-Konflikte für Tasks aus dem gelöschten Projekt.
+- Laufende Undo-Snapshots für Tasks des gelöschten Projekts werden invalidiert.
 
-Dies ist eine bewusste Architekturentscheidung: Remote-Kalenderlöschung wird nicht als Projektkonflikt behandelt.
+Begründung für Nicht-Konflikt-Behandlung:
+
+- Remote-Kalenderlöschung ist eine bewusste Nutzeraktion auf dem CalDAV-Server.
+- Ein Konfliktdialog über eine Kalenderstruktur, die remote nicht mehr existiert,
+  bietet dem Nutzer keine sinnvolle Handlungsoption außer „lokal auch löschen".
+- Die einzige relevante Ausnahme – ungespeicherte lokale Änderungen in Tasks
+  des betroffenen Projekts – wird durch `sync_status = pending`-Check abgedeckt:
+  Wenn Tasks mit `sync_status = pending` im Projekt existieren, zeigt die UI
+  vor dem Cleanup eine einmalige Warnung, keinen Konflikt.
 
 ### 16.5 Projektumbenennung und Suche
 
@@ -1543,358 +1898,3 @@ Datum:
 
 Relativ:
 
-- `nächsten Montag`
-- `next monday`
-- `in 3 Tagen`
-- `in 3 days`
-
-Wochentage:
-
-- `montag` bis `sonntag`
-- `monday` bis `sunday`
-
-Wiederholung:
-
-- `jeden Montag`
-- `every monday`
-- `täglich`
-- `daily`
-- `wöchentlich`
-- `weekly`
-- `monatlich`
-- `monthly`
-- `jährlich`
-- `yearly`
-- `werktags`
-- `weekdays`
-- `alle X Tage`
-- `alle X Wochen`
-- `alle X Monate`
-
-### 21.5 Mehrdeutigkeiten
-
-Regeln:
-
-- Datum vor Freitext.
-- `montag` wird als Datum interpretiert.
-- Bei `3.4` bevorzugt deutsche UI-Sprache deutsches Format.
-- Sonst ISO-orientierte Interpretation.
-- Unbekannte Tokens bleiben Teil des Titels.
-- Unbekannte Tokens erzeugen keine Fehlermeldung.
-
-### 21.6 UI-Vorschau
-
-Quick Add zeigt live unter dem Eingabefeld:
-
-- erkannter Titel
-- Projekt
-- Labels
-- Datum
-- Wiederholung
-- Priorität
-
-### 21.7 Nicht im MVP
-
-- `jeden zweiten Dienstag im Monat`
-- `jeden Montag um 9 Uhr`
-- natürlichsprachliche Prioritäten wie `dringend`
-
-### 21.8 Tests
-
-- jedes MVP-Muster hat Unit-Tests
-- Tests laufen ohne DB
-- Tests laufen ohne HTTP
-- Resolver wird gefaked
-
----
-
-## 22. Projekt-, Label- und Favoriten-Mapping
-
-### 22.1 Projekte
-
-Projekt = CalDAV-Kalender.
-
-- Projektanlage legt Kalender an.
-- Projektumbenennung benennt Kalender um.
-- Projektlöschung löscht Kalender.
-
-### 22.2 Labels
-
-Labels werden als VTODO `CATEGORIES` gespeichert.
-
-- neue Labels werden automatisch angelegt
-- Labels werden lokal normalisiert gespeichert
-- VTODO-Categories bleiben maßgebliche Sync-Repräsentation
-
-### 22.3 Favoriten
-
-Favoriten werden über Kategorie `STARRED` modelliert.
-
-Regeln:
-
-- `STARRED` in CalDAV wird als Favorit importiert.
-- Favorit in Caldo wird als `STARRED` geschrieben.
-- `STARRED` ist eine reservierte Kategorie mit UI-Sonderbedeutung.
-
----
-
-## 23. UI-Architektur
-
-### 23.1 Rendering
-
-- Seiten und Fragmente werden mit Templ serverseitig gerendert.
-- HTMX lädt Fragmente für Interaktionen nach.
-- Alpine.js hält lokale Zustände:
-  - offene Formulare
-  - unsaved state
-  - outdated banner
-  - kleine UI-Toggles
-- Vanilla JS nur für:
-  - globale Tastaturkürzel
-  - `beforeunload` bei laufenden Writes
-  - HTMX-Header-Konfiguration für `X-Tab-ID` und `X-CSRF-Token`
-
-### 23.2 Kein Runtime-CDN
-
-Alle Assets werden lokal ausgeliefert.
-
-### 23.3 Laufende Writes
-
-Die UI muss laufende Writes sichtbar machen.
-
-Bei laufendem Write und Navigation/Tab-Schließen:
-
-- `beforeunload`-Warnung, soweit Browser dies erlaubt
-- keine Offline-Queue
-- keine automatische Nachsendung beim nächsten Öffnen
-
-### 23.4 Konflikt- und Outdated-UI
-
-Bei veralteter Version:
-
-- nicht still überschreiben
-- Hinweis oder Konfliktansicht anzeigen
-- Formular mit lokalen Änderungen nicht automatisch ersetzen
-
----
-
-## 24. Logging und Datenschutz
-
-### 24.1 Library und Formate
-
-Caldo nutzt `log/slog`.
-
-Formate:
-
-- Production: JSON
-- Development: Text
-
-Log-Level über:
-
-```text
-LOG_LEVEL=info|debug|warn|error
-```
-
-Default: `info`.
-
-### 24.2 Niemals loggen
-
-Niemals, auch nicht auf Debug-Level:
-
-- Task-Titel
-- Task-Beschreibungen
-- `raw_vtodo`
-- CalDAV-Passwort
-- App-Token
-- `ENCRYPTION_KEY`
-- `session_id`
-- `csrf_token`
-- Proxy-Auth-Header-Werte
-- Query-Parameter, wenn sie Nutzdaten enthalten könnten
-
-### 24.3 Erlaubte Logdaten
-
-Erlaubt:
-
-- Task-ID
-- Project-ID
-- ETag
-- Sync-Status
-- HTTP-Methode
-- HTTP-Pfad ohne Query-Parameter
-- Fehlertyp ohne nutzdatenhaltige Message
-- Sync-Dauer
-- Anzahl synchronisierter Tasks
-- CalDAV-HTTP-Statuscodes
-- technische Run-IDs
-
-### 24.4 Zentrale Maskierung
-
-Maskierung erfolgt zentral über einen `slog.Handler`-Wrapper.
-
-Sensitive Keys liegen zentral als Konstante, nicht verstreut im Code.
-
-Die Maskierung ist zusätzliche Absicherung. Sensible Werte sollen trotzdem gar nicht erst an Log-Aufrufstellen übergeben werden.
-
-### 24.5 Correlation IDs
-
-HTTP:
-
-- jeder Request bekommt `request_id`
-- Response-Header: `X-Request-ID`
-- alle Request-Logs enthalten `request_id`
-
-Sync:
-
-- jeder Sync-Lauf bekommt `sync_run_id`
-- alle Sync-Logs enthalten `sync_run_id`
-
----
-
-## 25. Healthcheck
-
-Der Healthcheck ist `GET /health` und prüft nur, ob die App läuft.
-
-Er prüft nicht:
-
-- CalDAV-Erreichbarkeit
-- Sync-Fähigkeit
-- Credentials
-- vollständige Systemintegrität
-
-Wenn Migrationen fehlschlagen, startet die Weboberfläche nicht; damit ist auch der Healthcheck nicht verfügbar.
-
----
-
-## 26. Testing-Strategie
-
-### 26.1 Unit-Tests
-
-Pflichtbereiche:
-
-- VTODO-Feldextraktion
-- VTODO-Patching und Erhalt unbekannter Properties
-- RRULE-Erkennung
-- Quick-Add-Parser
-- Query-Lexer
-- Query-Parser
-- Query-Compiler
-- Konflikt-Auto-Merge
-- Undo-Snapshot-Logik
-- CSRF-Tokenvalidierung
-- Secret-Verschlüsselung
-- Log-Masking
-
-### 26.2 SQLite-Integrationstests
-
-Pflicht:
-
-- Migrationen
-- Checksum-Validierung
-- FTS5-Suche
-- Prefix-Suche
-- Diakritikverhalten
-- Default-Ausschluss erledigter Tasks
-- Trigger/Reindex
-- Undo-Snapshot-Constraints
-- Konflikt-Lifecycle
-
-### 26.3 Nextcloud-Integrationstests
-
-Pflicht gegen lokalen Nextcloud-Container:
-
-- CalDAV-Verbindungstest
-- Kalenderimport
-- Task erstellen/bearbeiten/erledigen/löschen
-- Unteraufgabe Caldo → Nextcloud
-- Unteraufgabe Nextcloud → Caldo
-- `STARRED`-Kategorie
-- ETag/CTag-Verhalten
-- Wiederkehrende Aufgabe erledigen und Serververhalten beobachten
-
-### 26.4 Kein HTTP/DB in Parser-Unit-Tests
-
-Parser-Tests laufen ohne:
-
-- HTTP
-- CalDAV
-- echte DB
-
-Resolver werden gefaked.
-
----
-
-## 27. Zentrale Architektur-Invarianten
-
-Diese Invarianten dürfen in der Implementierung nicht verletzt werden.
-
-### 27.1 Daten und Sync
-
-1. CalDAV ist führend.
-2. Lokale Änderungen gelten erst nach erfolgreichem CalDAV-Write als fachlich gespeichert.
-3. `raw_vtodo` wird immer erhalten.
-4. Unbekannte VTODO-Felder werden nicht gelöscht.
-5. RRULE wird nur bei expliziter Wiederholungsänderung ersetzt.
-6. `etag` und `server_version` werden niemals vermischt.
-7. Remote gelöschte Kalender sind autoritativ und erzeugen keinen Konflikt.
-
-### 27.2 Concurrency
-
-1. Alle DB-Writes laufen über den globalen Write-Mutex.
-2. Keine nested Transactions.
-3. Jeder mutierende Request enthält `expected_version`.
-4. Jeder mutierende HTMX-Request enthält `X-Tab-ID`.
-5. SSE-Broadcast erfolgt nach DB-Commit.
-6. Syncs werden nicht parallel ausgeführt.
-
-### 27.3 Sicherheit
-
-1. Kein lokaler Login.
-2. Fehlender Proxy-Auth-Header ergibt 403.
-3. CSRF schützt alle mutierenden Methoden.
-4. `session_id` ist `HttpOnly`, `Secure`, `SameSite=Strict`.
-5. `csrf_token` ist JS-lesbar, `Secure`, `SameSite=Strict`.
-6. `ENCRYPTION_KEY` ist Base64-kodierter 32-Byte-Key.
-7. AES-256-GCM ist der einzige Secret-Algorithmus im MVP.
-
-### 27.4 Datenschutz
-
-1. Task-Titel werden niemals geloggt.
-2. Task-Beschreibungen werden niemals geloggt.
-3. `raw_vtodo` wird niemals geloggt.
-4. Credentials, Tokens und Session-Werte werden niemals geloggt.
-5. Maskierung erfolgt zentral im Logging-Handler.
-
-### 27.5 Migrationen
-
-1. Migrationen laufen automatisch beim Start.
-2. Backup vor erster ausstehender Migration.
-3. Checksum-Abweichung führt zu Startabbruch.
-4. DDL und DML werden nicht in einer Migration gemischt.
-5. Fehler führen zu `os.Exit(1)`.
-
----
-
-## 28. Bewusst nicht im MVP
-
-Nicht Bestandteil dieser Architektur:
-
-- Multi-User
-- Rollenmodell
-- lokaler Login
-- PWA
-- Browser-Offline-Queue
-- lokale dauerhafte Write-Queue
-- Kanban
-- Projektarchivierung
-- Papierkorb
-- Produktivitätsstatistiken
-- Key-Rotation
-- distributed Scheduler
-- Redis
-- komplexe RRULE-Bearbeitung
-- EXDATE-Management
-- lokale Folgeinstanz-Erzeugung
-- Fuzzy-Suche
-- Relevanzranking als Produktfeature
-- vollständige mobile Optimierung

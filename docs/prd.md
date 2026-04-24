@@ -222,7 +222,7 @@ CalDAV-Zugangsdaten werden nicht dauerhaft über Environment-Variablen bereitges
 ### 6.5 HTTPS
 
 - Caldo ist ausschließlich für Betrieb über HTTPS vorgesehen.
-- Die App muss erkennen, wenn sie nicht über HTTPS betrieben wird, und den Betrieb blockieren oder eine harte Fehlermeldung anzeigen.
+- Die App muss erkennen, wenn sie nicht über HTTPS betrieben wird (über BASE_URL mit https://-Präfix), und den Betrieb blockieren oder eine harte Fehlermeldung anzeigen.
 - Der Betrieb hinter Reverse Proxy ist der Standardfall.
 
 ### 6.6 Authentifizierung
@@ -623,7 +623,6 @@ Die Suche muss per Tastaturkürzel aufrufbar sein.
 
 - Die UI soll nah an Todoist angelehnt sein.
 - Navigation und Bedienfluss sollen vertraut wirken.
-- Caldo darf kein exakter Todoist-Klon sein, soll aber die zentralen Bedienmuster übernehmen.
 
 ### 18.2 Rendering
 
@@ -863,7 +862,7 @@ Mindestens folgende Felder müssen einzeln auswählbar sein:
 ### 22.7 Konfliktversionen
 
 - Konfliktrelevante Vorversionen werden 7 Tage gespeichert.
-- Ungelöste aktive Konflikte dürfen nicht automatisch gelöscht werden.
+- Gelöste Konfliktversionen werden nach 7 Tagen gelöscht. Ungelöste Konflikte bleiben bis zur manuellen Auflösung erhalten.
 - Versionen werden nur für Konflikte gespeichert, nicht für jede Änderung.
 
 ---
@@ -1267,17 +1266,3 @@ Situation, in der lokale und remote Änderungen nicht automatisch verlustfrei zu
 Lokale Änderung wird unmittelbar zu CalDAV geschrieben und gilt erst danach als gespeichert.
 
 ---
-
-## 31. Zusammenfassung
-
-Caldo soll eine selbst gehostete, Todoist-nahe Todo-Web-App für Einzelpersonen werden, bei der CalDAV und insbesondere Nextcloud die führende Datenquelle darstellen. Der MVP legt den Schwerpunkt auf zuverlässige CalDAV-Synchronisation, klare Konfliktauflösung, solide Self-Hosting-Fähigkeit und eine produktive Aufgaben-UX mit Projekten, Labels, Filtern, Fälligkeitsdaten, Schnellanlage und Tastaturbedienung.
-
-Die wichtigsten Erfolgsfaktoren sind:
-
-- keine stillen Datenverluste,
-- zuverlässige CalDAV-Kompatibilität,
-- verständliche Konfliktauflösung,
-- einfache Self-Hosting-Konfiguration,
-- Todoist-nahe Bedienbarkeit,
-- stabile Performance für realistische 200–400 Aufgaben und robuste Auslegung auf bis zu 10.000 Aufgaben.
-

@@ -134,8 +134,8 @@ Folgende Punkte sind für Version 1 ausdrücklich nicht vorgesehen:
 - Überfällige Aufgaben.
 - Tastaturkürzel.
 - Schnell hinzufügen.
+- Undo für die letzte Undo-fähige Aktion.
 - Dark Mode.
-- Undo-Modell mit serverseitigem Snapshot und CalDAV-Write.
 - Einstellungen-Seite.
 - Reverse-Proxy-Authentifizierung über konfigurierbaren Header.
 - Verschlüsselte Speicherung von CalDAV-Zugangsdaten in SQLite.
@@ -333,7 +333,7 @@ Der Setup-Wizard muss mindestens folgende Schritte enthalten:
    - `ENCRYPTION_KEY` ist gesetzt.
    - `PROXY_USER_HEADER` ist gesetzt.
    - Reverse-Proxy-Auth-Header wird erkannt.
-   - HTTPS-Anforderung ist erfüllt.
+   - Die HTTPS-Anforderung wird gemäß Abschnitt 6.5 geprüft.
 2. CalDAV-Konfiguration:
    - CalDAV-URL eingeben.
    - Benutzername eingeben.
@@ -432,6 +432,13 @@ Eine Aufgabe besteht mindestens aus:
 - Erledigte Aufgaben sind standardmäßig ausgeblendet.
 - Es gibt eine Einstellung zum Anzeigen oder Ausblenden erledigter Aufgaben.
 - Erledigte Aufgaben können in Projekten sichtbar bleiben, wenn die Einstellung dies erlaubt.
+- Wenn eine Elternaufgabe offene Unteraufgaben enthält, darf sie nicht stillschweigend inklusive Unteraufgaben erledigt werden.
+- Beim Erledigen einer Elternaufgabe mit offenen Unteraufgaben muss ein Todoist-ähnlicher Dialog erscheinen.
+- Der Dialog muss den Nutzer explizit wählen lassen:
+  - nur die Elternaufgabe erledigen,
+  - Elternaufgabe und alle offenen Unteraufgaben erledigen,
+  - Aktion abbrechen.
+- Die gewählte Aktion muss wie jede andere Änderung sofort zu CalDAV geschrieben werden.
 
 ### 8.6 Löschen
 
@@ -457,6 +464,9 @@ Undo muss mindestens folgende Aktionen unterstützen:
 Anforderungen:
 
 - Undo gilt nur für die letzte Undo-fähige Aktion pro Browser-Session.
+- Für das MVP bedeutet Browser-Session im Undo-Kontext: der jeweilige Browser-Tab beziehungsweise dessen serverseitig zugeordnete UI-Session.
+- Undo-Snapshots sind tab-lokal.
+- Änderungen in anderen Tabs invalidieren den Undo-Snapshot des aktuellen Tabs nicht automatisch, können aber beim Ausführen des Undos einen Konflikt erzeugen.
 - Undo bleibt nach einem Seitenreload innerhalb derselben Browser-Session verfügbar.
 - Undo ist maximal 5 Minuten verfügbar oder bis zur nächsten Undo-fähigen Aktion, je nachdem, was zuerst eintritt.
 - Für Undo muss ein serverseitiger Undo-Snapshot der vorherigen Aufgabenfassung vorgehalten werden.
@@ -842,6 +852,7 @@ Anforderungen:
 - Wenn ein Tab lokale ungespeicherte Formularänderungen hat, darf die Ansicht nicht automatisch überschrieben werden.
 - Wenn beim Speichern eine Versionsabweichung erkannt wird, muss ein Konflikt oder ein Aktualisierungshinweis erzeugt werden.
 - Mehr-Tab-Konflikte werden nach denselben Grundprinzipien behandelt wie CalDAV-Konflikte.
+- Wenn ein Mehr-Tab-Fall als echter Konflikt klassifiziert wird, muss er in der globalen Konfliktansicht erscheinen; reine Aktualisierungshinweise ohne widersprüchliche lokale Änderung müssen nicht in der globalen Konfliktansicht erscheinen.
 
 Akzeptanzkriterien:
 
@@ -885,8 +896,6 @@ Sie muss mindestens unterstützen:
 - Verbindungstest.
 - Kalenderauswahl.
 - Default-Projekt.
-- Erststart-Wizard.
-- Initialimport im Wizard.
 
 ### 20.2 Sync
 
@@ -898,9 +907,8 @@ Sie muss mindestens unterstützen:
 
 - Erledigte Aufgaben anzeigen/ausblenden.
 - Demnächst-Zeitraum.
-- Sprache beziehungsweise Sprachverhalten.
+- UI-Sprache-Umschaltung Deutsch/Englisch; diese Auswahl beeinflusst auch die natürliche Eingabe.
 - Dark Mode.
-- Undo-Modell mit serverseitigem Snapshot und CalDAV-Write.
 
 ### 20.4 Sicherheit
 
@@ -968,6 +976,10 @@ Aufgaben müssen Sync-Status anzeigen können:
 - Offline-Bearbeitung im Browser ist nicht Ziel.
 - Es gibt keine dauerhafte lokale Browser-Queue.
 - Robustheit bei temporären CalDAV-Ausfällen ist wichtiger als Browser-Offline-Fähigkeit.
+- Ausstehende Writes, die beim Schließen des Browsers noch nicht erfolgreich abgeschlossen sind, werden beim nächsten Öffnen nicht automatisch nachgesendet.
+- Da Änderungen erst nach erfolgreichem CalDAV-Write als gespeichert gelten, muss die UI bei noch laufenden Writes sichtbar machen, dass der Speichervorgang noch nicht abgeschlossen ist.
+- Beim Verlassen oder Schließen einer Seite mit laufendem Write soll der Browser, soweit technisch möglich, eine Warnung anzeigen.
+
 
 ---
 
@@ -1010,6 +1022,7 @@ Automatischer Merge ist nicht erlaubt, wenn:
 - Konfliktansicht pro Aufgabe ist Pflicht.
 - Beim Öffnen einer konfliktbehafteten Aufgabe wird die Konfliktansicht angezeigt.
 - Zusätzlich gibt es eine globale Konfliktansicht.
+- Echte Mehr-Tab-Konflikte erscheinen ebenfalls in der globalen Konfliktansicht.
 - Konflikte blockieren die betroffene Aufgabe bis zur Lösung.
 - Konflikte blockieren nicht den Sync anderer Aufgaben.
 
@@ -1055,6 +1068,7 @@ Caldo soll ausgelegt sein auf:
 ### 23.2 Startzeit
 
 - Die App soll nach Prozessstart innerhalb von maximal 5 Sekunden bereit sein, sofern SQLite verfügbar ist und keine Migrationen ausstehen.
+- Bei laufenden Migrationen ist die Startzeit nicht hart begrenzt, solange die Migration aktiv Fortschritt zeigt und kein Timeout oder Fehler ausgelöst wird.
 - Die Weboberfläche soll ohne initialen erfolgreichen CalDAV-Sync nutzbar starten.
 - Die erste UI-Ansicht soll bei bis zu 10.000 lokal gespeicherten Aufgaben innerhalb von maximal 2 Sekunden geladen werden.
 
@@ -1082,6 +1096,8 @@ Caldo unterstützt im MVP:
 
 - Deutsch.
 - Englisch.
+
+Die App muss eine UI-Sprache-Umschaltung zwischen Deutsch und Englisch bereitstellen. Die gewählte Sprache beeinflusst auch die natürliche Eingabe, insbesondere Datumsausdrücke, Wiederholungen und Schnellsyntax-Hilfetexte.
 
 ### 24.2 Architektur
 
@@ -1159,6 +1175,16 @@ Akzeptanzkriterien:
 - Erledigen setzt den CalDAV-Status auf completed.
 - Erledigte Aufgaben sind standardmäßig ausgeblendet.
 - Erledigte Aufgaben können per Einstellung angezeigt werden.
+
+**Als Nutzer möchte ich beim Erledigen einer Elternaufgabe mit offenen Unteraufgaben gefragt werden, was passieren soll, damit ich nicht versehentlich Unteraufgaben miterledige oder offen lasse.**
+
+Akzeptanzkriterien:
+
+- Bei offenen Unteraufgaben erscheint ein Dialog.
+- Der Nutzer kann nur die Elternaufgabe erledigen.
+- Der Nutzer kann Elternaufgabe und offene Unteraufgaben erledigen.
+- Der Nutzer kann die Aktion abbrechen.
+- Die gewählte Aktion wird sofort zu CalDAV geschrieben.
 
 **Als Nutzer möchte ich Aufgaben löschen, damit ich nicht mehr benötigte Aufgaben entfernen kann.**
 
@@ -1299,6 +1325,11 @@ Das MVP gilt im Bereich UI als erfüllt, wenn:
 - Dark Mode verfügbar ist.
 - Erledigte Aufgaben standardmäßig ausgeblendet sind.
 - Sync- und Fehlerstatus sichtbar sind.
+- Der Erststart-Setup-Wizard vor produktiver Nutzung abgeschlossen werden muss.
+- Undo für die letzte Undo-fähige Aktion verfügbar ist und als CalDAV-Write ausgeführt wird.
+- Mehrere Tabs ohne stilles Überschreiben neuerer Daten unterstützt werden.
+- Beim Erledigen einer Elternaufgabe mit offenen Unteraufgaben erscheint ein Dialog zur Auswahl des gewünschten Verhaltens.
+- Die UI-Sprache kann zwischen Deutsch und Englisch umgeschaltet werden und beeinflusst die natürliche Eingabe entsprechend.
 
 ### 26.3 Betrieb
 
@@ -1395,15 +1426,26 @@ Gegenmaßnahme:
 - Harter Startabbruch bei fehlgeschlagener Migration.
 - Klare Logs ohne sensible Daten.
 
+### 27.7 Browser-Schließen bei laufendem Write
+
+Wenn der Nutzer den Browser oder Tab schließt, während ein CalDAV-Write noch läuft, kann der Write abbrechen. Da Caldo keine Browser-Offline-Queue bereitstellt, werden solche ausstehenden Writes beim nächsten Öffnen nicht automatisch nachgesendet.
+
+Gegenmaßnahme:
+
+- Änderungen gelten erst nach erfolgreichem CalDAV-Write als gespeichert.
+- Laufende Writes müssen in der UI klar sichtbar sein.
+- Beim Verlassen oder Schließen einer Seite mit laufendem Write soll, soweit technisch möglich, eine Browser-Warnung angezeigt werden.
+- Dieses Verhalten muss in der Produkt- und Nutzungsdokumentation beschrieben werden.
+
 ## 28. Offene Annahmen
 
-Folgende Punkte sind Annahmen und sollten während der Umsetzung validiert werden:
+Folgende Punkte sind Annahmen, bekannte Einschränkungen oder Validierungsaufgaben und sollten während der Umsetzung berücksichtigt werden:
 
 1. Nextcloud unterstützt die benötigte Parent-Referenz für Unteraufgaben ausreichend.
 2. `STARRED` als VTODO-Kategorie ist für Favoriten akzeptabel.
 3. CalDAV-Standardverhalten für wiederkehrende Aufgaben ist ausreichend für das MVP.
 4. Serverseitiges Rendering mit gezieltem JavaScript reicht für eine Todoist-nahe UX.
-5. HTTPS-Erkennung funktioniert zuverlässig hinter dem vorgesehenen Reverse Proxy.
+5. Es ist eine bekannte Einschränkung, dass Deployments hinter HTTPS-Proxy mit `http://` in `BASE_URL` geblockt werden. Die Dokumentation muss explizit beschreiben, dass `BASE_URL` immer `https://` tragen muss, auch wenn der interne Traffic zwischen Reverse Proxy und Caldo unverschlüsselt läuft.
 6. SQLite reicht für bis zu 10.000 Aufgaben bei Single-User-Betrieb aus.
 7. Eine 7-tägige Aufbewahrung konfliktrelevanter Versionen ist ausreichend.
 8. Firefox und Chrome/Chromium decken die primären Nutzeranforderungen ab.
@@ -1427,6 +1469,7 @@ Folgende Punkte sind Annahmen und sollten während der Umsetzung validiert werde
 ### Phase 2: CalDAV-Basis
 
 - CalDAV-Konfiguration.
+- Erster-Start-Setup-Wizard.
 - Verbindungstest.
 - Kalenderimport.
 - Projektmapping.
@@ -1451,6 +1494,7 @@ Folgende Punkte sind Annahmen und sollten während der Umsetzung validiert werde
 - Periodischer Sync.
 - Sofortiger Write nach Änderung.
 - Sync-Status.
+- Undo mit serverseitigem Snapshot und CalDAV-Write.
 - Mehr-Tab-Versionierung, SSE und Fokus-Refresh.
 - Konflikterkennung.
 - Konfliktansicht.
@@ -1461,11 +1505,11 @@ Folgende Punkte sind Annahmen und sollten während der Umsetzung validiert werde
 
 - Schnell hinzufügen.
 - Natürliche Eingabe Deutsch/Englisch.
+- UI-Sprache-Umschaltung Deutsch/Englisch.
 - Tastaturkürzel.
 - Filter-Query-Syntax.
 - Gespeicherte und favorisierte Filter.
 - Dark Mode.
-- Undo-Modell mit serverseitigem Snapshot und CalDAV-Write.
 
 ### Phase 6: Erweiterte VTODO-Unterstützung
 

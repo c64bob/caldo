@@ -103,6 +103,8 @@ Folgende Punkte sind für Version 1 ausdrücklich nicht vorgesehen:
 - Go-Binary.
 - Docker-Container inklusive Docker-Compose-Referenzdeployment.
 - SQLite als lokale Datenbank.
+- Automatische SQLite-Schema-Migrationen beim App-Start.
+- Erster-Start-Setup-Wizard für CalDAV, Kalenderauswahl, Default-Projekt und Initialimport.
 - CalDAV-Verbindung zu genau einem Account.
 - Unterstützung mehrerer CalDAV-Kalender.
 - Projekt = CalDAV-Kalender.
@@ -133,6 +135,7 @@ Folgende Punkte sind für Version 1 ausdrücklich nicht vorgesehen:
 - Tastaturkürzel.
 - Schnell hinzufügen.
 - Dark Mode.
+- Undo-Modell mit serverseitigem Snapshot und CalDAV-Write.
 - Einstellungen-Seite.
 - Reverse-Proxy-Authentifizierung über konfigurierbaren Header.
 - Verschlüsselte Speicherung von CalDAV-Zugangsdaten in SQLite.
@@ -200,6 +203,30 @@ Caldo muss als folgende Artefakte bereitgestellt werden:
   - Favoriten,
   - Konfliktmetadaten,
   - technische Konfliktversionen.
+
+### 6.2.1 SQLite-Schema-Migrationen
+
+- SQLite-Schema-Migrationen müssen automatisch bei App-Start ausgeführt werden.
+- Migrationen laufen immer automatisch und können nicht per Environment-Variable deaktiviert werden.
+- Unterstützt werden nur Vorwärtsmigrationen.
+- Downgrade- oder Rollback-Migrationen sind nicht Bestandteil des MVP.
+- Vor der Ausführung von Migrationen muss automatisch ein Backup der SQLite-Datenbankdatei erstellt werden.
+- Migrationen müssen transaktional ausgeführt werden, soweit SQLite dies für die jeweilige Änderung unterstützt.
+- Eine fehlgeschlagene Migration darf nicht zu Datenverlust führen.
+- Schlägt eine Migration fehl, darf die App nicht normal starten.
+- Bei fehlgeschlagener Migration muss der App-Start hart abbrechen und eine klare Fehlermeldung in den Logs ausgeben.
+- Die Weboberfläche darf bei fehlgeschlagener Migration nicht verfügbar sein.
+- Eine fehlgeschlagene Migration darf keine teilweise migrierte, inkonsistente Datenbank als nutzbaren Zustand hinterlassen.
+- Der Migrationsstatus beziehungsweise die aktuelle Schema-Version muss lokal nachvollziehbar gespeichert werden.
+
+Akzeptanzkriterien:
+
+- Beim Start mit veraltetem Schema wird die Migration automatisch ausgeführt.
+- Vor der Migration wird ein Datenbank-Backup erstellt.
+- Nach erfolgreicher Migration startet die App normal.
+- Bei fehlerhafter Migration startet die App nicht normal.
+- Bei fehlerhafter Migration bleiben ursprüngliche Daten über das Backup wiederherstellbar.
+- Migrationen werden in den strukturierten Logs ohne sensible Nutzdaten protokolliert.
 
 ### 6.3 Konfiguration
 
@@ -293,6 +320,50 @@ CalDAV ist die führende Datenquelle. Lokale Änderungen gelten erst nach erfolg
 - Neue oder unzugewiesene Aufgaben werden im Default-Projekt erstellt.
 - Es gibt keine separate globale Inbox als eigenes Konzept unabhängig von CalDAV.
 
+### 7.4.1 Erster-Start-Flow und Onboarding
+
+Wenn Caldo ohne vollständige Erstkonfiguration startet, wird der authentifizierte Nutzer nach erfolgreicher Reverse-Proxy-Authentifizierung automatisch in einen Setup-Wizard geleitet.
+
+Die normale Todo-UI ist bis zum erfolgreichen Abschluss des Setup-Wizards gesperrt und nicht nutzbar.
+
+Der Setup-Wizard muss mindestens folgende Schritte enthalten:
+
+1. Systemcheck:
+   - `BASE_URL` ist gesetzt.
+   - `ENCRYPTION_KEY` ist gesetzt.
+   - `PROXY_USER_HEADER` ist gesetzt.
+   - Reverse-Proxy-Auth-Header wird erkannt.
+   - HTTPS-Anforderung ist erfüllt.
+2. CalDAV-Konfiguration:
+   - CalDAV-URL eingeben.
+   - Benutzername eingeben.
+   - Passwort oder App-Passwort eingeben.
+3. Verbindungstest:
+   - Die CalDAV-Verbindung wird getestet.
+   - Bei Fehlschlag bleibt der Nutzer im Wizard.
+   - Eine unvollständige oder ungültige CalDAV-Konfiguration darf nicht als abgeschlossen gespeichert werden.
+4. Kalenderauswahl:
+   - Vorhandene CalDAV-Kalender werden geladen.
+   - Der Nutzer wählt die zu synchronisierenden Kalender aus.
+5. Default-Projekt:
+   - Der Nutzer wählt einen bestehenden Kalender als Default-Projekt.
+   - Alternativ kann der Nutzer ein neues Projekt beziehungsweise einen neuen CalDAV-Kalender anlegen.
+6. Initialimport:
+   - Der initiale CalDAV-Import wird im Wizard gestartet.
+   - Nach erfolgreichem Initialimport wird der Nutzer in die normale App-UI weitergeleitet.
+
+Nach abgeschlossenem Onboarding wird der Wizard nicht als eigener Wizard erneut geöffnet. Spätere Änderungen erfolgen über die normalen Einstellungen.
+
+Akzeptanzkriterien:
+
+- Eine frische Installation ohne CalDAV-Konfiguration zeigt nach Authentifizierung den Setup-Wizard.
+- Die normale Todo-UI ist vor Abschluss des Wizards nicht erreichbar.
+- Bei fehlgeschlagenem CalDAV-Verbindungstest bleibt der Nutzer im Wizard.
+- Ohne gewähltes oder neu angelegtes Default-Projekt kann der Wizard nicht abgeschlossen werden.
+- Der Initialimport wird im Wizard gestartet.
+- Nach erfolgreichem Initialimport wird die normale UI angezeigt.
+- Spätere Konfigurationsänderungen erfolgen über die Einstellungen, nicht über den Erststart-Wizard.
+
 ### 7.5 VTODO-Felder
 
 Caldo soll folgende VTODO-Felder unterstützen, soweit technisch möglich:
@@ -371,7 +442,9 @@ Eine Aufgabe besteht mindestens aus:
 
 ### 8.7 Undo
 
-Eine einfache Undo-Funktion für die letzte Änderung ist Pflicht.
+Eine einfache Undo-Funktion für die letzte Undo-fähige Aktion ist Pflicht.
+
+Undo ist kein rein lokaler UI-Rollback. Da lokale Änderungen erst nach erfolgreichem CalDAV-Write als gespeichert gelten, muss auch ein Undo als neue fachliche Gegenänderung behandelt werden.
 
 Undo muss mindestens folgende Aktionen unterstützen:
 
@@ -380,6 +453,31 @@ Undo muss mindestens folgende Aktionen unterstützen:
 - Aufgabe löschen.
 - Projektwechsel.
 - Labeländerung.
+
+Anforderungen:
+
+- Undo gilt nur für die letzte Undo-fähige Aktion pro Browser-Session.
+- Undo bleibt nach einem Seitenreload innerhalb derselben Browser-Session verfügbar.
+- Undo ist maximal 5 Minuten verfügbar oder bis zur nächsten Undo-fähigen Aktion, je nachdem, was zuerst eintritt.
+- Für Undo muss ein serverseitiger Undo-Snapshot der vorherigen Aufgabenfassung vorgehalten werden.
+- Das Ausführen von Undo erzeugt eine neue Änderung, die sofort zu CalDAV geschrieben wird.
+- Ein Undo gilt erst nach erfolgreichem CalDAV-Write als abgeschlossen.
+- Wenn der CalDAV-Write des Undos fehlschlägt, wird ein Fehler angezeigt und der aktuelle Zustand bleibt bestehen.
+- Es gibt keine ausstehende Undo-Queue.
+- Wenn die Aufgabe zwischen ursprünglicher Änderung und Undo remote verändert wurde, muss ein Konflikt erzeugt werden.
+- Undo für Löschen bedeutet, dass die Aufgabe aus dem Undo-Snapshot neu erstellt wird.
+- Löschen wird sofort zu CalDAV geschrieben und nicht verzögert ausgeführt.
+- Undo darf keine stillen lokalen Zustände erzeugen, die nicht mit CalDAV abgeglichen sind.
+
+Akzeptanzkriterien:
+
+- Nach einer Undo-fähigen Aktion wird eine Undo-Möglichkeit angezeigt.
+- Undo verschwindet nach 5 Minuten oder nach der nächsten Undo-fähigen Aktion.
+- Nach Reload derselben Browser-Session ist Undo weiterhin verfügbar, sofern Zeitlimit und Aktionslimit nicht überschritten sind.
+- Ein erfolgreicher Undo ist in CalDAV sichtbar.
+- Ein fehlgeschlagener Undo zeigt eine Fehlermeldung und verändert den gespeicherten Zustand nicht stillschweigend.
+- Ein Undo nach zwischenzeitlicher Remote-Änderung erzeugt einen Konflikt.
+- Eine gelöschte Aufgabe kann per Undo aus dem Snapshot neu erstellt werden.
 
 ---
 
@@ -600,20 +698,70 @@ Klammern sind im MVP nicht erforderlich.
 
 ## 17. Suche
 
-### 17.1 Umfang
+### 17.1 Grundsatz
 
-Die Suche ist Pflicht.
+Die Suche ist Pflicht und ist als globale Freitextsuche zu verstehen.
 
-Sie muss Aufgaben finden über:
+Die globale Suche und die Filter-Query-Syntax sind getrennte UI-Konzepte:
+
+- Die globale Suche dient dem schnellen Finden aktiver Aufgaben.
+- Die Filter-Query-Syntax dient gespeicherten, systematischen Aufgabenansichten.
+- Beide Funktionen dürfen intern dieselbe Such- oder Query-Engine nutzen.
+- In der UI müssen sie als unterschiedliche Eingaben beziehungsweise Nutzungskontexte erkennbar bleiben.
+
+### 17.2 Umfang
+
+Die globale Suche muss aktive Aufgaben finden über:
 
 - Titel.
 - Beschreibung.
 - Label.
 - Projektname.
 
-### 17.2 Tastaturzugriff
+Standardmäßig durchsucht die globale Suche keine erledigten Aufgaben.
+
+Standardmäßig durchsucht die globale Suche nicht:
+
+- erledigte Aufgaben,
+- Konfliktversionen,
+- technische Undo-Snapshots,
+- historische Versionen.
+
+### 17.3 Strukturierte Tokens in der Suche
+
+Die globale Suche muss einfache strukturierte Tokens erkennen, ohne die vollständige Filter-Query-Syntax ersetzen zu müssen.
+
+Mindestens zu erkennen:
+
+- `#Projekt`
+- `@Label`
+
+Diese Tokens dürfen verwendet werden, um Freitextsuche und einfache Einschränkungen zu kombinieren.
+
+Beispiel:
+
+- `rechnung #Finanzen`
+- `arzt @wichtig`
+
+### 17.4 Verhältnis zu gespeicherten Filtern
+
+- Gespeicherte Filter verwenden die Filter-Query-Syntax aus Abschnitt 16.
+- Aus einer Suche heraus darf ein gespeicherter Filter erstellt werden, wenn die Suchanfrage eindeutig in eine gültige Filter-Query übersetzt werden kann.
+- Wenn eine Suchanfrage nicht eindeutig als Filter-Query interpretierbar ist, darf sie nicht stillschweigend als gespeicherter Filter übernommen werden.
+
+### 17.5 Tastaturzugriff
 
 Die Suche muss per Tastaturkürzel aufrufbar sein.
+
+Akzeptanzkriterien:
+
+- Die globale Suche ist als Freitextsuche nutzbar.
+- Filter-Query und globale Suche sind in der UI unterscheidbar.
+- Die Suche findet aktive Aufgaben über Titel, Beschreibung, Label und Projektname.
+- Erledigte Aufgaben werden standardmäßig nicht durchsucht.
+- Historische Konfliktversionen und Undo-Snapshots werden nicht durchsucht.
+- Einfache Tokens wie `#Projekt` und `@Label` werden erkannt.
+- Aus einer Suche kann ein Filter erstellt werden, sofern die Eingabe eindeutig in eine gültige Filter-Query überführbar ist.
 
 ---
 
@@ -677,9 +825,32 @@ Nice-to-have:
 
 ### 18.7 Mehrere Tabs
 
-- Mehrere offene Browser-Tabs desselben Nutzers müssen unterstützt werden.
+Mehrere offene Browser-Tabs desselben Nutzers müssen unterstützt werden.
+
+Caldo verwendet dafür ein Modell aus serverseitiger Versionsprüfung, Fokus-Refresh und Server-Sent Events (SSE).
+
+Anforderungen:
+
 - Es gibt keine Browser-Offline-Queue.
-- Die App muss vermeiden, dass mehrere Tabs inkonsistente lokale Zustände erzeugen.
+- Es gibt kein pessimistisches Locking beim Bearbeiten.
+- Aufgaben werden beim Bearbeiten nicht exklusiv durch einen Tab gesperrt.
+- Jeder schreibende Request muss die dem Browser bekannte Version der Aufgabe beziehungsweise Ressource enthalten.
+- Wenn die Server-Version von der bekannten Browser-Version abweicht, darf die Änderung nicht stillschweigend überschrieben werden.
+- Bei Fokuswechsel zurück in einen Tab muss die Ansicht aktualisiert beziehungsweise auf veraltete Daten geprüft werden.
+- SSE soll offene Tabs über relevante Änderungen informieren.
+- Wenn ein anderer Tab dieselbe Aufgabe geändert hat, während ein Tab keine lokalen ungespeicherten Formularänderungen hat, darf die Ansicht automatisch aktualisiert werden.
+- Wenn ein Tab lokale ungespeicherte Formularänderungen hat, darf die Ansicht nicht automatisch überschrieben werden.
+- Wenn beim Speichern eine Versionsabweichung erkannt wird, muss ein Konflikt oder ein Aktualisierungshinweis erzeugt werden.
+- Mehr-Tab-Konflikte werden nach denselben Grundprinzipien behandelt wie CalDAV-Konflikte.
+
+Akzeptanzkriterien:
+
+- Zwei geöffnete Tabs zeigen nach einer Änderung in einem Tab zeitnah konsistente Daten oder einen Aktualisierungshinweis.
+- Ein Tab überschreibt keine neuere Server-Version stillschweigend.
+- Ein Tab mit lokalen ungespeicherten Änderungen wird nicht automatisch überschrieben.
+- Bei Speichern auf Basis einer veralteten Version wird ein Konflikt oder ein klarer Aktualisierungshinweis angezeigt.
+- Es gibt keine Bearbeitungssperre nur aufgrund eines geöffneten Tabs.
+- Fokus-Refresh aktualisiert lange offene Tabs beim Zurückkehren.
 
 ---
 
@@ -702,6 +873,8 @@ Eine Tastaturhilfe muss verfügbar sein.
 
 Eine Einstellungen-Seite ist Pflicht.
 
+Die Einstellungen dienen nach abgeschlossenem Erststart-Wizard zur späteren Änderung der Konfiguration. Der Erststart selbst erfolgt über den Setup-Wizard gemäß Abschnitt 7.4.1.
+
 Sie muss mindestens unterstützen:
 
 ### 20.1 CalDAV
@@ -712,6 +885,8 @@ Sie muss mindestens unterstützen:
 - Verbindungstest.
 - Kalenderauswahl.
 - Default-Projekt.
+- Erststart-Wizard.
+- Initialimport im Wizard.
 
 ### 20.2 Sync
 
@@ -725,6 +900,7 @@ Sie muss mindestens unterstützen:
 - Demnächst-Zeitraum.
 - Sprache beziehungsweise Sprachverhalten.
 - Dark Mode.
+- Undo-Modell mit serverseitigem Snapshot und CalDAV-Write.
 
 ### 20.4 Sicherheit
 
@@ -945,6 +1121,17 @@ Akzeptanzkriterien:
 - Ein neuer Kalender kann angelegt werden.
 - Ohne Default-Projekt ist die produktive Nutzung nicht abgeschlossen.
 
+**Als Nutzer möchte ich beim ersten Start durch einen Setup-Wizard geführt werden, damit Caldo erst nach vollständiger CalDAV-Konfiguration nutzbar ist.**
+
+Akzeptanzkriterien:
+
+- Eine unkonfigurierte Installation leitet nach erfolgreicher Reverse-Proxy-Authentifizierung in den Setup-Wizard.
+- Die normale Todo-UI ist bis zum Abschluss des Wizards gesperrt.
+- CalDAV-Konfiguration, Verbindungstest, Kalenderauswahl, Default-Projekt und Initialimport sind Teil des Wizards.
+- Bei fehlgeschlagenem Verbindungstest bleibt der Nutzer im Wizard.
+- Nach erfolgreichem Initialimport wird die normale UI geöffnet.
+- Spätere Änderungen erfolgen über Einstellungen.
+
 ### 25.2 Aufgabenverwaltung
 
 **Als Nutzer möchte ich Aufgaben schnell erstellen, damit ich Gedanken ohne Reibung erfassen kann.**
@@ -1025,7 +1212,39 @@ Akzeptanzkriterien:
 - Lokale Version, Remote-Version und manuelle Feldauswahl sind möglich.
 - Beide Versionen können als separate Aufgaben behalten werden.
 
-### 25.6 Sync
+### 25.6 Undo, Suche und Mehr-Tab-Nutzung
+
+**Als Nutzer möchte ich die letzte Änderung rückgängig machen, damit ich versehentliche Aktionen korrigieren kann.**
+
+Akzeptanzkriterien:
+
+- Undo ist für die letzte Undo-fähige Aktion pro Browser-Session verfügbar.
+- Undo bleibt nach Reload innerhalb derselben Browser-Session für bis zu 5 Minuten verfügbar.
+- Undo wird als neue Änderung sofort zu CalDAV geschrieben.
+- Bei fehlgeschlagenem Undo-Write wird ein Fehler angezeigt.
+- Bei zwischenzeitlicher Remote-Änderung erzeugt Undo einen Konflikt.
+- Undo für Löschen erstellt die Aufgabe aus dem Snapshot neu.
+
+**Als Nutzer möchte ich eine globale Suche nutzen, damit ich aktive Aufgaben schnell finde.**
+
+Akzeptanzkriterien:
+
+- Die globale Suche ist von gespeicherten Filtern unterscheidbar.
+- Die Suche durchsucht standardmäßig nur aktive Aufgaben.
+- Einfache Tokens wie `#Projekt` und `@Label` werden erkannt.
+- Aus einer Suche kann ein Filter erstellt werden, wenn die Eingabe eindeutig in eine Filter-Query überführbar ist.
+
+**Als Nutzer möchte ich Caldo in mehreren Tabs nutzen können, damit ich parallel arbeiten kann, ohne Daten stillschweigend zu überschreiben.**
+
+Akzeptanzkriterien:
+
+- Änderungen in einem Tab werden über SSE oder Fokus-Refresh in anderen Tabs sichtbar.
+- Schreibvorgänge prüfen serverseitige Versionen.
+- Veraltete Tabs überschreiben keine neueren Daten stillschweigend.
+- Bei Versionskonflikten wird ein Konflikt oder Aktualisierungshinweis angezeigt.
+- Es gibt keine pessimistischen Bearbeitungssperren.
+
+### 25.7 Sync
 
 **Als Nutzer möchte ich manuell und automatisch synchronisieren, damit Änderungen aus Nextcloud und Caldo aktuell bleiben.**
 
@@ -1038,7 +1257,7 @@ Akzeptanzkriterien:
 - Letzter erfolgreicher Sync-Zeitpunkt wird angezeigt.
 - Sync-Fehler werden sichtbar angezeigt.
 
-### 25.7 Wiederholungen
+### 25.8 Wiederholungen
 
 **Als Nutzer möchte ich wiederkehrende Aufgaben erstellen, damit regelmäßige Aufgaben automatisch verwaltet werden.**
 
@@ -1094,6 +1313,9 @@ Das MVP gilt im Bereich Betrieb als erfüllt, wenn:
 - HTTPS-only-Verhalten durchgesetzt wird.
 - Healthcheck verfügbar ist.
 - Strukturierte Logs ohne sensible Inhalte erzeugt werden.
+- SQLite-Schema-Migrationen beim App-Start automatisch ausgeführt werden.
+- Vor Migrationen ein SQLite-Backup erstellt wird.
+- Eine fehlgeschlagene Migration den normalen App-Start verhindert und keine Daten stillschweigend beschädigt.
 
 ---
 
@@ -1161,6 +1383,18 @@ Gegenmaßnahme:
 
 ---
 
+### 27.6 Migrationen
+
+Fehlerhafte SQLite-Schema-Migrationen können die lokale Datenbank beschädigen oder den Start verhindern.
+
+Gegenmaßnahme:
+
+- Automatische Backups vor Migrationen.
+- Vorwärtsmigrationen.
+- Transaktionale Ausführung, soweit SQLite dies unterstützt.
+- Harter Startabbruch bei fehlgeschlagener Migration.
+- Klare Logs ohne sensible Daten.
+
 ## 28. Offene Annahmen
 
 Folgende Punkte sind Annahmen und sollten während der Umsetzung validiert werden:
@@ -1182,6 +1416,7 @@ Folgende Punkte sind Annahmen und sollten während der Umsetzung validiert werde
 
 - Go-Binary.
 - SQLite.
+- Automatische SQLite-Migrationen.
 - Docker.
 - Environment-Konfiguration.
 - Reverse-Proxy-Auth.
@@ -1207,6 +1442,7 @@ Folgende Punkte sind Annahmen und sollten während der Umsetzung validiert werde
 - Fälligkeitsdaten.
 - Beschreibungen.
 - Suche.
+- Trennung von globaler Suche und Filter-Query.
 - Heute/Demnächst/Überfällig.
 
 ### Phase 4: Sync und Konflikte
@@ -1215,6 +1451,7 @@ Folgende Punkte sind Annahmen und sollten während der Umsetzung validiert werde
 - Periodischer Sync.
 - Sofortiger Write nach Änderung.
 - Sync-Status.
+- Mehr-Tab-Versionierung, SSE und Fokus-Refresh.
 - Konflikterkennung.
 - Konfliktansicht.
 - Globale Konfliktliste.
@@ -1228,6 +1465,7 @@ Folgende Punkte sind Annahmen und sollten während der Umsetzung validiert werde
 - Filter-Query-Syntax.
 - Gespeicherte und favorisierte Filter.
 - Dark Mode.
+- Undo-Modell mit serverseitigem Snapshot und CalDAV-Write.
 
 ### Phase 6: Erweiterte VTODO-Unterstützung
 
@@ -1264,5 +1502,17 @@ Situation, in der lokale und remote Änderungen nicht automatisch verlustfrei zu
 
 **Sofortiger Write**  
 Lokale Änderung wird unmittelbar zu CalDAV geschrieben und gilt erst danach als gespeichert.
+
+**Setup-Wizard**  
+Erster-Start-Ablauf für Systemcheck, CalDAV-Konfiguration, Kalenderauswahl, Default-Projekt und Initialimport.
+
+**Undo-Snapshot**  
+Kurzzeitig gespeicherte vorherige Aufgabenfassung, aus der die letzte Undo-fähige Aktion pro Browser-Session rückgängig gemacht werden kann.
+
+**Fokus-Refresh**  
+Aktualisierung oder Versionsprüfung eines Browser-Tabs, wenn der Nutzer zu diesem Tab zurückkehrt.
+
+**Server-Sent Events (SSE)**  
+Einseitiger Server-zu-Browser-Kanal, über den offene Tabs über relevante Änderungen informiert werden können.
 
 ---

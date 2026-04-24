@@ -1,2 +1,2 @@
 # caldo
-A self-hosted, single-binary todo manager with CalDAV sync (Nextcloud/VTODO).  Built with Go and HTMX. No external services, no cloud dependency —  your tasks stay yours.
+Caldo is a minimalist, self-hosted task manager inspired by Todoist. It runs as a single Go binary, stores data locally in SQLite, and syncs tasks bidirectionally with any CalDAV server (Nextcloud, Radicale, Baikal) via the VTODO standard. No accounts, no subscriptions, no tracking.

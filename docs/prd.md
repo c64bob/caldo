@@ -1,6 +1,6 @@
 # Caldo – Product Requirements Document
 
-**Status:** Entwurf  
+**Status:** Final MVP v1  
 **Produktname:** Caldo  
 **Dokumenttyp:** Product Requirements Document (PRD)  
 **Zielsprache:** Deutsch  

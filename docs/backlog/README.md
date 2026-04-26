@@ -1,0 +1,23 @@
+# Backlog
+
+## Epics
+- [Epic 1 — Betriebsfundament und Startfähigkeit](epics/epic-01-betriebsfundament-und-startfaehigkeit.md)
+- [Epic 2 — HTTP-Grundgerüst, Sicherheit und Assets](epics/epic-02-http-grundgeruest-sicherheit-und-assets.md)
+- [Epic 3 — Datenmodell und Repository-Basis](epics/epic-03-datenmodell-und-repository-basis.md)
+- [Epic 4 — Secret Handling und CalDAV-Verbindungsbasis](epics/epic-04-secret-handling-und-caldav-verbindungsbasis.md)
+- [Epic 5 — Setup-Wizard und Initialimport](epics/epic-05-setup-wizard-und-initialimport.md)
+- [Epic 6 — VTODO-Roundtrip und CalDAV-Write-Basis](epics/epic-06-vtodo-roundtrip-und-caldav-write-basis.md)
+- [Epic 7 — Aufgaben-Kernfunktionen mit Write-Through](epics/epic-07-aufgaben-kernfunktionen-mit-write-through.md)
+- [Epic 8 — Projekte, Kalender und Default-Projekt im Normalbetrieb](epics/epic-08-projekte-kalender-und-default-projekt-im-normalbetrieb.md)
+- [Epic 9 — Suche, FTS und Basisansichten](epics/epic-09-suche-fts-und-basisansichten.md)
+- [Epic 10 — Sync Engine und Scheduler](epics/epic-10-sync-engine-und-scheduler.md)
+- [Epic 11 — Optimistic Locking, SSE und Mehr-Tab-Verhalten](epics/epic-11-optimistic-locking-sse-und-mehr-tab-verhalten.md)
+- [Epic 12 — Undo](epics/epic-12-undo.md)
+- [Epic 13 — Konflikte und manuelle Auflösung](epics/epic-13-konflikte-und-manuelle-aufloesung.md)
+- [Epic 14 — Quick Add und natürliche Eingabe](epics/epic-14-quick-add-und-natuerliche-eingabe.md)
+- [Epic 15 — Filter und gespeicherte Ansichten](epics/epic-15-filter-und-gespeicherte-ansichten.md)
+- [Epic 16 — Labels, Favoriten und Kategorien](epics/epic-16-labels-favoriten-und-kategorien.md)
+- [Epic 17 — Unteraufgaben](epics/epic-17-unteraufgaben.md)
+- [Epic 18 — Wiederkehrende Aufgaben und VTODO-Erhalt](epics/epic-18-wiederkehrende-aufgaben-und-vtodo-erhalt.md)
+- [Epic 19 — Todoist-nahe UI, Navigation und Einstellungen](epics/epic-19-todoist-nahe-ui-navigation-und-einstellungen.md)
+- [Epic 20 — Deployment und Referenzbetrieb](epics/epic-20-deployment-und-referenzbetrieb.md)

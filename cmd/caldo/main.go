@@ -63,7 +63,7 @@ func run(logger *slog.Logger) error {
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
-		Handler: handler.NewRouter(logger, cfg.ProxyUserHeader, manifest, setupStatus.Complete, cfg.EncryptionKey),
+		Handler: handler.NewRouter(logger, cfg.ProxyUserHeader, manifest, setupStatus.Complete, cfg.EncryptionKey, sqliteDB),
 	}
 
 	serverErr := make(chan error, 1)

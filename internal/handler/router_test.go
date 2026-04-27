@@ -1,20 +1,27 @@
 package handler
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"caldo/internal/logging"
 )
 
 func TestNewRouterExposesHealthWithoutAuth(t *testing.T) {
 	t.Parallel()
 
+	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
 	responseRecorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/health", nil)
 
-	NewRouter().ServeHTTP(responseRecorder, request)
+	NewRouter(logger).ServeHTTP(responseRecorder, request)
 
 	if responseRecorder.Code != http.StatusOK {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	if responseRecorder.Header().Get("X-Request-ID") == "" {
+		t.Fatal("expected request id header")
 	}
 }

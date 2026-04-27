@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -14,6 +15,23 @@ import (
 	"caldo/internal/db"
 	"caldo/internal/view"
 )
+
+type fakeCalendarClient struct {
+	calendars []caldav.Calendar
+	created   caldav.Calendar
+	createErr error
+}
+
+func (f fakeCalendarClient) ListCalendars(_ context.Context, _ caldav.Credentials) ([]caldav.Calendar, error) {
+	return f.calendars, nil
+}
+
+func (f fakeCalendarClient) CreateCalendar(_ context.Context, _ caldav.Credentials, _ string) (caldav.Calendar, error) {
+	if f.createErr != nil {
+		return caldav.Calendar{}, f.createErr
+	}
+	return f.created, nil
+}
 
 func TestSetupPageRendersCalDAVForm(t *testing.T) {
 	t.Parallel()
@@ -153,5 +171,210 @@ func TestSetupCalDAVFailureKeepsStepOnCaldav(t *testing.T) {
 
 	if _, err := database.LoadCalDAVCredentials(context.Background(), []byte("12345678901234567890123456789012")); err != nil {
 		t.Fatalf("expected credentials to be stored even on failed connection test: %v", err)
+	}
+}
+
+func TestSetupCalendarsPageRendersCalendars(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if err := database.SaveCalDAVCredentials(context.Background(), []byte("12345678901234567890123456789012"), db.CalDAVCredentials{
+		URL: "https://example.test/caldav", Username: "alice", Password: "secret",
+	}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	h := SetupCalendarsPage(setupDependencies{
+		database:      database,
+		encryptionKey: []byte("12345678901234567890123456789012"),
+		calendar: fakeCalendarClient{
+			calendars: []caldav.Calendar{{Href: "/cal/work/", DisplayName: "Work"}},
+		},
+	})
+
+	request := httptest.NewRequest(http.MethodGet, "/setup/calendars", nil)
+	request = request.WithContext(view.WithAssetManifest(request.Context(), map[string]string{"app.css": "app.css", "app.js": "app.js", "htmx.min.js": "htmx.min.js", "htmx-sse.js": "htmx-sse.js", "alpine.min.js": "alpine.min.js"}))
+	responseRecorder := httptest.NewRecorder()
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	if !strings.Contains(responseRecorder.Body.String(), "Work") {
+		t.Fatalf("expected calendar name in response body, got %q", responseRecorder.Body.String())
+	}
+}
+
+func TestSetupCalendarsSuccessStoresProjectsAndAdvancesToImport(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if err := database.SaveCalDAVCredentials(context.Background(), []byte("12345678901234567890123456789012"), db.CalDAVCredentials{
+		URL: "https://example.test/caldav", Username: "alice", Password: "secret",
+	}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+	if err := database.SaveCalDAVServerCapabilities(context.Background(), db.CalDAVServerCapabilities{WebDAVSync: true, FullScan: true}); err != nil {
+		t.Fatalf("save capabilities: %v", err)
+	}
+
+	h := SetupCalendars(setupDependencies{
+		database:      database,
+		encryptionKey: []byte("12345678901234567890123456789012"),
+		calendar: fakeCalendarClient{
+			calendars: []caldav.Calendar{
+				{Href: "/cal/work/", DisplayName: "Work"},
+				{Href: "/cal/home/", DisplayName: "Home"},
+			},
+		},
+	})
+
+	form := url.Values{}
+	form.Add("calendar_href", "/cal/work/")
+	form.Add("calendar_href", "/cal/home/")
+	form.Set("default_calendar_href", "/cal/home/")
+
+	request := httptest.NewRequest(http.MethodPost, "/setup/calendars", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request = request.WithContext(view.WithAssetManifest(request.Context(), map[string]string{"app.css": "app.css", "app.js": "app.js", "htmx.min.js": "htmx.min.js", "htmx-sse.js": "htmx-sse.js", "alpine.min.js": "alpine.min.js"}))
+	responseRecorder := httptest.NewRecorder()
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusFound {
+		t.Fatalf("unexpected status: got %d want %d", responseRecorder.Code, http.StatusFound)
+	}
+	if got := responseRecorder.Header().Get("Location"); got != "/setup/import" {
+		t.Fatalf("unexpected location: got %q want %q", got, "/setup/import")
+	}
+
+	status, err := database.LoadSetupStatus(context.Background())
+	if err != nil {
+		t.Fatalf("load setup status: %v", err)
+	}
+	if status.Step != "import" {
+		t.Fatalf("unexpected setup step: got %q want %q", status.Step, "import")
+	}
+}
+
+func TestSetupCalendarsRequiresDefaultProject(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if err := database.SaveCalDAVCredentials(context.Background(), []byte("12345678901234567890123456789012"), db.CalDAVCredentials{
+		URL: "https://example.test/caldav", Username: "alice", Password: "secret",
+	}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	h := SetupCalendars(setupDependencies{
+		database:      database,
+		encryptionKey: []byte("12345678901234567890123456789012"),
+		calendar: fakeCalendarClient{
+			calendars: []caldav.Calendar{{Href: "/cal/work/", DisplayName: "Work"}},
+		},
+	})
+
+	form := url.Values{}
+	form.Add("calendar_href", "/cal/work/")
+	request := httptest.NewRequest(http.MethodPost, "/setup/calendars", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request = request.WithContext(view.WithAssetManifest(request.Context(), map[string]string{"app.css": "app.css", "app.js": "app.js", "htmx.min.js": "htmx.min.js", "htmx-sse.js": "htmx-sse.js", "alpine.min.js": "alpine.min.js"}))
+	responseRecorder := httptest.NewRecorder()
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	if !strings.Contains(responseRecorder.Body.String(), "default-projekt ist erforderlich") {
+		t.Fatalf("expected default project validation message, got %q", responseRecorder.Body.String())
+	}
+}
+
+func TestSetupCalendarsCanCreateNewDefaultProject(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if err := database.SaveCalDAVCredentials(context.Background(), []byte("12345678901234567890123456789012"), db.CalDAVCredentials{
+		URL: "https://example.test/caldav", Username: "alice", Password: "secret",
+	}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	h := SetupCalendars(setupDependencies{
+		database:      database,
+		encryptionKey: []byte("12345678901234567890123456789012"),
+		calendar: fakeCalendarClient{
+			calendars: []caldav.Calendar{{Href: "/cal/work/", DisplayName: "Work"}},
+			created:   caldav.Calendar{Href: "/cal/inbox/", DisplayName: "Inbox"},
+		},
+	})
+
+	form := url.Values{}
+	form.Add("calendar_href", "/cal/work/")
+	form.Set("new_default_project_name", "Inbox")
+
+	request := httptest.NewRequest(http.MethodPost, "/setup/calendars", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request = request.WithContext(view.WithAssetManifest(request.Context(), map[string]string{"app.css": "app.css", "app.js": "app.js", "htmx.min.js": "htmx.min.js", "htmx-sse.js": "htmx-sse.js", "alpine.min.js": "alpine.min.js"}))
+	responseRecorder := httptest.NewRecorder()
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusFound {
+		t.Fatalf("unexpected status: got %d want %d", responseRecorder.Code, http.StatusFound)
+	}
+}
+
+func TestSetupCalendarsCreateNewDefaultProjectFailureShowsError(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if err := database.SaveCalDAVCredentials(context.Background(), []byte("12345678901234567890123456789012"), db.CalDAVCredentials{
+		URL: "https://example.test/caldav", Username: "alice", Password: "secret",
+	}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	h := SetupCalendars(setupDependencies{
+		database:      database,
+		encryptionKey: []byte("12345678901234567890123456789012"),
+		calendar: fakeCalendarClient{
+			calendars: []caldav.Calendar{{Href: "/cal/work/", DisplayName: "Work"}},
+			createErr: errors.New("boom"),
+		},
+	})
+
+	form := url.Values{}
+	form.Set("new_default_project_name", "Inbox")
+	request := httptest.NewRequest(http.MethodPost, "/setup/calendars", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request = request.WithContext(view.WithAssetManifest(request.Context(), map[string]string{"app.css": "app.css", "app.js": "app.js", "htmx.min.js": "htmx.min.js", "htmx-sse.js": "htmx-sse.js", "alpine.min.js": "alpine.min.js"}))
+	responseRecorder := httptest.NewRecorder()
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	if !strings.Contains(responseRecorder.Body.String(), "konnte nicht angelegt werden") {
+		t.Fatalf("expected create default project error message, got %q", responseRecorder.Body.String())
 	}
 }

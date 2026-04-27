@@ -1,7 +1,7 @@
 DROP TABLE IF EXISTS settings;
 
 CREATE TABLE settings (
-    id TEXT PRIMARY KEY DEFAULT 'default' CHECK (id = 'default'),
+    id TEXT NOT NULL PRIMARY KEY DEFAULT 'default' CHECK (id = 'default'),
     setup_complete BOOLEAN NOT NULL DEFAULT FALSE,
     setup_step TEXT NOT NULL DEFAULT 'caldav' CHECK (setup_step IN ('caldav', 'calendars', 'import', 'complete')),
     caldav_url TEXT,

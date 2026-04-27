@@ -115,6 +115,25 @@ FROM settings
 	}
 }
 
+func TestSettingsSingletonRejectsNullID(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "caldo.db")
+	database, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := database.Close(); err != nil {
+			t.Fatalf("close sqlite: %v", err)
+		}
+	})
+
+	if _, err := database.Conn.Exec(`INSERT INTO settings (id, updated_at) VALUES (NULL, CURRENT_TIMESTAMP);`); err == nil {
+		t.Fatal("expected NULL settings id insert to fail")
+	}
+}
+
 func TestDatabaseCloseNilReceiver(t *testing.T) {
 	t.Parallel()
 

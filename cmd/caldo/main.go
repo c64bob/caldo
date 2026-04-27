@@ -14,6 +14,7 @@ import (
 	"caldo/internal/handler"
 	"caldo/internal/lock"
 	"caldo/internal/logging"
+	"caldo/internal/scheduler"
 	"caldo/internal/shutdown"
 )
 
@@ -64,9 +65,11 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("load setup status: %w", err)
 	}
 
+	appScheduler := scheduler.NewNoopScheduler()
+
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
-		Handler: handler.NewRouter(logger, cfg.ProxyUserHeader, manifest, setupStatus.Complete, cfg.EncryptionKey, sqliteDB, lifecycleCtx, nil),
+		Handler: handler.NewRouter(logger, cfg.ProxyUserHeader, manifest, setupStatus.Complete, cfg.EncryptionKey, sqliteDB, lifecycleCtx, appScheduler),
 	}
 	server.RegisterOnShutdown(cancelLifecycle)
 
@@ -80,7 +83,7 @@ func run(logger *slog.Logger) error {
 		serverErr <- nil
 	}()
 
-	coordinator := shutdown.NewCoordinator(logger, nil, shutdown.DefaultTimeout)
+	coordinator := shutdown.NewCoordinator(logger, appScheduler, shutdown.DefaultTimeout)
 	shutdownCode := make(chan int, 1)
 	go func() {
 		shutdownCode <- coordinator.Handle(context.Background(), server)

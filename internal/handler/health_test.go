@@ -16,7 +16,11 @@ func TestHealthReturnsLivenessOnly(t *testing.T) {
 	Health(responseRecorder, request)
 
 	response := responseRecorder.Result()
-	defer response.Body.Close()
+	t.Cleanup(func() {
+		if err := response.Body.Close(); err != nil {
+			t.Fatalf("close response body: %v", err)
+		}
+	})
 
 	if response.StatusCode != http.StatusOK {
 		t.Fatalf("unexpected status code: got %d want %d", response.StatusCode, http.StatusOK)

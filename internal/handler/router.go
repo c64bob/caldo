@@ -11,7 +11,9 @@ import (
 func NewRouter(logger *slog.Logger) http.Handler {
 	router := chi.NewRouter()
 	router.Use(RequestIDMiddleware())
+	router.Use(RecoveryMiddleware(logger))
 	router.Use(SafeLoggingMiddleware(logger))
+	router.Use(SecurityHeadersMiddleware())
 	router.Get("/health", Health)
 
 	return router

@@ -98,7 +98,6 @@ func TestRunFromFSRollsBackFailedMigration(t *testing.T) {
 }
 
 func TestBackupSQLiteSkipsExistingBackupPath(t *testing.T) {
-	t.Parallel()
 
 	dbPath := filepath.Join(t.TempDir(), "caldo.db")
 	db := openTestSQLite(t, dbPath)

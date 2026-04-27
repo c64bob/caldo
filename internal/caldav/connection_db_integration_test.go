@@ -24,7 +24,8 @@ func TestConnectionProbeAndCapabilityPersistence(t *testing.T) {
 	})
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("DAV", "1, sync-collection")
+		w.Header().Set("DAV", "1, calendar-access, sync-collection")
+		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 		w.WriteHeader(http.StatusMultiStatus)
 		_, _ = w.Write([]byte(`<d:multistatus xmlns:d="DAV:" xmlns:cs="http://calendarserver.org/ns/"><d:getetag>\"etag\"</d:getetag><cs:getctag>ctag</cs:getctag></d:multistatus>`))
 	}))

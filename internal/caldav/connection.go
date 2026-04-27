@@ -86,7 +86,7 @@ func (t *ConnectionTester) TestConnection(ctx context.Context, credentials Crede
 	}
 	defer response.Body.Close()
 
-	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusBadRequest {
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
 		return ServerCapabilities{}, fmt.Errorf("%w: unexpected status %d", ErrConnectionTestFailed, response.StatusCode)
 	}
 
@@ -94,8 +94,28 @@ func (t *ConnectionTester) TestConnection(ctx context.Context, credentials Crede
 	if err != nil {
 		return ServerCapabilities{}, fmt.Errorf("%w: read response", ErrConnectionTestFailed)
 	}
+	if !isCalDAVResponse(response.Header.Get("DAV"), response.Header.Get("Content-Type"), string(bodyBytes)) {
+		return ServerCapabilities{}, fmt.Errorf("%w: response is not a caldav endpoint", ErrConnectionTestFailed)
+	}
 
 	return detectCapabilities(response.Header.Get("DAV"), string(bodyBytes)), nil
+}
+
+func isCalDAVResponse(davHeader string, contentType string, responseBody string) bool {
+	lowerDAV := strings.ToLower(davHeader)
+	lowerContentType := strings.ToLower(contentType)
+	lowerBody := strings.ToLower(responseBody)
+
+	if !strings.Contains(lowerContentType, "xml") {
+		return false
+	}
+
+	if strings.Contains(lowerDAV, "calendar-access") || strings.Contains(lowerDAV, "addressbook") {
+		return true
+	}
+
+	return strings.Contains(lowerBody, "multistatus") &&
+		(strings.Contains(lowerBody, "xmlns:d=\"dav:\"") || strings.Contains(lowerBody, "xmlns=\"dav:\""))
 }
 
 func detectCapabilities(davHeader string, responseBody string) ServerCapabilities {

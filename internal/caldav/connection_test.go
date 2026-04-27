@@ -71,6 +71,27 @@ func TestConnectionTesterReturnsFailureForUnexpectedStatus(t *testing.T) {
 	}
 }
 
+func TestConnectionTesterRejectsNonCalDAVResponse(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("<html><body>ok</body></html>"))
+	}))
+	defer server.Close()
+
+	tester := NewConnectionTester(server.Client())
+	_, err := tester.TestConnection(context.Background(), Credentials{
+		URL:      server.URL,
+		Username: "alice",
+		Password: "secret",
+	})
+	if !errors.Is(err, ErrConnectionTestFailed) {
+		t.Fatalf("expected connection test failure, got %v", err)
+	}
+}
+
 func TestConnectionTesterHonorsTimeout(t *testing.T) {
 	t.Parallel()
 

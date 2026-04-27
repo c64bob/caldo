@@ -42,6 +42,16 @@ func TestDatabaseCloseNilReceiver(t *testing.T) {
 	}
 }
 
+func TestOpenSQLiteFailsWhenWalUnavailable(t *testing.T) {
+	t.Parallel()
+
+	database, err := OpenSQLite(":memory:")
+	if err == nil {
+		_ = database.Close()
+		t.Fatal("expected OpenSQLite to fail when WAL mode is unavailable")
+	}
+}
+
 func assertSingleTextResult(t *testing.T, database *Database, query, want string) {
 	t.Helper()
 

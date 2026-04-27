@@ -32,6 +32,15 @@ func OpenSQLite(path string) (*Database, error) {
 		_ = dbConn.Close()
 		return nil, fmt.Errorf("set pragma journal_mode: %w", err)
 	}
+	var journalMode string
+	if err := dbConn.QueryRow("PRAGMA journal_mode;").Scan(&journalMode); err != nil {
+		_ = dbConn.Close()
+		return nil, fmt.Errorf("read pragma journal_mode: %w", err)
+	}
+	if journalMode != "wal" {
+		_ = dbConn.Close()
+		return nil, fmt.Errorf("unexpected pragma journal_mode: got %q want %q", journalMode, "wal")
+	}
 
 	if _, err := dbConn.Exec("PRAGMA synchronous = NORMAL;"); err != nil {
 		_ = dbConn.Close()

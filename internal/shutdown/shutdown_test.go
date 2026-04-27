@@ -152,15 +152,22 @@ func TestHandleTimeoutReturnsOne(t *testing.T) {
 	}
 }
 
-func TestHandleCallsSchedulerBeforeHTTPShutdown(t *testing.T) {
+func TestHandleCallsHTTPShutdownBeforeScheduler(t *testing.T) {
 	t.Parallel()
 
 	var (
 		mu    sync.Mutex
 		steps []string
 	)
+	httpShutdownCalled := make(chan struct{})
 
 	scheduler := &stubScheduler{stop: func(ctx context.Context) error {
+		select {
+		case <-httpShutdownCalled:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+
 		mu.Lock()
 		steps = append(steps, "scheduler")
 		mu.Unlock()
@@ -172,6 +179,7 @@ func TestHandleCallsSchedulerBeforeHTTPShutdown(t *testing.T) {
 		mu.Lock()
 		steps = append(steps, "http")
 		mu.Unlock()
+		close(httpShutdownCalled)
 	})
 
 	coordinator := NewCoordinator(slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil)), scheduler, time.Second)
@@ -187,7 +195,7 @@ func TestHandleCallsSchedulerBeforeHTTPShutdown(t *testing.T) {
 
 	mu.Lock()
 	defer mu.Unlock()
-	if len(steps) != 2 || steps[0] != "scheduler" || steps[1] != "http" {
+	if len(steps) != 2 || steps[0] != "http" || steps[1] != "scheduler" {
 		t.Fatalf("unexpected shutdown order: %v", steps)
 	}
 }

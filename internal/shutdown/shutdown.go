@@ -61,19 +61,6 @@ func (c *Coordinator) Handle(ctx context.Context, server *http.Server) int {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
 
-	if c.scheduler != nil {
-		if err := c.scheduler.Stop(shutdownCtx); err != nil {
-			c.logger.Error("shutdown_scheduler_failed", "error", err)
-			if errors.Is(err, context.DeadlineExceeded) || errors.Is(shutdownCtx.Err(), context.DeadlineExceeded) {
-				c.logger.Error("shutdown_timeout_exceeded")
-				return ExitCodeFailure
-			}
-			return ExitCodeFailure
-		}
-
-		c.logger.Info("shutdown_scheduler_stopped")
-	}
-
 	if server != nil {
 		server.SetKeepAlivesEnabled(false)
 		if err := server.Shutdown(shutdownCtx); err != nil {
@@ -86,6 +73,19 @@ func (c *Coordinator) Handle(ctx context.Context, server *http.Server) int {
 		}
 
 		c.logger.Info("shutdown_http_server_stopped")
+	}
+
+	if c.scheduler != nil {
+		if err := c.scheduler.Stop(shutdownCtx); err != nil {
+			c.logger.Error("shutdown_scheduler_failed", "error", err)
+			if errors.Is(err, context.DeadlineExceeded) || errors.Is(shutdownCtx.Err(), context.DeadlineExceeded) {
+				c.logger.Error("shutdown_timeout_exceeded")
+				return ExitCodeFailure
+			}
+			return ExitCodeFailure
+		}
+
+		c.logger.Info("shutdown_scheduler_stopped")
 	}
 
 	if errors.Is(shutdownCtx.Err(), context.DeadlineExceeded) {

@@ -7,7 +7,9 @@ import (
 	"os"
 
 	"caldo/internal/config"
+	"caldo/internal/db"
 	"caldo/internal/handler"
+	"caldo/internal/lock"
 )
 
 func main() {
@@ -22,6 +24,22 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
+
+	startupLock, err := lock.AcquireStartupLock(cfg.DBPath)
+	if err != nil {
+		return fmt.Errorf("acquire startup lock: %w", err)
+	}
+	defer func() {
+		_ = startupLock.Release()
+	}()
+
+	sqliteDB, err := db.OpenSQLite(cfg.DBPath)
+	if err != nil {
+		return fmt.Errorf("open sqlite: %w", err)
+	}
+	defer func() {
+		_ = sqliteDB.Close()
+	}()
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,

@@ -29,7 +29,7 @@ func BaseLayout(title string, content templ.Component) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"de\" x-data=\"{ darkMode: false }\" x-init=\"darkMode = window.matchMedia(&#39;(prefers-color-scheme: dark)&#39;).matches\" :class=\"{ &#39;dark&#39;: darkMode }\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"de\" data-theme-root><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -68,7 +68,7 @@ func BaseLayout(title string, content templ.Component) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\"></head><body class=\"min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100\"><header class=\"border-b border-slate-200 dark:border-slate-800 p-4 flex justify-between items-center\"><h1 class=\"text-lg font-semibold\">Caldo</h1><button type=\"button\" data-theme-toggle @click=\"darkMode = !darkMode\" class=\"rounded border border-slate-300 px-3 py-1 dark:border-slate-700\">Dark Mode</button></header><div class=\"flex\"><nav class=\"w-64 border-r border-slate-200 dark:border-slate-800 p-4\" aria-label=\"Hauptnavigation\"><section><h2 class=\"text-sm font-medium mb-2\">Systemfilter</h2><ul data-nav-system-filters></ul></section><section class=\"mt-6\"><h2 class=\"text-sm font-medium mb-2\">Projekte</h2><ul data-nav-projects></ul></section></nav><main class=\"flex-1 p-6\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\"></head><body class=\"min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100\"><header class=\"border-b border-slate-200 dark:border-slate-800 p-4 flex justify-between items-center\"><h1 class=\"text-lg font-semibold\">Caldo</h1><button type=\"button\" data-theme-toggle class=\"rounded border border-slate-300 px-3 py-1 dark:border-slate-700\">Dark Mode</button></header><div class=\"flex\"><nav class=\"w-64 border-r border-slate-200 dark:border-slate-800 p-4\" aria-label=\"Hauptnavigation\"><section><h2 class=\"text-sm font-medium mb-2\">Systemfilter</h2><ul data-nav-system-filters></ul></section><section class=\"mt-6\"><h2 class=\"text-sm font-medium mb-2\">Projekte</h2><ul data-nav-projects></ul></section></nav><main class=\"flex-1 p-6\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

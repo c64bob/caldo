@@ -9,6 +9,7 @@ import (
 
 	"caldo/internal/assets"
 	"caldo/internal/logging"
+	"caldo/internal/view"
 )
 
 func testManifest() assets.Manifest {
@@ -105,5 +106,35 @@ func TestNewRouterRendersBaseLayoutOnRoot(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Fatalf("response body missing %q", want)
 		}
+	}
+
+	for _, notWant := range []string{`x-data=`, `x-init=`, `:class=`, `@click=`} {
+		if strings.Contains(body, notWant) {
+			t.Fatalf("response body unexpectedly contains %q", notWant)
+		}
+	}
+}
+
+func TestAssetManifestMiddlewarePreservesExistingCSRFToken(t *testing.T) {
+	t.Parallel()
+
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	request = request.WithContext(view.WithCSRFToken(request.Context(), "token-123"))
+	responseRecorder := httptest.NewRecorder()
+
+	handler := AssetManifestMiddleware(testManifest())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := view.CSRFToken(r.Context()); got != "token-123" {
+			t.Fatalf("unexpected csrf token: got %q want %q", got, "token-123")
+		}
+		if got := view.AssetPath(r.Context(), "app.css"); got != "/static/app.8f3a1c2.css" {
+			t.Fatalf("unexpected asset path: got %q", got)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	handler.ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusNoContent {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusNoContent)
 	}
 }

@@ -85,7 +85,6 @@ func AssetManifestMiddleware(manifest assets.Manifest) func(http.Handler) http.H
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := view.WithAssetManifest(r.Context(), manifest)
-			ctx = view.WithCSRFToken(ctx, "")
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

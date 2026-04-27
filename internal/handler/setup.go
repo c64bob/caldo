@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"caldo/internal/caldav"
 	"caldo/internal/db"
+	"caldo/internal/model"
 	"caldo/internal/view"
 )
 
@@ -23,12 +25,19 @@ type setupDependencies struct {
 	encryptionKey []byte
 	tester        CalDAVConnectionTester
 	calendar      CalDAVCalendarClient
+	todos         CalDAVTodoClient
+	importBroker  *setupImportEventBroker
 }
 
 // CalDAVCalendarClient lists and creates CalDAV calendars during setup.
 type CalDAVCalendarClient interface {
 	ListCalendars(ctx context.Context, credentials caldav.Credentials) ([]caldav.Calendar, error)
 	CreateCalendar(ctx context.Context, credentials caldav.Credentials, displayName string) (caldav.Calendar, error)
+}
+
+// CalDAVTodoClient lists VTODO resources for one calendar during initial import.
+type CalDAVTodoClient interface {
+	ListVTODOs(ctx context.Context, credentials caldav.Credentials, calendarHref string) ([]caldav.CalendarObject, error)
 }
 
 // SetupPage renders the setup step for CalDAV credential capture.
@@ -207,12 +216,157 @@ func SetupCalendars(deps setupDependencies) http.HandlerFunc {
 	}
 }
 
-func SetupImport(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
+// SetupImport starts the setup initial import in full-scan mode.
+func SetupImport(deps setupDependencies) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if deps.database == nil || deps.todos == nil || deps.importBroker == nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		status, err := deps.database.LoadSetupStatus(r.Context())
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		if status.Step != "import" {
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+
+		if !deps.importBroker.StartRun() {
+			http.Error(w, http.StatusText(http.StatusConflict), http.StatusConflict)
+			return
+		}
+
+		go executeSetupInitialImport(context.Background(), deps)
+		w.WriteHeader(http.StatusAccepted)
+	}
 }
 
-func SetupImportEvents(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
+// SetupImportEvents streams setup import progress events via SSE.
+func SetupImportEvents(deps setupDependencies) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if deps.importBroker == nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		subscriber := deps.importBroker.Subscribe()
+		defer deps.importBroker.Unsubscribe(subscriber.id)
+
+		for {
+			select {
+			case <-r.Context().Done():
+				return
+			case event, ok := <-subscriber.ch:
+				if !ok {
+					return
+				}
+				if _, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Event, event.Data); err != nil {
+					return
+				}
+				flusher.Flush()
+			}
+		}
+	}
+}
+
+func executeSetupInitialImport(ctx context.Context, deps setupDependencies) {
+	defer deps.importBroker.FinishRun()
+
+	projects, err := deps.database.LoadSetupImportProjects(ctx)
+	if err != nil {
+		deps.importBroker.Publish(setupImportEvent{Event: "error", Data: "import failed"})
+		return
+	}
+	if len(projects) == 0 {
+		deps.importBroker.Publish(setupImportEvent{Event: "error", Data: "no setup projects found"})
+		return
+	}
+
+	credentials, err := deps.database.LoadCalDAVCredentials(ctx, deps.encryptionKey)
+	if err != nil {
+		deps.importBroker.Publish(setupImportEvent{Event: "error", Data: "missing caldav credentials"})
+		return
+	}
+
+	deps.importBroker.Publish(setupImportEvent{Event: "progress", Data: `{"phase":"start","completed":0}`})
+	for index, project := range projects {
+		objects, err := deps.todos.ListVTODOs(ctx, caldav.Credentials{
+			URL:      credentials.URL,
+			Username: credentials.Username,
+			Password: credentials.Password,
+		}, project.CalendarHref)
+		if err != nil {
+			deps.importBroker.Publish(setupImportEvent{Event: "error", Data: "import failed"})
+			return
+		}
+
+		tasks := make([]db.ImportedTask, 0, len(objects))
+		for _, object := range objects {
+			parsed := model.ParseVTODOFields(object.RawVTODO)
+			if parsed.UID == "" {
+				continue
+			}
+			labels, _ := model.CategoriesToLabelsAndFavorite(parsed.Categories)
+			completedAt := formatTimePointer(parsed.CompletedAt)
+			dueAt := formatTimePointer(parsed.DueAt)
+			title := parsed.Title
+			if title == "" {
+				title = parsed.UID
+			}
+
+			tasks = append(tasks, db.ImportedTask{
+				UID:         parsed.UID,
+				Href:        object.Href,
+				ETag:        object.ETag,
+				Title:       title,
+				Description: parsed.Description,
+				Status:      parsed.Status,
+				CompletedAt: completedAt,
+				DueDate:     parsed.DueDate,
+				DueAt:       dueAt,
+				Priority:    parsed.Priority,
+				RRule:       parsed.RRule,
+				ParentUID:   parsed.ParentUID,
+				RawVTODO:    object.RawVTODO,
+				BaseVTODO:   object.RawVTODO,
+				LabelNames:  labels,
+				ProjectName: project.DisplayName,
+			})
+		}
+
+		if err := deps.database.ReplaceSetupProjectTasks(ctx, project.ID, tasks); err != nil {
+			deps.importBroker.Publish(setupImportEvent{Event: "error", Data: "import failed"})
+			return
+		}
+
+		deps.importBroker.Publish(setupImportEvent{
+			Event: "progress",
+			Data:  fmt.Sprintf(`{"phase":"calendar_done","completed":%d,"total":%d}`, index+1, len(projects)),
+		})
+	}
+
+	deps.importBroker.Publish(setupImportEvent{Event: "done", Data: `{"phase":"done"}`})
+}
+
+func formatTimePointer(v *time.Time) *string {
+	if v == nil {
+		return nil
+	}
+	formatted := v.UTC().Format(time.RFC3339)
+	return &formatted
 }
 
 func SetupComplete(w http.ResponseWriter, _ *http.Request) {

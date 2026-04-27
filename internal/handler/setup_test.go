@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"caldo/internal/caldav"
 	"caldo/internal/db"
@@ -33,6 +34,17 @@ func (f fakeCalendarClient) CreateCalendar(_ context.Context, _ caldav.Credentia
 	return f.created, nil
 }
 
+type fakeTodoClient struct {
+	objectsByCalendar map[string][]caldav.CalendarObject
+	err               error
+}
+
+func (f fakeTodoClient) ListVTODOs(_ context.Context, _ caldav.Credentials, calendarHref string) ([]caldav.CalendarObject, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.objectsByCalendar[calendarHref], nil
+}
 func TestSetupPageRendersCalDAVForm(t *testing.T) {
 	t.Parallel()
 
@@ -417,4 +429,114 @@ func TestSetupCalendarsCreateNewDefaultProjectFailureShowsError(t *testing.T) {
 	if strings.Contains(responseRecorder.Body.String(), `value="/cal/home/" checked`) {
 		t.Fatalf("expected unselected home calendar to remain unchecked, got %q", responseRecorder.Body.String())
 	}
+}
+
+func TestSetupImportRunsInitialImportAndPersistsSyncedTasks(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	if err := database.SaveCalDAVCredentials(context.Background(), []byte("12345678901234567890123456789012"), db.CalDAVCredentials{
+		URL: "https://example.test/caldav", Username: "alice", Password: "secret",
+	}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+	if err := database.SaveSetupCalendars(context.Background(), []db.SelectedCalendar{{Href: "/cal/work/", DisplayName: "Work"}}, "/cal/work/", "fullscan"); err != nil {
+		t.Fatalf("save setup calendars: %v", err)
+	}
+
+	broker := newSetupImportEventBroker()
+	h := SetupImport(setupDependencies{
+		database:      database,
+		encryptionKey: []byte("12345678901234567890123456789012"),
+		todos: fakeTodoClient{objectsByCalendar: map[string][]caldav.CalendarObject{
+			"/cal/work/": {{
+				Href:     "/cal/work/uid-1.ics",
+				ETag:     "\"etag-1\"",
+				RawVTODO: "BEGIN:VCALENDAR\nBEGIN:VTODO\nUID:uid-1\nSUMMARY:Task One\nSTATUS:NEEDS-ACTION\nCATEGORIES:home,STARRED\nEND:VTODO\nEND:VCALENDAR",
+			}},
+		}},
+		importBroker: broker,
+	})
+
+	request := httptest.NewRequest(http.MethodPost, "/setup/import", nil)
+	responseRecorder := httptest.NewRecorder()
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusAccepted {
+		t.Fatalf("unexpected status: got %d want %d", responseRecorder.Code, http.StatusAccepted)
+	}
+
+	waitForImportDone(t, broker)
+
+	var syncStatus, baseVTODO, rawVTODO, projectName, labelNames string
+	if err := database.Conn.QueryRow(`
+SELECT sync_status, base_vtodo, raw_vtodo, project_name, label_names
+FROM tasks
+WHERE uid = 'uid-1'
+`).Scan(&syncStatus, &baseVTODO, &rawVTODO, &projectName, &labelNames); err != nil {
+		t.Fatalf("query imported task: %v", err)
+	}
+	if syncStatus != "synced" {
+		t.Fatalf("unexpected sync_status: got %q", syncStatus)
+	}
+	if baseVTODO != rawVTODO {
+		t.Fatalf("expected base_vtodo to equal raw_vtodo")
+	}
+	if projectName != "Work" || labelNames == "" {
+		t.Fatalf("expected denormalized fields to be populated")
+	}
+}
+
+func TestSetupImportEventsStreamsProgress(t *testing.T) {
+	t.Parallel()
+
+	broker := newSetupImportEventBroker()
+
+	h := SetupImportEvents(setupDependencies{importBroker: broker})
+	ctx, cancel := context.WithCancel(context.Background())
+	request := httptest.NewRequest(http.MethodGet, "/setup/import/events", nil).WithContext(ctx)
+	responseRecorder := httptest.NewRecorder()
+
+	done := make(chan struct{})
+	go func() {
+		h(responseRecorder, request)
+		close(done)
+	}()
+
+	time.Sleep(10 * time.Millisecond)
+	broker.Publish(setupImportEvent{Event: "progress", Data: `{"phase":"calendar_done"}`})
+	broker.Publish(setupImportEvent{Event: "done", Data: `{"phase":"done"}`})
+	time.Sleep(10 * time.Millisecond)
+	cancel()
+	<-done
+
+	if got := responseRecorder.Header().Get("Content-Type"); !strings.Contains(got, "text/event-stream") {
+		t.Fatalf("unexpected content type: %q", got)
+	}
+	body := responseRecorder.Body.String()
+	if !strings.Contains(body, "event: progress") {
+		t.Fatalf("expected progress event, got %q", body)
+	}
+}
+
+func waitForImportDone(t *testing.T, broker *setupImportEventBroker) {
+	t.Helper()
+	subscriber := broker.Subscribe()
+	defer broker.Unsubscribe(subscriber.id)
+	for i := 0; i < 200; i++ {
+		select {
+		case event := <-subscriber.ch:
+			if event.Event == "done" || event.Event == "error" {
+				return
+			}
+		default:
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+	t.Fatal("timed out waiting for import completion")
 }

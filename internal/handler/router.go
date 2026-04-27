@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"os"
@@ -18,7 +19,7 @@ const staticAssetsCacheControl = "public, max-age=31536000, immutable"
 var staticAssetsRoot = defaultStaticAssetsRoot()
 
 // NewRouter returns the HTTP router for Caldo.
-func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Manifest, setupComplete bool, csrfSecret []byte, database *db.Database) http.Handler {
+func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Manifest, setupComplete bool, csrfSecret []byte, database *db.Database, lifecycleCtx context.Context) http.Handler {
 	router := chi.NewRouter()
 	router.Use(RequestIDMiddleware())
 	router.Use(RecoveryMiddleware(logger))
@@ -43,6 +44,7 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 			calendar:      caldav.NewCalendarClient(nil),
 			todos:         caldav.NewTodoClient(nil),
 			importBroker:  importBroker,
+			lifecycleCtx:  lifecycleCtx,
 		}
 		setupRouter.Post("/caldav", SetupCalDAV(setupDeps))
 		setupRouter.Get("/calendars", SetupCalendarsPage(setupDeps))

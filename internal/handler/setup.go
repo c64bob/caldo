@@ -27,6 +27,7 @@ type setupDependencies struct {
 	calendar      CalDAVCalendarClient
 	todos         CalDAVTodoClient
 	importBroker  *setupImportEventBroker
+	lifecycleCtx  context.Context
 }
 
 // CalDAVCalendarClient lists and creates CalDAV calendars during setup.
@@ -239,7 +240,12 @@ func SetupImport(deps setupDependencies) http.HandlerFunc {
 			return
 		}
 
-		go executeSetupInitialImport(context.Background(), deps)
+		importCtx := deps.lifecycleCtx
+		if importCtx == nil {
+			importCtx = r.Context()
+		}
+
+		go executeSetupInitialImport(importCtx, deps)
 		w.WriteHeader(http.StatusAccepted)
 	}
 }

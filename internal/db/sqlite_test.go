@@ -54,6 +54,8 @@ func TestOpenSQLiteRunsMigrationsAndCreatesBackup(t *testing.T) {
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='tasks';`, 1)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='labels';`, 1)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='task_labels';`, 1)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='undo_snapshots';`, 1)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='conflicts';`, 1)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM settings WHERE id = 'default';`, 1)
 
 	backupMatches, err := filepath.Glob(dbPath + ".backup-*")
@@ -537,6 +539,107 @@ INSERT INTO task_labels (task_id, label_id) VALUES ('task-1', 'label-home')
 	}
 
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM task_labels WHERE task_id = 'task-1';`, 2)
+}
+
+func TestUndoSnapshotsUniquePerSessionAndTab(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "caldo.db")
+	database, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := database.Close(); err != nil {
+			t.Fatalf("close sqlite: %v", err)
+		}
+	})
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO undo_snapshots (
+    id, session_id, tab_id, task_id, action_type, snapshot_vtodo, snapshot_fields, etag_at_snapshot, created_at, expires_at
+) VALUES (
+    'undo-1', 'session-1', 'tab-1', 'task-1', 'task_updated',
+    'BEGIN:VTODO\nUID:uid-1\nEND:VTODO',
+    '{"title":"before"}', 'etag-1', CURRENT_TIMESTAMP, DATETIME(CURRENT_TIMESTAMP, '+5 minutes')
+)
+`); err != nil {
+		t.Fatalf("insert first undo snapshot: %v", err)
+	}
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO undo_snapshots (
+    id, session_id, tab_id, task_id, action_type, snapshot_vtodo, snapshot_fields, created_at, expires_at
+) VALUES (
+    'undo-2', 'session-1', 'tab-1', 'task-2', 'task_deleted',
+    'BEGIN:VTODO\nUID:uid-2\nEND:VTODO',
+    '{"title":"second"}', CURRENT_TIMESTAMP, DATETIME(CURRENT_TIMESTAMP, '+5 minutes')
+)
+`); err == nil {
+		t.Fatal("expected duplicate session/tab undo snapshot insert to fail")
+	}
+}
+
+func TestConflictsSupportUnresolvedAndResolvedStatesAndCleanup(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "caldo.db")
+	database, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := database.Close(); err != nil {
+			t.Fatalf("close sqlite: %v", err)
+		}
+	})
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO projects (
+    id, calendar_href, display_name, sync_strategy, created_at, updated_at
+) VALUES ('project-1', '/calendars/p1', 'Project 1', 'fullscan', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+`); err != nil {
+		t.Fatalf("insert project: %v", err)
+	}
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO conflicts (
+    id, task_id, project_id, conflict_type, created_at, base_vtodo, local_vtodo, remote_vtodo
+) VALUES (
+    'conflict-unresolved', 'task-1', 'project-1', 'delete_local_vs_remote_update', CURRENT_TIMESTAMP,
+    'BEGIN:VTODO\nUID:uid-1\nEND:VTODO', NULL, 'BEGIN:VTODO\nUID:uid-1\nEND:VTODO'
+)
+`); err != nil {
+		t.Fatalf("insert unresolved conflict: %v", err)
+	}
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO conflicts (
+    id, task_id, project_id, conflict_type, created_at, resolved_at, resolution, base_vtodo, local_vtodo, remote_vtodo, resolved_vtodo
+) VALUES (
+    'conflict-resolved', 'task-2', 'project-1', 'field_conflict', DATETIME(CURRENT_TIMESTAMP, '-3 days'),
+    DATETIME(CURRENT_TIMESTAMP, '-2 days'), 'keep_remote',
+    'BEGIN:VTODO\nUID:uid-2\nEND:VTODO',
+    'BEGIN:VTODO\nUID:uid-2\nSUMMARY:Local\nEND:VTODO',
+    'BEGIN:VTODO\nUID:uid-2\nSUMMARY:Remote\nEND:VTODO',
+    'BEGIN:VTODO\nUID:uid-2\nSUMMARY:Remote\nEND:VTODO'
+)
+`); err != nil {
+		t.Fatalf("insert resolved conflict: %v", err)
+	}
+
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM conflicts WHERE resolved_at IS NULL;`, 1)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM conflicts WHERE resolved_at IS NOT NULL;`, 1)
+
+	if _, err := database.Conn.Exec(`
+DELETE FROM conflicts
+WHERE resolved_at IS NOT NULL AND resolved_at < DATETIME(CURRENT_TIMESTAMP, '-1 day')
+`); err != nil {
+		t.Fatalf("cleanup resolved conflicts: %v", err)
+	}
+
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM conflicts;`, 1)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM conflicts WHERE id = 'conflict-unresolved';`, 1)
 }
 
 func assertSingleTextResult(t *testing.T, database *Database, query, want string) {

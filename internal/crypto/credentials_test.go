@@ -2,7 +2,9 @@ package crypto
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -41,6 +43,22 @@ func TestDecryptCredentialRejectsMalformedPayload(t *testing.T) {
 	key := bytes.Repeat([]byte{0x2A}, 32)
 
 	_, err := DecryptCredential(key, "invalid")
+	if !errors.Is(err, ErrInvalidCredentialCiphertext) {
+		t.Fatalf("expected malformed payload error, got %v", err)
+	}
+}
+
+func TestDecryptCredentialRejectsInvalidNonceSize(t *testing.T) {
+	t.Parallel()
+
+	key := bytes.Repeat([]byte{0x2A}, 32)
+	payload := fmt.Sprintf(
+		"v1:%s:%s",
+		base64.StdEncoding.EncodeToString([]byte{0x01}),
+		base64.StdEncoding.EncodeToString([]byte("ciphertext")),
+	)
+
+	_, err := DecryptCredential(key, payload)
 	if !errors.Is(err, ErrInvalidCredentialCiphertext) {
 		t.Fatalf("expected malformed payload error, got %v", err)
 	}

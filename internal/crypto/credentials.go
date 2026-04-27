@@ -80,6 +80,9 @@ func DecryptCredential(key []byte, payload string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("create gcm: %w", err)
 	}
+	if len(nonce) != aead.NonceSize() {
+		return "", ErrInvalidCredentialCiphertext
+	}
 
 	plaintext, err := aead.Open(nil, nonce, ciphertext, nil)
 	if err != nil {

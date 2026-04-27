@@ -3,8 +3,8 @@ package handler
 import (
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -38,10 +38,40 @@ func staticFileServer(root string) http.Handler {
 }
 
 func defaultStaticAssetsRoot() string {
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		return "web/static"
+	executablePath, err := os.Executable()
+	if err == nil {
+		executableDir := filepath.Dir(executablePath)
+		candidate := filepath.Clean(filepath.Join(executableDir, "web", "static"))
+		if directoryExists(candidate) {
+			return candidate
+		}
 	}
 
-	return filepath.Clean(filepath.Join(filepath.Dir(filename), "..", "..", "web", "static"))
+	workingDir, err := os.Getwd()
+	if err == nil {
+		currentDir := workingDir
+		for range 8 {
+			candidate := filepath.Clean(filepath.Join(currentDir, "web", "static"))
+			if directoryExists(candidate) {
+				return candidate
+			}
+
+			parentDir := filepath.Dir(currentDir)
+			if parentDir == currentDir {
+				break
+			}
+			currentDir = parentDir
+		}
+	}
+
+	return filepath.Clean(filepath.Join("web", "static"))
+}
+
+func directoryExists(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+
+	return info.IsDir()
 }

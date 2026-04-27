@@ -25,7 +25,8 @@ func SetupCalDAVContent(errorMessage string) templ.Component {
 			}
 		}
 
-		_, err = fmt.Fprint(w, `<form class="mt-6 space-y-4" method="post" action="/setup/caldav">
+		csrfToken := html.EscapeString(CSRFToken(ctx))
+		_, err = fmt.Fprintf(w, `<form class="mt-6 space-y-4" method="post" action="/setup/caldav" hx-post="/setup/caldav" hx-target="body" hx-swap="outerHTML" hx-push-url="false" hx-headers='{"X-CSRF-Token":"%s"}'>
 			<div>
 				<label for="caldav_url" class="block text-sm font-medium">CalDAV-URL</label>
 				<input id="caldav_url" name="caldav_url" type="url" required class="mt-1 w-full rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"/>
@@ -40,7 +41,7 @@ func SetupCalDAVContent(errorMessage string) templ.Component {
 			</div>
 			<button type="submit" class="rounded bg-slate-900 px-4 py-2 text-white dark:bg-slate-100 dark:text-slate-900">Verbindung testen</button>
 		</form>
-	</section>`)
+	</section>`, csrfToken)
 		return err
 	})
 }

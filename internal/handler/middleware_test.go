@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"caldo/internal/logging"
+	"caldo/internal/view"
 	"github.com/google/uuid"
 )
 
@@ -314,5 +315,50 @@ func TestSetupCSRFMiddlewareRejectsMutatingRequestWithoutToken(t *testing.T) {
 
 	if rr.Code != http.StatusForbidden {
 		t.Fatalf("unexpected status code: got %d want %d", rr.Code, http.StatusForbidden)
+	}
+}
+
+func TestSetupCSRFMiddlewareExposesTokenOnSetupPageResponses(t *testing.T) {
+	t.Parallel()
+
+	var tokenFromContext string
+	h := SetupCSRFMiddleware([]byte("12345678901234567890123456789012"))(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenFromContext = view.CSRFToken(r.Context())
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/setup/", nil)
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("unexpected status code: got %d want %d", rr.Code, http.StatusNoContent)
+	}
+
+	headerToken := rr.Header().Get(csrfHeaderName)
+	if headerToken == "" {
+		t.Fatal("expected csrf token in response header")
+	}
+	if tokenFromContext == "" {
+		t.Fatal("expected csrf token in request context")
+	}
+	if tokenFromContext != headerToken {
+		t.Fatalf("csrf token mismatch between context and header: got context %q header %q", tokenFromContext, headerToken)
+	}
+
+	cookies := rr.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("unexpected cookies count: got %d want %d", len(cookies), 1)
+	}
+
+	cookie := cookies[0]
+	if cookie.Name != csrfCookieName {
+		t.Fatalf("unexpected cookie name: got %q want %q", cookie.Name, csrfCookieName)
+	}
+	if cookie.Value != headerToken {
+		t.Fatalf("csrf token mismatch between cookie and header: got cookie %q header %q", cookie.Value, headerToken)
+	}
+	if !cookie.HttpOnly {
+		t.Fatal("expected csrf cookie to be httpOnly")
 	}
 }

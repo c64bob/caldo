@@ -146,6 +146,9 @@ func TestNewRouterAllowsSetupRouteWhenIncomplete(t *testing.T) {
 	if responseRecorder.Code != http.StatusOK {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
 	}
+	if got := responseRecorder.Header().Get(csrfHeaderName); got == "" {
+		t.Fatal("expected csrf token response header on setup route")
+	}
 }
 
 func TestNewRouterSetupMutatingRouteRequiresCSRFToken(t *testing.T) {

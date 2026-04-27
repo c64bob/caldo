@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"caldo/internal/view"
 )
 
 const (
@@ -23,6 +25,10 @@ func SetupCSRFMiddleware(secret []byte) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token := ensureCSRFToken(w, r, secret)
+			if token != "" {
+				w.Header().Set(csrfHeaderName, token)
+				r = r.WithContext(view.WithCSRFToken(r.Context(), token))
+			}
 			if isMutatingMethod(r.Method) {
 				if err := validateCSRFToken(r, secret); err != nil {
 					http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
@@ -30,7 +36,6 @@ func SetupCSRFMiddleware(secret []byte) func(http.Handler) http.Handler {
 				}
 			}
 
-			r.Header.Set(csrfHeaderName, token)
 			next.ServeHTTP(w, r)
 		})
 	}

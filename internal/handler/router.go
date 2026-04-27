@@ -8,12 +8,14 @@ import (
 )
 
 // NewRouter returns the HTTP router for Caldo.
-func NewRouter(logger *slog.Logger) http.Handler {
+func NewRouter(logger *slog.Logger, proxyUserHeader string) http.Handler {
 	router := chi.NewRouter()
 	router.Use(RequestIDMiddleware())
 	router.Use(RecoveryMiddleware(logger))
 	router.Use(SafeLoggingMiddleware(logger))
 	router.Use(SecurityHeadersMiddleware())
+	router.Use(ReverseProxyAuthMiddleware(proxyUserHeader))
+
 	router.Get("/health", Health)
 
 	return router

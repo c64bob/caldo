@@ -200,3 +200,52 @@ func TestSafeLoggingMiddlewareLogsRequestOnPanic(t *testing.T) {
 		t.Fatalf("expected 500 status in request log for panic request: %s", output)
 	}
 }
+
+func TestReverseProxyAuthMiddlewareRejectsMissingHeader(t *testing.T) {
+	t.Parallel()
+
+	h := ReverseProxyAuthMiddleware("X-Forwarded-User")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/today", nil)
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("unexpected status code: got %d want %d", rr.Code, http.StatusForbidden)
+	}
+}
+
+func TestReverseProxyAuthMiddlewareAcceptsNonEmptyHeader(t *testing.T) {
+	t.Parallel()
+
+	h := ReverseProxyAuthMiddleware("X-Forwarded-User")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/today", nil)
+	req.Header.Set("X-Forwarded-User", "alice")
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("unexpected status code: got %d want %d", rr.Code, http.StatusNoContent)
+	}
+}
+
+func TestReverseProxyAuthMiddlewareAllowsHealthWithoutAuth(t *testing.T) {
+	t.Parallel()
+
+	h := ReverseProxyAuthMiddleware("X-Forwarded-User")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("unexpected status code: got %d want %d", rr.Code, http.StatusNoContent)
+	}
+}

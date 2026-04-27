@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"caldo/internal/logging"
@@ -117,6 +118,27 @@ func SecurityHeadersMiddleware() func(http.Handler) http.Handler {
 			w.Header().Set("X-Content-Type-Options", "nosniff")
 			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 			w.Header().Set("Content-Security-Policy", csp)
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// ReverseProxyAuthMiddleware requires a non-empty user value in the configured proxy auth header.
+func ReverseProxyAuthMiddleware(proxyUserHeader string) func(http.Handler) http.Handler {
+	normalizedHeader := strings.TrimSpace(proxyUserHeader)
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet && r.URL.Path == "/health" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if strings.TrimSpace(r.Header.Get(normalizedHeader)) == "" {
+				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+				return
+			}
 
 			next.ServeHTTP(w, r)
 		})

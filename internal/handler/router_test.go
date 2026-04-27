@@ -16,7 +16,7 @@ func TestNewRouterExposesHealthWithoutAuth(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/health", nil)
 
-	NewRouter(logger).ServeHTTP(responseRecorder, request)
+	NewRouter(logger, "X-Forwarded-User").ServeHTTP(responseRecorder, request)
 
 	if responseRecorder.Code != http.StatusOK {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
@@ -29,5 +29,19 @@ func TestNewRouterExposesHealthWithoutAuth(t *testing.T) {
 	}
 	if got := responseRecorder.Header().Get("X-Content-Type-Options"); got != "nosniff" {
 		t.Fatalf("unexpected X-Content-Type-Options: got %q", got)
+	}
+}
+
+func TestNewRouterRejectsNonHealthRequestWithoutProxyAuthHeader(t *testing.T) {
+	t.Parallel()
+
+	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
+	responseRecorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/today", nil)
+
+	NewRouter(logger, "X-Forwarded-User").ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusForbidden {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusForbidden)
 	}
 }

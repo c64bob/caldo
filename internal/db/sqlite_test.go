@@ -50,6 +50,7 @@ func TestOpenSQLiteRunsMigrationsAndCreatesBackup(t *testing.T) {
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_migrations';`, 1)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='settings';`, 1)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='projects';`, 1)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='tasks';`, 1)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM settings WHERE id = 'default';`, 1)
 
 	backupMatches, err := filepath.Glob(dbPath + ".backup-*")
@@ -282,6 +283,177 @@ WHERE id = 'project-1'
 	}
 	if !isDefault {
 		t.Fatal("expected is_default to remain true")
+	}
+}
+
+func TestTasksTablePersistsRequiredTaskModelFields(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "caldo.db")
+	database, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := database.Close(); err != nil {
+			t.Fatalf("close sqlite: %v", err)
+		}
+	})
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO projects (
+    id, calendar_href, display_name, sync_strategy, created_at, updated_at
+) VALUES ('project-1', '/calendars/p1', 'Project 1', 'fullscan', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+`); err != nil {
+		t.Fatalf("insert project: %v", err)
+	}
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO tasks (
+    id, project_id, uid, href, etag, server_version,
+    title, description, status, completed_at, due_date, due_at, priority, rrule,
+    parent_id, raw_vtodo, base_vtodo, label_names, project_name, sync_status, created_at, updated_at
+) VALUES (
+    'task-1', 'project-1', 'uid-1', '/tasks/1.ics', 'etag-1', 3,
+    'My task', 'Task description', 'needs-action', NULL, '2026-04-27', '2026-04-27 12:00:00', 2, 'FREQ=DAILY',
+    NULL, 'BEGIN:VTODO\\nUID:uid-1\\nEND:VTODO', 'BEGIN:VTODO\\nUID:uid-1\\nEND:VTODO',
+    'home,urgent', 'Project 1', 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+)
+`); err != nil {
+		t.Fatalf("insert task with complete model fields: %v", err)
+	}
+
+	var (
+		projectID     string
+		uid           string
+		href          string
+		etag          string
+		serverVersion int
+		title         string
+		description   string
+		status        string
+		dueDate       string
+		priority      int
+		rrule         string
+		rawVTODO      string
+		baseVTODO     string
+		syncStatus    string
+		parentID      *string
+		labelNames    string
+		projectName   string
+	)
+
+	err = database.Conn.QueryRow(`
+SELECT
+    project_id, uid, href, etag, server_version, title, description, status, due_date, priority, rrule,
+    raw_vtodo, base_vtodo, sync_status, parent_id, label_names, project_name
+FROM tasks
+WHERE id = 'task-1'
+`).Scan(
+		&projectID, &uid, &href, &etag, &serverVersion, &title, &description, &status, &dueDate, &priority, &rrule,
+		&rawVTODO, &baseVTODO, &syncStatus, &parentID, &labelNames, &projectName,
+	)
+	if err != nil {
+		t.Fatalf("query inserted task: %v", err)
+	}
+
+	if projectID != "project-1" || uid != "uid-1" || href != "/tasks/1.ics" || etag != "etag-1" {
+		t.Fatalf("unexpected remote identity fields: got project_id=%q uid=%q href=%q etag=%q", projectID, uid, href, etag)
+	}
+	if serverVersion != 3 {
+		t.Fatalf("unexpected server_version: got %d want 3", serverVersion)
+	}
+	if title != "My task" || description != "Task description" || status != "needs-action" {
+		t.Fatalf("unexpected normalized task fields: got title=%q description=%q status=%q", title, description, status)
+	}
+	if dueDate != "2026-04-27T00:00:00Z" || priority != 2 || rrule != "FREQ=DAILY" {
+		t.Fatalf("unexpected scheduling fields: got due_date=%q priority=%d rrule=%q", dueDate, priority, rrule)
+	}
+	if rawVTODO == "" {
+		t.Fatal("expected raw_vtodo to be persisted")
+	}
+	if baseVTODO == "" {
+		t.Fatal("expected base_vtodo to be persisted")
+	}
+	if syncStatus != "pending" {
+		t.Fatalf("unexpected sync_status: got %q want %q", syncStatus, "pending")
+	}
+	if parentID != nil {
+		t.Fatalf("expected parent_id to be NULL, got %q", *parentID)
+	}
+	if labelNames != "home,urgent" || projectName != "Project 1" {
+		t.Fatalf("unexpected denormalized search fields: got label_names=%q project_name=%q", labelNames, projectName)
+	}
+}
+
+func TestTasksProjectAndParentForeignKeys(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "caldo.db")
+	database, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := database.Close(); err != nil {
+			t.Fatalf("close sqlite: %v", err)
+		}
+	})
+
+	if _, err := database.Conn.Exec(`PRAGMA foreign_keys = ON;`); err != nil {
+		t.Fatalf("enable foreign keys: %v", err)
+	}
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO projects (
+    id, calendar_href, display_name, sync_strategy, created_at, updated_at
+) VALUES ('project-1', '/calendars/p1', 'Project 1', 'fullscan', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+`); err != nil {
+		t.Fatalf("insert project: %v", err)
+	}
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO tasks (
+    id, project_id, uid, title, status, raw_vtodo, sync_status, created_at, updated_at
+) VALUES (
+    'parent-task', 'project-1', 'uid-parent', 'Parent', 'needs-action', 'BEGIN:VTODO\\nUID:uid-parent\\nEND:VTODO',
+    'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+)
+`); err != nil {
+		t.Fatalf("insert parent task: %v", err)
+	}
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO tasks (
+    id, project_id, uid, title, status, parent_id, raw_vtodo, sync_status, created_at, updated_at
+) VALUES (
+    'child-task', 'project-1', 'uid-child', 'Child', 'needs-action', 'parent-task', 'BEGIN:VTODO\\nUID:uid-child\\nEND:VTODO',
+    'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+)
+`); err != nil {
+		t.Fatalf("insert child task: %v", err)
+	}
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO tasks (
+    id, project_id, uid, title, status, raw_vtodo, sync_status, created_at, updated_at
+) VALUES (
+    'orphan-project', 'missing-project', 'uid-2', 'Orphan', 'needs-action', 'BEGIN:VTODO\\nUID:uid-2\\nEND:VTODO',
+    'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+)
+`); err == nil {
+		t.Fatal("expected missing project foreign key violation")
+	}
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO tasks (
+    id, project_id, uid, title, status, parent_id, raw_vtodo, sync_status, created_at, updated_at
+) VALUES (
+    'orphan-parent', 'project-1', 'uid-3', 'Orphan parent ref', 'needs-action', 'missing-parent',
+    'BEGIN:VTODO\\nUID:uid-3\\nEND:VTODO', 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+)
+`); err == nil {
+		t.Fatal("expected missing parent task foreign key violation")
 	}
 }
 

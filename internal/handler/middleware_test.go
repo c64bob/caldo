@@ -70,6 +70,29 @@ func TestRecoveryMiddlewareReturnsInternalServerErrorWithoutPanicDetails(t *test
 	}
 }
 
+func TestRecoveryMiddlewareDoesNotWriteFallback500AfterCommit(t *testing.T) {
+	t.Parallel()
+
+	buf := bytes.NewBuffer(nil)
+	logger := logging.New(buf, "production", "info")
+
+	h := RequestIDMiddleware()(RecoveryMiddleware(logger)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("partial-response"))
+		panic("panic after commit")
+	})))
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/panic", nil)
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("unexpected status code after committed panic: got %d want %d", rr.Code, http.StatusOK)
+	}
+	if got := rr.Body.String(); got != "partial-response" {
+		t.Fatalf("unexpected body after committed panic: got %q", got)
+	}
+}
+
 func TestSecurityHeadersMiddlewareSetsHeaders(t *testing.T) {
 	t.Parallel()
 
@@ -149,5 +172,31 @@ func TestSafeLoggingMiddlewareLogsPathWithoutQuery(t *testing.T) {
 	}
 	if !strings.Contains(output, `"request_id":"`) {
 		t.Fatalf("expected request_id in logs: %s", output)
+	}
+}
+
+func TestSafeLoggingMiddlewareLogsRequestOnPanic(t *testing.T) {
+	t.Parallel()
+
+	buf := bytes.NewBuffer(nil)
+	logger := logging.New(buf, "production", "info")
+
+	h := RequestIDMiddleware()(RecoveryMiddleware(logger)(SafeLoggingMiddleware(logger)(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		panic("fail")
+	}))))
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/panic", nil)
+	h.ServeHTTP(rr, req)
+
+	output := buf.String()
+	if !strings.Contains(output, "http_panic_recovered") {
+		t.Fatalf("expected panic recovery log entry: %s", output)
+	}
+	if !strings.Contains(output, `"msg":"http_request"`) {
+		t.Fatalf("expected request log entry for panic request: %s", output)
+	}
+	if !strings.Contains(output, `"status":500`) {
+		t.Fatalf("expected 500 status in request log for panic request: %s", output)
 	}
 }

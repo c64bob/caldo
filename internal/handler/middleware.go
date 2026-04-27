@@ -43,22 +43,35 @@ func SafeLoggingMiddleware(logger *slog.Logger) func(http.Handler) http.Handler 
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			wrapped := &statusResponseWriter{ResponseWriter: w, status: http.StatusOK}
+			var panicValue any
+
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					panicValue = recovered
+					if !wrapped.wroteHeader {
+						wrapped.status = http.StatusInternalServerError
+					}
+				}
+
+				requestID, ok := RequestIDFromContext(r.Context())
+				if !ok {
+					logger.Error("http_request_missing_request_id", "error", fmt.Errorf("missing request_id"))
+				} else {
+					logger.Info("http_request",
+						"request_id", requestID,
+						"method", r.Method,
+						"path", r.URL.Path,
+						"status", wrapped.status,
+						"duration_ms", time.Since(start).Milliseconds(),
+					)
+				}
+
+				if panicValue != nil {
+					panic(panicValue)
+				}
+			}()
 
 			next.ServeHTTP(wrapped, r)
-
-			requestID, ok := RequestIDFromContext(r.Context())
-			if !ok {
-				logger.Error("http_request_missing_request_id", "error", fmt.Errorf("missing request_id"))
-				return
-			}
-
-			logger.Info("http_request",
-				"request_id", requestID,
-				"method", r.Method,
-				"path", r.URL.Path,
-				"status", wrapped.status,
-				"duration_ms", time.Since(start).Milliseconds(),
-			)
 		})
 	}
 }
@@ -67,6 +80,8 @@ func SafeLoggingMiddleware(logger *slog.Logger) func(http.Handler) http.Handler 
 func RecoveryMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			wrapped := &commitTrackingResponseWriter{ResponseWriter: w}
+
 			defer func() {
 				if recover() == nil {
 					return
@@ -79,11 +94,15 @@ func RecoveryMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 					"path", r.URL.Path,
 				)
 
-				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				if wrapped.wroteHeader {
+					return
+				}
+
+				wrapped.Header().Set("Content-Type", "text/plain; charset=utf-8")
+				http.Error(wrapped, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			}()
 
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(wrapped, r)
 		})
 	}
 }
@@ -106,10 +125,36 @@ func SecurityHeadersMiddleware() func(http.Handler) http.Handler {
 
 type statusResponseWriter struct {
 	http.ResponseWriter
-	status int
+	status      int
+	wroteHeader bool
 }
 
 func (w *statusResponseWriter) WriteHeader(statusCode int) {
+	w.wroteHeader = true
 	w.status = statusCode
 	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (w *statusResponseWriter) Write(p []byte) (int, error) {
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.ResponseWriter.Write(p)
+}
+
+type commitTrackingResponseWriter struct {
+	http.ResponseWriter
+	wroteHeader bool
+}
+
+func (w *commitTrackingResponseWriter) WriteHeader(statusCode int) {
+	w.wroteHeader = true
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (w *commitTrackingResponseWriter) Write(p []byte) (int, error) {
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.ResponseWriter.Write(p)
 }

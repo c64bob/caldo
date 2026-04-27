@@ -2,13 +2,13 @@ package logging
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"log/slog"
 	"reflect"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -78,12 +78,12 @@ func parseLevel(raw string) slog.Level {
 }
 
 func newID() (string, error) {
-	buf := make([]byte, 16)
-	if _, err := rand.Read(buf); err != nil {
-		return "", fmt.Errorf("read random bytes: %w", err)
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return "", fmt.Errorf("generate uuid: %w", err)
 	}
 
-	return hex.EncodeToString(buf), nil
+	return id.String(), nil
 }
 
 type maskingHandler struct{ next slog.Handler }

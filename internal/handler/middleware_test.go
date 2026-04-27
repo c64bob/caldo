@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"caldo/internal/logging"
+	"github.com/google/uuid"
 )
 
 func TestRequestIDMiddlewareSetsHeaderAndContext(t *testing.T) {
@@ -24,8 +25,12 @@ func TestRequestIDMiddlewareSetsHeaderAndContext(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	h.ServeHTTP(rr, req)
 
-	if rr.Header().Get("X-Request-ID") == "" {
+	requestID := rr.Header().Get("X-Request-ID")
+	if requestID == "" {
 		t.Fatal("expected X-Request-ID header")
+	}
+	if _, err := uuid.Parse(requestID); err != nil {
+		t.Fatalf("expected UUID request id, got %q: %v", requestID, err)
 	}
 }
 

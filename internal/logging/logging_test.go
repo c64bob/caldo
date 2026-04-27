@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestNewUsesJSONInProduction(t *testing.T) {
@@ -53,6 +55,19 @@ func TestMaskingHandlerMasksSensitiveAndErrorMessage(t *testing.T) {
 	}
 }
 
+func TestNewCorrelationIDReturnsUUID(t *testing.T) {
+	t.Parallel()
+
+	id, err := NewCorrelationID()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if _, err := uuid.Parse(id); err != nil {
+		t.Fatalf("expected UUID, got %q: %v", id, err)
+	}
+}
+
 func TestNewSyncRunLoggerAddsSyncRunID(t *testing.T) {
 	t.Parallel()
 
@@ -65,7 +80,11 @@ func TestNewSyncRunLoggerAddsSyncRunID(t *testing.T) {
 
 	syncLogger.Info("sync started")
 	output := buf.String()
-	if syncRunID == "" || !strings.Contains(output, `"sync_run_id":"`+syncRunID+`"`) {
+	if _, err := uuid.Parse(syncRunID); err != nil {
+		t.Fatalf("expected UUID sync_run_id, got %q: %v", syncRunID, err)
+	}
+
+	if !strings.Contains(output, `"sync_run_id":"`+syncRunID+`"`) {
 		t.Fatalf("expected sync_run_id in logs: %s", output)
 	}
 }

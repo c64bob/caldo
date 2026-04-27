@@ -249,3 +249,70 @@ func TestReverseProxyAuthMiddlewareAllowsHealthWithoutAuth(t *testing.T) {
 		t.Fatalf("unexpected status code: got %d want %d", rr.Code, http.StatusNoContent)
 	}
 }
+
+func TestSetupGateMiddlewareRedirectsDisallowedRoutesWhenSetupIncomplete(t *testing.T) {
+	t.Parallel()
+
+	h := SetupGateMiddleware(false)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/today", nil)
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusFound {
+		t.Fatalf("unexpected status code: got %d want %d", rr.Code, http.StatusFound)
+	}
+	if got := rr.Header().Get("Location"); got != "/setup" {
+		t.Fatalf("unexpected location header: got %q want %q", got, "/setup")
+	}
+}
+
+func TestSetupGateMiddlewareAllowsSetupRoutesWhenSetupIncomplete(t *testing.T) {
+	t.Parallel()
+
+	h := SetupGateMiddleware(false)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/setup/import/events", nil)
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("unexpected status code: got %d want %d", rr.Code, http.StatusNoContent)
+	}
+}
+
+func TestSetupGateMiddlewareAllowsAllRoutesWhenSetupComplete(t *testing.T) {
+	t.Parallel()
+
+	h := SetupGateMiddleware(true)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/today", nil)
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("unexpected status code: got %d want %d", rr.Code, http.StatusNoContent)
+	}
+}
+
+func TestSetupCSRFMiddlewareRejectsMutatingRequestWithoutToken(t *testing.T) {
+	t.Parallel()
+
+	h := SetupCSRFMiddleware([]byte("12345678901234567890123456789012"))(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/setup/caldav", nil)
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("unexpected status code: got %d want %d", rr.Code, http.StatusForbidden)
+	}
+}

@@ -45,3 +45,21 @@ func TestNewRouterRejectsNonHealthRequestWithoutProxyAuthHeader(t *testing.T) {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusForbidden)
 	}
 }
+
+func TestNewRouterServesStaticAssetsWithLongTermCacheHeaders(t *testing.T) {
+	t.Parallel()
+
+	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
+	responseRecorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/static/manifest.json", nil)
+	request.Header.Set("X-Forwarded-User", "alice")
+
+	NewRouter(logger, "X-Forwarded-User").ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	if got := responseRecorder.Header().Get("Cache-Control"); got != "public, max-age=31536000, immutable" {
+		t.Fatalf("unexpected Cache-Control header: got %q", got)
+	}
+}

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 
+	"caldo/internal/assets"
 	"caldo/internal/config"
 	"caldo/internal/db"
 	"caldo/internal/handler"
@@ -32,6 +33,10 @@ func run(logger *slog.Logger) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
+	}
+
+	if _, err := assets.LoadManifest("web/static/manifest.json"); err != nil {
+		return fmt.Errorf("load static manifest: %w", err)
 	}
 
 	startupLock, err := lock.AcquireStartupLock(cfg.DBPath)

@@ -21,7 +21,6 @@ profile.cov
 # generated frontend assets
 web/static/app.*.css
 web/static/app.*.js
-web/static/manifest.json
 
 # workspace / env
 go.work

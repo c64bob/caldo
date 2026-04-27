@@ -56,9 +56,14 @@ func run(logger *slog.Logger) error {
 		_ = sqliteDB.Close()
 	}()
 
+	setupStatus, err := sqliteDB.LoadSetupStatus(context.Background())
+	if err != nil {
+		return fmt.Errorf("load setup status: %w", err)
+	}
+
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
-		Handler: handler.NewRouter(logger, cfg.ProxyUserHeader, manifest),
+		Handler: handler.NewRouter(logger, cfg.ProxyUserHeader, manifest, setupStatus.Complete, cfg.EncryptionKey),
 	}
 
 	serverErr := make(chan error, 1)

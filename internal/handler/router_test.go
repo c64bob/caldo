@@ -29,7 +29,7 @@ func TestNewRouterExposesHealthWithoutAuth(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/health", nil)
 
-	NewRouter(logger, "X-Forwarded-User", testManifest()).ServeHTTP(responseRecorder, request)
+	NewRouter(logger, "X-Forwarded-User", testManifest(), true, []byte("12345678901234567890123456789012")).ServeHTTP(responseRecorder, request)
 
 	if responseRecorder.Code != http.StatusOK {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
@@ -52,7 +52,7 @@ func TestNewRouterRejectsNonHealthRequestWithoutProxyAuthHeader(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/today", nil)
 
-	NewRouter(logger, "X-Forwarded-User", testManifest()).ServeHTTP(responseRecorder, request)
+	NewRouter(logger, "X-Forwarded-User", testManifest(), true, []byte("12345678901234567890123456789012")).ServeHTTP(responseRecorder, request)
 
 	if responseRecorder.Code != http.StatusForbidden {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusForbidden)
@@ -67,7 +67,7 @@ func TestNewRouterServesStaticAssetsWithLongTermCacheHeaders(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/static/manifest.json", nil)
 	request.Header.Set("X-Forwarded-User", "alice")
 
-	NewRouter(logger, "X-Forwarded-User", testManifest()).ServeHTTP(responseRecorder, request)
+	NewRouter(logger, "X-Forwarded-User", testManifest(), true, []byte("12345678901234567890123456789012")).ServeHTTP(responseRecorder, request)
 
 	if responseRecorder.Code != http.StatusOK {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
@@ -85,7 +85,7 @@ func TestNewRouterRendersBaseLayoutOnRoot(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/", nil)
 	request.Header.Set("X-Forwarded-User", "alice")
 
-	NewRouter(logger, "X-Forwarded-User", testManifest()).ServeHTTP(responseRecorder, request)
+	NewRouter(logger, "X-Forwarded-User", testManifest(), true, []byte("12345678901234567890123456789012")).ServeHTTP(responseRecorder, request)
 
 	if responseRecorder.Code != http.StatusOK {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
@@ -112,6 +112,57 @@ func TestNewRouterRendersBaseLayoutOnRoot(t *testing.T) {
 		if strings.Contains(body, notWant) {
 			t.Fatalf("response body unexpectedly contains %q", notWant)
 		}
+	}
+}
+
+func TestNewRouterRedirectsNormalRouteToSetupWhenIncomplete(t *testing.T) {
+	t.Parallel()
+
+	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
+	responseRecorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	request.Header.Set("X-Forwarded-User", "alice")
+
+	NewRouter(logger, "X-Forwarded-User", testManifest(), false, []byte("12345678901234567890123456789012")).ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusFound {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusFound)
+	}
+	if got := responseRecorder.Header().Get("Location"); got != "/setup" {
+		t.Fatalf("unexpected redirect location: got %q want %q", got, "/setup")
+	}
+}
+
+func TestNewRouterAllowsSetupRouteWhenIncomplete(t *testing.T) {
+	t.Parallel()
+
+	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
+	responseRecorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/setup/", nil)
+	request.Header.Set("X-Forwarded-User", "alice")
+
+	NewRouter(logger, "X-Forwarded-User", testManifest(), false, []byte("12345678901234567890123456789012")).ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	if got := responseRecorder.Header().Get(csrfHeaderName); got == "" {
+		t.Fatal("expected csrf token response header on setup route")
+	}
+}
+
+func TestNewRouterSetupMutatingRouteRequiresCSRFToken(t *testing.T) {
+	t.Parallel()
+
+	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
+	responseRecorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/setup/caldav", nil)
+	request.Header.Set("X-Forwarded-User", "alice")
+
+	NewRouter(logger, "X-Forwarded-User", testManifest(), false, []byte("12345678901234567890123456789012")).ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusForbidden {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusForbidden)
 	}
 }
 

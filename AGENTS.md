@@ -212,3 +212,11 @@ If a story is ambiguous, arch.md does not cover the case, or implementing the st
 **Stop. Ask. Do not invent a solution.**
 
 Prefer a clarifying question over a plausible-but-wrong implementation.
+
+## Codex Environment Constraint
+
+In Codex task environments, Docker CLI is typically unavailable.
+
+- Do **not** attempt to install Docker or run local Docker commands in Codex.
+- Validate Docker-related changes by static inspection of `Dockerfile` / Compose files.
+- Ensure Docker image builds are enforced in CI workflows instead of local Codex execution.

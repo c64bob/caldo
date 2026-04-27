@@ -19,14 +19,15 @@ const staticAssetsCacheControl = "public, max-age=31536000, immutable"
 var staticAssetsRoot = defaultStaticAssetsRoot()
 
 // NewRouter returns the HTTP router for Caldo.
-func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Manifest, setupComplete bool, csrfSecret []byte, database *db.Database, lifecycleCtx context.Context) http.Handler {
+func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Manifest, setupComplete bool, csrfSecret []byte, database *db.Database, lifecycleCtx context.Context, scheduler SetupSchedulerStarter) http.Handler {
 	router := chi.NewRouter()
+	setupState := NewSetupState(setupComplete)
 	router.Use(RequestIDMiddleware())
 	router.Use(RecoveryMiddleware(logger))
 	router.Use(SafeLoggingMiddleware(logger))
 	router.Use(SecurityHeadersMiddleware())
 	router.Use(ReverseProxyAuthMiddleware(proxyUserHeader))
-	router.Use(SetupGateMiddleware(setupComplete))
+	router.Use(SetupGateMiddleware(setupState))
 	router.Use(AssetManifestMiddleware(manifest))
 
 	router.Get("/health", Health)
@@ -43,6 +44,9 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 			tester:        caldav.NewConnectionTester(nil),
 			calendar:      caldav.NewCalendarClient(nil),
 			todos:         caldav.NewTodoClient(nil),
+			scheduler:     scheduler,
+			setupState:    setupState,
+			logger:        logger,
 			importBroker:  importBroker,
 			lifecycleCtx:  lifecycleCtx,
 		}
@@ -51,7 +55,7 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 		setupRouter.Post("/calendars", SetupCalendars(setupDeps))
 		setupRouter.Post("/import", SetupImport(setupDeps))
 		setupRouter.Get("/import/events", SetupImportEvents(setupDeps))
-		setupRouter.Post("/complete", SetupComplete)
+		setupRouter.Post("/complete", SetupComplete(setupDeps))
 	})
 
 	return router

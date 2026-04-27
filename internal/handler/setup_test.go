@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -37,6 +39,16 @@ func (f fakeCalendarClient) CreateCalendar(_ context.Context, _ caldav.Credentia
 type fakeTodoClient struct {
 	objectsByCalendar map[string][]caldav.CalendarObject
 	err               error
+}
+
+type fakeSetupScheduler struct {
+	startErr   error
+	startCalls int
+}
+
+func (f *fakeSetupScheduler) Start(_ context.Context) error {
+	f.startCalls++
+	return f.startErr
 }
 
 func (f fakeTodoClient) ListVTODOs(_ context.Context, _ caldav.Credentials, calendarHref string) ([]caldav.CalendarObject, error) {
@@ -539,4 +551,89 @@ func waitForImportDone(t *testing.T, broker *setupImportEventBroker) {
 		}
 	}
 	t.Fatal("timed out waiting for import completion")
+}
+
+func TestSetupCompleteMarksSetupCompleteStartsSchedulerAndRedirects(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	if err := database.SaveSetupCalendars(context.Background(), []db.SelectedCalendar{{Href: "/cal/work/", DisplayName: "Work"}}, "/cal/work/", "fullscan"); err != nil {
+		t.Fatalf("save setup calendars: %v", err)
+	}
+
+	scheduler := &fakeSetupScheduler{}
+	setupState := NewSetupState(false)
+	h := SetupComplete(setupDependencies{
+		database:   database,
+		scheduler:  scheduler,
+		setupState: setupState,
+		logger:     slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil)),
+	})
+
+	request := httptest.NewRequest(http.MethodPost, "/setup/complete", nil)
+	responseRecorder := httptest.NewRecorder()
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusFound {
+		t.Fatalf("unexpected status: got %d want %d", responseRecorder.Code, http.StatusFound)
+	}
+	if got := responseRecorder.Header().Get("Location"); got != "/" {
+		t.Fatalf("unexpected location: got %q want %q", got, "/")
+	}
+	if scheduler.startCalls != 1 {
+		t.Fatalf("unexpected scheduler start calls: got %d want %d", scheduler.startCalls, 1)
+	}
+	if !setupState.IsComplete() {
+		t.Fatal("expected setup state to be complete")
+	}
+
+	status, err := database.LoadSetupStatus(context.Background())
+	if err != nil {
+		t.Fatalf("load setup status: %v", err)
+	}
+	if !status.Complete || status.Step != "complete" {
+		t.Fatalf("unexpected setup status: %#v", status)
+	}
+}
+
+func TestSetupCompleteSchedulerStartFailureDoesNotRollbackSetup(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	if err := database.SaveSetupCalendars(context.Background(), []db.SelectedCalendar{{Href: "/cal/work/", DisplayName: "Work"}}, "/cal/work/", "fullscan"); err != nil {
+		t.Fatalf("save setup calendars: %v", err)
+	}
+
+	scheduler := &fakeSetupScheduler{startErr: errors.New("boom")}
+	h := SetupComplete(setupDependencies{
+		database:   database,
+		scheduler:  scheduler,
+		setupState: NewSetupState(false),
+		logger:     slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil)),
+	})
+
+	request := httptest.NewRequest(http.MethodPost, "/setup/complete", nil)
+	responseRecorder := httptest.NewRecorder()
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusFound {
+		t.Fatalf("unexpected status: got %d want %d", responseRecorder.Code, http.StatusFound)
+	}
+	status, err := database.LoadSetupStatus(context.Background())
+	if err != nil {
+		t.Fatalf("load setup status: %v", err)
+	}
+	if !status.Complete || status.Step != "complete" {
+		t.Fatalf("expected setup completion persisted despite scheduler error, got %#v", status)
+	}
 }

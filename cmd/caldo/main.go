@@ -66,7 +66,7 @@ func run(logger *slog.Logger) error {
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
-		Handler: handler.NewRouter(logger, cfg.ProxyUserHeader, manifest, setupStatus.Complete, cfg.EncryptionKey, sqliteDB, lifecycleCtx),
+		Handler: handler.NewRouter(logger, cfg.ProxyUserHeader, manifest, setupStatus.Complete, cfg.EncryptionKey, sqliteDB, lifecycleCtx, nil),
 	}
 	server.RegisterOnShutdown(cancelLifecycle)
 

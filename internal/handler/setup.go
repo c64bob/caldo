@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"slices"
 	"strings"
@@ -26,8 +27,16 @@ type setupDependencies struct {
 	tester        CalDAVConnectionTester
 	calendar      CalDAVCalendarClient
 	todos         CalDAVTodoClient
+	scheduler     SetupSchedulerStarter
+	setupState    *SetupState
+	logger        *slog.Logger
 	importBroker  *setupImportEventBroker
 	lifecycleCtx  context.Context
+}
+
+// SetupSchedulerStarter starts the sync scheduler after setup completion.
+type SetupSchedulerStarter interface {
+	Start(ctx context.Context) error
 }
 
 // CalDAVCalendarClient lists and creates CalDAV calendars during setup.
@@ -375,8 +384,39 @@ func formatTimePointer(v *time.Time) *string {
 	return &formatted
 }
 
-func SetupComplete(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
+// SetupComplete marks setup as complete, opens the setup gate, and starts the scheduler.
+func SetupComplete(deps setupDependencies) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if deps.database == nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		if err := deps.database.CompleteSetup(r.Context()); err != nil {
+			if errors.Is(err, db.ErrSetupPrerequisitesNotMet) {
+				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+				return
+			}
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		if deps.setupState != nil {
+			deps.setupState.MarkComplete()
+		}
+
+		if deps.scheduler != nil {
+			startCtx := deps.lifecycleCtx
+			if startCtx == nil {
+				startCtx = r.Context()
+			}
+			if err := deps.scheduler.Start(startCtx); err != nil && deps.logger != nil {
+				deps.logger.Error("setup_complete_scheduler_start_failed", "error", err)
+			}
+		}
+
+		http.Redirect(w, r, "/", http.StatusFound)
+	}
 }
 
 func loadCalendars(ctx context.Context, deps setupDependencies) ([]caldav.Calendar, error) {

@@ -35,13 +35,15 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 	router.Route("/setup", func(setupRouter chi.Router) {
 		setupRouter.Use(SetupCSRFMiddleware(csrfSecret))
 		setupRouter.Get("/", SetupPage)
-		setupRouter.Post("/caldav", SetupCalDAV(setupDependencies{
+		setupDeps := setupDependencies{
 			database:      database,
 			encryptionKey: csrfSecret,
 			tester:        caldav.NewConnectionTester(nil),
-		}))
-		setupRouter.Get("/calendars", SetupCalendarsPage)
-		setupRouter.Post("/calendars", SetupCalendars)
+			calendar:      caldav.NewCalendarClient(nil),
+		}
+		setupRouter.Post("/caldav", SetupCalDAV(setupDeps))
+		setupRouter.Get("/calendars", SetupCalendarsPage(setupDeps))
+		setupRouter.Post("/calendars", SetupCalendars(setupDeps))
 		setupRouter.Post("/import", SetupImport)
 		setupRouter.Get("/import/events", SetupImportEvents)
 		setupRouter.Post("/complete", SetupComplete)

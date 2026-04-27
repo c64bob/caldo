@@ -30,6 +30,9 @@ func main() {
 }
 
 func run(logger *slog.Logger) error {
+	lifecycleCtx, cancelLifecycle := context.WithCancel(context.Background())
+	defer cancelLifecycle()
+
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
@@ -63,8 +66,9 @@ func run(logger *slog.Logger) error {
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
-		Handler: handler.NewRouter(logger, cfg.ProxyUserHeader, manifest, setupStatus.Complete, cfg.EncryptionKey, sqliteDB),
+		Handler: handler.NewRouter(logger, cfg.ProxyUserHeader, manifest, setupStatus.Complete, cfg.EncryptionKey, sqliteDB, lifecycleCtx),
 	}
+	server.RegisterOnShutdown(cancelLifecycle)
 
 	serverErr := make(chan error, 1)
 	go func() {

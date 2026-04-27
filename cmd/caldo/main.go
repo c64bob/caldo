@@ -35,7 +35,8 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("load config: %w", err)
 	}
 
-	if _, err := assets.LoadManifest("web/static/manifest.json"); err != nil {
+	manifest, err := assets.LoadManifest("web/static/manifest.json")
+	if err != nil {
 		return fmt.Errorf("load static manifest: %w", err)
 	}
 
@@ -57,7 +58,7 @@ func run(logger *slog.Logger) error {
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
-		Handler: handler.NewRouter(logger, cfg.ProxyUserHeader),
+		Handler: handler.NewRouter(logger, cfg.ProxyUserHeader, manifest),
 	}
 
 	serverErr := make(chan error, 1)

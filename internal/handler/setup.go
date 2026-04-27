@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -99,6 +100,10 @@ func SetupCalendarsPage(deps setupDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		calendars, err := loadCalendars(r.Context(), deps)
 		if err != nil {
+			if shouldRedirectToSetup(err) {
+				http.Redirect(w, r, "/setup", http.StatusFound)
+				return
+			}
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
@@ -115,6 +120,10 @@ func SetupCalendars(deps setupDependencies) http.HandlerFunc {
 
 		calendars, err := loadCalendars(r.Context(), deps)
 		if err != nil {
+			if shouldRedirectToSetup(err) {
+				http.Redirect(w, r, "/setup", http.StatusFound)
+				return
+			}
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
@@ -148,6 +157,10 @@ func SetupCalendars(deps setupDependencies) http.HandlerFunc {
 		if newDefaultName != "" {
 			credentials, err := deps.database.LoadCalDAVCredentials(r.Context(), deps.encryptionKey)
 			if err != nil {
+				if shouldRedirectToSetup(err) {
+					http.Redirect(w, r, "/setup", http.StatusFound)
+					return
+				}
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
@@ -158,7 +171,7 @@ func SetupCalendars(deps setupDependencies) http.HandlerFunc {
 				Password: credentials.Password,
 			}, newDefaultName)
 			if err != nil {
-				renderSetupCalendarsPage(w, r, calendars, "neues default-projekt konnte nicht angelegt werden", nil)
+				renderSetupCalendarsPage(w, r, calendars, "neues default-projekt konnte nicht angelegt werden", selectedHrefs)
 				return
 			}
 
@@ -239,4 +252,8 @@ func initialSyncStrategy(capabilities db.CalDAVServerCapabilities) string {
 	default:
 		return "fullscan"
 	}
+}
+
+func shouldRedirectToSetup(err error) bool {
+	return errors.Is(err, db.ErrCalDAVCredentialsNotConfigured) || errors.Is(err, db.ErrCalDAVCredentialsUnavailable)
 }

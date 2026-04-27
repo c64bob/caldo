@@ -209,6 +209,36 @@ func TestSetupCalendarsPageRendersCalendars(t *testing.T) {
 	}
 }
 
+func TestSetupCalendarsPageRedirectsToSetupWhenCredentialsMissing(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	h := SetupCalendarsPage(setupDependencies{
+		database:      database,
+		encryptionKey: []byte("12345678901234567890123456789012"),
+		calendar: fakeCalendarClient{
+			calendars: []caldav.Calendar{{Href: "/cal/work/", DisplayName: "Work"}},
+		},
+	})
+
+	request := httptest.NewRequest(http.MethodGet, "/setup/calendars", nil)
+	request = request.WithContext(view.WithAssetManifest(request.Context(), map[string]string{"app.css": "app.css", "app.js": "app.js", "htmx.min.js": "htmx.min.js", "htmx-sse.js": "htmx-sse.js", "alpine.min.js": "alpine.min.js"}))
+	responseRecorder := httptest.NewRecorder()
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusFound {
+		t.Fatalf("unexpected status: got %d want %d", responseRecorder.Code, http.StatusFound)
+	}
+	if got := responseRecorder.Header().Get("Location"); got != "/setup" {
+		t.Fatalf("unexpected location: got %q want %q", got, "/setup")
+	}
+}
+
 func TestSetupCalendarsSuccessStoresProjectsAndAdvancesToImport(t *testing.T) {
 	t.Parallel()
 
@@ -358,12 +388,16 @@ func TestSetupCalendarsCreateNewDefaultProjectFailureShowsError(t *testing.T) {
 		database:      database,
 		encryptionKey: []byte("12345678901234567890123456789012"),
 		calendar: fakeCalendarClient{
-			calendars: []caldav.Calendar{{Href: "/cal/work/", DisplayName: "Work"}},
+			calendars: []caldav.Calendar{
+				{Href: "/cal/work/", DisplayName: "Work"},
+				{Href: "/cal/home/", DisplayName: "Home"},
+			},
 			createErr: errors.New("boom"),
 		},
 	})
 
 	form := url.Values{}
+	form.Add("calendar_href", "/cal/work/")
 	form.Set("new_default_project_name", "Inbox")
 	request := httptest.NewRequest(http.MethodPost, "/setup/calendars", strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -376,5 +410,11 @@ func TestSetupCalendarsCreateNewDefaultProjectFailureShowsError(t *testing.T) {
 	}
 	if !strings.Contains(responseRecorder.Body.String(), "konnte nicht angelegt werden") {
 		t.Fatalf("expected create default project error message, got %q", responseRecorder.Body.String())
+	}
+	if !strings.Contains(responseRecorder.Body.String(), `value="/cal/work/" checked`) {
+		t.Fatalf("expected selected work calendar to remain checked, got %q", responseRecorder.Body.String())
+	}
+	if strings.Contains(responseRecorder.Body.String(), `value="/cal/home/" checked`) {
+		t.Fatalf("expected unselected home calendar to remain unchecked, got %q", responseRecorder.Body.String())
 	}
 }

@@ -3,9 +3,12 @@ package migrations
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -91,6 +94,44 @@ func TestRunFromFSRollsBackFailedMigration(t *testing.T) {
 	}
 	if count != 0 {
 		t.Fatalf("failed migration should not be recorded, got count %d", count)
+	}
+}
+
+func TestBackupSQLiteSkipsExistingBackupPath(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "caldo.db")
+	db := openTestSQLite(t, dbPath)
+	defer func() { _ = db.Close() }()
+
+	originalNowUTC := nowUTC
+	originalBackupRandomBytes := backupRandomBytes
+	t.Cleanup(func() {
+		nowUTC = originalNowUTC
+		backupRandomBytes = originalBackupRandomBytes
+	})
+
+	fixedNow := time.Date(2026, time.April, 27, 12, 0, 0, 123456789, time.UTC)
+	nowUTC = func() time.Time { return fixedNow }
+	backupRandomBytes = func(buf []byte) error {
+		for i := range buf {
+			buf[i] = 0
+		}
+		return nil
+	}
+
+	existingBackupPath := fmt.Sprintf("%s.backup-%s-%09d-%s-%02d", dbPath, fixedNow.Format("20060102T150405Z"), fixedNow.Nanosecond(), "00000000", 0)
+	if err := os.WriteFile(existingBackupPath, []byte("preexisting backup"), 0o600); err != nil {
+		t.Fatalf("seed existing backup: %v", err)
+	}
+
+	if err := backupSQLite(context.Background(), db, dbPath); err != nil {
+		t.Fatalf("backup sqlite: %v", err)
+	}
+
+	newBackupPath := fmt.Sprintf("%s.backup-%s-%09d-%s-%02d", dbPath, fixedNow.Format("20060102T150405Z"), fixedNow.Nanosecond(), "00000000", 1)
+	if _, err := os.Stat(newBackupPath); err != nil {
+		t.Fatalf("expected retried backup path to exist: %v", err)
 	}
 }
 

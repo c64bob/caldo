@@ -2,12 +2,15 @@ package migrations
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
 	"embed"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -20,6 +23,11 @@ import (
 var embeddedMigrations embed.FS
 
 var migrationNamePattern = regexp.MustCompile(`^(\d+)_(.+)\.sql$`)
+var nowUTC = func() time.Time { return time.Now().UTC() }
+var backupRandomBytes = func(buf []byte) error {
+	_, err := rand.Read(buf)
+	return err
+}
 
 // Migration describes a single schema migration.
 type Migration struct {
@@ -201,12 +209,41 @@ func backupSQLite(ctx context.Context, db *sql.DB, dbPath string) error {
 		return errors.New("backup requires file-backed sqlite path")
 	}
 
-	backupPath := fmt.Sprintf("%s.backup-%s", dbPath, time.Now().UTC().Format("20060102T150405Z"))
-	if _, err := db.ExecContext(ctx, fmt.Sprintf("VACUUM INTO %s", quoteSQLiteString(backupPath))); err != nil {
-		return err
+	for attempt := 0; attempt < 10; attempt++ {
+		backupPath, err := generateBackupPath(dbPath, attempt)
+		if err != nil {
+			return err
+		}
+		if _, err := os.Stat(backupPath); err == nil {
+			continue
+		} else if !os.IsNotExist(err) {
+			return fmt.Errorf("check backup path: %w", err)
+		}
+
+		if _, err := db.ExecContext(ctx, fmt.Sprintf("VACUUM INTO %s", quoteSQLiteString(backupPath))); err != nil {
+			return err
+		}
+		return nil
 	}
 
-	return nil
+	return errors.New("exhausted unique backup path attempts")
+}
+
+func generateBackupPath(dbPath string, attempt int) (string, error) {
+	now := nowUTC()
+	randomBytes := make([]byte, 4)
+	if err := backupRandomBytes(randomBytes); err != nil {
+		return "", fmt.Errorf("generate backup suffix: %w", err)
+	}
+
+	return fmt.Sprintf(
+		"%s.backup-%s-%09d-%s-%02d",
+		dbPath,
+		now.Format("20060102T150405Z"),
+		now.Nanosecond(),
+		hex.EncodeToString(randomBytes),
+		attempt,
+	), nil
 }
 
 func quoteSQLiteString(value string) string {

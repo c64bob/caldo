@@ -59,6 +59,11 @@ func OpenSQLite(path string) (*Database, error) {
 		return nil, fmt.Errorf("run migrations: %w", err)
 	}
 
+	if _, err := dbConn.Exec("PRAGMA foreign_keys = ON;"); err != nil {
+		_ = dbConn.Close()
+		return nil, fmt.Errorf("set pragma foreign_keys: %w", err)
+	}
+
 	return &Database{Conn: dbConn}, nil
 }
 

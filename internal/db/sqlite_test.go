@@ -31,6 +31,7 @@ func TestOpenSQLiteConfiguresPragmasAndPool(t *testing.T) {
 	assertSingleTextResult(t, database, "PRAGMA journal_mode;", "wal")
 	assertSingleIntResult(t, database, "PRAGMA synchronous;", 1)
 	assertSingleIntResult(t, database, "PRAGMA busy_timeout;", busyTimeoutMs)
+	assertSingleIntResult(t, database, "PRAGMA foreign_keys;", 1)
 }
 
 func TestOpenSQLiteRunsMigrationsAndCreatesBackup(t *testing.T) {
@@ -399,10 +400,6 @@ func TestTasksProjectAndParentForeignKeys(t *testing.T) {
 			t.Fatalf("close sqlite: %v", err)
 		}
 	})
-
-	if _, err := database.Conn.Exec(`PRAGMA foreign_keys = ON;`); err != nil {
-		t.Fatalf("enable foreign keys: %v", err)
-	}
 
 	if _, err := database.Conn.Exec(`
 INSERT INTO projects (

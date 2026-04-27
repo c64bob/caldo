@@ -24,4 +24,10 @@ func TestNewRouterExposesHealthWithoutAuth(t *testing.T) {
 	if responseRecorder.Header().Get("X-Request-ID") == "" {
 		t.Fatal("expected request id header")
 	}
+	if got := responseRecorder.Header().Get("X-Frame-Options"); got != "DENY" {
+		t.Fatalf("unexpected X-Frame-Options: got %q", got)
+	}
+	if got := responseRecorder.Header().Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Fatalf("unexpected X-Content-Type-Options: got %q", got)
+	}
 }

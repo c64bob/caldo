@@ -63,6 +63,47 @@ func SafeLoggingMiddleware(logger *slog.Logger) func(http.Handler) http.Handler 
 	}
 }
 
+// RecoveryMiddleware recovers panics and returns a generic 500 response.
+func RecoveryMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer func() {
+				if recover() == nil {
+					return
+				}
+
+				requestID, _ := RequestIDFromContext(r.Context())
+				logger.Error("http_panic_recovered",
+					"request_id", requestID,
+					"method", r.Method,
+					"path", r.URL.Path,
+				)
+
+				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			}()
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// SecurityHeadersMiddleware sets security response headers for all requests.
+func SecurityHeadersMiddleware() func(http.Handler) http.Handler {
+	const csp = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none';"
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("X-Frame-Options", "DENY")
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+			w.Header().Set("Content-Security-Policy", csp)
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 type statusResponseWriter struct {
 	http.ResponseWriter
 	status int

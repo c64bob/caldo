@@ -52,6 +52,8 @@ func TestOpenSQLiteRunsMigrationsAndCreatesBackup(t *testing.T) {
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='settings';`, 1)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='projects';`, 1)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='tasks';`, 1)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='labels';`, 1)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='task_labels';`, 1)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM settings WHERE id = 'default';`, 1)
 
 	backupMatches, err := filepath.Glob(dbPath + ".backup-*")
@@ -452,6 +454,83 @@ INSERT INTO tasks (
 `); err == nil {
 		t.Fatal("expected missing parent task foreign key violation")
 	}
+}
+
+func TestLabelsAndTaskLabelsConstraints(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "caldo.db")
+	database, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := database.Close(); err != nil {
+			t.Fatalf("close sqlite: %v", err)
+		}
+	})
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO projects (
+    id, calendar_href, display_name, sync_strategy, created_at, updated_at
+) VALUES ('project-1', '/calendars/p1', 'Project 1', 'fullscan', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+`); err != nil {
+		t.Fatalf("insert project: %v", err)
+	}
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO tasks (
+    id, project_id, uid, title, status, raw_vtodo, sync_status, created_at, updated_at
+) VALUES (
+    'task-1', 'project-1', 'uid-1', 'Task 1', 'needs-action', 'BEGIN:VTODO\\nUID:uid-1\\nEND:VTODO',
+    'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+)
+`); err != nil {
+		t.Fatalf("insert task: %v", err)
+	}
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO labels (id, name, created_at) VALUES ('label-home', 'home', CURRENT_TIMESTAMP)
+`); err != nil {
+		t.Fatalf("insert first label: %v", err)
+	}
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO labels (id, name, created_at) VALUES ('label-home-duplicate', 'home', CURRENT_TIMESTAMP)
+`); err == nil {
+		t.Fatal("expected duplicate label name insert to fail")
+	}
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO labels (id, name, created_at) VALUES ('label-starred', 'STARRED', CURRENT_TIMESTAMP)
+`); err == nil {
+		t.Fatal("expected reserved STARRED label insert to fail")
+	}
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO labels (id, name, created_at) VALUES ('label-urgent', 'urgent', CURRENT_TIMESTAMP)
+`); err != nil {
+		t.Fatalf("insert second label: %v", err)
+	}
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO task_labels (task_id, label_id) VALUES ('task-1', 'label-home')
+`); err != nil {
+		t.Fatalf("attach first label to task: %v", err)
+	}
+	if _, err := database.Conn.Exec(`
+INSERT INTO task_labels (task_id, label_id) VALUES ('task-1', 'label-urgent')
+`); err != nil {
+		t.Fatalf("attach second label to task: %v", err)
+	}
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO task_labels (task_id, label_id) VALUES ('task-1', 'label-home')
+`); err == nil {
+		t.Fatal("expected duplicate task-label assignment to fail")
+	}
+
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM task_labels WHERE task_id = 'task-1';`, 2)
 }
 
 func assertSingleTextResult(t *testing.T, database *Database, query, want string) {

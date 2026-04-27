@@ -1,10 +1,12 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"sync"
 
+	"caldo/internal/migrations"
 	_ "modernc.org/sqlite"
 )
 
@@ -50,6 +52,11 @@ func OpenSQLite(path string) (*Database, error) {
 	if _, err := dbConn.Exec(fmt.Sprintf("PRAGMA busy_timeout = %d;", busyTimeoutMs)); err != nil {
 		_ = dbConn.Close()
 		return nil, fmt.Errorf("set pragma busy_timeout: %w", err)
+	}
+
+	if err := migrations.Run(context.Background(), dbConn, path); err != nil {
+		_ = dbConn.Close()
+		return nil, fmt.Errorf("run migrations: %w", err)
 	}
 
 	return &Database{Conn: dbConn}, nil

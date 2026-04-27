@@ -33,6 +33,32 @@ func TestOpenSQLiteConfiguresPragmasAndPool(t *testing.T) {
 	assertSingleIntResult(t, database, "PRAGMA busy_timeout;", busyTimeoutMs)
 }
 
+func TestOpenSQLiteRunsMigrationsAndCreatesBackup(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "caldo.db")
+	database, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := database.Close(); err != nil {
+			t.Fatalf("close sqlite: %v", err)
+		}
+	})
+
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_migrations';`, 1)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='settings';`, 1)
+
+	backupMatches, err := filepath.Glob(dbPath + ".backup-*")
+	if err != nil {
+		t.Fatalf("glob backup files: %v", err)
+	}
+	if len(backupMatches) == 0 {
+		t.Fatal("expected backup file before first pending migration")
+	}
+}
+
 func TestDatabaseCloseNilReceiver(t *testing.T) {
 	t.Parallel()
 

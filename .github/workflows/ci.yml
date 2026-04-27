@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install templ
+        run: go install github.com/a-h/templ/cmd/templ@latest
+
+      - name: Install tailwindcss
+        run: |
+          curl -sSL https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 -o /usr/local/bin/tailwindcss
+          chmod +x /usr/local/bin/tailwindcss
+
+      - name: Go vet
+        run: go vet ./...
+
+      - name: Go test with race detector
+        run: go test ./... -race
+
+      - name: Generate templ files
+        run: templ generate
+
+      - name: Check generated templ diff
+        run: git diff --exit-code
+
+      - name: Tailwind build
+        run: tailwindcss -i ./web/static/tailwind.input.css -o ./web/static/tailwind.output.css --minify
+
+      - name: Check tailwind diff
+        run: git diff --exit-code

@@ -1,0 +1,25 @@
+services:
+  caldo:
+    build: .
+    image: caldo:local
+    restart: on-failure:3
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      BASE_URL: ${BASE_URL:-https://todos.example.com}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      PROXY_USER_HEADER: ${PROXY_USER_HEADER:-X-Authentik-Username}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PORT: ${PORT:-8080}
+      DB_PATH: ${DB_PATH:-/data/caldo.db}
+    volumes:
+      - caldo_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  caldo_data:

@@ -1,6 +1,6 @@
 CREATE TABLE labels (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL COLLATE NOCASE UNIQUE,
     created_at DATETIME NOT NULL,
     CHECK (UPPER(name) <> 'STARRED')
 );

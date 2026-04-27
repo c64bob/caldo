@@ -502,6 +502,12 @@ INSERT INTO labels (id, name, created_at) VALUES ('label-home-duplicate', 'home'
 	}
 
 	if _, err := database.Conn.Exec(`
+INSERT INTO labels (id, name, created_at) VALUES ('label-home-uppercase', 'HOME', CURRENT_TIMESTAMP)
+`); err == nil {
+		t.Fatal("expected case-insensitive duplicate label name insert to fail")
+	}
+
+	if _, err := database.Conn.Exec(`
 INSERT INTO labels (id, name, created_at) VALUES ('label-starred', 'STARRED', CURRENT_TIMESTAMP)
 `); err == nil {
 		t.Fatal("expected reserved STARRED label insert to fail")

@@ -41,3 +41,10 @@ jobs:
 
       - name: Check tailwind diff
         run: git diff --exit-code
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t caldo:ci .

@@ -88,9 +88,16 @@ func TestHandleGracefulShutdownReturnsZero(t *testing.T) {
 			requestErr <- err
 			return
 		}
-		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
+			if closeErr := resp.Body.Close(); closeErr != nil {
+				requestErr <- closeErr
+				return
+			}
 			requestErr <- errors.New("unexpected status code")
+			return
+		}
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			requestErr <- closeErr
 			return
 		}
 		requestErr <- nil

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,7 +13,10 @@ import (
 	"caldo/internal/handler"
 	"caldo/internal/lock"
 	"caldo/internal/logging"
+	"caldo/internal/shutdown"
 )
+
+var errShutdownTimeout = errors.New("shutdown timeout exceeded")
 
 func main() {
 	logger := logging.New(os.Stderr, os.Getenv("APP_ENV"), os.Getenv("LOG_LEVEL"))
@@ -51,11 +55,31 @@ func run(logger *slog.Logger) error {
 		Handler: handler.NewRouter(logger),
 	}
 
-	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return fmt.Errorf("listen and serve: %w", err)
-	}
+	serverErr := make(chan error, 1)
+	go func() {
+		err := server.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErr <- fmt.Errorf("listen and serve: %w", err)
+			return
+		}
+		serverErr <- nil
+	}()
 
-	return nil
+	coordinator := shutdown.NewCoordinator(logger, nil, shutdown.DefaultTimeout)
+	shutdownCode := make(chan int, 1)
+	go func() {
+		shutdownCode <- coordinator.Handle(context.Background(), server)
+	}()
+
+	select {
+	case err := <-serverErr:
+		return err
+	case code := <-shutdownCode:
+		if code != shutdown.ExitCodeSuccess {
+			return errShutdownTimeout
+		}
+		return <-serverErr
+	}
 }
 
 func logStartupError(logger *slog.Logger, err error) {

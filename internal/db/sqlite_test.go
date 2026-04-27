@@ -187,6 +187,37 @@ INSERT INTO projects (
 	}
 }
 
+func TestProjectsCalendarHrefUniqueConstraint(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "caldo.db")
+	database, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := database.Close(); err != nil {
+			t.Fatalf("close sqlite: %v", err)
+		}
+	})
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO projects (
+    id, calendar_href, display_name, sync_strategy, created_at, updated_at
+) VALUES ('project-1', '/calendars/duplicate', 'Project One', 'fullscan', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+`); err != nil {
+		t.Fatalf("insert first project: %v", err)
+	}
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO projects (
+    id, calendar_href, display_name, sync_strategy, created_at, updated_at
+) VALUES ('project-2', '/calendars/duplicate', 'Project Two', 'fullscan', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+`); err == nil {
+		t.Fatal("expected duplicate calendar_href insert to fail")
+	}
+}
+
 func TestProjectsOptimisticLockingByServerVersion(t *testing.T) {
 	t.Parallel()
 

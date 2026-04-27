@@ -1,6 +1,6 @@
 CREATE TABLE projects (
     id TEXT PRIMARY KEY,
-    calendar_href TEXT NOT NULL,
+    calendar_href TEXT NOT NULL UNIQUE,
     display_name TEXT NOT NULL,
     ctag TEXT,
     sync_token TEXT,

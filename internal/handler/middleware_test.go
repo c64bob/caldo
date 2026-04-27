@@ -254,7 +254,7 @@ func TestReverseProxyAuthMiddlewareAllowsHealthWithoutAuth(t *testing.T) {
 func TestSetupGateMiddlewareRedirectsDisallowedRoutesWhenSetupIncomplete(t *testing.T) {
 	t.Parallel()
 
-	h := SetupGateMiddleware(false)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := SetupGateMiddleware(NewSetupState(false))(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
@@ -273,7 +273,7 @@ func TestSetupGateMiddlewareRedirectsDisallowedRoutesWhenSetupIncomplete(t *test
 func TestSetupGateMiddlewareAllowsSetupRoutesWhenSetupIncomplete(t *testing.T) {
 	t.Parallel()
 
-	h := SetupGateMiddleware(false)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := SetupGateMiddleware(NewSetupState(false))(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
@@ -289,7 +289,7 @@ func TestSetupGateMiddlewareAllowsSetupRoutesWhenSetupIncomplete(t *testing.T) {
 func TestSetupGateMiddlewareAllowsAllRoutesWhenSetupComplete(t *testing.T) {
 	t.Parallel()
 
-	h := SetupGateMiddleware(true)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := SetupGateMiddleware(NewSetupState(true))(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
@@ -299,6 +299,31 @@ func TestSetupGateMiddlewareAllowsAllRoutesWhenSetupComplete(t *testing.T) {
 
 	if rr.Code != http.StatusNoContent {
 		t.Fatalf("unexpected status code: got %d want %d", rr.Code, http.StatusNoContent)
+	}
+}
+
+func TestSetupGateMiddlewareReflectsRuntimeCompletionState(t *testing.T) {
+	t.Parallel()
+
+	state := NewSetupState(false)
+	h := SetupGateMiddleware(state)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/today", nil)
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusFound {
+		t.Fatalf("unexpected status code before completion: got %d want %d", rr.Code, http.StatusFound)
+	}
+
+	state.MarkComplete()
+
+	rr = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/today", nil)
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("unexpected status code after completion: got %d want %d", rr.Code, http.StatusNoContent)
 	}
 }
 

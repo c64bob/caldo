@@ -3,7 +3,7 @@ package handler
 import "net/http"
 
 // SetupGateMiddleware blocks normal routes until setup is completed.
-func SetupGateMiddleware(setupComplete bool) func(http.Handler) http.Handler {
+func SetupGateMiddleware(state *SetupState) func(http.Handler) http.Handler {
 	allowedWhenIncomplete := map[string]struct{}{
 		routeKey(http.MethodGet, "/setup"):               {},
 		routeKey(http.MethodGet, "/setup/"):              {},
@@ -18,7 +18,7 @@ func SetupGateMiddleware(setupComplete bool) func(http.Handler) http.Handler {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if setupComplete {
+			if state != nil && state.IsComplete() {
 				next.ServeHTTP(w, r)
 				return
 			}

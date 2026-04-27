@@ -1,0 +1,157 @@
+package handler
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"caldo/internal/caldav"
+	"caldo/internal/db"
+	"caldo/internal/view"
+)
+
+func TestSetupPageRendersCalDAVForm(t *testing.T) {
+	t.Parallel()
+
+	request := httptest.NewRequest(http.MethodGet, "/setup", nil)
+	request = request.WithContext(view.WithAssetManifest(request.Context(), map[string]string{"app.css": "app.css", "app.js": "app.js", "htmx.min.js": "htmx.min.js", "htmx-sse.js": "htmx-sse.js", "alpine.min.js": "alpine.min.js"}))
+	responseRecorder := httptest.NewRecorder()
+
+	SetupPage(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	body := responseRecorder.Body.String()
+	for _, want := range []string{"name=\"caldav_url\"", "name=\"caldav_username\"", "name=\"caldav_password\"", "action=\"/setup/caldav\""} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("setup page missing %q", want)
+		}
+	}
+}
+
+func TestSetupCalDAVSuccessStoresCredentialsCapabilitiesAndAdvancesStep(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	caldavServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("DAV", "1, calendar-access, sync-collection")
+		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+		w.WriteHeader(http.StatusMultiStatus)
+		_, _ = w.Write([]byte(`<d:multistatus xmlns:d="DAV:" xmlns:cs="http://calendarserver.org/ns/"><d:getetag>\"etag\"</d:getetag><cs:getctag>ctag</cs:getctag></d:multistatus>`))
+	}))
+	t.Cleanup(caldavServer.Close)
+
+	h := SetupCalDAV(setupDependencies{
+		database:      database,
+		encryptionKey: []byte("12345678901234567890123456789012"),
+		tester:        caldav.NewConnectionTester(caldavServer.Client()),
+	})
+
+	form := url.Values{}
+	form.Set("caldav_url", caldavServer.URL)
+	form.Set("caldav_username", "alice")
+	form.Set("caldav_password", "secret")
+	request := httptest.NewRequest(http.MethodPost, "/setup/caldav", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request = request.WithContext(view.WithAssetManifest(request.Context(), map[string]string{"app.css": "app.css", "app.js": "app.js", "htmx.min.js": "htmx.min.js", "htmx-sse.js": "htmx-sse.js", "alpine.min.js": "alpine.min.js"}))
+	responseRecorder := httptest.NewRecorder()
+
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusFound {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusFound)
+	}
+	if got := responseRecorder.Header().Get("Location"); got != "/setup/calendars" {
+		t.Fatalf("unexpected location: got %q", got)
+	}
+
+	status, err := database.LoadSetupStatus(context.Background())
+	if err != nil {
+		t.Fatalf("load setup status: %v", err)
+	}
+	if status.Step != "calendars" {
+		t.Fatalf("unexpected setup step: got %q want %q", status.Step, "calendars")
+	}
+
+	credentials, err := database.LoadCalDAVCredentials(context.Background(), []byte("12345678901234567890123456789012"))
+	if err != nil {
+		t.Fatalf("load credentials: %v", err)
+	}
+	if credentials.URL != caldavServer.URL || credentials.Username != "alice" || credentials.Password != "secret" {
+		t.Fatalf("unexpected credentials: %#v", credentials)
+	}
+
+	var rawCapabilities string
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT caldav_server_capabilities FROM settings WHERE id='default';`).Scan(&rawCapabilities); err != nil {
+		t.Fatalf("query capabilities: %v", err)
+	}
+	var capabilities db.CalDAVServerCapabilities
+	if err := json.Unmarshal([]byte(rawCapabilities), &capabilities); err != nil {
+		t.Fatalf("unmarshal capabilities: %v", err)
+	}
+	if !capabilities.WebDAVSync || !capabilities.CTag || !capabilities.ETag || !capabilities.FullScan {
+		t.Fatalf("unexpected capabilities: %#v", capabilities)
+	}
+}
+
+func TestSetupCalDAVFailureKeepsStepOnCaldav(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	caldavServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	t.Cleanup(caldavServer.Close)
+
+	h := SetupCalDAV(setupDependencies{
+		database:      database,
+		encryptionKey: []byte("12345678901234567890123456789012"),
+		tester:        caldav.NewConnectionTester(caldavServer.Client()),
+	})
+
+	form := url.Values{}
+	form.Set("caldav_url", caldavServer.URL)
+	form.Set("caldav_username", "alice")
+	form.Set("caldav_password", "secret")
+	request := httptest.NewRequest(http.MethodPost, "/setup/caldav", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request = request.WithContext(view.WithAssetManifest(request.Context(), map[string]string{"app.css": "app.css", "app.js": "app.js", "htmx.min.js": "htmx.min.js", "htmx-sse.js": "htmx-sse.js", "alpine.min.js": "alpine.min.js"}))
+	responseRecorder := httptest.NewRecorder()
+
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	if !strings.Contains(responseRecorder.Body.String(), "verbindungstest fehlgeschlagen") {
+		t.Fatalf("expected connection test error message, got %q", responseRecorder.Body.String())
+	}
+
+	status, err := database.LoadSetupStatus(context.Background())
+	if err != nil {
+		t.Fatalf("load setup status: %v", err)
+	}
+	if status.Step != "caldav" {
+		t.Fatalf("unexpected setup step: got %q want %q", status.Step, "caldav")
+	}
+
+	if _, err := database.LoadCalDAVCredentials(context.Background(), []byte("12345678901234567890123456789012")); err != nil {
+		t.Fatalf("expected credentials to be stored even on failed connection test: %v", err)
+	}
+}

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 
 	"caldo/internal/assets"
+	"caldo/internal/caldav"
+	"caldo/internal/db"
 	"caldo/internal/view"
 	"github.com/go-chi/chi/v5"
 )
@@ -16,7 +18,7 @@ const staticAssetsCacheControl = "public, max-age=31536000, immutable"
 var staticAssetsRoot = defaultStaticAssetsRoot()
 
 // NewRouter returns the HTTP router for Caldo.
-func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Manifest, setupComplete bool, csrfSecret []byte) http.Handler {
+func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Manifest, setupComplete bool, csrfSecret []byte, database *db.Database) http.Handler {
 	router := chi.NewRouter()
 	router.Use(RequestIDMiddleware())
 	router.Use(RecoveryMiddleware(logger))
@@ -33,7 +35,11 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 	router.Route("/setup", func(setupRouter chi.Router) {
 		setupRouter.Use(SetupCSRFMiddleware(csrfSecret))
 		setupRouter.Get("/", SetupPage)
-		setupRouter.Post("/caldav", SetupCalDAV)
+		setupRouter.Post("/caldav", SetupCalDAV(setupDependencies{
+			database:      database,
+			encryptionKey: csrfSecret,
+			tester:        caldav.NewConnectionTester(nil),
+		}))
 		setupRouter.Get("/calendars", SetupCalendarsPage)
 		setupRouter.Post("/calendars", SetupCalendars)
 		setupRouter.Post("/import", SetupImport)

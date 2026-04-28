@@ -21,11 +21,12 @@ type ProjectRenameBase struct {
 	CalendarHref    string
 	CurrentName     string
 	CurrentVersion  int
+	ReservedVersion int
 	RequestedName   string
 	ExpectedVersion int
 }
 
-// LoadProjectRenameBase loads the current project metadata before a write-through rename.
+// LoadProjectRenameBase loads project metadata and reserves a version before a write-through rename.
 func (d *Database) LoadProjectRenameBase(ctx context.Context, projectID string, expectedVersion int, requestedName string) (ProjectRenameBase, error) {
 	trimmedProjectID := strings.TrimSpace(projectID)
 	if trimmedProjectID == "" {
@@ -42,7 +43,17 @@ func (d *Database) LoadProjectRenameBase(ctx context.Context, projectID string, 
 	}
 
 	base := ProjectRenameBase{ProjectID: trimmedProjectID, RequestedName: trimmedName, ExpectedVersion: expectedVersion}
-	if err := d.Conn.QueryRowContext(ctx, `
+
+	d.WriteMu.Lock()
+	defer d.WriteMu.Unlock()
+
+	tx, err := d.Conn.BeginTx(ctx, nil)
+	if err != nil {
+		return ProjectRenameBase{}, fmt.Errorf("load project rename base: begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if err := tx.QueryRowContext(ctx, `
 SELECT calendar_href, display_name, server_version
 FROM projects
 WHERE id = ?;
@@ -56,6 +67,30 @@ WHERE id = ?;
 	if base.CurrentVersion != expectedVersion {
 		return ProjectRenameBase{}, ErrProjectVersionMismatch
 	}
+
+	result, err := tx.ExecContext(ctx, `
+UPDATE projects
+SET server_version = server_version + 1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ? AND server_version = ?;
+`, trimmedProjectID, expectedVersion)
+	if err != nil {
+		return ProjectRenameBase{}, fmt.Errorf("load project rename base: reserve version: %w", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return ProjectRenameBase{}, fmt.Errorf("load project rename base: read affected reservation rows: %w", err)
+	}
+	if affected != 1 {
+		return ProjectRenameBase{}, ErrProjectVersionMismatch
+	}
+
+	if err := tx.Commit(); err != nil {
+		return ProjectRenameBase{}, fmt.Errorf("load project rename base: commit reservation: %w", err)
+	}
+
+	base.ReservedVersion = expectedVersion + 1
 
 	return base, nil
 }
@@ -84,7 +119,6 @@ func (d *Database) RenameProject(ctx context.Context, projectID string, expected
 	result, err := tx.ExecContext(ctx, `
 UPDATE projects
 SET display_name = ?,
-    server_version = server_version + 1,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ? AND server_version = ?;
 `, trimmedName, trimmedProjectID, expectedVersion)
@@ -110,6 +144,41 @@ WHERE project_id = ?;
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("rename project: commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+// CancelProjectRenameReservation releases a reserved project version when remote rename fails.
+func (d *Database) CancelProjectRenameReservation(ctx context.Context, projectID string, reservedVersion int) error {
+	trimmedProjectID := strings.TrimSpace(projectID)
+	if trimmedProjectID == "" {
+		return fmt.Errorf("cancel project rename reservation: project id is required")
+	}
+
+	if reservedVersion < 2 {
+		return fmt.Errorf("cancel project rename reservation: reserved version is required")
+	}
+
+	d.WriteMu.Lock()
+	defer d.WriteMu.Unlock()
+
+	result, err := d.Conn.ExecContext(ctx, `
+UPDATE projects
+SET server_version = server_version - 1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ? AND server_version = ?;
+`, trimmedProjectID, reservedVersion)
+	if err != nil {
+		return fmt.Errorf("cancel project rename reservation: update reservation: %w", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("cancel project rename reservation: read affected rows: %w", err)
+	}
+	if affected != 1 {
+		return ErrProjectVersionMismatch
 	}
 
 	return nil

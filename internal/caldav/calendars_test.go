@@ -2,6 +2,7 @@ package caldav
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -128,5 +129,38 @@ func TestCalendarClientRenameCalendar(t *testing.T) {
 	}
 	if calendar.DisplayName != "Renamed Work" {
 		t.Fatalf("unexpected display name: got %q want %q", calendar.DisplayName, "Renamed Work")
+	}
+}
+
+func TestCalendarClientRenameCalendarFailsOnMultiStatusPropstatFailure(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PROPPATCH" {
+			t.Fatalf("unexpected method: got %q want %q", r.Method, "PROPPATCH")
+		}
+		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+		w.WriteHeader(http.StatusMultiStatus)
+		_, _ = w.Write([]byte(`<?xml version="1.0" encoding="utf-8"?>
+<d:multistatus xmlns:d="DAV:">
+  <d:response>
+    <d:href>/calendars/work/</d:href>
+    <d:propstat>
+      <d:prop><d:displayname/></d:prop>
+      <d:status>HTTP/1.1 403 Forbidden</d:status>
+    </d:propstat>
+  </d:response>
+</d:multistatus>`))
+	}))
+	t.Cleanup(server.Close)
+
+	client := NewCalendarClient(server.Client())
+	_, err := client.RenameCalendar(context.Background(), Credentials{
+		URL:      server.URL,
+		Username: "alice",
+		Password: "secret",
+	}, "/calendars/work/", "Renamed Work")
+	if !errors.Is(err, ErrCalendarRenameFailed) {
+		t.Fatalf("expected ErrCalendarRenameFailed, got %v", err)
 	}
 }

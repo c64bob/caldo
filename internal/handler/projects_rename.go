@@ -76,6 +76,9 @@ func ProjectRename(deps projectRenameDependencies) http.HandlerFunc {
 			Password: credentials.Password,
 		}, base.CalendarHref, base.RequestedName)
 		if err != nil {
+			cancelCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), projectRenamePersistTimeout)
+			defer cancel()
+			_ = deps.database.CancelProjectRenameReservation(cancelCtx, projectID, base.ReservedVersion)
 			http.Error(w, "failed to rename project on caldav server", http.StatusBadGateway)
 			return
 		}
@@ -83,7 +86,7 @@ func ProjectRename(deps projectRenameDependencies) http.HandlerFunc {
 		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), projectRenamePersistTimeout)
 		defer cancel()
 
-		if err := deps.database.RenameProject(persistCtx, projectID, expectedVersion, renamedCalendar.DisplayName); err != nil {
+		if err := deps.database.RenameProject(persistCtx, projectID, base.ReservedVersion, renamedCalendar.DisplayName); err != nil {
 			if errors.Is(err, db.ErrProjectVersionMismatch) {
 				http.Error(w, "project version conflict", http.StatusConflict)
 				return

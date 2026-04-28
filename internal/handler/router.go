@@ -34,6 +34,15 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 	router.Get("/", Home)
 	router.Handle("/static/*", staticFileServer(staticAssetsRoot))
 
+	router.Route("/tasks", func(taskRouter chi.Router) {
+		taskRouter.Use(SetupCSRFMiddleware(csrfSecret))
+		taskRouter.Post("/", TaskCreate(taskCreateDependencies{
+			database:      database,
+			encryptionKey: csrfSecret,
+			todos:         caldav.NewTodoClient(nil),
+		}))
+	})
+
 	router.Route("/setup", func(setupRouter chi.Router) {
 		setupRouter.Use(SetupCSRFMiddleware(csrfSecret))
 		setupRouter.Get("/", SetupPage)

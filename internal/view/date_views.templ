@@ -1,0 +1,21 @@
+package view
+
+import "caldo/internal/db"
+
+templ DateScopedTasksPage(heading string, emptyMessage string, tasks []db.DatedTaskViewRow) {
+	<section class="space-y-4">
+		<h2 class="text-xl font-semibold">{ heading }</h2>
+		if len(tasks) == 0 {
+			<p class="text-sm text-slate-600 dark:text-slate-400">{ emptyMessage }</p>
+		} else {
+			<ul class="space-y-2" data-date-view-results>
+				for _, task := range tasks {
+					<li class="rounded border border-slate-200 p-3 dark:border-slate-700">
+						<p class="font-medium">{ task.Title }</p>
+						<p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Fällig: { task.DueISODate } · Projekt: { task.ProjectName }</p>
+					</li>
+				}
+			</ul>
+		}
+	</section>
+}

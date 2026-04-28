@@ -32,6 +32,9 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 
 	router.Get("/health", Health)
 	router.Get("/", Home)
+	router.Get("/today", Today(dateViewDependencies{database: database}))
+	router.Get("/upcoming", Upcoming(dateViewDependencies{database: database}))
+	router.Get("/overdue", Overdue(dateViewDependencies{database: database}))
 	router.Get("/search", Search(searchDependencies{database: database}))
 	router.Handle("/static/*", staticFileServer(staticAssetsRoot))
 

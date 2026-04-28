@@ -407,6 +407,55 @@ END:VCALENDAR`)
 	}
 }
 
+func TestTaskCompleteWithOpenSubtasksCompleteOpenStaleVersionDoesNotMutateSubtasks(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskUpdateHandlerTest(t)
+	seedTaskUpdateHandlerData(t, database)
+	setTaskRawVTODO(t, database, `BEGIN:VCALENDAR
+BEGIN:VTODO
+UID:uid-1
+SUMMARY:old
+STATUS:NEEDS-ACTION
+END:VTODO
+END:VCALENDAR`)
+	seedOpenSubtask(t, database, "task-child-1", "task-1")
+
+	key := bytes.Repeat([]byte{0x5a}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	stub := &stubTaskUpdateTodoClient{updateETag: `"etag-2"`}
+	h := TaskComplete(taskUpdateDependencies{database: database, encryptionKey: key, todos: stub})
+	form := url.Values{"expected_version": {"9"}, "subtasks_action": {"complete_open"}}
+	req := httptest.NewRequest(http.MethodPost, "/tasks/task-1/complete", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Tab-ID", "tab-1")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("taskID", "task-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+	if stub.updateCalls != 0 {
+		t.Fatalf("expected no CalDAV writes for stale parent version, got %d", stub.updateCalls)
+	}
+
+	for _, taskID := range []string{"task-1", "task-child-1"} {
+		var status string
+		var version int
+		if err := database.Conn.QueryRowContext(context.Background(), `SELECT status, server_version FROM tasks WHERE id = ?;`, taskID).Scan(&status, &version); err != nil {
+			t.Fatalf("query task %s: %v", taskID, err)
+		}
+		if status != "needs-action" || version != 2 {
+			t.Fatalf("unexpected task state for %s: status=%q version=%d", taskID, status, version)
+		}
+	}
+}
+
 func TestTaskCompleteWithOpenSubtasksCompleteOpenCompletesAll(t *testing.T) {
 	t.Parallel()
 	database := openSQLiteForTaskUpdateHandlerTest(t)

@@ -59,6 +59,10 @@ func taskSetCompletion(deps taskUpdateDependencies, completed bool) http.Handler
 			}
 			return
 		}
+		if expectedVersion != base.ExpectedVersion {
+			http.Error(w, "task version conflict", http.StatusConflict)
+			return
+		}
 
 		if completed {
 			openSubtaskIDs, listErr := deps.database.ListOpenDirectSubtaskIDs(r.Context(), taskID)

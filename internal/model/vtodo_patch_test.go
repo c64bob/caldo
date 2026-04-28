@@ -3,6 +3,7 @@ package model
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestPatchVTODOPreservesUnknownValarmAttachAndRRULE(t *testing.T) {
@@ -72,5 +73,38 @@ func TestPatchVTODOChangesRRULEOnlyWhenExplicitlyPatched(t *testing.T) {
 	}
 	if !strings.Contains(withRRulePatch, "RRULE:FREQ=DAILY") {
 		t.Fatalf("expected new RRULE to be present\npatched=%s", withRRulePatch)
+	}
+}
+
+func TestPatchVTODOUpdatesDueCategoriesAndCompleted(t *testing.T) {
+	raw := strings.Join([]string{
+		"BEGIN:VTODO",
+		"UID:uid-2",
+		"SUMMARY:old",
+		"STATUS:NEEDS-ACTION",
+		"DUE;VALUE=DATE:20260101",
+		"CATEGORIES:home",
+		"END:VTODO",
+	}, "\n")
+
+	dueDate := "2026-08-05"
+	completedAt := time.Date(2026, 8, 5, 12, 13, 14, 0, time.UTC)
+	status := "completed"
+	patched := PatchVTODO(raw, VTODOPatch{
+		Status:      &status,
+		DueDate:     &dueDate,
+		Categories:  []string{"home", "urgent"},
+		CompletedAt: &completedAt,
+	})
+
+	for _, expected := range []string{
+		"STATUS:COMPLETED",
+		"DUE;VALUE=DATE:20260805",
+		"CATEGORIES:home,urgent",
+		"COMPLETED:20260805T121314Z",
+	} {
+		if !strings.Contains(patched, expected) {
+			t.Fatalf("expected patched todo to contain %q, got %s", expected, patched)
+		}
 	}
 }

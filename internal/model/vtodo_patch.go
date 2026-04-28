@@ -1,14 +1,23 @@
 package model
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+	"time"
+)
 
 // VTODOPatch describes explicit VTODO field changes.
 type VTODOPatch struct {
-	Summary     *string
-	Description *string
-	Status      *string
-	Priority    *int
-	RRule       *string
+	Summary        *string
+	Description    *string
+	Status         *string
+	Priority       *int
+	RRule          *string
+	DueDate        *string
+	DueAt          *time.Time
+	Categories     []string
+	CompletedAt    *time.Time
+	ClearCompleted bool
 }
 
 // PatchVTODO applies explicit known-field changes to a raw VTODO payload.
@@ -47,7 +56,12 @@ func hasPatchChanges(patch VTODOPatch) bool {
 		patch.Description != nil ||
 		patch.Status != nil ||
 		patch.Priority != nil ||
-		patch.RRule != nil
+		patch.RRule != nil ||
+		patch.DueDate != nil ||
+		patch.DueAt != nil ||
+		patch.Categories != nil ||
+		patch.CompletedAt != nil ||
+		patch.ClearCompleted
 }
 
 func findFirstVTODOBounds(lines []string) (int, int) {
@@ -126,13 +140,19 @@ func shouldReplaceProperty(name string, patch VTODOPatch) bool {
 		return patch.Priority != nil
 	case "RRULE":
 		return patch.RRule != nil
+	case "DUE":
+		return patch.DueDate != nil || patch.DueAt != nil
+	case "CATEGORIES":
+		return patch.Categories != nil
+	case "COMPLETED":
+		return patch.CompletedAt != nil || patch.ClearCompleted
 	default:
 		return false
 	}
 }
 
 func buildPatchedFieldLines(patch VTODOPatch) []string {
-	lines := make([]string, 0, 5)
+	lines := make([]string, 0, 9)
 	if patch.Summary != nil && strings.TrimSpace(*patch.Summary) != "" {
 		lines = append(lines, "SUMMARY:"+strings.TrimSpace(*patch.Summary))
 	}
@@ -142,11 +162,34 @@ func buildPatchedFieldLines(patch VTODOPatch) []string {
 	if patch.Status != nil && strings.TrimSpace(*patch.Status) != "" {
 		lines = append(lines, "STATUS:"+strings.ToUpper(strings.TrimSpace(*patch.Status)))
 	}
+	if patch.CompletedAt != nil {
+		lines = append(lines, "COMPLETED:"+patch.CompletedAt.UTC().Format("20060102T150405Z"))
+	}
+	if patch.DueDate != nil && strings.TrimSpace(*patch.DueDate) != "" {
+		if date, err := time.Parse("2006-01-02", strings.TrimSpace(*patch.DueDate)); err == nil {
+			lines = append(lines, "DUE;VALUE=DATE:"+date.UTC().Format("20060102"))
+		}
+	}
+	if patch.DueAt != nil {
+		lines = append(lines, "DUE:"+patch.DueAt.UTC().Format("20060102T150405Z"))
+	}
 	if patch.Priority != nil {
 		lines = append(lines, "PRIORITY:"+intToString(*patch.Priority))
 	}
 	if patch.RRule != nil && strings.TrimSpace(*patch.RRule) != "" {
 		lines = append(lines, "RRULE:"+strings.TrimSpace(*patch.RRule))
+	}
+	if patch.Categories != nil {
+		labels := make([]string, 0, len(patch.Categories))
+		for _, category := range patch.Categories {
+			category = strings.TrimSpace(category)
+			if category != "" {
+				labels = append(labels, category)
+			}
+		}
+		if len(labels) > 0 {
+			lines = append(lines, fmt.Sprintf("CATEGORIES:%s", strings.Join(labels, ",")))
+		}
 	}
 	return lines
 }

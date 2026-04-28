@@ -41,6 +41,11 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 			encryptionKey: csrfSecret,
 			todos:         caldav.NewTodoClient(nil),
 		}))
+		taskRouter.Patch("/{taskID}", TaskUpdate(taskUpdateDependencies{
+			database:      database,
+			encryptionKey: csrfSecret,
+			todos:         caldav.NewTodoClient(nil),
+		}))
 	})
 
 	router.Route("/setup", func(setupRouter chi.Router) {

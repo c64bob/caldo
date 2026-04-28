@@ -27,7 +27,7 @@ func ParseVTODOFields(raw string) VTODOFields {
 	inVTODO := false
 
 	for _, line := range lines {
-		name, value, ok := splitPropertyLine(line)
+		name, value, params, ok := splitPropertyLine(line)
 		if !ok {
 			continue
 		}
@@ -70,7 +70,7 @@ func ParseVTODOFields(raw string) VTODOFields {
 				fields.CompletedAt = &ts
 			}
 		case "DUE":
-			if strings.Contains(line, "VALUE=DATE") {
+			if propertyParamEquals(params, "VALUE", "DATE") {
 				if date := strings.TrimSpace(value); date != "" {
 					if formatted, ok := parseICalDate(date); ok {
 						fields.DueDate = &formatted
@@ -90,7 +90,7 @@ func ParseVTODOFields(raw string) VTODOFields {
 				fields.RRule = strings.TrimSpace(value)
 			}
 		case "RELATED-TO":
-			if strings.Contains(strings.ToUpper(line), "RELTYPE=PARENT") && fields.ParentUID == "" {
+			if propertyParamEquals(params, "RELTYPE", "PARENT") && fields.ParentUID == "" {
 				fields.ParentUID = strings.TrimSpace(value)
 			}
 		case "CATEGORIES":
@@ -121,18 +121,48 @@ func unfoldICalendarLines(raw string) []string {
 	return lines
 }
 
-func splitPropertyLine(line string) (name, value string, ok bool) {
+func splitPropertyLine(line string) (name, value string, params map[string]string, ok bool) {
 	idx := strings.IndexByte(line, ':')
 	if idx <= 0 {
-		return "", "", false
+		return "", "", nil, false
 	}
 
 	rawName := line[:idx]
+	params = parsePropertyParams(rawName)
 	if semi := strings.IndexByte(rawName, ';'); semi >= 0 {
 		rawName = rawName[:semi]
 	}
 
-	return strings.ToUpper(strings.TrimSpace(rawName)), strings.TrimSpace(line[idx+1:]), true
+	return strings.ToUpper(strings.TrimSpace(rawName)), strings.TrimSpace(line[idx+1:]), params, true
+}
+
+func parsePropertyParams(rawName string) map[string]string {
+	parts := strings.Split(rawName, ";")
+	if len(parts) <= 1 {
+		return nil
+	}
+
+	params := make(map[string]string, len(parts)-1)
+	for _, part := range parts[1:] {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		key, value, hasValue := strings.Cut(part, "=")
+		if !hasValue {
+			continue
+		}
+		params[strings.ToUpper(strings.TrimSpace(key))] = strings.ToUpper(strings.Trim(strings.TrimSpace(value), `"`))
+	}
+	return params
+}
+
+func propertyParamEquals(params map[string]string, key string, expected string) bool {
+	if len(params) == 0 {
+		return false
+	}
+	value, ok := params[strings.ToUpper(strings.TrimSpace(key))]
+	return ok && value == strings.ToUpper(strings.TrimSpace(expected))
 }
 
 func parseICalDateTime(raw string) (time.Time, bool) {

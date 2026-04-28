@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -22,6 +23,8 @@ var (
 	ErrCalendarDiscoveryFailed = errors.New("caldav calendar discovery failed")
 	// ErrCalendarCreateFailed indicates calendar creation failed.
 	ErrCalendarCreateFailed = errors.New("caldav calendar create failed")
+	// ErrCalendarRenameFailed indicates calendar rename failed.
+	ErrCalendarRenameFailed = errors.New("caldav calendar rename failed")
 	slugSanitizer           = regexp.MustCompile(`[^a-z0-9]+`)
 )
 
@@ -144,6 +147,54 @@ func (c *CalendarClient) CreateCalendar(ctx context.Context, credentials Credent
 	}, nil
 }
 
+// RenameCalendar updates an existing calendar display name via WebDAV PROPPATCH.
+func (c *CalendarClient) RenameCalendar(ctx context.Context, credentials Credentials, calendarHref string, displayName string) (Calendar, error) {
+	projectName := strings.TrimSpace(displayName)
+	if projectName == "" {
+		return Calendar{}, fmt.Errorf("%w: missing display name", ErrCalendarRenameFailed)
+	}
+
+	calendarURL, err := resolveCalendarURL(credentials.URL, calendarHref)
+	if err != nil {
+		return Calendar{}, fmt.Errorf("%w: invalid calendar href", ErrCalendarRenameFailed)
+	}
+
+	response, err := c.executor.do(ctx, operationPolicy{
+		timeout:      timeoutPROPFIND,
+		retryEnabled: false,
+	}, func(requestCtx context.Context) (*http.Request, error) {
+		request, reqErr := http.NewRequestWithContext(requestCtx, "PROPPATCH", calendarURL, bytes.NewBufferString(calendarRenameBody(projectName)))
+		if reqErr != nil {
+			return nil, reqErr
+		}
+		request.SetBasicAuth(credentials.Username, credentials.Password)
+		request.Header.Set("Content-Type", "application/xml; charset=utf-8")
+		return request, nil
+	})
+	if err != nil {
+		return Calendar{}, fmt.Errorf("%w: request failed", ErrCalendarRenameFailed)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusMultiStatus {
+		return Calendar{}, fmt.Errorf("%w: unexpected status %d", ErrCalendarRenameFailed, response.StatusCode)
+	}
+	if response.StatusCode == http.StatusMultiStatus {
+		body, err := io.ReadAll(io.LimitReader(response.Body, maxCalendarResponseBodyBytes))
+		if err != nil {
+			return Calendar{}, fmt.Errorf("%w: read response", ErrCalendarRenameFailed)
+		}
+		if err := validateCalendarRenameMultiStatus(body); err != nil {
+			return Calendar{}, err
+		}
+	}
+
+	return Calendar{
+		Href:        strings.TrimSpace(calendarHref),
+		DisplayName: projectName,
+	}, nil
+}
+
 func calendarCreateURL(baseURL string, name string) (string, string, error) {
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
@@ -174,6 +225,17 @@ func calendarCreateBody(displayName string) string {
 </c:mkcalendar>`, xmlEscape(displayName))
 }
 
+func calendarRenameBody(displayName string) string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
+<d:propertyupdate xmlns:d="DAV:">
+  <d:set>
+    <d:prop>
+      <d:displayname>%s</d:displayname>
+    </d:prop>
+  </d:set>
+</d:propertyupdate>`, xmlEscape(displayName))
+}
+
 func xmlEscape(v string) string {
 	var b strings.Builder
 	_ = xml.EscapeText(&b, []byte(v))
@@ -200,6 +262,66 @@ type propRecord struct {
 
 type resourceTypeRecord struct {
 	Calendars []struct{} `xml:"calendar"`
+}
+
+func validateCalendarRenameMultiStatus(body []byte) error {
+	var multistatus propPatchMultiStatusResponse
+	if err := xml.Unmarshal(body, &multistatus); err != nil {
+		return fmt.Errorf("%w: parse multistatus response", ErrCalendarRenameFailed)
+	}
+
+	hasDisplayNameStatus := false
+	for _, response := range multistatus.Responses {
+		for _, propstat := range response.Propstats {
+			if propstat.Prop.DisplayName == nil {
+				continue
+			}
+			hasDisplayNameStatus = true
+
+			statusCode, err := parseWebDAVStatusCode(propstat.Status)
+			if err != nil {
+				return fmt.Errorf("%w: parse propstat status", ErrCalendarRenameFailed)
+			}
+			if statusCode < http.StatusOK || statusCode >= http.StatusMultipleChoices {
+				return fmt.Errorf("%w: propstat status %d", ErrCalendarRenameFailed, statusCode)
+			}
+		}
+	}
+
+	if !hasDisplayNameStatus {
+		return fmt.Errorf("%w: missing displayname propstat", ErrCalendarRenameFailed)
+	}
+
+	return nil
+}
+
+func parseWebDAVStatusCode(statusLine string) (int, error) {
+	fields := strings.Fields(strings.TrimSpace(statusLine))
+	if len(fields) < 2 {
+		return 0, fmt.Errorf("invalid status line %q", statusLine)
+	}
+	statusCode, err := strconv.Atoi(fields[1])
+	if err != nil {
+		return 0, fmt.Errorf("invalid status code %q: %w", fields[1], err)
+	}
+	return statusCode, nil
+}
+
+type propPatchMultiStatusResponse struct {
+	Responses []propPatchResponse `xml:"response"`
+}
+
+type propPatchResponse struct {
+	Propstats []propPatchPropstat `xml:"propstat"`
+}
+
+type propPatchPropstat struct {
+	Status string        `xml:"status"`
+	Prop   propPatchProp `xml:"prop"`
+}
+
+type propPatchProp struct {
+	DisplayName *string `xml:"displayname"`
 }
 
 const calendarListProbeBody = `<?xml version="1.0" encoding="utf-8"?>

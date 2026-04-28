@@ -70,6 +70,11 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 			encryptionKey: csrfSecret,
 			calendar:      caldav.NewCalendarClient(nil),
 		}))
+		projectRouter.Patch("/{projectID}", ProjectRename(projectRenameDependencies{
+			database:      database,
+			encryptionKey: csrfSecret,
+			calendar:      caldav.NewCalendarClient(nil),
+		}))
 	})
 
 	router.Route("/setup", func(setupRouter chi.Router) {

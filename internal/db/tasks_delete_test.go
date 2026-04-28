@@ -39,6 +39,14 @@ func TestPrepareTaskDeleteCreatesUndoSnapshotAndMarksPending(t *testing.T) {
 	if actionType != "task_deleted" {
 		t.Fatalf("unexpected undo action type: %q", actionType)
 	}
+
+	var snapshotProjectID string
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT json_extract(snapshot_fields, '$.project_id') FROM undo_snapshots WHERE session_id = 'session-1' AND tab_id = 'tab-1';`).Scan(&snapshotProjectID); err != nil {
+		t.Fatalf("query undo snapshot project id: %v", err)
+	}
+	if snapshotProjectID != "project-1" {
+		t.Fatalf("unexpected undo snapshot project id: %q", snapshotProjectID)
+	}
 }
 
 func TestPrepareTaskDeleteRejectsVersionMismatch(t *testing.T) {

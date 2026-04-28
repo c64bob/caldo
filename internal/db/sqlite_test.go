@@ -89,12 +89,13 @@ func TestOpenSQLiteSeedsSettingsSingletonWithExpectedDefaults(t *testing.T) {
 		uiLanguage          string
 		darkMode            string
 		defaultProjectID    *string
+		showCompleted       bool
 	)
 
 	err = database.Conn.QueryRow(`
-SELECT id, setup_complete, setup_step, sync_interval_minutes, ui_language, dark_mode, default_project_id
+SELECT id, setup_complete, setup_step, sync_interval_minutes, ui_language, dark_mode, default_project_id, show_completed
 FROM settings
-`).Scan(&id, &setupComplete, &setupStep, &syncIntervalMinutes, &uiLanguage, &darkMode, &defaultProjectID)
+`).Scan(&id, &setupComplete, &setupStep, &syncIntervalMinutes, &uiLanguage, &darkMode, &defaultProjectID, &showCompleted)
 	if err != nil {
 		t.Fatalf("query settings singleton: %v", err)
 	}
@@ -119,6 +120,9 @@ FROM settings
 	}
 	if defaultProjectID != nil {
 		t.Fatalf("default_project_id should be NULL before setup completion, got %q", *defaultProjectID)
+	}
+	if showCompleted {
+		t.Fatal("show_completed should default to false")
 	}
 }
 

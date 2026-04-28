@@ -32,6 +32,11 @@ const taskUpdatePersistTimeout = 5 * time.Second
 // TaskUpdate updates an existing task and performs synchronous CalDAV write-through.
 func TaskUpdate(deps taskUpdateDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "invalid form payload", http.StatusBadRequest)
+			return
+		}
+
 		taskID := chi.URLParam(r, "taskID")
 		expectedVersion, err := strconv.Atoi(strings.TrimSpace(r.FormValue("expected_version")))
 		if err != nil {
@@ -79,9 +84,14 @@ func TaskUpdate(deps taskUpdateDependencies) http.HandlerFunc {
 			status = "needs-action"
 		}
 
+		var description *string
+		if _, ok := r.PostForm["description"]; ok {
+			description = stringPointer(strings.TrimSpace(r.FormValue("description")))
+		}
+
 		patch := model.VTODOPatch{
 			Summary:     &title,
-			Description: stringPointer(strings.TrimSpace(r.FormValue("description"))),
+			Description: description,
 			Status:      &status,
 			DueDate:     parseOptionalDate(r.FormValue("due_date")),
 			DueAt:       parseOptionalDateTime(r.FormValue("due_at")),
@@ -139,6 +149,16 @@ func TaskUpdate(deps taskUpdateDependencies) http.HandlerFunc {
 			newETag, err = deps.todos.PutVTODOCreate(r.Context(), todoCredentials, prepared.NextHref, rawVTODO)
 			if err == nil {
 				err = deps.todos.DeleteVTODO(r.Context(), todoCredentials, prepared.PreviousHref, prepared.PreviousETag)
+				if err != nil {
+					persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUpdatePersistTimeout)
+					defer cancel()
+					if markErr := deps.database.MarkTaskUpdateErrorWithETag(persistCtx, taskID, prepared.PendingVersion, newETag); markErr != nil {
+						http.Error(w, "failed to persist task update error state", http.StatusInternalServerError)
+						return
+					}
+					http.Error(w, "failed to finalize task move on caldav server", http.StatusBadGateway)
+					return
+				}
 			}
 		} else {
 			newETag, err = deps.todos.PutVTODOUpdate(r.Context(), todoCredentials, prepared.PreviousHref, rawVTODO, prepared.PreviousETag)
@@ -146,7 +166,15 @@ func TaskUpdate(deps taskUpdateDependencies) http.HandlerFunc {
 		if err != nil {
 			persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUpdatePersistTimeout)
 			defer cancel()
-			if markErr := deps.database.MarkTaskUpdateError(persistCtx, taskID, expectedVersion); markErr != nil {
+			if errors.Is(err, caldav.ErrPreconditionFailed) {
+				if markErr := deps.database.MarkTaskUpdateConflict(persistCtx, taskID, prepared.PendingVersion); markErr != nil {
+					http.Error(w, "failed to persist task update conflict state", http.StatusInternalServerError)
+					return
+				}
+				http.Error(w, "task version conflict", http.StatusConflict)
+				return
+			}
+			if markErr := deps.database.MarkTaskUpdateError(persistCtx, taskID, prepared.PendingVersion); markErr != nil {
 				http.Error(w, "failed to persist task update error state", http.StatusInternalServerError)
 				return
 			}
@@ -156,7 +184,7 @@ func TaskUpdate(deps taskUpdateDependencies) http.HandlerFunc {
 
 		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUpdatePersistTimeout)
 		defer cancel()
-		if err := deps.database.MarkTaskUpdateSynced(persistCtx, taskID, expectedVersion, newETag); err != nil {
+		if err := deps.database.MarkTaskUpdateSynced(persistCtx, taskID, prepared.PendingVersion, newETag); err != nil {
 			http.Error(w, "failed to persist synced task update", http.StatusInternalServerError)
 			return
 		}

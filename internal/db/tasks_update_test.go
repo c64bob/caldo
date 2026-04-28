@@ -36,11 +36,15 @@ func TestPrepareTaskUpdateCreatesUndoSnapshotAndMarksPending(t *testing.T) {
 	}
 
 	var syncStatus, title, description, labelNames string
-	if err := database.Conn.QueryRowContext(context.Background(), `SELECT sync_status, title, description, label_names FROM tasks WHERE id = 'task-1';`).Scan(&syncStatus, &title, &description, &labelNames); err != nil {
+	var version int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT sync_status, title, description, label_names, server_version FROM tasks WHERE id = 'task-1';`).Scan(&syncStatus, &title, &description, &labelNames, &version); err != nil {
 		t.Fatalf("query task: %v", err)
 	}
 	if syncStatus != "pending" || title != "new" || description != "desc" || labelNames != "home,urgent" {
 		t.Fatalf("unexpected task row: status=%q title=%q description=%q labels=%q", syncStatus, title, description, labelNames)
+	}
+	if prepared.PendingVersion != 3 || version != 3 {
+		t.Fatalf("unexpected pending version: prepared=%d version=%d", prepared.PendingVersion, version)
 	}
 
 	var snapshotCount int

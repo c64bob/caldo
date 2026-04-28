@@ -46,6 +46,7 @@ type PreparedTaskUpdate struct {
 	PreviousHref   string
 	PreviousETag   string
 	NextHref       string
+	PendingVersion int
 	ProjectChanged bool
 }
 
@@ -164,6 +165,7 @@ SET project_id = ?,
     project_name = ?,
     href = ?,
     raw_vtodo = ?,
+    server_version = server_version + 1,
     sync_status = 'pending',
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ? AND server_version = ?;
@@ -190,6 +192,7 @@ WHERE id = ? AND server_version = ?;
 		PreviousHref:   snapshotHref,
 		PreviousETag:   strings.TrimSpace(snapshotETag.String),
 		NextHref:       input.Href,
+		PendingVersion: input.ExpectedVersion + 1,
 		ProjectChanged: strings.TrimSpace(snapshotHref) != strings.TrimSpace(input.Href),
 	}, nil
 }
@@ -240,6 +243,59 @@ WHERE id = ? AND server_version = ?;
 	affected, err := result.RowsAffected()
 	if err != nil {
 		return fmt.Errorf("mark task update error: read affected rows: %w", err)
+	}
+	if affected != 1 {
+		return ErrTaskVersionMismatch
+	}
+
+	return nil
+}
+
+// MarkTaskUpdateConflict marks a pending task update as conflict when CalDAV reports an etag mismatch.
+func (d *Database) MarkTaskUpdateConflict(ctx context.Context, taskID string, expectedVersion int) error {
+	d.WriteMu.Lock()
+	defer d.WriteMu.Unlock()
+
+	result, err := d.Conn.ExecContext(ctx, `
+UPDATE tasks
+SET sync_status = 'conflict',
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ? AND server_version = ?;
+`, taskID, expectedVersion)
+	if err != nil {
+		return fmt.Errorf("mark task update conflict: update task: %w", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("mark task update conflict: read affected rows: %w", err)
+	}
+	if affected != 1 {
+		return ErrTaskVersionMismatch
+	}
+
+	return nil
+}
+
+// MarkTaskUpdateErrorWithETag marks a pending task update as error and persists the latest etag.
+func (d *Database) MarkTaskUpdateErrorWithETag(ctx context.Context, taskID string, expectedVersion int, etag string) error {
+	d.WriteMu.Lock()
+	defer d.WriteMu.Unlock()
+
+	result, err := d.Conn.ExecContext(ctx, `
+UPDATE tasks
+SET etag = ?,
+    sync_status = 'error',
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ? AND server_version = ?;
+`, nullableString(etag), taskID, expectedVersion)
+	if err != nil {
+		return fmt.Errorf("mark task update error with etag: update task: %w", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("mark task update error with etag: read affected rows: %w", err)
 	}
 	if affected != 1 {
 		return ErrTaskVersionMismatch

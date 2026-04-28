@@ -333,3 +333,37 @@ func joinCalendarTaskHref(calendarHref string, uid string) string {
 	}
 	return trimmed + "/" + strings.TrimSpace(uid) + ".ics"
 }
+
+// ListOpenDirectSubtaskIDs returns IDs of direct child tasks that are not completed.
+func (d *Database) ListOpenDirectSubtaskIDs(ctx context.Context, parentTaskID string) ([]string, error) {
+	trimmedParentTaskID := strings.TrimSpace(parentTaskID)
+	if trimmedParentTaskID == "" {
+		return nil, fmt.Errorf("list open direct subtask ids: parent task id is required")
+	}
+
+	rows, err := d.Conn.QueryContext(ctx, `
+SELECT id
+FROM tasks
+WHERE parent_id = ?
+  AND status != 'completed'
+ORDER BY id;
+`, trimmedParentTaskID)
+	if err != nil {
+		return nil, fmt.Errorf("list open direct subtask ids: query open subtasks: %w", err)
+	}
+	defer rows.Close()
+
+	subtaskIDs := make([]string, 0)
+	for rows.Next() {
+		var taskID string
+		if scanErr := rows.Scan(&taskID); scanErr != nil {
+			return nil, fmt.Errorf("list open direct subtask ids: scan open subtask: %w", scanErr)
+		}
+		subtaskIDs = append(subtaskIDs, taskID)
+	}
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, fmt.Errorf("list open direct subtask ids: iterate open subtasks: %w", rowsErr)
+	}
+
+	return subtaskIDs, nil
+}

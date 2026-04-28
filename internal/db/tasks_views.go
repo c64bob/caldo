@@ -18,20 +18,20 @@ type DatedTaskViewRow struct {
 // ListTodayTasks returns tasks due today plus overdue tasks.
 func (d *Database) ListTodayTasks(ctx context.Context, referenceDate time.Time, limit int) ([]DatedTaskViewRow, error) {
 	return d.listDateScopedTasks(ctx, `
-	AND COALESCE(date(t.due_at), date(t.due_date)) <= date(?)`, referenceDate, limit, 1)
+	AND due_iso_date <= date(?)`, referenceDate, limit, 1)
 }
 
 // ListUpcomingTasks returns tasks due in the configured upcoming window, excluding today.
 func (d *Database) ListUpcomingTasks(ctx context.Context, referenceDate time.Time, limit int) ([]DatedTaskViewRow, error) {
 	return d.listDateScopedTasks(ctx, `
-	AND COALESCE(date(t.due_at), date(t.due_date)) > date(?)
-	AND COALESCE(date(t.due_at), date(t.due_date)) <= date(?, '+' || cfg.upcoming_days || ' days')`, referenceDate, limit, 2)
+	AND due_iso_date > date(?)
+	AND due_iso_date <= date(?, '+' || cfg.upcoming_days || ' days')`, referenceDate, limit, 2)
 }
 
 // ListOverdueTasks returns tasks that are overdue.
 func (d *Database) ListOverdueTasks(ctx context.Context, referenceDate time.Time, limit int) ([]DatedTaskViewRow, error) {
 	return d.listDateScopedTasks(ctx, `
-	AND COALESCE(date(t.due_at), date(t.due_date)) < date(?)`, referenceDate, limit, 1)
+	AND due_iso_date < date(?)`, referenceDate, limit, 1)
 }
 
 func (d *Database) listDateScopedTasks(ctx context.Context, dateFilterSQL string, referenceDate time.Time, limit int, dateArgs int) ([]DatedTaskViewRow, error) {
@@ -46,22 +46,37 @@ func (d *Database) listDateScopedTasks(ctx context.Context, dateFilterSQL string
 	}
 	args = append(args, limit)
 
-	rows, err := d.Conn.QueryContext(ctx, `
+rows, err := d.Conn.QueryContext(ctx, `
 WITH cfg AS (
 	SELECT show_completed, upcoming_days
 	FROM settings
 	WHERE id = 'default'
+),
+scoped_tasks AS (
+	SELECT
+		t.id,
+		t.title,
+		t.status,
+		COALESCE(t.project_name, '') AS project_name,
+		COALESCE(
+			date(t.due_at),
+			date(substr(t.due_at, 1, 19)),
+			date(substr(t.due_at, 1, 10)),
+			date(t.due_date)
+		) AS due_iso_date,
+		t.updated_at
+	FROM tasks t
 )
 SELECT
 	t.id,
 	t.title,
 	t.status,
-	COALESCE(t.project_name, ''),
-	COALESCE(date(t.due_at), date(t.due_date)) AS due_iso_date
-FROM tasks t
+	t.project_name,
+	t.due_iso_date
+FROM scoped_tasks t
 CROSS JOIN cfg
 WHERE
-	COALESCE(date(t.due_at), date(t.due_date)) IS NOT NULL
+	t.due_iso_date IS NOT NULL
 	`+dateFilterSQL+`
 	AND (cfg.show_completed = 1 OR t.status != 'completed')
 ORDER BY due_iso_date ASC, t.updated_at DESC

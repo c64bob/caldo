@@ -32,6 +32,7 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 
 	router.Get("/health", Health)
 	router.Get("/", Home)
+	router.Get("/search", Search(searchDependencies{database: database}))
 	router.Handle("/static/*", staticFileServer(staticAssetsRoot))
 
 	router.Route("/tasks", func(taskRouter chi.Router) {

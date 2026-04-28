@@ -1,0 +1,46 @@
+package view
+
+import "caldo/internal/db"
+import "strings"
+
+templ SearchPage(query string, results []db.SearchResult) {
+	<section class="space-y-4">
+		<h2 class="text-xl font-semibold">Globale Suche</h2>
+		<form method="get" action="/search" class="space-y-2" role="search" aria-label="Globale Suche">
+			<label for="global-search" class="block text-sm font-medium">Suche nach Aufgaben, #Projekt oder @Label</label>
+			<input
+				id="global-search"
+				type="search"
+				name="q"
+				value={ query }
+				class="w-full rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+				placeholder="z. B. Rechnung #Finanzen @Büro"
+				autofocus
+				accesskey="k"
+			/>
+			<p class="text-sm text-slate-600 dark:text-slate-400">Tastaturkürzel: Alt+Shift+K (Browser-Standard für accesskey).</p>
+		</form>
+		if strings.TrimSpace(query) == "" {
+			<p class="text-sm text-slate-600 dark:text-slate-400">Gib einen Suchbegriff ein.</p>
+		} else if len(results) == 0 {
+			<p class="text-sm text-slate-600 dark:text-slate-400">Keine aktiven Aufgaben gefunden.</p>
+		} else {
+			<ul class="space-y-2" data-search-results>
+				for _, result := range results {
+					<li class="rounded border border-slate-200 p-3 dark:border-slate-700">
+						<p class="font-medium">{ result.Title }</p>
+						if result.Description != "" {
+							<p class="text-sm text-slate-600 dark:text-slate-400">{ result.Description }</p>
+						}
+						<p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+							Projekt: { result.ProjectName }
+							if result.LabelNames != "" {
+								 · Labels: { result.LabelNames }
+							}
+						</p>
+					</li>
+				}
+			</ul>
+		}
+	</section>
+}

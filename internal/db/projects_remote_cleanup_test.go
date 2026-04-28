@@ -17,14 +17,6 @@ func TestCleanupRemoteDeletedCalendarsRemovesProjectDataAndReturnsWarnings(t *te
 
 	seedRemoteCleanupProjects(t, database)
 
-	if _, err := database.Conn.ExecContext(context.Background(), `
-CREATE VIRTUAL TABLE tasks_fts USING fts5(title, description, label_names, project_name);
-INSERT INTO tasks_fts(rowid, title, description, label_names, project_name)
-SELECT rowid, title, description, label_names, project_name FROM tasks WHERE project_id = 'project-deleted';
-`); err != nil {
-		t.Fatalf("seed fts entries: %v", err)
-	}
-
 	cleanups, err := database.CleanupRemoteDeletedCalendars(context.Background(), []string{"/cal/keep/"})
 	if err != nil {
 		t.Fatalf("cleanup remote deleted calendars: %v", err)
@@ -50,7 +42,7 @@ SELECT rowid, title, description, label_names, project_name FROM tasks WHERE pro
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE id = 'undo-orphan-deleted';`, 0)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE id = 'undo-orphan-keep';`, 1)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM conflicts WHERE project_id = 'project-deleted' OR task_id IN ('task-deleted-1','task-deleted-2');`, 0)
-	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM tasks_fts;`, 0)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM tasks_fts;`, 1)
 
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM projects WHERE id = 'project-keep';`, 1)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM tasks WHERE project_id = 'project-keep';`, 1)

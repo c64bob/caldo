@@ -52,6 +52,7 @@ func TestOpenSQLiteRunsMigrationsAndCreatesBackup(t *testing.T) {
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='settings';`, 1)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='projects';`, 1)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='tasks';`, 1)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='tasks_fts';`, 1)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='labels';`, 1)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='task_labels';`, 1)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='undo_snapshots';`, 1)

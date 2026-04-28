@@ -120,15 +120,6 @@ WHERE task_id IN (
 	}
 
 	if _, err := tx.ExecContext(ctx, `
-DELETE FROM tasks_fts
-WHERE rowid IN (
-	SELECT rowid FROM tasks WHERE project_id = ?
-);
-`, projectID); err != nil && !strings.Contains(err.Error(), "no such table: tasks_fts") {
-		return fmt.Errorf("delete fts entries: %w", err)
-	}
-
-	if _, err := tx.ExecContext(ctx, `
 DELETE FROM conflicts
 WHERE project_id = ?
    OR task_id IN (SELECT id FROM tasks WHERE project_id = ?);

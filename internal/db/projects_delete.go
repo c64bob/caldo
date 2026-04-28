@@ -121,15 +121,6 @@ func (d *Database) DeleteProject(ctx context.Context, projectID string, expected
 	defer func() { _ = tx.Rollback() }()
 
 	if _, err := tx.ExecContext(ctx, `
-DELETE FROM tasks_fts
-WHERE rowid IN (
-    SELECT rowid FROM tasks WHERE project_id = ?
-);
-`, trimmedProjectID); err != nil && !strings.Contains(err.Error(), "no such table: tasks_fts") {
-		return fmt.Errorf("delete project: delete fts entries: %w", err)
-	}
-
-	if _, err := tx.ExecContext(ctx, `
 DELETE FROM tasks
 WHERE project_id = ?;
 `, trimmedProjectID); err != nil {

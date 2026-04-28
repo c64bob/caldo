@@ -87,6 +87,9 @@ func ProjectDelete(deps projectDeleteDependencies) http.HandlerFunc {
 
 		credentials, err := deps.database.LoadCalDAVCredentials(r.Context(), deps.encryptionKey)
 		if err != nil {
+			cancelCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), projectDeletePersistTimeout)
+			defer cancel()
+			_ = deps.database.CancelProjectDeleteReservation(cancelCtx, projectID, base.ReservedVersion)
 			http.Error(w, "caldav credentials unavailable", http.StatusFailedDependency)
 			return
 		}

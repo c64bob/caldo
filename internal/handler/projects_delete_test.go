@@ -128,3 +128,45 @@ VALUES ('project-1', '/cal/work/', 'Work', 'fullscan', 2, CURRENT_TIMESTAMP, CUR
 		t.Fatalf("project should remain after remote failure, got %d", projectCount)
 	}
 }
+
+func TestProjectDeleteCancelsReservationWhenCredentialsUnavailable(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	if _, err := database.Conn.ExecContext(context.Background(), `
+INSERT INTO projects (id, calendar_href, display_name, sync_strategy, server_version, created_at, updated_at)
+VALUES ('project-1', '/cal/work/', 'Work', 'fullscan', 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+`); err != nil {
+		t.Fatalf("seed project: %v", err)
+	}
+
+	calendar := &fakeProjectDeleteCalendarClient{}
+	h := ProjectDelete(projectDeleteDependencies{database: database, encryptionKey: []byte("12345678901234567890123456789012"), calendar: calendar})
+
+	form := url.Values{"expected_version": {"2"}, "confirmation_name": {"Work"}}
+	request := httptest.NewRequest(http.MethodDelete, "/projects/project-1", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	responseRecorder := httptest.NewRecorder()
+
+	h(responseRecorder, request.WithContext(withProjectID(request.Context(), "project-1")))
+
+	if responseRecorder.Code != http.StatusFailedDependency {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusFailedDependency)
+	}
+	if calendar.deleteCalls != 0 {
+		t.Fatalf("remote delete should not be called when credentials are unavailable, got %d calls", calendar.deleteCalls)
+	}
+
+	var version int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT server_version FROM projects WHERE id = 'project-1';`).Scan(&version); err != nil {
+		t.Fatalf("load project version: %v", err)
+	}
+	if version != 2 {
+		t.Fatalf("expected reservation rollback to restore version 2, got %d", version)
+	}
+}

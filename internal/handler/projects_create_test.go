@@ -110,6 +110,50 @@ func TestProjectCreateDoesNotPersistWhenRemoteCreateFails(t *testing.T) {
 	}
 }
 
+func TestProjectCreateReturnsErrorBeforeRemoteCreateWhenCapabilitiesUnreadable(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	if err := database.SaveCalDAVCredentials(context.Background(), []byte("12345678901234567890123456789012"), db.CalDAVCredentials{
+		URL: "https://example.test/caldav", Username: "alice", Password: "secret",
+	}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+	if _, err := database.Conn.ExecContext(context.Background(), `UPDATE settings SET caldav_server_capabilities = '{not-json}' WHERE id = 'default';`); err != nil {
+		t.Fatalf("corrupt capabilities: %v", err)
+	}
+
+	calendar := &fakeProjectCreateCalendarClient{}
+	h := ProjectCreate(projectCreateDependencies{database: database, encryptionKey: []byte("12345678901234567890123456789012"), calendar: calendar})
+
+	form := url.Values{"display_name": {"New Project"}}
+	request := httptest.NewRequest(http.MethodPost, "/projects", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	responseRecorder := httptest.NewRecorder()
+
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusInternalServerError {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusInternalServerError)
+	}
+	if calendar.createCalls != 0 {
+		t.Fatalf("expected no remote calendar creation attempt, got %d", calendar.createCalls)
+	}
+
+	var count int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM projects;`).Scan(&count); err != nil {
+		t.Fatalf("count projects: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected no local project persisted, got %d", count)
+	}
+}
+
 func TestProjectCreateRejectsEmptyName(t *testing.T) {
 	t.Parallel()
 

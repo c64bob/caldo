@@ -37,6 +37,12 @@ func ProjectCreate(deps projectCreateDependencies) http.HandlerFunc {
 			return
 		}
 
+		capabilities, err := deps.database.LoadCalDAVServerCapabilities(r.Context())
+		if err != nil {
+			http.Error(w, "failed to load caldav server capabilities", http.StatusInternalServerError)
+			return
+		}
+
 		createdCalendar, err := deps.calendar.CreateCalendar(r.Context(), caldav.Credentials{
 			URL:      credentials.URL,
 			Username: credentials.Username,
@@ -44,12 +50,6 @@ func ProjectCreate(deps projectCreateDependencies) http.HandlerFunc {
 		}, projectName)
 		if err != nil {
 			http.Error(w, "failed to create project on caldav server", http.StatusBadGateway)
-			return
-		}
-
-		capabilities, err := deps.database.LoadCalDAVServerCapabilities(r.Context())
-		if err != nil {
-			http.Error(w, "failed to load caldav server capabilities", http.StatusInternalServerError)
 			return
 		}
 

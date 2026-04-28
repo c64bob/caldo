@@ -25,6 +25,8 @@ type taskCreateDependencies struct {
 	todos         taskCreateTodoClient
 }
 
+const taskCreatePersistTimeout = 5 * time.Second
+
 // TaskCreate creates a new task and performs synchronous CalDAV write-through.
 func TaskCreate(deps taskCreateDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +82,9 @@ func TaskCreate(deps taskCreateDependencies) http.HandlerFunc {
 		}
 		etag, err := deps.todos.PutVTODOCreate(r.Context(), todoClientCredentials, todoHref, rawVTODO)
 		if err != nil {
-			if markErr := deps.database.MarkTaskCreateError(r.Context(), taskID); markErr != nil {
+			persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskCreatePersistTimeout)
+			defer cancel()
+			if markErr := deps.database.MarkTaskCreateError(persistCtx, taskID); markErr != nil {
 				http.Error(w, "failed to persist create error state", http.StatusInternalServerError)
 				return
 			}
@@ -88,7 +92,9 @@ func TaskCreate(deps taskCreateDependencies) http.HandlerFunc {
 			return
 		}
 
-		if err := deps.database.MarkTaskCreateSynced(r.Context(), taskID, etag); err != nil {
+		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskCreatePersistTimeout)
+		defer cancel()
+		if err := deps.database.MarkTaskCreateSynced(persistCtx, taskID, etag); err != nil {
 			http.Error(w, "failed to persist synced task", http.StatusInternalServerError)
 			return
 		}

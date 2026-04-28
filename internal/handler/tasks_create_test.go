@@ -19,11 +19,15 @@ type stubTaskCreateTodoClient struct {
 	err  error
 	href string
 	raw  string
+	after func()
 }
 
 func (s *stubTaskCreateTodoClient) PutVTODOCreate(_ context.Context, _ caldav.Credentials, todoHref string, rawVTODO string) (string, error) {
 	s.href = todoHref
 	s.raw = rawVTODO
+	if s.after != nil {
+		s.after()
+	}
 	if s.err != nil {
 		return "", s.err
 	}
@@ -100,6 +104,75 @@ func TestTaskCreateCalDAVFailureMarksTaskError(t *testing.T) {
 	}
 	if syncStatus != "error" || serverVersion != 1 {
 		t.Fatalf("unexpected task state after error: status=%q version=%d", syncStatus, serverVersion)
+	}
+}
+
+func TestTaskCreatePersistsErrorStateAfterRequestCancellation(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskCreateHandlerTest(t)
+	seedTaskCreateHandlerProject(t, database)
+
+	key := bytes.Repeat([]byte{0x44}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	stub := &stubTaskCreateTodoClient{err: context.DeadlineExceeded, after: cancel}
+	h := TaskCreate(taskCreateDependencies{database: database, encryptionKey: key, todos: stub})
+
+	form := url.Values{"title": {"Buy milk"}}
+	req := httptest.NewRequest(http.MethodPost, "/tasks", strings.NewReader(form.Encode())).WithContext(ctx)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadGateway {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+
+	var syncStatus string
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT sync_status FROM tasks LIMIT 1;`).Scan(&syncStatus); err != nil {
+		t.Fatalf("query task: %v", err)
+	}
+	if syncStatus != "error" {
+		t.Fatalf("unexpected task state after cancellation: status=%q", syncStatus)
+	}
+}
+
+func TestTaskCreatePersistsSyncedStateAfterRequestCancellation(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskCreateHandlerTest(t)
+	seedTaskCreateHandlerProject(t, database)
+
+	key := bytes.Repeat([]byte{0x55}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	stub := &stubTaskCreateTodoClient{etag: `"etag-cancel"`, after: cancel}
+	h := TaskCreate(taskCreateDependencies{database: database, encryptionKey: key, todos: stub})
+
+	form := url.Values{"title": {"Buy milk"}}
+	req := httptest.NewRequest(http.MethodPost, "/tasks", strings.NewReader(form.Encode())).WithContext(ctx)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+
+	var syncStatus string
+	var etag string
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT sync_status, etag FROM tasks LIMIT 1;`).Scan(&syncStatus, &etag); err != nil {
+		t.Fatalf("query task: %v", err)
+	}
+	if syncStatus != "synced" || etag != `"etag-cancel"` {
+		t.Fatalf("unexpected task state after cancellation: status=%q etag=%q", syncStatus, etag)
 	}
 }
 

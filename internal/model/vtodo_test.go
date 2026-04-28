@@ -44,11 +44,20 @@ func TestParseVTODOFieldsExtractsNormalizedFields(t *testing.T) {
 func TestParseVTODOFieldsParsesDateDue(t *testing.T) {
 	t.Parallel()
 
-	parsed := ParseVTODOFields("BEGIN:VTODO\nUID:uid-2\nDUE;VALUE=DATE:20260310\nEND:VTODO")
+	parsed := ParseVTODOFields("BEGIN:VTODO\nUID:uid-2\nDUE;value=date:20260310\nEND:VTODO")
 	if parsed.DueDate == nil || *parsed.DueDate != "2026-03-10" {
 		t.Fatalf("unexpected due_date: %#v", parsed.DueDate)
 	}
 	if parsed.DueAt != nil {
 		t.Fatalf("expected due_at nil, got %#v", parsed.DueAt)
+	}
+}
+
+func TestParseVTODOFieldsParsesParentWithQuotedReltype(t *testing.T) {
+	t.Parallel()
+
+	parsed := ParseVTODOFields("BEGIN:VTODO\nUID:uid-3\nRELATED-TO;RELTYPE=\"PARENT\":parent-3\nEND:VTODO")
+	if parsed.ParentUID != "parent-3" {
+		t.Fatalf("unexpected parent uid: got %q", parsed.ParentUID)
 	}
 }

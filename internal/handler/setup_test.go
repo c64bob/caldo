@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -469,7 +470,7 @@ func TestSetupImportRunsInitialImportAndPersistsSyncedTasks(t *testing.T) {
 			"/cal/work/": {{
 				Href:     "/cal/work/uid-1.ics",
 				ETag:     "\"etag-1\"",
-				RawVTODO: "BEGIN:VCALENDAR\nBEGIN:VTODO\nUID:uid-1\nSUMMARY:Task One\nSTATUS:NEEDS-ACTION\nCATEGORIES:home,STARRED\nEND:VTODO\nEND:VCALENDAR",
+				RawVTODO: "BEGIN:VCALENDAR\nBEGIN:VTODO\nUID:uid-1\nSUMMARY:Task One\nDESCRIPTION:Task Description\nSTATUS:COMPLETED\nCOMPLETED:20260102T150405Z\nDUE;VALUE=DATE:20260203\nPRIORITY:4\nRRULE:FREQ=WEEKLY;BYDAY=MO\nRELATED-TO;RELTYPE=PARENT:parent-uid\nCATEGORIES:home,STARRED\nX-CALDO-UNKNOWN:keep-me\nEND:VTODO\nEND:VCALENDAR",
 			}},
 		}},
 		importBroker: broker,
@@ -485,12 +486,14 @@ func TestSetupImportRunsInitialImportAndPersistsSyncedTasks(t *testing.T) {
 
 	waitForImportDone(t, broker)
 
-	var syncStatus, baseVTODO, rawVTODO, projectName, labelNames string
+	var syncStatus, baseVTODO, rawVTODO, projectName, labelNames, description, status, completedAt string
+	var dueDate, rrule, parentID sql.NullString
+	var priority sql.NullInt64
 	if err := database.Conn.QueryRow(`
-SELECT sync_status, base_vtodo, raw_vtodo, project_name, label_names
+SELECT sync_status, base_vtodo, raw_vtodo, project_name, label_names, description, status, completed_at, due_date, priority, rrule, parent_id
 FROM tasks
 WHERE uid = 'uid-1'
-`).Scan(&syncStatus, &baseVTODO, &rawVTODO, &projectName, &labelNames); err != nil {
+`).Scan(&syncStatus, &baseVTODO, &rawVTODO, &projectName, &labelNames, &description, &status, &completedAt, &dueDate, &priority, &rrule, &parentID); err != nil {
 		t.Fatalf("query imported task: %v", err)
 	}
 	if syncStatus != "synced" {
@@ -501,6 +504,24 @@ WHERE uid = 'uid-1'
 	}
 	if projectName != "Work" || labelNames == "" {
 		t.Fatalf("expected denormalized fields to be populated")
+	}
+	if description != "Task Description" || status != "completed" || completedAt != "2026-01-02T15:04:05Z" {
+		t.Fatalf("expected extracted description/status/completed_at, got description=%q status=%q completed_at=%q", description, status, completedAt)
+	}
+	if !dueDate.Valid || !strings.HasPrefix(dueDate.String, "2026-02-03") {
+		t.Fatalf("expected extracted due_date, got %#v", dueDate)
+	}
+	if !priority.Valid || priority.Int64 != 4 {
+		t.Fatalf("expected extracted priority, got %#v", priority)
+	}
+	if !rrule.Valid || rrule.String != "FREQ=WEEKLY;BYDAY=MO" {
+		t.Fatalf("expected extracted rrule, got %#v", rrule)
+	}
+	if parentID.Valid {
+		t.Fatalf("expected unresolved parent to remain null, got %q", parentID.String)
+	}
+	if !strings.Contains(rawVTODO, "X-CALDO-UNKNOWN:keep-me") {
+		t.Fatalf("expected unknown property to remain in raw_vtodo")
 	}
 }
 

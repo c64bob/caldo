@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
 	"time"
@@ -78,7 +79,10 @@ func (e *retryExecutor) do(ctx context.Context, policy operationPolicy, buildReq
 				e.sleep(e.backoff(attempt))
 				continue
 			}
-			cancel()
+			response.Body = &cancelOnCloseReadCloser{
+				ReadCloser: response.Body,
+				cancel:     cancel,
+			}
 			return response, nil
 		}
 
@@ -90,6 +94,17 @@ func (e *retryExecutor) do(ctx context.Context, policy operationPolicy, buildReq
 	}
 
 	return nil, fmt.Errorf("request failed after retries")
+}
+
+type cancelOnCloseReadCloser struct {
+	io.ReadCloser
+	cancel context.CancelFunc
+}
+
+func (r *cancelOnCloseReadCloser) Close() error {
+	closeErr := r.ReadCloser.Close()
+	r.cancel()
+	return closeErr
 }
 
 func isRetriableError(err error) bool {

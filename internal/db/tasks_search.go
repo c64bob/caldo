@@ -91,7 +91,7 @@ func buildSearchMatchExpr(rawQuery string) string {
 func normalizeSearchToken(token string) string {
 	builder := strings.Builder{}
 	for _, r := range strings.ToLower(token) {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' || r == '-' {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' {
 			builder.WriteRune(r)
 		}
 	}

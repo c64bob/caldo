@@ -6,6 +6,17 @@ import (
 	"testing"
 )
 
+func TestBuildSearchMatchExprRemovesHyphenFromBarewords(t *testing.T) {
+	t.Parallel()
+
+	matchExpr := buildSearchMatchExpr("on-call #Team-A @p1-high")
+
+	const expected = "(title:oncall* OR description:oncall* OR label_names:oncall* OR project_name:oncall*) AND project_name:teama* AND label_names:p1high*"
+	if matchExpr != expected {
+		t.Fatalf("unexpected match expression: got %q want %q", matchExpr, expected)
+	}
+}
+
 func TestSearchActiveTasksMatchesTextProjectAndLabelTokens(t *testing.T) {
 	t.Parallel()
 

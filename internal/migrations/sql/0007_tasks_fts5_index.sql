@@ -18,7 +18,7 @@ CREATE TRIGGER tasks_ad AFTER DELETE ON tasks BEGIN
     VALUES ('delete', old.rowid, old.title, old.description, old.label_names, old.project_name);
 END;
 
-CREATE TRIGGER tasks_au AFTER UPDATE ON tasks BEGIN
+CREATE TRIGGER tasks_au AFTER UPDATE OF title, description, label_names, project_name ON tasks BEGIN
     INSERT INTO tasks_fts(tasks_fts, rowid, title, description, label_names, project_name)
     VALUES ('delete', old.rowid, old.title, old.description, old.label_names, old.project_name);
     INSERT INTO tasks_fts(rowid, title, description, label_names, project_name)

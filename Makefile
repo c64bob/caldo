@@ -19,7 +19,8 @@ templ:
 	@if command -v templ >/dev/null 2>&1; then \
 		templ generate; \
 	else \
-		echo "templ not found; skipping local templ generation"; \
+		echo "templ not found; running pinned generator via go run"; \
+		go run github.com/a-h/templ/cmd/templ@v0.3.865 generate; \
 	fi
 
 test:

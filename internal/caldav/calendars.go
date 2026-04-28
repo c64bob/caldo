@@ -25,6 +25,8 @@ var (
 	ErrCalendarCreateFailed = errors.New("caldav calendar create failed")
 	// ErrCalendarRenameFailed indicates calendar rename failed.
 	ErrCalendarRenameFailed = errors.New("caldav calendar rename failed")
+	// ErrCalendarDeleteFailed indicates calendar deletion failed.
+	ErrCalendarDeleteFailed = errors.New("caldav calendar delete failed")
 	slugSanitizer           = regexp.MustCompile(`[^a-z0-9]+`)
 )
 
@@ -193,6 +195,44 @@ func (c *CalendarClient) RenameCalendar(ctx context.Context, credentials Credent
 		Href:        strings.TrimSpace(calendarHref),
 		DisplayName: projectName,
 	}, nil
+}
+
+// DeleteCalendar removes an existing calendar via WebDAV DELETE.
+func (c *CalendarClient) DeleteCalendar(ctx context.Context, credentials Credentials, calendarHref string) error {
+	trimmedHref := strings.TrimSpace(calendarHref)
+	if trimmedHref == "" {
+		return fmt.Errorf("%w: missing calendar href", ErrCalendarDeleteFailed)
+	}
+
+	calendarURL, err := resolveCalendarURL(credentials.URL, trimmedHref)
+	if err != nil {
+		return fmt.Errorf("%w: invalid calendar href", ErrCalendarDeleteFailed)
+	}
+
+	response, err := c.executor.do(ctx, operationPolicy{
+		timeout:      timeoutDELETE,
+		retryEnabled: false,
+	}, func(requestCtx context.Context) (*http.Request, error) {
+		request, reqErr := http.NewRequestWithContext(requestCtx, http.MethodDelete, calendarURL, nil)
+		if reqErr != nil {
+			return nil, reqErr
+		}
+		request.SetBasicAuth(credentials.Username, credentials.Password)
+		return request, nil
+	})
+	if err != nil {
+		return fmt.Errorf("%w: request failed", ErrCalendarDeleteFailed)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	if response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusOK && response.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("%w: unexpected status %d", ErrCalendarDeleteFailed, response.StatusCode)
+	}
+
+	return nil
 }
 
 func calendarCreateURL(baseURL string, name string) (string, string, error) {

@@ -164,3 +164,47 @@ func TestCalendarClientRenameCalendarFailsOnMultiStatusPropstatFailure(t *testin
 		t.Fatalf("expected ErrCalendarRenameFailed, got %v", err)
 	}
 }
+
+func TestCalendarClientDeleteCalendar(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			t.Fatalf("unexpected method: got %q want %q", r.Method, http.MethodDelete)
+		}
+		if got := r.URL.Path; got != "/calendars/work/" {
+			t.Fatalf("unexpected path: got %q want %q", got, "/calendars/work/")
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(server.Close)
+
+	client := NewCalendarClient(server.Client())
+	err := client.DeleteCalendar(context.Background(), Credentials{
+		URL:      server.URL,
+		Username: "alice",
+		Password: "secret",
+	}, "/calendars/work/")
+	if err != nil {
+		t.Fatalf("delete calendar: %v", err)
+	}
+}
+
+func TestCalendarClientDeleteCalendarTreatsNotFoundAsSuccess(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+
+	client := NewCalendarClient(server.Client())
+	err := client.DeleteCalendar(context.Background(), Credentials{
+		URL:      server.URL,
+		Username: "alice",
+		Password: "secret",
+	}, "/calendars/work/")
+	if err != nil {
+		t.Fatalf("delete calendar with 404 should succeed, got %v", err)
+	}
+}

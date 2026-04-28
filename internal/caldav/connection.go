@@ -8,12 +8,10 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 )
 
 const (
-	defaultConnectionTestTimeout = 10 * time.Second
-	maxCapabilityProbeBodyBytes  = 1 << 20
+	maxCapabilityProbeBodyBytes = 1 << 20
 )
 
 var (
@@ -38,8 +36,7 @@ type ServerCapabilities struct {
 
 // ConnectionTester executes a live WebDAV request to verify connectivity and detect capabilities.
 type ConnectionTester struct {
-	httpClient *http.Client
-	timeout    time.Duration
+	executor *retryExecutor
 }
 
 // NewConnectionTester creates a tester with defaults that satisfy architecture timeout constraints.
@@ -49,8 +46,7 @@ func NewConnectionTester(httpClient *http.Client) *ConnectionTester {
 	}
 
 	return &ConnectionTester{
-		httpClient: httpClient,
-		timeout:    defaultConnectionTestTimeout,
+		executor: newRetryExecutor(httpClient),
 	}
 }
 
@@ -66,20 +62,21 @@ func (t *ConnectionTester) TestConnection(ctx context.Context, credentials Crede
 		return ServerCapabilities{}, fmt.Errorf("%w: missing password", ErrConnectionTestFailed)
 	}
 
-	requestCtx, cancel := context.WithTimeout(ctx, t.timeout)
-	defer cancel()
-
-	request, err := http.NewRequestWithContext(requestCtx, "PROPFIND", credentials.URL, bytes.NewBufferString(capabilityProbeBody))
+	response, err := t.executor.do(ctx, operationPolicy{
+		timeout:      timeoutPROPFIND,
+		retryEnabled: true,
+	}, func(requestCtx context.Context) (*http.Request, error) {
+		request, reqErr := http.NewRequestWithContext(requestCtx, "PROPFIND", credentials.URL, bytes.NewBufferString(capabilityProbeBody))
+		if reqErr != nil {
+			return nil, reqErr
+		}
+		request.SetBasicAuth(credentials.Username, credentials.Password)
+		request.Header.Set("Depth", "0")
+		request.Header.Set("Content-Type", "application/xml; charset=utf-8")
+		return request, nil
+	})
 	if err != nil {
-		return ServerCapabilities{}, fmt.Errorf("%w: create request", ErrConnectionTestFailed)
-	}
-	request.SetBasicAuth(credentials.Username, credentials.Password)
-	request.Header.Set("Depth", "0")
-	request.Header.Set("Content-Type", "application/xml; charset=utf-8")
-
-	response, err := t.httpClient.Do(request)
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(requestCtx.Err(), context.DeadlineExceeded) {
+		if errors.Is(err, context.DeadlineExceeded) {
 			return ServerCapabilities{}, fmt.Errorf("%w: timeout", ErrConnectionTestFailed)
 		}
 		return ServerCapabilities{}, fmt.Errorf("%w: request failed", ErrConnectionTestFailed)

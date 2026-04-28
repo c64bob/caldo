@@ -209,3 +209,44 @@ END:VCALENDAR`)
 		t.Fatalf("unexpected sync status: %q", syncStatus)
 	}
 }
+
+func TestTaskCompleteCredentialsUnavailableDoesNotPersistPendingUpdate(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskUpdateHandlerTest(t)
+	seedTaskUpdateHandlerData(t, database)
+	setTaskRawVTODO(t, database, `BEGIN:VCALENDAR
+BEGIN:VTODO
+UID:uid-1
+SUMMARY:old
+STATUS:NEEDS-ACTION
+END:VTODO
+END:VCALENDAR`)
+
+	h := TaskComplete(taskUpdateDependencies{
+		database:      database,
+		encryptionKey: bytes.Repeat([]byte{0x55}, 32),
+		todos:         &stubTaskUpdateTodoClient{updateETag: `"etag-2"`},
+	})
+	form := url.Values{"expected_version": {"2"}}
+	req := httptest.NewRequest(http.MethodPost, "/tasks/task-1/complete", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Tab-ID", "tab-1")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("taskID", "task-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusFailedDependency {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+
+	var status, syncStatus string
+	var version int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT status, sync_status, server_version FROM tasks WHERE id = 'task-1';`).Scan(&status, &syncStatus, &version); err != nil {
+		t.Fatalf("query task: %v", err)
+	}
+	if status != "needs-action" || syncStatus != "synced" || version != 2 {
+		t.Fatalf("unexpected task state: status=%q sync_status=%q version=%d", status, syncStatus, version)
+	}
+}

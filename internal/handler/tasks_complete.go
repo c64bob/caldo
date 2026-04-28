@@ -70,6 +70,11 @@ func taskSetCompletion(deps taskUpdateDependencies, completed bool) http.Handler
 
 		rawVTODO := model.PatchVTODO(base.RawVTODO, patch)
 		parsed := model.ParseVTODOFields(rawVTODO)
+		creds, err := deps.database.LoadCalDAVCredentials(r.Context(), deps.encryptionKey)
+		if err != nil {
+			http.Error(w, "caldav credentials unavailable", http.StatusFailedDependency)
+			return
+		}
 		input := db.TaskUpdateInput{
 			TaskID:          taskID,
 			ExpectedVersion: expectedVersion,
@@ -99,11 +104,6 @@ func taskSetCompletion(deps taskUpdateDependencies, completed bool) http.Handler
 			return
 		}
 
-		creds, err := deps.database.LoadCalDAVCredentials(r.Context(), deps.encryptionKey)
-		if err != nil {
-			http.Error(w, "caldav credentials unavailable", http.StatusFailedDependency)
-			return
-		}
 		todoCredentials := caldav.Credentials{URL: creds.URL, Username: creds.Username, Password: creds.Password}
 
 		newETag, err := deps.todos.PutVTODOUpdate(r.Context(), todoCredentials, prepared.PreviousHref, rawVTODO, prepared.PreviousETag)

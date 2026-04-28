@@ -63,6 +63,15 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 		}))
 	})
 
+	router.Route("/projects", func(projectRouter chi.Router) {
+		projectRouter.Use(SetupCSRFMiddleware(csrfSecret))
+		projectRouter.Post("/", ProjectCreate(projectCreateDependencies{
+			database:      database,
+			encryptionKey: csrfSecret,
+			calendar:      caldav.NewCalendarClient(nil),
+		}))
+	})
+
 	router.Route("/setup", func(setupRouter chi.Router) {
 		setupRouter.Use(SetupCSRFMiddleware(csrfSecret))
 		setupRouter.Get("/", SetupPage)

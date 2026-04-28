@@ -15,14 +15,16 @@ import (
 )
 
 type stubTaskUpdateTodoClient struct {
-	updateETag string
-	updateErr  error
-	createETag string
-	createErr  error
-	deleteErr  error
+	updateETag  string
+	updateErr   error
+	createETag  string
+	createErr   error
+	deleteErr   error
+	updateCalls int
 }
 
 func (s *stubTaskUpdateTodoClient) PutVTODOUpdate(_ context.Context, _ caldav.Credentials, _ string, _ string, _ string) (string, error) {
+	s.updateCalls++
 	if s.updateErr != nil {
 		return "", s.updateErr
 	}

@@ -78,6 +78,33 @@ func TestPrepareTaskUpdateRejectsVersionMismatch(t *testing.T) {
 	}
 }
 
+func TestListOpenDirectSubtaskIDsReturnsOnlyOpenDirectChildren(t *testing.T) {
+	t.Parallel()
+	database := openTaskUpdateTestDB(t)
+	seedTaskUpdateTestData(t, database)
+
+	if _, err := database.Conn.ExecContext(context.Background(), `
+INSERT INTO tasks (
+    id, project_id, uid, href, etag, server_version, title, status, parent_id, raw_vtodo, base_vtodo,
+    project_name, sync_status, created_at, updated_at
+) VALUES
+    ('child-open-a', 'project-1', 'uid-child-open-a', '/cal/inbox/uid-child-open-a.ics', '"etag-a"', 1, 'a', 'needs-action', 'task-1', 'BEGIN:VTODO\nUID:uid-child-open-a\nEND:VTODO', 'BEGIN:VTODO\nUID:uid-child-open-a\nEND:VTODO', 'Inbox', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('child-completed', 'project-1', 'uid-child-completed', '/cal/inbox/uid-child-completed.ics', '"etag-b"', 1, 'b', 'completed', 'task-1', 'BEGIN:VTODO\nUID:uid-child-completed\nEND:VTODO', 'BEGIN:VTODO\nUID:uid-child-completed\nEND:VTODO', 'Inbox', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('child-open-b', 'project-1', 'uid-child-open-b', '/cal/inbox/uid-child-open-b.ics', '"etag-c"', 1, 'c', 'needs-action', 'task-1', 'BEGIN:VTODO\nUID:uid-child-open-b\nEND:VTODO', 'BEGIN:VTODO\nUID:uid-child-open-b\nEND:VTODO', 'Inbox', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('grandchild-open', 'project-1', 'uid-grandchild-open', '/cal/inbox/uid-grandchild-open.ics', '"etag-d"', 1, 'd', 'needs-action', 'child-open-a', 'BEGIN:VTODO\nUID:uid-grandchild-open\nEND:VTODO', 'BEGIN:VTODO\nUID:uid-grandchild-open\nEND:VTODO', 'Inbox', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+`); err != nil {
+		t.Fatalf("seed subtasks: %v", err)
+	}
+
+	subtaskIDs, err := database.ListOpenDirectSubtaskIDs(context.Background(), "task-1")
+	if err != nil {
+		t.Fatalf("list open direct subtasks: %v", err)
+	}
+	if len(subtaskIDs) != 2 || subtaskIDs[0] != "child-open-a" || subtaskIDs[1] != "child-open-b" {
+		t.Fatalf("unexpected subtask ids: %#v", subtaskIDs)
+	}
+}
+
 func openTaskUpdateTestDB(t *testing.T) *Database {
 	t.Helper()
 	database, err := OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))

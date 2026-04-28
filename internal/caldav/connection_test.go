@@ -102,9 +102,11 @@ func TestConnectionTesterHonorsTimeout(t *testing.T) {
 	defer server.Close()
 
 	tester := NewConnectionTester(server.Client())
-	tester.timeout = 50 * time.Millisecond
 
-	_, err := tester.TestConnection(context.Background(), Credentials{
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	_, err := tester.TestConnection(ctx, Credentials{
 		URL:      server.URL,
 		Username: "alice",
 		Password: "secret",

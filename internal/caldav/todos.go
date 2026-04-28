@@ -10,11 +10,9 @@ import (
 	"net/url"
 	"path"
 	"strings"
-	"time"
 )
 
 const (
-	defaultTodoScanTimeout   = 30 * time.Second
 	maxTodoScanResponseBytes = 8 << 20
 )
 
@@ -27,8 +25,7 @@ type CalendarObject struct {
 
 // TodoClient loads VTODO resources from a calendar using a full-scan REPORT.
 type TodoClient struct {
-	httpClient *http.Client
-	timeout    time.Duration
+	executor *retryExecutor
 }
 
 // NewTodoClient constructs a TodoClient with sane defaults.
@@ -37,7 +34,7 @@ func NewTodoClient(httpClient *http.Client) *TodoClient {
 		httpClient = &http.Client{}
 	}
 
-	return &TodoClient{httpClient: httpClient, timeout: defaultTodoScanTimeout}
+	return &TodoClient{executor: newRetryExecutor(httpClient)}
 }
 
 // ListVTODOs performs a full calendar-query and returns all remote VTODO objects for the calendar href.
@@ -47,18 +44,19 @@ func (c *TodoClient) ListVTODOs(ctx context.Context, credentials Credentials, ca
 		return nil, fmt.Errorf("list vtodos: resolve calendar url: %w", err)
 	}
 
-	requestCtx, cancel := context.WithTimeout(ctx, c.timeout)
-	defer cancel()
-
-	request, err := http.NewRequestWithContext(requestCtx, "REPORT", calendarURL, bytes.NewBufferString(vtodoFullScanBody))
-	if err != nil {
-		return nil, fmt.Errorf("list vtodos: create request: %w", err)
-	}
-	request.SetBasicAuth(credentials.Username, credentials.Password)
-	request.Header.Set("Depth", "1")
-	request.Header.Set("Content-Type", "application/xml; charset=utf-8")
-
-	response, err := c.httpClient.Do(request)
+	response, err := c.executor.do(ctx, operationPolicy{
+		timeout:      timeoutFullScan,
+		retryEnabled: true,
+	}, func(requestCtx context.Context) (*http.Request, error) {
+		request, reqErr := http.NewRequestWithContext(requestCtx, "REPORT", calendarURL, bytes.NewBufferString(vtodoFullScanBody))
+		if reqErr != nil {
+			return nil, reqErr
+		}
+		request.SetBasicAuth(credentials.Username, credentials.Password)
+		request.Header.Set("Depth", "1")
+		request.Header.Set("Content-Type", "application/xml; charset=utf-8")
+		return request, nil
+	})
 	if err != nil {
 		return nil, fmt.Errorf("list vtodos: request failed: %w", err)
 	}
@@ -92,6 +90,120 @@ func (c *TodoClient) ListVTODOs(ctx context.Context, credentials Credentials, ca
 	}
 
 	return objects, nil
+}
+
+// GetVTODO fetches one VTODO object body and optional ETag metadata.
+func (c *TodoClient) GetVTODO(ctx context.Context, credentials Credentials, todoHref string) (string, string, error) {
+	resourceURL, err := resolveCalendarURL(credentials.URL, todoHref)
+	if err != nil {
+		return "", "", fmt.Errorf("get vtodo: resolve resource url: %w", err)
+	}
+
+	response, err := c.executor.do(ctx, operationPolicy{
+		timeout:      timeoutGET,
+		retryEnabled: true,
+	}, func(requestCtx context.Context) (*http.Request, error) {
+		request, reqErr := http.NewRequestWithContext(requestCtx, http.MethodGet, resourceURL, nil)
+		if reqErr != nil {
+			return nil, reqErr
+		}
+		request.SetBasicAuth(credentials.Username, credentials.Password)
+		return request, nil
+	})
+	if err != nil {
+		return "", "", fmt.Errorf("get vtodo: request failed: %w", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return "", "", fmt.Errorf("get vtodo: unexpected status %d", response.StatusCode)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxTodoScanResponseBytes))
+	if err != nil {
+		return "", "", fmt.Errorf("get vtodo: read response: %w", err)
+	}
+
+	return string(body), strings.TrimSpace(response.Header.Get("ETag")), nil
+}
+
+// PutVTODOCreate creates a new VTODO object at the target href without retries.
+func (c *TodoClient) PutVTODOCreate(ctx context.Context, credentials Credentials, todoHref string, rawVTODO string) (string, error) {
+	return c.putVTODO(ctx, credentials, todoHref, rawVTODO, "", false)
+}
+
+// PutVTODOUpdate updates an existing VTODO object using If-Match and retries.
+func (c *TodoClient) PutVTODOUpdate(ctx context.Context, credentials Credentials, todoHref string, rawVTODO string, etag string) (string, error) {
+	return c.putVTODO(ctx, credentials, todoHref, rawVTODO, etag, true)
+}
+
+// DeleteVTODO deletes a VTODO object and treats 404 as a successful outcome.
+func (c *TodoClient) DeleteVTODO(ctx context.Context, credentials Credentials, todoHref string, etag string) error {
+	resourceURL, err := resolveCalendarURL(credentials.URL, todoHref)
+	if err != nil {
+		return fmt.Errorf("delete vtodo: resolve resource url: %w", err)
+	}
+
+	response, err := c.executor.do(ctx, operationPolicy{
+		timeout:      timeoutDELETE,
+		retryEnabled: true,
+	}, func(requestCtx context.Context) (*http.Request, error) {
+		request, reqErr := http.NewRequestWithContext(requestCtx, http.MethodDelete, resourceURL, nil)
+		if reqErr != nil {
+			return nil, reqErr
+		}
+		request.SetBasicAuth(credentials.Username, credentials.Password)
+		if strings.TrimSpace(etag) != "" {
+			request.Header.Set("If-Match", etag)
+		}
+		return request, nil
+	})
+	if err != nil {
+		return fmt.Errorf("delete vtodo: request failed: %w", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return fmt.Errorf("delete vtodo: unexpected status %d", response.StatusCode)
+	}
+
+	return nil
+}
+
+func (c *TodoClient) putVTODO(ctx context.Context, credentials Credentials, todoHref string, rawVTODO string, etag string, update bool) (string, error) {
+	resourceURL, err := resolveCalendarURL(credentials.URL, todoHref)
+	if err != nil {
+		return "", fmt.Errorf("put vtodo: resolve resource url: %w", err)
+	}
+
+	response, err := c.executor.do(ctx, operationPolicy{
+		timeout:      timeoutPUT,
+		retryEnabled: update,
+	}, func(requestCtx context.Context) (*http.Request, error) {
+		request, reqErr := http.NewRequestWithContext(requestCtx, http.MethodPut, resourceURL, bytes.NewBufferString(rawVTODO))
+		if reqErr != nil {
+			return nil, reqErr
+		}
+		request.SetBasicAuth(credentials.Username, credentials.Password)
+		request.Header.Set("Content-Type", "text/calendar; charset=utf-8")
+		if update {
+			request.Header.Set("If-Match", etag)
+		}
+		return request, nil
+	})
+	if err != nil {
+		return "", fmt.Errorf("put vtodo: request failed: %w", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return "", fmt.Errorf("put vtodo: unexpected status %d", response.StatusCode)
+	}
+
+	return strings.TrimSpace(response.Header.Get("ETag")), nil
 }
 
 func resolveCalendarURL(baseURL string, calendarHref string) (string, error) {

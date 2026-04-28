@@ -11,12 +11,10 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
-	"time"
 )
 
 const (
-	defaultCalendarDiscoveryTimeout = 10 * time.Second
-	maxCalendarResponseBodyBytes    = 2 << 20
+	maxCalendarResponseBodyBytes = 2 << 20
 )
 
 var (
@@ -35,8 +33,7 @@ type Calendar struct {
 
 // CalendarClient discovers and creates calendars over CalDAV/WebDAV.
 type CalendarClient struct {
-	httpClient *http.Client
-	timeout    time.Duration
+	executor *retryExecutor
 }
 
 // NewCalendarClient constructs a calendar client with default timeout settings.
@@ -46,25 +43,25 @@ func NewCalendarClient(httpClient *http.Client) *CalendarClient {
 	}
 
 	return &CalendarClient{
-		httpClient: httpClient,
-		timeout:    defaultCalendarDiscoveryTimeout,
+		executor: newRetryExecutor(httpClient),
 	}
 }
 
 // ListCalendars returns calendars available under the configured CalDAV URL.
 func (c *CalendarClient) ListCalendars(ctx context.Context, credentials Credentials) ([]Calendar, error) {
-	requestCtx, cancel := context.WithTimeout(ctx, c.timeout)
-	defer cancel()
-
-	request, err := http.NewRequestWithContext(requestCtx, "PROPFIND", credentials.URL, bytes.NewBufferString(calendarListProbeBody))
-	if err != nil {
-		return nil, fmt.Errorf("%w: create request", ErrCalendarDiscoveryFailed)
-	}
-	request.SetBasicAuth(credentials.Username, credentials.Password)
-	request.Header.Set("Depth", "1")
-	request.Header.Set("Content-Type", "application/xml; charset=utf-8")
-
-	response, err := c.httpClient.Do(request)
+	response, err := c.executor.do(ctx, operationPolicy{
+		timeout:      timeoutPROPFIND,
+		retryEnabled: true,
+	}, func(requestCtx context.Context) (*http.Request, error) {
+		request, reqErr := http.NewRequestWithContext(requestCtx, "PROPFIND", credentials.URL, bytes.NewBufferString(calendarListProbeBody))
+		if reqErr != nil {
+			return nil, reqErr
+		}
+		request.SetBasicAuth(credentials.Username, credentials.Password)
+		request.Header.Set("Depth", "1")
+		request.Header.Set("Content-Type", "application/xml; charset=utf-8")
+		return request, nil
+	})
 	if err != nil {
 		return nil, fmt.Errorf("%w: request failed", ErrCalendarDiscoveryFailed)
 	}
@@ -120,17 +117,18 @@ func (c *CalendarClient) CreateCalendar(ctx context.Context, credentials Credent
 		return Calendar{}, err
 	}
 
-	requestCtx, cancel := context.WithTimeout(ctx, c.timeout)
-	defer cancel()
-
-	request, err := http.NewRequestWithContext(requestCtx, "MKCALENDAR", targetURL, bytes.NewBufferString(calendarCreateBody(projectName)))
-	if err != nil {
-		return Calendar{}, fmt.Errorf("%w: create request", ErrCalendarCreateFailed)
-	}
-	request.SetBasicAuth(credentials.Username, credentials.Password)
-	request.Header.Set("Content-Type", "application/xml; charset=utf-8")
-
-	response, err := c.httpClient.Do(request)
+	response, err := c.executor.do(ctx, operationPolicy{
+		timeout:      timeoutMKCAL,
+		retryEnabled: false,
+	}, func(requestCtx context.Context) (*http.Request, error) {
+		request, reqErr := http.NewRequestWithContext(requestCtx, "MKCALENDAR", targetURL, bytes.NewBufferString(calendarCreateBody(projectName)))
+		if reqErr != nil {
+			return nil, reqErr
+		}
+		request.SetBasicAuth(credentials.Username, credentials.Password)
+		request.Header.Set("Content-Type", "application/xml; charset=utf-8")
+		return request, nil
+	})
 	if err != nil {
 		return Calendar{}, fmt.Errorf("%w: request failed", ErrCalendarCreateFailed)
 	}

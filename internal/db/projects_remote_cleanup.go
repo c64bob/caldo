@@ -110,8 +110,12 @@ func cleanupSingleDeletedProject(ctx context.Context, tx *sql.Tx, projectID stri
 DELETE FROM undo_snapshots
 WHERE task_id IN (
 	SELECT id FROM tasks WHERE project_id = ?
+)
+   OR (
+	action_type = 'task_deleted'
+	AND json_extract(snapshot_fields, '$.project_id') = ?
 );
-`, projectID); err != nil {
+`, projectID, projectID); err != nil {
 		return fmt.Errorf("delete undo snapshots: %w", err)
 	}
 

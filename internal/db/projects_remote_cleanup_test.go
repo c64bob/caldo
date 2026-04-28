@@ -47,6 +47,8 @@ SELECT rowid, title, description, label_names, project_name FROM tasks WHERE pro
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM projects WHERE id = 'project-deleted';`, 0)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM tasks WHERE project_id = 'project-deleted';`, 0)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE task_id IN ('task-deleted-1','task-deleted-2');`, 0)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE id = 'undo-orphan-deleted';`, 0)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE id = 'undo-orphan-keep';`, 1)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM conflicts WHERE project_id = 'project-deleted' OR task_id IN ('task-deleted-1','task-deleted-2');`, 0)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM tasks_fts;`, 0)
 
@@ -99,7 +101,9 @@ INSERT INTO undo_snapshots (
 	id, session_id, tab_id, task_id, action_type, snapshot_vtodo, snapshot_fields, created_at, expires_at
 ) VALUES
 	('undo-deleted', 'session-1', 'tab-1', 'task-deleted-1', 'task_updated', 'BEGIN:VTODO\nUID:uid-1\nEND:VTODO', '{}', CURRENT_TIMESTAMP, DATETIME(CURRENT_TIMESTAMP, '+5 minutes')),
-	('undo-keep', 'session-1', 'tab-2', 'task-keep-1', 'task_updated', 'BEGIN:VTODO\nUID:uid-3\nEND:VTODO', '{}', CURRENT_TIMESTAMP, DATETIME(CURRENT_TIMESTAMP, '+5 minutes'));
+	('undo-keep', 'session-1', 'tab-2', 'task-keep-1', 'task_updated', 'BEGIN:VTODO\nUID:uid-3\nEND:VTODO', '{}', CURRENT_TIMESTAMP, DATETIME(CURRENT_TIMESTAMP, '+5 minutes')),
+	('undo-orphan-deleted', 'session-2', 'tab-1', 'task-deleted-gone', 'task_deleted', 'BEGIN:VTODO\nUID:uid-4\nEND:VTODO', '{"project_id":"project-deleted"}', CURRENT_TIMESTAMP, DATETIME(CURRENT_TIMESTAMP, '+5 minutes')),
+	('undo-orphan-keep', 'session-2', 'tab-2', 'task-keep-gone', 'task_deleted', 'BEGIN:VTODO\nUID:uid-5\nEND:VTODO', '{"project_id":"project-keep"}', CURRENT_TIMESTAMP, DATETIME(CURRENT_TIMESTAMP, '+5 minutes'));
 
 INSERT INTO conflicts (
 	id, task_id, project_id, conflict_type, created_at, base_vtodo, remote_vtodo

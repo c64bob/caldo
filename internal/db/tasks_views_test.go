@@ -26,6 +26,43 @@ func TestListTodayTasksIncludesTodayAndOverdue(t *testing.T) {
 	}
 }
 
+func TestListTodayTasksIncludesDueAtStoredAsDriverTimestamp(t *testing.T) {
+	t.Parallel()
+
+	database := openViewTestDB(t)
+	seedViewTasks(t, database)
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO tasks (
+	id, project_id, uid, href, etag, server_version, title, description, status, raw_vtodo, base_vtodo,
+	label_names, project_name, sync_status, due_date, due_at, created_at, updated_at
+) VALUES (
+	?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+);
+`, "task-today-due-at", "project-1", "uid-today-due-at", "/calendars/work/task-today-due-at.ics", `"etag-8"`, 1,
+		"Heute mit due_at", "", "needs-action", "BEGIN:VTODO\nUID:uid-today-due-at\nEND:VTODO", "BEGIN:VTODO\nUID:uid-today-due-at\nEND:VTODO",
+		"", "Work", "synced", nil, time.Date(2026, 4, 28, 15, 30, 0, 0, time.UTC),
+	); err != nil {
+		t.Fatalf("insert due_at task: %v", err)
+	}
+
+	results, err := database.ListTodayTasks(context.Background(), time.Date(2026, 4, 28, 12, 0, 0, 0, time.UTC), 50)
+	if err != nil {
+		t.Fatalf("list today tasks: %v", err)
+	}
+
+	found := false
+	for _, row := range results {
+		if row.ID == "task-today-due-at" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("today results missing due_at task: %#v", results)
+	}
+}
+
 func TestListUpcomingTasksUsesConfiguredWindow(t *testing.T) {
 	t.Parallel()
 

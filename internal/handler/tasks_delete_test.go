@@ -115,3 +115,37 @@ func TestTaskDeleteCalDAVErrorMarksError(t *testing.T) {
 		t.Fatalf("unexpected sync status: %q", syncStatus)
 	}
 }
+
+func TestTaskDeleteCredentialsUnavailableDoesNotPersistPendingDelete(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskUpdateHandlerTest(t)
+	seedTaskUpdateHandlerData(t, database)
+
+	h := TaskDelete(taskUpdateDependencies{
+		database:      database,
+		encryptionKey: bytes.Repeat([]byte{0x74}, 32),
+		todos:         &stubTaskUpdateTodoClient{},
+	})
+	form := url.Values{"expected_version": {"2"}}
+	req := httptest.NewRequest(http.MethodDelete, "/tasks/task-1", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Tab-ID", "tab-1")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("taskID", "task-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusFailedDependency {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+
+	var syncStatus string
+	var version int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT sync_status, server_version FROM tasks WHERE id = 'task-1';`).Scan(&syncStatus, &version); err != nil {
+		t.Fatalf("query task: %v", err)
+	}
+	if syncStatus != "synced" || version != 2 {
+		t.Fatalf("unexpected task state: sync_status=%q version=%d", syncStatus, version)
+	}
+}

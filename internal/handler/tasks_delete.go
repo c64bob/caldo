@@ -62,6 +62,12 @@ func TaskDelete(deps taskUpdateDependencies) http.HandlerFunc {
 			sessionID = "single-user-session"
 		}
 
+		creds, err := deps.database.LoadCalDAVCredentials(r.Context(), deps.encryptionKey)
+		if err != nil {
+			http.Error(w, "caldav credentials unavailable", http.StatusFailedDependency)
+			return
+		}
+
 		prepared, err := deps.database.PrepareTaskDelete(r.Context(), db.TaskDeleteInput{
 			TaskID:          taskID,
 			ExpectedVersion: expectedVersion,
@@ -77,11 +83,6 @@ func TaskDelete(deps taskUpdateDependencies) http.HandlerFunc {
 			return
 		}
 
-		creds, err := deps.database.LoadCalDAVCredentials(r.Context(), deps.encryptionKey)
-		if err != nil {
-			http.Error(w, "caldav credentials unavailable", http.StatusFailedDependency)
-			return
-		}
 		todoCredentials := caldav.Credentials{URL: creds.URL, Username: creds.Username, Password: creds.Password}
 
 		err = deps.todos.DeleteVTODO(r.Context(), todoCredentials, prepared.Href, prepared.ETag)

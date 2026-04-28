@@ -220,3 +220,18 @@ func TestNewRouterProjectRenameRouteRequiresCSRFToken(t *testing.T) {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusForbidden)
 	}
 }
+
+func TestNewRouterProjectDeleteRouteRequiresCSRFToken(t *testing.T) {
+	t.Parallel()
+
+	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
+	responseRecorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodDelete, "/projects/project-1", nil)
+	request.Header.Set("X-Forwarded-User", "alice")
+
+	NewRouter(logger, "X-Forwarded-User", testManifest(), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusForbidden {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusForbidden)
+	}
+}

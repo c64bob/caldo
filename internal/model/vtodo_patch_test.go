@@ -39,6 +39,15 @@ func TestPatchVTODOPreservesUnknownValarmAttachAndRRULE(t *testing.T) {
 			t.Fatalf("expected patched VTODO to contain %q\npatched=%s", expected, patched)
 		}
 	}
+
+	summaryIndex := strings.Index(patched, "SUMMARY:new summary")
+	valarmIndex := strings.Index(patched, "BEGIN:VALARM")
+	if summaryIndex < 0 || valarmIndex < 0 {
+		t.Fatalf("expected summary and valarm to exist\npatched=%s", patched)
+	}
+	if summaryIndex > valarmIndex {
+		t.Fatalf("expected patched SUMMARY to be emitted before VALARM block\npatched=%s", patched)
+	}
 }
 
 func TestPatchVTODOChangesRRULEOnlyWhenExplicitlyPatched(t *testing.T) {

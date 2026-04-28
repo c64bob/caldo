@@ -34,8 +34,10 @@ func PatchVTODO(raw string, patch VTODOPatch) string {
 
 	filtered := filterTopLevelKnownFields(body, patch)
 	patchedFields := buildPatchedFieldLines(patch)
-	patched := append(prefix, filtered...)
+	propertyLines, nestedAndTrailing := splitBeforeFirstTopLevelNestedComponent(filtered)
+	patched := append(prefix, propertyLines...)
 	patched = append(patched, patchedFields...)
+	patched = append(patched, nestedAndTrailing...)
 	patched = append(patched, suffix...)
 	return strings.Join(patched, lineBreak)
 }
@@ -147,6 +149,27 @@ func buildPatchedFieldLines(patch VTODOPatch) []string {
 		lines = append(lines, "RRULE:"+strings.TrimSpace(*patch.RRule))
 	}
 	return lines
+}
+
+func splitBeforeFirstTopLevelNestedComponent(lines []string) ([]string, []string) {
+	depth := 0
+	for i, line := range lines {
+		name, _, _, ok := splitPropertyLine(line)
+		if !ok {
+			continue
+		}
+		if name == "BEGIN" && depth == 0 {
+			return lines[:i], lines[i:]
+		}
+		if name == "BEGIN" {
+			depth++
+			continue
+		}
+		if name == "END" && depth > 0 {
+			depth--
+		}
+	}
+	return lines, nil
 }
 
 func intToString(value int) string {

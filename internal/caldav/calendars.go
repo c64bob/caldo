@@ -22,6 +22,8 @@ var (
 	ErrCalendarDiscoveryFailed = errors.New("caldav calendar discovery failed")
 	// ErrCalendarCreateFailed indicates calendar creation failed.
 	ErrCalendarCreateFailed = errors.New("caldav calendar create failed")
+	// ErrCalendarRenameFailed indicates calendar rename failed.
+	ErrCalendarRenameFailed = errors.New("caldav calendar rename failed")
 	slugSanitizer           = regexp.MustCompile(`[^a-z0-9]+`)
 )
 
@@ -144,6 +146,45 @@ func (c *CalendarClient) CreateCalendar(ctx context.Context, credentials Credent
 	}, nil
 }
 
+// RenameCalendar updates an existing calendar display name via WebDAV PROPPATCH.
+func (c *CalendarClient) RenameCalendar(ctx context.Context, credentials Credentials, calendarHref string, displayName string) (Calendar, error) {
+	projectName := strings.TrimSpace(displayName)
+	if projectName == "" {
+		return Calendar{}, fmt.Errorf("%w: missing display name", ErrCalendarRenameFailed)
+	}
+
+	calendarURL, err := resolveCalendarURL(credentials.URL, calendarHref)
+	if err != nil {
+		return Calendar{}, fmt.Errorf("%w: invalid calendar href", ErrCalendarRenameFailed)
+	}
+
+	response, err := c.executor.do(ctx, operationPolicy{
+		timeout:      timeoutPROPFIND,
+		retryEnabled: false,
+	}, func(requestCtx context.Context) (*http.Request, error) {
+		request, reqErr := http.NewRequestWithContext(requestCtx, "PROPPATCH", calendarURL, bytes.NewBufferString(calendarRenameBody(projectName)))
+		if reqErr != nil {
+			return nil, reqErr
+		}
+		request.SetBasicAuth(credentials.Username, credentials.Password)
+		request.Header.Set("Content-Type", "application/xml; charset=utf-8")
+		return request, nil
+	})
+	if err != nil {
+		return Calendar{}, fmt.Errorf("%w: request failed", ErrCalendarRenameFailed)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusMultiStatus {
+		return Calendar{}, fmt.Errorf("%w: unexpected status %d", ErrCalendarRenameFailed, response.StatusCode)
+	}
+
+	return Calendar{
+		Href:        strings.TrimSpace(calendarHref),
+		DisplayName: projectName,
+	}, nil
+}
+
 func calendarCreateURL(baseURL string, name string) (string, string, error) {
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
@@ -172,6 +213,17 @@ func calendarCreateBody(displayName string) string {
     </d:prop>
   </d:set>
 </c:mkcalendar>`, xmlEscape(displayName))
+}
+
+func calendarRenameBody(displayName string) string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
+<d:propertyupdate xmlns:d="DAV:">
+  <d:set>
+    <d:prop>
+      <d:displayname>%s</d:displayname>
+    </d:prop>
+  </d:set>
+</d:propertyupdate>`, xmlEscape(displayName))
 }
 
 func xmlEscape(v string) string {

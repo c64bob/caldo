@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 
 	"caldo/internal/db"
 	"caldo/internal/logging"
+	"github.com/go-chi/chi/v5"
 )
 
 func TestConflictsPageShowsOnlyUnresolved(t *testing.T) {
@@ -50,5 +52,72 @@ VALUES ('resolved-1','task-1','project-1','field_conflict',CURRENT_TIMESTAMP,CUR
 `)
 	if err != nil {
 		t.Fatalf("seed: %v", err)
+	}
+}
+
+func TestResolveConflictLocalSuccess(t *testing.T) {
+	t.Parallel()
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	seedConflictData(t, database)
+	key := bytes.Repeat([]byte{0x33}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "a", Password: "b"}); err != nil {
+		t.Fatal(err)
+	}
+
+	h := ResolveConflict(taskUpdateDependencies{database: database, encryptionKey: key, todos: &stubTaskUpdateTodoClient{updateETag: `"etag-new"`}})
+	form := strings.NewReader("resolution=local")
+	req := httptest.NewRequest(http.MethodPost, "/conflicts/open-1/resolve", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("conflictID", "open-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var resolution string
+	if err := database.Conn.QueryRow(`SELECT resolution FROM conflicts WHERE id='open-1'`).Scan(&resolution); err != nil {
+		t.Fatal(err)
+	}
+	if resolution != "local" {
+		t.Fatalf("resolution=%q", resolution)
+	}
+}
+
+func TestResolveConflictKeepsUnresolvedOnWriteFailure(t *testing.T) {
+	t.Parallel()
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	seedConflictData(t, database)
+	key := bytes.Repeat([]byte{0x44}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "a", Password: "b"}); err != nil {
+		t.Fatal(err)
+	}
+
+	h := ResolveConflict(taskUpdateDependencies{database: database, encryptionKey: key, todos: &stubTaskUpdateTodoClient{updateErr: errors.New("boom")}})
+	req := httptest.NewRequest(http.MethodPost, "/conflicts/open-1/resolve", strings.NewReader("resolution=remote"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("conflictID", "open-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadGateway {
+		t.Fatalf("status=%d", rr.Code)
+	}
+	var count int
+	if err := database.Conn.QueryRow(`SELECT COUNT(*) FROM conflicts WHERE id='open-1' AND resolved_at IS NULL`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("count=%d", count)
 	}
 }

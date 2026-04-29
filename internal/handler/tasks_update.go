@@ -25,6 +25,7 @@ type taskUpdateDependencies struct {
 	database      *db.Database
 	encryptionKey []byte
 	todos         taskUpdateTodoClient
+	broker        *eventBroker
 }
 
 const taskUpdatePersistTimeout = 5 * time.Second
@@ -130,6 +131,9 @@ func TaskUpdate(deps taskUpdateDependencies) http.HandlerFunc {
 		prepared, err := deps.database.PrepareTaskUpdate(r.Context(), input)
 		if err != nil {
 			if errors.Is(err, db.ErrTaskVersionMismatch) {
+				if deps.broker != nil {
+					deps.broker.publish(appEvent{Type: "conflict", Resource: taskID, Version: prepared.PendingVersion, OriginConnection: tabID})
+				}
 				http.Error(w, "task version conflict", http.StatusConflict)
 				return
 			}
@@ -187,6 +191,10 @@ func TaskUpdate(deps taskUpdateDependencies) http.HandlerFunc {
 		if err := deps.database.MarkTaskUpdateSynced(persistCtx, taskID, prepared.PendingVersion, newETag); err != nil {
 			http.Error(w, "failed to persist synced task update", http.StatusInternalServerError)
 			return
+		}
+
+		if deps.broker != nil {
+			deps.broker.publish(appEvent{Type: "task", Resource: taskID, Version: prepared.PendingVersion, OriginConnection: tabID})
 		}
 
 		w.WriteHeader(http.StatusOK)

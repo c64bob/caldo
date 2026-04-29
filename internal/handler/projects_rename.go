@@ -21,6 +21,7 @@ type projectRenameDependencies struct {
 	database      *db.Database
 	encryptionKey []byte
 	calendar      projectRenameCalendarClient
+	broker        *eventBroker
 }
 
 const projectRenamePersistTimeout = 5 * time.Second
@@ -93,6 +94,10 @@ func ProjectRename(deps projectRenameDependencies) http.HandlerFunc {
 			}
 			http.Error(w, "failed to store project rename", http.StatusInternalServerError)
 			return
+		}
+
+		if deps.broker != nil {
+			deps.broker.publish(appEvent{Type: "project", Resource: projectID, Version: base.ReservedVersion, OriginConnection: strings.TrimSpace(r.Header.Get("X-Tab-ID"))})
 		}
 
 		w.WriteHeader(http.StatusOK)

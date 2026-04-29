@@ -18,6 +18,7 @@ type projectCreateDependencies struct {
 	database      *db.Database
 	encryptionKey []byte
 	calendar      projectCreateCalendarClient
+	broker        *eventBroker
 }
 
 const projectCreatePersistTimeout = 5 * time.Second
@@ -64,6 +65,10 @@ func ProjectCreate(deps projectCreateDependencies) http.HandlerFunc {
 		if err != nil {
 			http.Error(w, "failed to store project", http.StatusInternalServerError)
 			return
+		}
+
+		if deps.broker != nil {
+			deps.broker.publish(appEvent{Type: "project", Resource: createdCalendar.Href, Version: 1, OriginConnection: strings.TrimSpace(r.Header.Get("X-Tab-ID"))})
 		}
 
 		w.WriteHeader(http.StatusCreated)

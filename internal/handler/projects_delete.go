@@ -24,6 +24,7 @@ type projectDeleteDependencies struct {
 	database      *db.Database
 	encryptionKey []byte
 	calendar      projectDeleteCalendarClient
+	broker        *eventBroker
 }
 
 const projectDeletePersistTimeout = 5 * time.Second
@@ -116,6 +117,10 @@ func ProjectDelete(deps projectDeleteDependencies) http.HandlerFunc {
 			}
 			http.Error(w, "failed to store project deletion", http.StatusInternalServerError)
 			return
+		}
+
+		if deps.broker != nil {
+			deps.broker.publish(appEvent{Type: "project", Resource: projectID, Version: base.ReservedVersion, OriginConnection: strings.TrimSpace(r.Header.Get("X-Tab-ID"))})
 		}
 
 		w.WriteHeader(http.StatusOK)

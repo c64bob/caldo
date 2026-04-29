@@ -47,6 +47,14 @@ func TestPrepareTaskDeleteCreatesUndoSnapshotAndMarksPending(t *testing.T) {
 	if snapshotProjectID != "project-1" {
 		t.Fatalf("unexpected undo snapshot project id: %q", snapshotProjectID)
 	}
+
+	var snapshotTitle, snapshotStatus, snapshotETag string
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT json_extract(snapshot_fields, '$.title'), json_extract(snapshot_fields, '$.status'), etag_at_snapshot FROM undo_snapshots WHERE session_id = 'session-1' AND tab_id = 'tab-1';`).Scan(&snapshotTitle, &snapshotStatus, &snapshotETag); err != nil {
+		t.Fatalf("query undo snapshot payload: %v", err)
+	}
+	if snapshotTitle != "old" || snapshotStatus != "needs-action" || snapshotETag != "\"etag-1\"" {
+		t.Fatalf("unexpected undo snapshot payload: title=%q status=%q etag=%q", snapshotTitle, snapshotStatus, snapshotETag)
+	}
 }
 
 func TestPrepareTaskDeleteRejectsVersionMismatch(t *testing.T) {

@@ -2,6 +2,8 @@ package handler
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -11,7 +13,6 @@ import (
 	"caldo/internal/db"
 	"caldo/internal/model"
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 )
 
 // ResolveConflict resolves one unresolved conflict by writing the selected VTODO to CalDAV.
@@ -63,8 +64,8 @@ func ResolveConflict(deps taskUpdateDependencies) http.HandlerFunc {
 		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUpdatePersistTimeout)
 		defer cancel()
 		if resolution == "split" {
-			splitUID := uuid.NewString()
-			splitVTODO, err := replaceVTODOUID(loaded.RemoteVTODO, splitUID)
+			splitUID := splitConflictUID(conflictID)
+			splitVTODO, err := prepareSplitVTODO(loaded.RemoteVTODO, splitUID)
 			if err != nil {
 				http.Error(w, "failed to build split task", http.StatusInternalServerError)
 				return
@@ -104,6 +105,32 @@ func ResolveConflict(deps taskUpdateDependencies) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("conflict resolved"))
 	}
+}
+
+func prepareSplitVTODO(raw string, uid string) (string, error) {
+	rewrittenUID, err := replaceVTODOUID(raw, uid)
+	if err != nil {
+		return "", err
+	}
+	return removeParentRelatedTo(rewrittenUID), nil
+}
+
+func splitConflictUID(conflictID string) string {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(conflictID)))
+	return "split-" + hex.EncodeToString(sum[:16])
+}
+
+func removeParentRelatedTo(raw string) string {
+	lines := strings.Split(strings.ReplaceAll(raw, "\r\n", "\n"), "\n")
+	filtered := make([]string, 0, len(lines))
+	for _, line := range lines {
+		upper := strings.ToUpper(line)
+		if strings.HasPrefix(upper, "RELATED-TO") && strings.Contains(upper, "RELTYPE=PARENT") {
+			continue
+		}
+		filtered = append(filtered, line)
+	}
+	return strings.Join(filtered, "\r\n")
 }
 
 func replaceVTODOUID(raw string, uid string) (string, error) {

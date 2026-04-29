@@ -195,6 +195,15 @@ func TestResolveConflictSplitCreatesSecondTaskAndMarksResolved(t *testing.T) {
 	if todos.updateCalls != 0 || todos.createCalls != 1 {
 		t.Fatalf("unexpected caldav calls: update=%d create=%d", todos.updateCalls, todos.createCalls)
 	}
+	if strings.Contains(strings.ToUpper(todos.lastRawVTODO), "RELATED-TO;RELTYPE=PARENT") {
+		t.Fatalf("split payload must not include parent link: %s", todos.lastRawVTODO)
+	}
+	if !strings.Contains(todos.lastRawVTODO, "UID:"+splitConflictUID("open-1")) {
+		t.Fatalf("split payload uid not rewritten deterministically: %s", todos.lastRawVTODO)
+	}
+	if todos.lastHref != "/"+splitConflictUID("open-1")+".ics" {
+		t.Fatalf("split href=%q", todos.lastHref)
+	}
 	var resolution string
 	if err := database.Conn.QueryRow(`SELECT resolution FROM conflicts WHERE id='open-1'`).Scan(&resolution); err != nil {
 		t.Fatal(err)

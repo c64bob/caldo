@@ -24,10 +24,10 @@ func MergeVTODOFields(baseVTODO string, localVTODO string, remoteVTODO string) M
 		!mergeString(base.Description, local.Description, remote.Description, &patch.Description) ||
 		!mergeString(base.Status, local.Status, remote.Status, &patch.Status) ||
 		!mergeString(base.RRule, local.RRule, remote.RRule, &patch.RRule) ||
-		!mergeDate(base.DueDate, local.DueDate, remote.DueDate, &patch.DueDate) ||
-		!mergeTime(base.DueAt, local.DueAt, remote.DueAt, &patch.DueAt) ||
-		!mergeTime(base.CompletedAt, local.CompletedAt, remote.CompletedAt, &patch.CompletedAt) ||
-		!mergeInt(base.Priority, local.Priority, remote.Priority, &patch.Priority) ||
+		!mergeDate(base.DueDate, local.DueDate, remote.DueDate, &patch.DueDate, &patch.ClearDue) ||
+		!mergeTime(base.DueAt, local.DueAt, remote.DueAt, &patch.DueAt, &patch.ClearDue) ||
+		!mergeTime(base.CompletedAt, local.CompletedAt, remote.CompletedAt, &patch.CompletedAt, &patch.ClearCompleted) ||
+		!mergeInt(base.Priority, local.Priority, remote.Priority, &patch.Priority, &patch.ClearPriority) ||
 		!mergeCategories(base.Categories, local.Categories, remote.Categories, &patch.Categories) {
 		return MergeResult{Conflict: true}
 	}
@@ -46,33 +46,36 @@ func mergeString(base, local, remote string, target **string) bool {
 	}
 	return true
 }
-func mergeDate(base, local, remote *string, target **string) bool {
-	merged, changed, ok := mergeComparable(base, local, remote)
+func mergeDate(base, local, remote *string, target **string, clear *bool) bool {
+	merged, changed, ok := mergeOptionalString(base, local, remote)
 	if !ok {
 		return false
 	}
 	if changed {
 		*target = merged
+		*clear = merged == nil
 	}
 	return true
 }
-func mergeTime(base, local, remote *time.Time, target **time.Time) bool {
-	merged, changed, ok := mergeComparable(base, local, remote)
+func mergeTime(base, local, remote *time.Time, target **time.Time, clear *bool) bool {
+	merged, changed, ok := mergeOptionalTime(base, local, remote)
 	if !ok {
 		return false
 	}
 	if changed {
 		*target = merged
+		*clear = merged == nil
 	}
 	return true
 }
-func mergeInt(base, local, remote *int, target **int) bool {
-	merged, changed, ok := mergeComparable(base, local, remote)
+func mergeInt(base, local, remote *int, target **int, clear *bool) bool {
+	merged, changed, ok := mergeOptionalInt(base, local, remote)
 	if !ok {
 		return false
 	}
 	if changed {
 		*target = merged
+		*clear = merged == nil
 	}
 	return true
 }

@@ -17,6 +17,8 @@ type VTODOPatch struct {
 	DueAt          *time.Time
 	Categories     []string
 	CompletedAt    *time.Time
+	ClearDue       bool
+	ClearPriority  bool
 	ClearCompleted bool
 }
 
@@ -59,8 +61,10 @@ func hasPatchChanges(patch VTODOPatch) bool {
 		patch.RRule != nil ||
 		patch.DueDate != nil ||
 		patch.DueAt != nil ||
+		patch.ClearDue ||
 		patch.Categories != nil ||
 		patch.CompletedAt != nil ||
+		patch.ClearPriority ||
 		patch.ClearCompleted
 }
 
@@ -137,11 +141,11 @@ func shouldReplaceProperty(name string, patch VTODOPatch) bool {
 	case "STATUS":
 		return patch.Status != nil
 	case "PRIORITY":
-		return patch.Priority != nil
+		return patch.Priority != nil || patch.ClearPriority
 	case "RRULE":
 		return patch.RRule != nil
 	case "DUE":
-		return patch.DueDate != nil || patch.DueAt != nil
+		return patch.DueDate != nil || patch.DueAt != nil || patch.ClearDue
 	case "CATEGORIES":
 		return patch.Categories != nil
 	case "COMPLETED":

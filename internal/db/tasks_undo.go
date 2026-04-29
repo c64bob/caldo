@@ -19,6 +19,7 @@ var (
 )
 
 type PreparedTaskUndo struct {
+	SnapshotID     string
 	TaskID         string
 	ActionType     string
 	TodoHref       string
@@ -42,14 +43,14 @@ func (d *Database) PrepareTaskUndo(ctx context.Context, sessionID, tabID string)
 		}
 	}()
 
-	var snapshotID, taskID, actionType, snapshotVTODO string
+	var snapshotID, taskID, actionType, snapshotVTODO, snapshotFields string
 	var etagAtSnapshot sql.NullString
 	var isExpired bool
 	if err := tx.QueryRowContext(ctx, `
-SELECT id, task_id, action_type, snapshot_vtodo, etag_at_snapshot, expires_at <= CURRENT_TIMESTAMP
+SELECT id, task_id, action_type, snapshot_vtodo, snapshot_fields, etag_at_snapshot, expires_at <= CURRENT_TIMESTAMP
 FROM undo_snapshots
 WHERE session_id = ? AND tab_id = ?;
-`, sessionID, tabID).Scan(&snapshotID, &taskID, &actionType, &snapshotVTODO, &etagAtSnapshot, &isExpired); err != nil {
+`, sessionID, tabID).Scan(&snapshotID, &taskID, &actionType, &snapshotVTODO, &snapshotFields, &etagAtSnapshot, &isExpired); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return PreparedTaskUndo{}, ErrUndoSnapshotNotFound
 		}
@@ -95,11 +96,18 @@ WHERE session_id = ? AND tab_id = ?;
 	result, err := tx.ExecContext(ctx, `
 UPDATE tasks
 SET raw_vtodo = ?,
+    title = json_extract(?, '$.title'),
+    description = json_extract(?, '$.description'),
+    status = json_extract(?, '$.status'),
+    due_date = json_extract(?, '$.due_date'),
+    due_at = json_extract(?, '$.due_at'),
+    priority = json_extract(?, '$.priority'),
+    label_names = json_extract(?, '$.label_names'),
     sync_status = 'pending',
     server_version = server_version + 1,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ? AND server_version = ?;
-`, snapshotVTODO, taskID, version)
+`, snapshotVTODO, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, taskID, version)
 	if err != nil {
 		return PreparedTaskUndo{}, fmt.Errorf("prepare task undo: update pending task: %w", err)
 	}
@@ -116,14 +124,14 @@ WHERE id = ? AND server_version = ?;
 	}
 	tx = nil
 
-	return PreparedTaskUndo{TaskID: taskID, ActionType: actionType, TodoHref: href, ExpectedETag: currentETag.String, RawVTODO: snapshotVTODO, PendingVersion: version + 1}, nil
+	return PreparedTaskUndo{SnapshotID: snapshotID, TaskID: taskID, ActionType: actionType, TodoHref: href, ExpectedETag: currentETag.String, RawVTODO: snapshotVTODO, PendingVersion: version + 1}, nil
 }
 
-// DeleteUndoSnapshot deletes a single undo snapshot by session/tab.
-func (d *Database) DeleteUndoSnapshot(ctx context.Context, sessionID, tabID string) error {
+// DeleteUndoSnapshot deletes a single undo snapshot by id.
+func (d *Database) DeleteUndoSnapshot(ctx context.Context, snapshotID string) error {
 	d.WriteMu.Lock()
 	defer d.WriteMu.Unlock()
-	_, err := d.Conn.ExecContext(ctx, `DELETE FROM undo_snapshots WHERE session_id = ? AND tab_id = ?;`, sessionID, tabID)
+	_, err := d.Conn.ExecContext(ctx, `DELETE FROM undo_snapshots WHERE id = ?;`, snapshotID)
 	if err != nil {
 		return fmt.Errorf("delete undo snapshot: %w", err)
 	}

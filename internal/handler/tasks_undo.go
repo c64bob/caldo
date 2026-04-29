@@ -78,7 +78,7 @@ func TaskUndo(deps taskUpdateDependencies) http.HandlerFunc {
 			http.Error(w, "failed to persist synced undo", http.StatusInternalServerError)
 			return
 		}
-		if err := deps.database.DeleteUndoSnapshot(persistCtx, sessionID, tabID); err != nil {
+		if err := deps.database.DeleteUndoSnapshot(persistCtx, prepared.SnapshotID); err != nil {
 			http.Error(w, "failed to delete undo snapshot", http.StatusInternalServerError)
 			return
 		}

@@ -75,7 +75,7 @@ INSERT INTO tasks (
     'Inbox', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 );
 INSERT INTO undo_snapshots (id, session_id, tab_id, task_id, action_type, snapshot_vtodo, snapshot_fields, etag_at_snapshot, created_at, expires_at)
-VALUES ('undo-1','session-1','tab-1','task-1','task_updated','BEGIN:VTODO\nUID:uid-1\nSUMMARY:before\nEND:VTODO','{}','"etag-1"',CURRENT_TIMESTAMP,DATETIME(CURRENT_TIMESTAMP,'+5 minutes'));
+VALUES ('undo-1','session-1','tab-1','task-1','task_updated','BEGIN:VTODO\nUID:uid-1\nSUMMARY:before\nEND:VTODO',json_object('title','before','description','before description','status','completed','due_date','2026-05-01','due_at','2026-05-01T09:00:00Z','priority',3,'label_names','alpha,beta'),'"etag-1"',CURRENT_TIMESTAMP,DATETIME(CURRENT_TIMESTAMP,'+5 minutes'));
 `); err != nil {
 		t.Fatalf("seed undo handler data: %v", err)
 	}

@@ -29,22 +29,25 @@ func QuickAddPreview(deps quickAddDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		text := strings.TrimSpace(r.FormValue("text"))
 		draft := parser.ParseQuickAdd(text)
+		requestedProject := draft.Project
 		if draft.Title == "" {
 			http.Error(w, "title is required", http.StatusBadRequest)
 			return
 		}
 		project, err := deps.database.ResolveTaskProject(r.Context(), "")
-		if draft.Project != "" {
-			tokenProject, tokenErr := deps.database.LoadProjectByName(r.Context(), draft.Project)
+		if err == nil {
+			draft.ProjectID = project.ID
+			draft.Project = project.DisplayName
+		}
+		if requestedProject != "" {
+			tokenProject, tokenErr := deps.database.LoadProjectByName(r.Context(), requestedProject)
 			if tokenErr == nil {
 				draft.ProjectID = tokenProject.ID
 				draft.Project = tokenProject.DisplayName
 			} else if tokenErr == sql.ErrNoRows {
-				draft.ProjectNew = true
+				draft.Project = requestedProject
+				draft.ProjectUnresolved = true
 			}
-		} else if err == nil {
-			draft.ProjectID = project.ID
-			draft.Project = project.DisplayName
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := view.QuickAddPreview(draft, text).Render(r.Context(), w); err != nil {

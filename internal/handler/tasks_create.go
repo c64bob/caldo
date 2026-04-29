@@ -62,6 +62,10 @@ func TaskCreate(deps taskCreateDependencies) http.HandlerFunc {
 		todoUID := uuid.NewString()
 		todoHref := taskHref(project.CalendarHref, todoUID)
 		rawVTODO := model.BuildTaskVTODO(todoUID, title, time.Now().UTC())
+		rawVTODO = model.PatchVTODO(rawVTODO, model.VTODOPatch{
+			Priority:   parseQuickAddPriority(r.FormValue("priority")),
+			Categories: parseQuickAddLabels(r.FormValue("labels")),
+		})
 
 		taskID, err := deps.database.InsertPendingTask(r.Context(), db.NewTaskInput{
 			ProjectID:   project.ID,
@@ -108,6 +112,37 @@ func TaskCreate(deps taskCreateDependencies) http.HandlerFunc {
 		w.WriteHeader(http.StatusCreated)
 		_, _ = w.Write([]byte("task created"))
 	}
+}
+
+func parseQuickAddPriority(value string) *int {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "high":
+		priority := 1
+		return &priority
+	case "medium":
+		priority := 5
+		return &priority
+	case "low":
+		priority := 9
+		return &priority
+	default:
+		return nil
+	}
+}
+
+func parseQuickAddLabels(value string) []string {
+	parts := strings.Split(value, ",")
+	labels := make([]string, 0, len(parts))
+	for _, part := range parts {
+		label := strings.TrimSpace(part)
+		if label != "" {
+			labels = append(labels, label)
+		}
+	}
+	if len(labels) == 0 {
+		return nil
+	}
+	return labels
 }
 
 func taskHref(calendarHref string, uid string) string {

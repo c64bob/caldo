@@ -27,4 +27,7 @@ func TestQuickAddPreviewIncludesCSRFHeaderForSaveForm(t *testing.T) {
 	if !strings.Contains(output, `hx-headers='{"X-CSRF-Token":"token-123"}'`) {
 		t.Fatal("expected quick add save form to include csrf token in htmx headers")
 	}
+	if !strings.Contains(output, `name="labels"`) || !strings.Contains(output, `name="priority"`) {
+		t.Fatal("expected quick add save form to include labels and priority fields")
+	}
 }

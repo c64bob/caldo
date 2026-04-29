@@ -4,14 +4,15 @@ import "strings"
 
 // QuickAddDraft contains parsed quick-add values for preview and persistence.
 type QuickAddDraft struct {
-	Title      string
-	ProjectID  string
-	Project    string
-	ProjectNew bool
-	Labels     []string
-	Due        string
-	Recurrence string
-	Priority   string
+	Title             string
+	ProjectID         string
+	Project           string
+	ProjectNew        bool
+	ProjectUnresolved bool
+	Labels            []string
+	Due               string
+	Recurrence        string
+	Priority          string
 }
 
 // ParseQuickAdd extracts supported quick-add tokens and remaining title text.

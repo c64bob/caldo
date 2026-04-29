@@ -65,8 +65,8 @@ func TestQuickAddPreviewMarksUnknownProjectTokenAsNew(t *testing.T) {
 		t.Fatalf("unexpected status: %d", w.Code)
 	}
 	body := w.Body.String()
-	if !strings.Contains(body, "Unbekannt") || !strings.Contains(body, "wird beim Speichern erstellt") {
-		t.Fatalf("expected unknown project hint in preview, got body: %s", body)
+	if !strings.Contains(body, "Unbekannt") || !strings.Contains(body, "wird beim Speichern ignoriert") {
+		t.Fatalf("expected unknown project warning in preview, got body: %s", body)
 	}
 }
 

@@ -52,11 +52,16 @@ func TaskUndo(deps taskUpdateDependencies) http.HandlerFunc {
 		}
 		todoCredentials := caldav.Credentials{URL: creds.URL, Username: creds.Username, Password: creds.Password}
 
-		newETag, err := deps.todos.PutVTODOUpdate(r.Context(), todoCredentials, prepared.TodoHref, prepared.RawVTODO, prepared.ExpectedETag)
+		var newETag string
+		if prepared.ActionType == "task_deleted" {
+			newETag, err = deps.todos.PutVTODOCreate(r.Context(), todoCredentials, prepared.TodoHref, prepared.RawVTODO)
+		} else {
+			newETag, err = deps.todos.PutVTODOUpdate(r.Context(), todoCredentials, prepared.TodoHref, prepared.RawVTODO, prepared.ExpectedETag)
+		}
 		if err != nil {
 			persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUndoPersistTimeout)
 			defer cancel()
-			if errors.Is(err, caldav.ErrPreconditionFailed) {
+			if errors.Is(err, caldav.ErrPreconditionFailed) && prepared.ActionType != "task_deleted" {
 				if markErr := deps.database.MarkTaskUpdateConflict(persistCtx, prepared.TaskID, prepared.PendingVersion); markErr != nil {
 					http.Error(w, "failed to persist undo conflict state", http.StatusInternalServerError)
 					return
@@ -64,9 +69,16 @@ func TaskUndo(deps taskUpdateDependencies) http.HandlerFunc {
 				http.Error(w, "task version conflict", http.StatusConflict)
 				return
 			}
-			if markErr := deps.database.MarkTaskUpdateError(persistCtx, prepared.TaskID, prepared.PendingVersion); markErr != nil {
-				http.Error(w, "failed to persist undo error state", http.StatusInternalServerError)
-				return
+			if prepared.ActionType == "task_deleted" {
+				if markErr := deps.database.MarkTaskCreateError(persistCtx, prepared.TaskID); markErr != nil {
+					http.Error(w, "failed to persist undo error state", http.StatusInternalServerError)
+					return
+				}
+			} else {
+				if markErr := deps.database.MarkTaskUpdateError(persistCtx, prepared.TaskID, prepared.PendingVersion); markErr != nil {
+					http.Error(w, "failed to persist undo error state", http.StatusInternalServerError)
+					return
+				}
 			}
 			http.Error(w, "failed to execute undo on caldav server", http.StatusBadGateway)
 			return
@@ -74,9 +86,16 @@ func TaskUndo(deps taskUpdateDependencies) http.HandlerFunc {
 
 		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUndoPersistTimeout)
 		defer cancel()
-		if err := deps.database.MarkTaskUpdateSynced(persistCtx, prepared.TaskID, prepared.PendingVersion, newETag); err != nil {
-			http.Error(w, "failed to persist synced undo", http.StatusInternalServerError)
-			return
+		if prepared.ActionType == "task_deleted" {
+			if _, err := deps.database.MarkTaskCreateSynced(persistCtx, prepared.TaskID, newETag); err != nil {
+				http.Error(w, "failed to persist synced undo", http.StatusInternalServerError)
+				return
+			}
+		} else {
+			if err := deps.database.MarkTaskUpdateSynced(persistCtx, prepared.TaskID, prepared.PendingVersion, newETag); err != nil {
+				http.Error(w, "failed to persist synced undo", http.StatusInternalServerError)
+				return
+			}
 		}
 		if err := deps.database.DeleteUndoSnapshot(persistCtx, prepared.SnapshotID); err != nil {
 			http.Error(w, "failed to delete undo snapshot", http.StatusInternalServerError)

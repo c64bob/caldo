@@ -40,6 +40,12 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 	router.Get("/search", Search(searchDependencies{database: database}))
 	router.Get("/conflicts", Conflicts(conflictDependencies{database: database}))
 	router.Get("/conflicts/{conflictID}", ConflictDetail(conflictDependencies{database: database}))
+	router.With(SetupCSRFMiddleware(csrfSecret)).Post("/conflicts/{conflictID}/resolve", ResolveConflict(taskUpdateDependencies{
+		database:      database,
+		encryptionKey: csrfSecret,
+		todos:         caldav.NewTodoClient(nil),
+		broker:        syncBroker,
+	}))
 	router.Get("/events", Events(syncDeps))
 	router.Get("/api/tasks/versions", TaskVersions(taskVersionsDependencies{database: database}))
 	router.Get("/sync/status", SyncStatus(syncDeps))

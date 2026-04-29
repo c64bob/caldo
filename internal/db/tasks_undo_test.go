@@ -71,6 +71,30 @@ func TestPrepareTaskUndoDeletedTaskInsertsPendingCreate(t *testing.T) {
 	assertSingleTextResult(t, db, `SELECT sync_status FROM tasks WHERE id='`+prepared.TaskID+`';`, "pending")
 }
 
+func TestPrepareTaskUndoDeletedTaskReusesPendingRowOnRetry(t *testing.T) {
+	t.Parallel()
+	db := openTaskUndoTestDB(t)
+	seedTaskUndoData(t, db)
+
+	first, err := db.PrepareTaskUndo(context.Background(), "session-del", "tab-del")
+	if err != nil {
+		t.Fatalf("first prepare deleted undo: %v", err)
+	}
+	if err := db.MarkTaskCreateError(context.Background(), first.TaskID); err != nil {
+		t.Fatalf("mark create error: %v", err)
+	}
+
+	second, err := db.PrepareTaskUndo(context.Background(), "session-del", "tab-del")
+	if err != nil {
+		t.Fatalf("second prepare deleted undo: %v", err)
+	}
+	if second.TaskID != first.TaskID {
+		t.Fatalf("expected retry to reuse task id %s, got %s", first.TaskID, second.TaskID)
+	}
+
+	assertSingleIntResult(t, db, `SELECT COUNT(*) FROM tasks WHERE project_id='project-1' AND uid='uid-del';`, 1)
+	assertSingleTextResult(t, db, `SELECT sync_status FROM tasks WHERE id='`+second.TaskID+`';`, "pending")
+}
 func openTaskUndoTestDB(t *testing.T) *Database {
 	t.Helper()
 	database, err := OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))

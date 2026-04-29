@@ -153,11 +153,24 @@ func (d *Database) prepareTaskDeletedUndo(ctx context.Context, tx *sql.Tx, snaps
 		return PreparedTaskUndo{}, fmt.Errorf("prepare task undo: load deleted snapshot project: %w", err)
 	}
 
-	taskID := uuid.NewString()
 	uid := extractUIDFromVTODO(snapshotVTODO)
 	href := buildTaskHref(calendarHref, uid)
 
-	result, err := tx.ExecContext(ctx, `
+	var taskID string
+	var reusedVersion int
+	err := tx.QueryRowContext(ctx, `
+SELECT id, server_version
+FROM tasks
+WHERE project_id = ? AND uid = ? AND href = ? AND sync_status IN ('pending', 'error')
+ORDER BY updated_at DESC
+LIMIT 1;
+`, projectID, uid, href).Scan(&taskID, &reusedVersion)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return PreparedTaskUndo{}, fmt.Errorf("prepare task undo: load pending deleted task: %w", err)
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		taskID = uuid.NewString()
+		result, err := tx.ExecContext(ctx, `
 INSERT INTO tasks (
     id, project_id, uid, href, title, description, status, due_date, due_at, priority, label_names,
     raw_vtodo, base_vtodo, project_name, sync_status, created_at, updated_at
@@ -167,15 +180,36 @@ INSERT INTO tasks (
     ?, ?, ?, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 );
 `, taskID, projectID, uid, href, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotVTODO, snapshotVTODO, projectName)
-	if err != nil {
-		return PreparedTaskUndo{}, fmt.Errorf("prepare task undo: insert deleted task pending: %w", err)
-	}
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return PreparedTaskUndo{}, fmt.Errorf("prepare task undo: read inserted rows: %w", err)
-	}
-	if affected != 1 {
-		return PreparedTaskUndo{}, ErrTaskVersionMismatch
+		if err != nil {
+			return PreparedTaskUndo{}, fmt.Errorf("prepare task undo: insert deleted task pending: %w", err)
+		}
+		affected, err := result.RowsAffected()
+		if err != nil {
+			return PreparedTaskUndo{}, fmt.Errorf("prepare task undo: read inserted rows: %w", err)
+		}
+		if affected != 1 {
+			return PreparedTaskUndo{}, ErrTaskVersionMismatch
+		}
+	} else {
+		if _, err := tx.ExecContext(ctx, `
+UPDATE tasks
+SET raw_vtodo = ?,
+    base_vtodo = ?,
+    title = json_extract(?, '$.title'),
+    description = json_extract(?, '$.description'),
+    status = json_extract(?, '$.status'),
+    due_date = json_extract(?, '$.due_date'),
+    due_at = json_extract(?, '$.due_at'),
+    priority = json_extract(?, '$.priority'),
+    label_names = json_extract(?, '$.label_names'),
+    project_name = ?,
+    sync_status = 'pending',
+    server_version = server_version + 1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?;
+`, snapshotVTODO, snapshotVTODO, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, projectName, taskID); err != nil {
+			return PreparedTaskUndo{}, fmt.Errorf("prepare task undo: reset deleted task pending row: %w", err)
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return PreparedTaskUndo{}, fmt.Errorf("prepare task undo: commit deleted task transaction: %w", err)

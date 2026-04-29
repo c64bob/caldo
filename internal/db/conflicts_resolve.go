@@ -24,10 +24,11 @@ type ConflictResolutionBase struct {
 }
 
 type ResolveConflictInput struct {
-	ConflictID    string
-	Resolution    string
-	ResolvedVTODO string
-	NewETag       string
+	ConflictID      string
+	Resolution      string
+	ResolvedVTODO   string
+	NewETag         string
+	ExpectedVersion int
 }
 
 func (d *Database) LoadConflictResolutionBase(ctx context.Context, conflictID string) (ConflictResolutionBase, error) {
@@ -61,12 +62,20 @@ func (d *Database) MarkConflictResolved(ctx context.Context, input ResolveConfli
 	defer func() { _ = tx.Rollback() }()
 
 	parsed := model.ParseVTODOFields(input.ResolvedVTODO)
-	if _, err := tx.ExecContext(ctx, `
+	resultTask, err := tx.ExecContext(ctx, `
 UPDATE tasks
 SET raw_vtodo=?, title=?, description=?, status=?, due_date=?, due_at=?, priority=?, label_names=?, etag=?, sync_status='synced', server_version=server_version+1, updated_at=CURRENT_TIMESTAMP
-WHERE id=(SELECT task_id FROM conflicts WHERE id=?);
-`, input.ResolvedVTODO, parsed.Title, nullableString(parsed.Description), parsed.Status, nullValue(dueDateNull(parsed.DueDate)), nullValue(dueAtNull(parsed.DueAt)), nullValue(priorityNull(parsed.Priority)), nullValue(labelsNull(parsed.Categories)), nullableString(strings.TrimSpace(input.NewETag)), input.ConflictID); err != nil {
+WHERE id=(SELECT task_id FROM conflicts WHERE id=?) AND server_version=?;
+`, input.ResolvedVTODO, parsed.Title, nullableString(parsed.Description), parsed.Status, nullValue(dueDateNull(parsed.DueDate)), nullValue(dueAtNull(parsed.DueAt)), nullValue(priorityNull(parsed.Priority)), nullValue(labelsNull(parsed.Categories)), nullableString(strings.TrimSpace(input.NewETag)), input.ConflictID, input.ExpectedVersion)
+	if err != nil {
 		return fmt.Errorf("mark conflict resolved: update task: %w", err)
+	}
+	taskRowsAffected, err := resultTask.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("mark conflict resolved: task rows affected: %w", err)
+	}
+	if taskRowsAffected != 1 {
+		return fmt.Errorf("mark conflict resolved: %w", ErrConflictNotFound)
 	}
 
 	result, err := tx.ExecContext(ctx, `

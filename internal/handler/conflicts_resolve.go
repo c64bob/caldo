@@ -38,9 +38,9 @@ func ResolveConflict(deps taskUpdateDependencies) http.HandlerFunc {
 			resolved = loaded.RemoteVTODO
 		case "manual":
 			patch := model.VTODOPatch{
-				Summary:     stringPointer(strings.TrimSpace(r.FormValue("title"))),
-				Description: stringPointer(strings.TrimSpace(r.FormValue("description"))),
-				Status:      stringPointer(strings.TrimSpace(strings.ToLower(r.FormValue("status")))),
+				Summary:     optionalTrimmedFormPointer(r, "title"),
+				Description: optionalTrimmedFormPointer(r, "description"),
+				Status:      optionalLowerTrimmedFormPointer(r, "status"),
 				DueDate:     parseOptionalDate(r.FormValue("due_date")),
 				Priority:    parseOptionalInt(r.FormValue("priority")),
 				Categories:  parseOptionalLabels(r.FormValue("labels")),
@@ -64,7 +64,7 @@ func ResolveConflict(deps taskUpdateDependencies) http.HandlerFunc {
 
 		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUpdatePersistTimeout)
 		defer cancel()
-		if err := deps.database.MarkConflictResolved(persistCtx, db.ResolveConflictInput{ConflictID: conflictID, Resolution: resolution, ResolvedVTODO: resolved, NewETag: newETag}); err != nil {
+		if err := deps.database.MarkConflictResolved(persistCtx, db.ResolveConflictInput{ConflictID: conflictID, Resolution: resolution, ResolvedVTODO: resolved, NewETag: newETag, ExpectedVersion: loaded.ServerVersion}); err != nil {
 			http.Error(w, "failed to persist conflict resolution", http.StatusInternalServerError)
 			return
 		}
@@ -75,4 +75,18 @@ func ResolveConflict(deps taskUpdateDependencies) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("conflict resolved"))
 	}
+}
+
+func optionalTrimmedFormPointer(r *http.Request, key string) *string {
+	if _, ok := r.PostForm[key]; !ok {
+		return nil
+	}
+	return stringPointer(strings.TrimSpace(r.PostFormValue(key)))
+}
+
+func optionalLowerTrimmedFormPointer(r *http.Request, key string) *string {
+	if _, ok := r.PostForm[key]; !ok {
+		return nil
+	}
+	return stringPointer(strings.ToLower(strings.TrimSpace(r.PostFormValue(key))))
 }

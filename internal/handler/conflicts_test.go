@@ -38,6 +38,46 @@ func TestConflictsPageShowsOnlyUnresolved(t *testing.T) {
 	}
 }
 
+func TestResolveConflictManualOmitsMissingCoreFields(t *testing.T) {
+	t.Parallel()
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	seedConflictData(t, database)
+	key := bytes.Repeat([]byte{0x55}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "a", Password: "b"}); err != nil {
+		t.Fatal(err)
+	}
+	remote := "BEGIN:VTODO\r\nSUMMARY:Keep me\r\nDESCRIPTION:Keep desc\r\nSTATUS:NEEDS-ACTION\r\nDUE;VALUE=DATE:20260501\r\nEND:VTODO\r\n"
+	if _, err := database.Conn.Exec(`UPDATE conflicts SET remote_vtodo=? WHERE id='open-1'`, remote); err != nil {
+		t.Fatal(err)
+	}
+	h := ResolveConflict(taskUpdateDependencies{database: database, encryptionKey: key, todos: &stubTaskUpdateTodoClient{updateETag: `"etag-new"`}})
+	form := strings.NewReader("resolution=manual&due_date=2026-05-20")
+	req := httptest.NewRequest(http.MethodPost, "/conflicts/open-1/resolve", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("conflictID", "open-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var resolved string
+	if err := database.Conn.QueryRow(`SELECT resolved_vtodo FROM conflicts WHERE id='open-1'`).Scan(&resolved); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(resolved, "SUMMARY:Keep me") || !strings.Contains(resolved, "DESCRIPTION:Keep desc") || !strings.Contains(resolved, "STATUS:NEEDS-ACTION") {
+		t.Fatalf("missing preserved core fields in resolved payload: %s", resolved)
+	}
+	if !strings.Contains(resolved, "DUE;VALUE=DATE:20260520") {
+		t.Fatalf("expected due date patch in resolved payload: %s", resolved)
+	}
+}
+
 func seedConflictData(t *testing.T, database *db.Database) {
 	t.Helper()
 	_, err := database.Conn.ExecContext(context.Background(), `

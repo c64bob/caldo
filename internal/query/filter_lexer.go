@@ -63,6 +63,15 @@ func LexFilter(input string) []Token {
 			i = next
 		default:
 			literal, next := readWord(input, i)
+
+			if strings.EqualFold(literal, "no") {
+				if combined, end, ok := readNoDatePhrase(input, i, next); ok {
+					tokens = append(tokens, Token{Type: TokenNoDate, Literal: combined})
+					i = end
+					continue
+				}
+			}
+
 			tokens = append(tokens, Token{Type: classifyWord(literal), Literal: literal})
 			i = next
 		}
@@ -100,6 +109,24 @@ func classifyWord(word string) TokenType {
 	default:
 		return TokenString
 	}
+}
+
+func readNoDatePhrase(input string, wordStart, wordEnd int) (string, int, bool) {
+	i := wordEnd
+	for i < len(input) && isWhitespace(input[i]) {
+		i++
+	}
+
+	if i == wordEnd {
+		return "", 0, false
+	}
+
+	nextWord, nextEnd := readWord(input, i)
+	if !strings.EqualFold(nextWord, "date") {
+		return "", 0, false
+	}
+
+	return input[wordStart:nextEnd], nextEnd, true
 }
 
 func readWord(input string, start int) (string, int) {

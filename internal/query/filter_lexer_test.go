@@ -71,3 +71,17 @@ func TestLexFilter_EmptyInput(t *testing.T) {
 		t.Fatalf("token[0]=%s want %s", tokens[0].Type, TokenEOF)
 	}
 }
+
+func TestLexFilter_NoDatePhrase(t *testing.T) {
+	tokens := LexFilter("no date")
+	if tokens[0].Type != TokenNoDate || tokens[1].Type != TokenEOF {
+		t.Fatalf("unexpected tokens: %#v", tokens)
+	}
+}
+
+func TestLexFilter_NoDatePhraseCaseInsensitive(t *testing.T) {
+	tokens := LexFilter("No	DaTe")
+	if tokens[0].Type != TokenNoDate || tokens[1].Type != TokenEOF {
+		t.Fatalf("unexpected tokens: %#v", tokens)
+	}
+}

@@ -65,7 +65,12 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("load setup status: %w", err)
 	}
 
-	appScheduler := scheduler.NewNoopScheduler()
+	appScheduler := scheduler.NewPeriodicScheduler(logger, sqliteDB, nil)
+	if setupStatus.Complete {
+		if err := appScheduler.Start(lifecycleCtx); err != nil {
+			return fmt.Errorf("start scheduler: %w", err)
+		}
+	}
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,

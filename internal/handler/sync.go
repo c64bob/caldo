@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -13,7 +14,10 @@ import (
 type syncDependencies struct {
 	database *db.Database
 	broker   *syncEventBroker
+	runner   manualSyncRunner
 }
+
+type manualSyncRunner interface{ Run(ctx context.Context) error }
 
 type syncEventBroker struct {
 	mu          sync.Mutex
@@ -43,7 +47,13 @@ func ManualSync(deps syncDependencies) http.HandlerFunc {
 		if err != nil { http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError); return }
 		if started {
 			deps.broker.publish("running")
-			_ = deps.database.FinishManualSyncSuccess(r.Context())
+			if deps.runner == nil {
+				_ = deps.database.FinishManualSyncError(r.Context(), "sync_unavailable")
+			} else if err := deps.runner.Run(r.Context()); err != nil {
+				_ = deps.database.FinishManualSyncError(r.Context(), "sync_failed")
+			} else {
+				_ = deps.database.FinishManualSyncSuccess(r.Context())
+			}
 			deps.broker.publish("idle")
 		}
 		status, _ := deps.database.LoadSyncStatus(r.Context())

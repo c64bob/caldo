@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -159,5 +160,70 @@ func TestResolveConflictKeepsUnresolvedOnWriteFailure(t *testing.T) {
 	}
 	if count != 1 {
 		t.Fatalf("count=%d", count)
+	}
+}
+
+func TestResolveConflictSplitCreatesSecondTaskAndMarksResolved(t *testing.T) {
+	t.Parallel()
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	seedConflictData(t, database)
+	key := bytes.Repeat([]byte{0x45}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "a", Password: "b"}); err != nil {
+		t.Fatal(err)
+	}
+	remote := "BEGIN:VCALENDAR\r\nBEGIN:VTODO\r\nUID:uid-remote\r\nSUMMARY:Remote version\r\nSTATUS:NEEDS-ACTION\r\nRELATED-TO;RELTYPE=PARENT:uid-parent\r\nEND:VTODO\r\nEND:VCALENDAR\r\n"
+	if _, err := database.Conn.Exec(`UPDATE conflicts SET remote_vtodo=? WHERE id='open-1'`, remote); err != nil {
+		t.Fatal(err)
+	}
+
+	todos := &stubTaskUpdateTodoClient{createETag: `"etag-split"`}
+	h := ResolveConflict(taskUpdateDependencies{database: database, encryptionKey: key, todos: todos})
+	req := httptest.NewRequest(http.MethodPost, "/conflicts/open-1/resolve", strings.NewReader("resolution=split"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("conflictID", "open-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if todos.updateCalls != 0 || todos.createCalls != 1 {
+		t.Fatalf("unexpected caldav calls: update=%d create=%d", todos.updateCalls, todos.createCalls)
+	}
+	var resolution string
+	if err := database.Conn.QueryRow(`SELECT resolution FROM conflicts WHERE id='open-1'`).Scan(&resolution); err != nil {
+		t.Fatal(err)
+	}
+	if resolution != "split" {
+		t.Fatalf("resolution=%q", resolution)
+	}
+	var taskCount int
+	if err := database.Conn.QueryRow(`SELECT COUNT(*) FROM tasks WHERE project_id='project-1'`).Scan(&taskCount); err != nil {
+		t.Fatal(err)
+	}
+	if taskCount != 2 {
+		t.Fatalf("taskCount=%d", taskCount)
+	}
+	var localUID, splitUID string
+	if err := database.Conn.QueryRow(`SELECT uid FROM tasks WHERE id='task-1'`).Scan(&localUID); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Conn.QueryRow(`SELECT uid FROM tasks WHERE id!='task-1'`).Scan(&splitUID); err != nil {
+		t.Fatal(err)
+	}
+	if localUID != "uid-1" || splitUID == localUID {
+		t.Fatalf("uids local=%q split=%q", localUID, splitUID)
+	}
+	var splitParentID sql.NullString
+	if err := database.Conn.QueryRow(`SELECT parent_id FROM tasks WHERE id!='task-1'`).Scan(&splitParentID); err != nil {
+		t.Fatal(err)
+	}
+	if splitParentID.Valid {
+		t.Fatalf("expected no parent link, got %q", splitParentID.String)
 	}
 }

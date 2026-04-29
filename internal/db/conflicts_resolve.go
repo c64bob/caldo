@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"caldo/internal/model"
+	"github.com/google/uuid"
 )
 
 var ErrConflictNotFound = errors.New("conflict not found")
@@ -28,6 +29,15 @@ type ResolveConflictInput struct {
 	Resolution      string
 	ResolvedVTODO   string
 	NewETag         string
+	ExpectedVersion int
+}
+
+type ResolveConflictSplitInput struct {
+	ConflictID      string
+	ResolvedVTODO   string
+	NewTaskUID      string
+	NewTaskHref     string
+	NewTaskETag     string
 	ExpectedVersion int
 }
 
@@ -92,6 +102,70 @@ WHERE id=? AND resolved_at IS NULL;
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("mark conflict resolved: commit transaction: %w", err)
+	}
+	return nil
+}
+
+// MarkConflictSplitResolved resolves a conflict by keeping the local task and inserting the remote version as a new task.
+func (d *Database) MarkConflictSplitResolved(ctx context.Context, input ResolveConflictSplitInput) error {
+	d.WriteMu.Lock()
+	defer d.WriteMu.Unlock()
+
+	tx, err := d.Conn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("mark conflict split resolved: begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	resultTask, err := tx.ExecContext(ctx, `
+UPDATE tasks
+SET sync_status='synced', updated_at=CURRENT_TIMESTAMP, server_version=server_version+1
+WHERE id=(SELECT task_id FROM conflicts WHERE id=?) AND server_version=?;
+`, input.ConflictID, input.ExpectedVersion)
+	if err != nil {
+		return fmt.Errorf("mark conflict split resolved: update local task: %w", err)
+	}
+	taskRowsAffected, err := resultTask.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("mark conflict split resolved: local task rows affected: %w", err)
+	}
+	if taskRowsAffected != 1 {
+		return fmt.Errorf("mark conflict split resolved: %w", ErrConflictNotFound)
+	}
+
+	parsed := model.ParseVTODOFields(input.ResolvedVTODO)
+	_, err = tx.ExecContext(ctx, `
+INSERT INTO tasks (
+	id, project_id, uid, href, etag, server_version, title, description, status, completed_at, due_date, due_at, priority, rrule, parent_id, raw_vtodo, base_vtodo, label_names, project_name, sync_status, created_at, updated_at
+)
+SELECT ?, t.project_id, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, t.project_name, 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM tasks t
+WHERE t.id=(SELECT task_id FROM conflicts WHERE id=?);
+`, uuid.NewString(), input.NewTaskUID, input.NewTaskHref, nullableString(strings.TrimSpace(input.NewTaskETag)),
+	parsed.Title, nullableString(parsed.Description), parsed.Status, nullValue(dueAtNull(parsed.CompletedAt)), nullValue(dueDateNull(parsed.DueDate)),
+	nullValue(dueAtNull(parsed.DueAt)), nullValue(priorityNull(parsed.Priority)), nullableString(parsed.RRule), input.ResolvedVTODO, input.ResolvedVTODO, nullValue(labelsNull(parsed.Categories)), input.ConflictID)
+	if err != nil {
+		return fmt.Errorf("mark conflict split resolved: insert split task: %w", err)
+	}
+
+	resultConflict, err := tx.ExecContext(ctx, `
+UPDATE conflicts
+SET resolved_at=CURRENT_TIMESTAMP, resolution='split', resolved_vtodo=?
+WHERE id=? AND resolved_at IS NULL;
+`, input.ResolvedVTODO, input.ConflictID)
+	if err != nil {
+		return fmt.Errorf("mark conflict split resolved: update conflict: %w", err)
+	}
+	conflictRowsAffected, err := resultConflict.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("mark conflict split resolved: conflict rows affected: %w", err)
+	}
+	if conflictRowsAffected != 1 {
+		return fmt.Errorf("mark conflict split resolved: %w", ErrConflictNotFound)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("mark conflict split resolved: commit transaction: %w", err)
 	}
 	return nil
 }

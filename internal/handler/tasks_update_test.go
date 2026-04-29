@@ -21,6 +21,9 @@ type stubTaskUpdateTodoClient struct {
 	createErr   error
 	deleteErr   error
 	updateCalls int
+	createCalls int
+	lastHref    string
+	lastRawVTODO string
 }
 
 func (s *stubTaskUpdateTodoClient) PutVTODOUpdate(_ context.Context, _ caldav.Credentials, _ string, _ string, _ string) (string, error) {
@@ -31,7 +34,10 @@ func (s *stubTaskUpdateTodoClient) PutVTODOUpdate(_ context.Context, _ caldav.Cr
 	return s.updateETag, nil
 }
 
-func (s *stubTaskUpdateTodoClient) PutVTODOCreate(_ context.Context, _ caldav.Credentials, _ string, _ string) (string, error) {
+func (s *stubTaskUpdateTodoClient) PutVTODOCreate(_ context.Context, _ caldav.Credentials, href string, rawVTODO string) (string, error) {
+	s.createCalls++
+	s.lastHref = href
+	s.lastRawVTODO = rawVTODO
 	if s.createErr != nil {
 		return "", s.createErr
 	}

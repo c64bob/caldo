@@ -22,11 +22,12 @@ type PeriodicScheduler struct {
 	database *db.Database
 	runner   fullSyncRunner
 
-	mu       sync.Mutex
-	started  bool
-	cancel   context.CancelFunc
-	done     chan struct{}
-	interval time.Duration
+	mu                          sync.Mutex
+	started                     bool
+	cancel                      context.CancelFunc
+	done                        chan struct{}
+	interval                    time.Duration
+	lastResolvedConflictCleanup time.Time
 }
 
 // NewPeriodicScheduler creates a periodic scheduler with an optional runner.
@@ -137,16 +138,38 @@ func (s *PeriodicScheduler) runSyncTick(ctx context.Context) {
 	}
 	if s.runner == nil {
 		_ = s.database.FinishManualSyncError(ctx, "sync_unavailable")
+		_ = s.runCleanup(ctx)
 		return
 	}
 	if err := s.runner.Run(ctx); err != nil {
 		_ = s.database.FinishManualSyncError(ctx, "sync_failed")
+		_ = s.runCleanup(ctx)
 		s.logError("scheduler_sync_failed", err)
 		return
+	}
+	if err := s.runCleanup(ctx); err != nil {
+		s.logError("scheduler_sync_cleanup_failed", err)
 	}
 	if err := s.database.FinishManualSyncSuccess(ctx); err != nil {
 		s.logError("scheduler_sync_finish_failed", err)
 	}
+}
+
+func (s *PeriodicScheduler) runCleanup(ctx context.Context) error {
+	now := time.Now().UTC()
+	cleanupResolvedConflicts := s.shouldCleanupResolvedConflicts(now)
+	_, err := s.database.CleanupSyncArtifacts(ctx, now, cleanupResolvedConflicts)
+	return err
+}
+
+func (s *PeriodicScheduler) shouldCleanupResolvedConflicts(now time.Time) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.lastResolvedConflictCleanup.IsZero() || now.Sub(s.lastResolvedConflictCleanup) >= 24*time.Hour {
+		s.lastResolvedConflictCleanup = now
+		return true
+	}
+	return false
 }
 
 func (s *PeriodicScheduler) logError(msg string, err error) {

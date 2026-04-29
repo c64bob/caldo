@@ -47,7 +47,7 @@ func TestTaskCreateSuccessPersistsSyncedTask(t *testing.T) {
 	stub := &stubTaskCreateTodoClient{etag: `"etag-1"`}
 	h := TaskCreate(taskCreateDependencies{database: database, encryptionKey: key, todos: stub})
 
-	form := url.Values{"title": {"Buy milk"}, "labels": {"finance,home"}, "priority": {"high"}}
+	form := url.Values{"title": {"Buy milk"}, "labels": {"finance,home"}, "priority": {"high"}, "recurrence": {"FREQ=WEEKLY;BYDAY=MO"}}
 	req := httptest.NewRequest(http.MethodPost, "/tasks", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr := httptest.NewRecorder()
@@ -64,6 +64,9 @@ func TestTaskCreateSuccessPersistsSyncedTask(t *testing.T) {
 	}
 	if !strings.Contains(stub.raw, "PRIORITY:1") {
 		t.Fatalf("expected priority in raw payload: %q", stub.raw)
+	}
+	if !strings.Contains(stub.raw, "RRULE:FREQ=WEEKLY;BYDAY=MO") {
+		t.Fatalf("expected recurrence in raw payload: %q", stub.raw)
 	}
 	if !strings.HasPrefix(stub.href, "/cal/inbox/") || !strings.HasSuffix(stub.href, ".ics") {
 		t.Fatalf("unexpected href: %q", stub.href)

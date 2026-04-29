@@ -65,6 +65,7 @@ func TaskCreate(deps taskCreateDependencies) http.HandlerFunc {
 		rawVTODO = model.PatchVTODO(rawVTODO, model.VTODOPatch{
 			Priority:   parseQuickAddPriority(r.FormValue("priority")),
 			Categories: parseQuickAddLabels(r.FormValue("labels")),
+			RRule:      parseQuickAddRecurrence(r.FormValue("recurrence")),
 		})
 
 		taskID, err := deps.database.InsertPendingTask(r.Context(), db.NewTaskInput{
@@ -143,6 +144,14 @@ func parseQuickAddLabels(value string) []string {
 		return nil
 	}
 	return labels
+}
+
+func parseQuickAddRecurrence(value string) *string {
+	recurrence := strings.TrimSpace(value)
+	if recurrence == "" {
+		return nil
+	}
+	return &recurrence
 }
 
 func taskHref(calendarHref string, uid string) string {

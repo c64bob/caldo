@@ -20,6 +20,21 @@ func TestParseFilter_SingleNodeToday(t *testing.T) {
 	}
 }
 
+func TestParseFilter_CompletedWithValue(t *testing.T) {
+	node, err := ParseFilter(LexFilter("completed:false"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	leaf := mustType[FilterNode](t, node)
+	if leaf.Operator != TokenCompleted {
+		t.Fatalf("operator=%s want %s", leaf.Operator, TokenCompleted)
+	}
+	if leaf.Value != "false" {
+		t.Fatalf("value=%q want %q", leaf.Value, "false")
+	}
+}
+
 func TestParseFilter_NodeTypesCovered(t *testing.T) {
 	node, err := ParseFilter(LexFilter("not today and overdue or #work"))
 	if err != nil {

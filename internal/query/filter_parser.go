@@ -136,12 +136,24 @@ func (p *filterParser) parsePrimary() (Node, error) {
 		}
 		p.next()
 		return node, nil
-	case TokenToday, TokenOverdue, TokenUpcoming, TokenNoDate, TokenCompleted:
+	case TokenToday, TokenOverdue, TokenUpcoming, TokenNoDate:
 		p.next()
 		return FilterNode{Operator: tok.Type}, nil
 	case TokenProject, TokenLabel:
 		p.next()
 		return FilterNode{Operator: tok.Type, Value: tok.Literal}, nil
+	case TokenCompleted:
+		p.next()
+		if p.current().Type != TokenColon {
+			return FilterNode{Operator: tok.Type}, nil
+		}
+		p.next()
+		if p.current().Type != TokenString {
+			return nil, p.errorf("expected value after %q", tok.Literal)
+		}
+		value := p.current().Literal
+		p.next()
+		return FilterNode{Operator: tok.Type, Value: value}, nil
 	case TokenPriority, TokenText, TokenBefore, TokenAfter:
 		p.next()
 		if p.current().Type == TokenColon {

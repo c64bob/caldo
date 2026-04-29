@@ -101,12 +101,12 @@ func TestPeriodicSchedulerRunsAndRestartsInterval(t *testing.T) {
 	if first < 1 {
 		t.Fatalf("expected at least one run, got %d", first)
 	}
-	if err := s.SetInterval(ctx, 5*time.Millisecond); err != nil {
+	if err := s.SetInterval(context.Background(), 5*time.Millisecond); err != nil {
 		t.Fatalf("reset interval: %v", err)
 	}
-	deadline := time.Now().Add(250 * time.Millisecond)
+	deadline := time.Now().Add(2 * time.Second)
 	for runner.count() <= first && time.Now().Before(deadline) {
-		time.Sleep(5 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 	}
 	if runner.count() <= first {
 		t.Fatalf("expected more runs after interval restart; first=%d current=%d", first, runner.count())

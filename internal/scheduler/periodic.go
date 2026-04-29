@@ -89,15 +89,19 @@ func (s *PeriodicScheduler) SetInterval(ctx context.Context, interval time.Durat
 	}
 	s.cancel()
 	done := s.done
-	loopCtx, cancel := context.WithCancel(ctx)
-	s.cancel = cancel
-	s.done = make(chan struct{})
-	newDone := s.done
-	go s.run(loopCtx, newDone)
 	s.mu.Unlock()
 
 	select {
 	case <-done:
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		if !s.started {
+			return nil
+		}
+		loopCtx, cancel := context.WithCancel(ctx)
+		s.cancel = cancel
+		s.done = make(chan struct{})
+		go s.run(loopCtx, s.done)
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
@@ -128,7 +132,8 @@ func (s *PeriodicScheduler) runSyncTick(ctx context.Context) {
 	if s.database == nil {
 		return
 	}
-	started, err := s.database.TryStartManualSync(ctx)
+	persistCtx := context.WithoutCancel(ctx)
+	started, err := s.database.TryStartManualSync(persistCtx)
 	if err != nil {
 		s.logError("scheduler_sync_start_failed", err)
 		return
@@ -137,20 +142,20 @@ func (s *PeriodicScheduler) runSyncTick(ctx context.Context) {
 		return
 	}
 	if s.runner == nil {
-		_ = s.database.FinishManualSyncError(ctx, "sync_unavailable")
-		_ = s.runCleanup(ctx)
+		_ = s.database.FinishManualSyncError(persistCtx, "sync_unavailable")
+		_ = s.runCleanup(persistCtx)
 		return
 	}
 	if err := s.runner.Run(ctx); err != nil {
-		_ = s.database.FinishManualSyncError(ctx, "sync_failed")
-		_ = s.runCleanup(ctx)
+		_ = s.database.FinishManualSyncError(persistCtx, "sync_failed")
+		_ = s.runCleanup(persistCtx)
 		s.logError("scheduler_sync_failed", err)
 		return
 	}
-	if err := s.runCleanup(ctx); err != nil {
+	if err := s.runCleanup(persistCtx); err != nil {
 		s.logError("scheduler_sync_cleanup_failed", err)
 	}
-	if err := s.database.FinishManualSyncSuccess(ctx); err != nil {
+	if err := s.database.FinishManualSyncSuccess(persistCtx); err != nil {
 		s.logError("scheduler_sync_finish_failed", err)
 	}
 }

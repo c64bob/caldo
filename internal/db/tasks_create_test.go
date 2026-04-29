@@ -68,8 +68,12 @@ func TestInsertPendingTaskAndStatusTransitions(t *testing.T) {
 		t.Fatalf("insert pending task: %v", err)
 	}
 
-	if err := database.MarkTaskCreateSynced(context.Background(), taskID, `"etag-1"`); err != nil {
+	version, err := database.MarkTaskCreateSynced(context.Background(), taskID, `"etag-1"`)
+	if err != nil {
 		t.Fatalf("mark synced: %v", err)
+	}
+	if version != 2 {
+		t.Fatalf("expected returned version 2, got %d", version)
 	}
 
 	var syncStatus string

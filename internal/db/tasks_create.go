@@ -105,8 +105,8 @@ INSERT INTO tasks (
 	return taskID, nil
 }
 
-// MarkTaskCreateSynced marks a pending task as synced and stores the returned ETag.
-func (d *Database) MarkTaskCreateSynced(ctx context.Context, taskID string, etag string) error {
+// MarkTaskCreateSynced marks a pending task as synced, stores the returned ETag, and returns the committed server version.
+func (d *Database) MarkTaskCreateSynced(ctx context.Context, taskID string, etag string) (int, error) {
 	d.WriteMu.Lock()
 	defer d.WriteMu.Unlock()
 
@@ -119,18 +119,23 @@ SET etag = ?,
 WHERE id = ?;
 `, nullableString(etag), taskID)
 	if err != nil {
-		return fmt.Errorf("mark task create synced: update task: %w", err)
+		return 0, fmt.Errorf("mark task create synced: update task: %w", err)
 	}
 
 	affected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("mark task create synced: read affected rows: %w", err)
+		return 0, fmt.Errorf("mark task create synced: read affected rows: %w", err)
 	}
 	if affected != 1 {
-		return fmt.Errorf("mark task create synced: expected 1 row affected, got %d", affected)
+		return 0, fmt.Errorf("mark task create synced: expected 1 row affected, got %d", affected)
 	}
 
-	return nil
+	var serverVersion int
+	if err := d.Conn.QueryRowContext(ctx, `SELECT server_version FROM tasks WHERE id = ?;`, taskID).Scan(&serverVersion); err != nil {
+		return 0, fmt.Errorf("mark task create synced: load server version: %w", err)
+	}
+
+	return serverVersion, nil
 }
 
 // MarkTaskCreateError marks a pending task as error when synchronous CalDAV create fails.

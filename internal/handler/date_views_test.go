@@ -100,6 +100,45 @@ func TestOverdueRouteRespectsShowCompletedSetting(t *testing.T) {
 	}
 }
 
+func TestAdditionalSystemFilters(t *testing.T) {
+	t.Parallel()
+
+	database := openDateViewRouteDB(t)
+	seedDateViewRouteTasks(t, database)
+
+	checkContains := func(path string, handler http.HandlerFunc, mustContain string) {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		if rr.Code != http.StatusOK {
+			t.Fatalf("unexpected status for %s: got %d want %d", path, rr.Code, http.StatusOK)
+		}
+		if !strings.Contains(rr.Body.String(), mustContain) {
+			t.Fatalf("response for %s missing %q", path, mustContain)
+		}
+	}
+
+	checkContains("/favorites", Favorites(dateViewDependencies{database: database, now: fixedNow}), "Favorisierte Aufgabe")
+	checkContains("/no-date", NoDate(dateViewDependencies{database: database, now: fixedNow}), "Ohne Fälligkeit")
+
+	req := httptest.NewRequest(http.MethodGet, "/completed", nil)
+	rr := httptest.NewRecorder()
+	Completed(dateViewDependencies{database: database, now: fixedNow}).ServeHTTP(rr, req)
+	if strings.Contains(rr.Body.String(), "Überfällig erledigt") {
+		t.Fatal("completed tasks must be hidden when show_completed is false")
+	}
+
+	if _, err := database.Conn.Exec(`UPDATE settings SET show_completed = TRUE WHERE id = 'default';`); err != nil {
+		t.Fatalf("enable show_completed: %v", err)
+	}
+	rr = httptest.NewRecorder()
+	Completed(dateViewDependencies{database: database, now: fixedNow}).ServeHTTP(rr, req)
+	if !strings.Contains(rr.Body.String(), "Überfällig erledigt") {
+		t.Fatal("completed tasks must be visible when show_completed is true")
+	}
+}
+
 func fixedNow() time.Time {
 	return time.Date(2026, 4, 28, 10, 0, 0, 0, time.UTC)
 }
@@ -138,7 +177,8 @@ INSERT INTO tasks (
 ('task-today-active','project-1','uid-today-active','/calendars/work/task-today-active.ics','"etag-3"',1,'Heute Aufgabe','','needs-action','BEGIN:VTODO\nUID:uid-today-active\nEND:VTODO','BEGIN:VTODO\nUID:uid-today-active\nEND:VTODO','','Work','synced','2026-04-28',NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
 ('task-upcoming-in-range','project-1','uid-upcoming-in-range','/calendars/work/task-upcoming-in-range.ics','"etag-4"',1,'Bald Aufgabe','','needs-action','BEGIN:VTODO\nUID:uid-upcoming-in-range\nEND:VTODO','BEGIN:VTODO\nUID:uid-upcoming-in-range\nEND:VTODO','','Work','synced','2026-05-01',NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
 ('task-upcoming-day7','project-1','uid-upcoming-day7','/calendars/work/task-upcoming-day7.ics','"etag-5"',1,'In 7 Tagen','','needs-action','BEGIN:VTODO\nUID:uid-upcoming-day7\nEND:VTODO','BEGIN:VTODO\nUID:uid-upcoming-day7\nEND:VTODO','','Work','synced','2026-05-05',NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-('task-without-due','project-1','uid-without-due','/calendars/work/task-without-due.ics','"etag-6"',1,'Ohne Fälligkeit','','needs-action','BEGIN:VTODO\nUID:uid-without-due\nEND:VTODO','BEGIN:VTODO\nUID:uid-without-due\nEND:VTODO','','Work','synced',NULL,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+('task-without-due','project-1','uid-without-due','/calendars/work/task-without-due.ics','"etag-6"',1,'Ohne Fälligkeit','','needs-action','BEGIN:VTODO\nUID:uid-without-due\nEND:VTODO','BEGIN:VTODO\nUID:uid-without-due\nEND:VTODO','','Work','synced',NULL,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('task-favorite','project-1','uid-favorite','/calendars/work/task-favorite.ics','"etag-7"',1,'Favorisierte Aufgabe','','needs-action','BEGIN:VTODO\nUID:uid-favorite\nEND:VTODO','BEGIN:VTODO\nUID:uid-favorite\nEND:VTODO','STARRED,Work','Work','synced',NULL,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
 `); err != nil {
 		t.Fatalf("seed date view tasks: %v", err)
 	}

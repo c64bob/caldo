@@ -25,6 +25,7 @@ type PeriodicScheduler struct {
 	mu       sync.Mutex
 	started  bool
 	cancel   context.CancelFunc
+	done     chan struct{}
 	interval time.Duration
 }
 
@@ -45,23 +46,33 @@ func (s *PeriodicScheduler) Start(ctx context.Context) error {
 	}
 	loopCtx, cancel := context.WithCancel(ctx)
 	s.cancel = cancel
+	s.done = make(chan struct{})
 	s.started = true
-	go s.run(loopCtx)
+	done := s.done
+	go s.run(loopCtx, done)
 	return nil
 }
 
 // Stop stops the scheduler loop.
 func (s *PeriodicScheduler) Stop(ctx context.Context) error {
-	_ = ctx
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if !s.started {
+		s.mu.Unlock()
 		return nil
 	}
 	s.cancel()
+	done := s.done
 	s.cancel = nil
+	s.done = nil
 	s.started = false
-	return nil
+	s.mu.Unlock()
+
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // SetInterval updates the active scheduler interval and restarts the loop.
@@ -70,19 +81,30 @@ func (s *PeriodicScheduler) SetInterval(ctx context.Context, interval time.Durat
 		return fmt.Errorf("set interval: invalid interval")
 	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.interval = interval
 	if !s.started {
+		s.mu.Unlock()
 		return nil
 	}
 	s.cancel()
+	done := s.done
 	loopCtx, cancel := context.WithCancel(ctx)
 	s.cancel = cancel
-	go s.run(loopCtx)
-	return nil
+	s.done = make(chan struct{})
+	newDone := s.done
+	go s.run(loopCtx, newDone)
+	s.mu.Unlock()
+
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
-func (s *PeriodicScheduler) run(ctx context.Context) {
+func (s *PeriodicScheduler) run(ctx context.Context, done chan struct{}) {
+	defer close(done)
 	ticker := time.NewTicker(s.currentInterval())
 	defer ticker.Stop()
 	for {

@@ -24,8 +24,18 @@ func (d *Database) RecordRemoteEditDeleteConflict(ctx context.Context, taskID st
 }
 
 // RecordRemoteDeleteEditConflict stores a conflict where a local deletion meets a remote edit.
-func (d *Database) RecordRemoteDeleteEditConflict(ctx context.Context, taskID string, expectedVersion int, baseVTODO string, remoteVTODO string) error {
-	return d.recordRemoteConflict(ctx, taskID, expectedVersion, conflictTypeDeleteEdit, baseVTODO, "", remoteVTODO)
+func (d *Database) RecordRemoteDeleteEditConflict(ctx context.Context, baseVTODO string, remoteVTODO string) error {
+	d.WriteMu.Lock()
+	defer d.WriteMu.Unlock()
+
+	if _, err := d.Conn.ExecContext(ctx, `
+INSERT INTO conflicts (id, task_id, project_id, conflict_type, created_at, base_vtodo, local_vtodo, remote_vtodo)
+VALUES (?, NULL, NULL, ?, CURRENT_TIMESTAMP, ?, NULL, ?);
+`, uuid.NewString(), conflictTypeDeleteEdit, baseVTODO, remoteVTODO); err != nil {
+		return fmt.Errorf("record remote field conflict: insert conflict: %w", err)
+	}
+
+	return nil
 }
 
 func (d *Database) recordRemoteConflict(ctx context.Context, taskID string, expectedVersion int, conflictType string, baseVTODO string, localVTODO string, remoteVTODO string) error {

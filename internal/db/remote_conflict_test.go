@@ -65,10 +65,10 @@ VALUES ('task-1','project-1','uid-1','/cal/work/task-1.ics','"e1"',5,'Task','nee
 		t.Fatal(err)
 	}
 
-	err = database.RecordRemoteDeleteEditConflict(context.Background(), "task-1", 5, "base", "remote")
+	err = database.RecordRemoteDeleteEditConflict(context.Background(), "base", "remote")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM conflicts WHERE task_id='task-1' AND conflict_type='delete_edit' AND base_vtodo='base' AND local_vtodo IS NULL AND remote_vtodo='remote';`, 1)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM conflicts WHERE task_id IS NULL AND conflict_type='delete_edit' AND base_vtodo='base' AND local_vtodo IS NULL AND remote_vtodo='remote';`, 1)
 }

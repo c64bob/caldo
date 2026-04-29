@@ -15,10 +15,10 @@ import (
 )
 
 type stubTaskCreateTodoClient struct {
-	etag string
-	err  error
-	href string
-	raw  string
+	etag  string
+	err   error
+	href  string
+	raw   string
 	after func()
 }
 
@@ -47,7 +47,7 @@ func TestTaskCreateSuccessPersistsSyncedTask(t *testing.T) {
 	stub := &stubTaskCreateTodoClient{etag: `"etag-1"`}
 	h := TaskCreate(taskCreateDependencies{database: database, encryptionKey: key, todos: stub})
 
-	form := url.Values{"title": {"Buy milk"}}
+	form := url.Values{"title": {"Buy milk"}, "labels": {"finance,home"}, "priority": {"high"}}
 	req := httptest.NewRequest(http.MethodPost, "/tasks", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr := httptest.NewRecorder()
@@ -58,6 +58,12 @@ func TestTaskCreateSuccessPersistsSyncedTask(t *testing.T) {
 	}
 	if !strings.Contains(stub.raw, "SUMMARY:Buy milk") {
 		t.Fatalf("expected summary in raw payload: %q", stub.raw)
+	}
+	if !strings.Contains(stub.raw, "CATEGORIES:finance,home") {
+		t.Fatalf("expected categories in raw payload: %q", stub.raw)
+	}
+	if !strings.Contains(stub.raw, "PRIORITY:1") {
+		t.Fatalf("expected priority in raw payload: %q", stub.raw)
 	}
 	if !strings.HasPrefix(stub.href, "/cal/inbox/") || !strings.HasSuffix(stub.href, ".ics") {
 		t.Fatalf("unexpected href: %q", stub.href)

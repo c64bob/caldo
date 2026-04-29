@@ -176,3 +176,18 @@ WHERE id = ?;
 	}
 	return project, nil
 }
+
+// LoadProjectByName resolves a project by display name for quick-add token handling.
+func (d *Database) LoadProjectByName(ctx context.Context, projectName string) (TaskProject, error) {
+	var project TaskProject
+	err := d.Conn.QueryRowContext(ctx, `
+SELECT id, calendar_href, display_name
+FROM projects
+WHERE lower(trim(display_name)) = lower(trim(?))
+LIMIT 1;
+`, projectName).Scan(&project.ID, &project.CalendarHref, &project.DisplayName)
+	if err != nil {
+		return TaskProject{}, err
+	}
+	return project, nil
+}

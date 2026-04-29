@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"database/sql"
 	"net/http"
 	"strings"
 
@@ -28,6 +29,7 @@ func QuickAddPreview(deps quickAddDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		text := strings.TrimSpace(r.FormValue("text"))
 		draft := parser.ParseQuickAdd(text)
+		requestedProject := draft.Project
 		if draft.Title == "" {
 			http.Error(w, "title is required", http.StatusBadRequest)
 			return
@@ -36,6 +38,16 @@ func QuickAddPreview(deps quickAddDependencies) http.HandlerFunc {
 		if err == nil {
 			draft.ProjectID = project.ID
 			draft.Project = project.DisplayName
+		}
+		if requestedProject != "" {
+			tokenProject, tokenErr := deps.database.LoadProjectByName(r.Context(), requestedProject)
+			if tokenErr == nil {
+				draft.ProjectID = tokenProject.ID
+				draft.Project = tokenProject.DisplayName
+			} else if tokenErr == sql.ErrNoRows {
+				draft.Project = requestedProject
+				draft.ProjectUnresolved = true
+			}
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := view.QuickAddPreview(draft, text).Render(r.Context(), w); err != nil {

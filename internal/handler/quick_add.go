@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"database/sql"
 	"net/http"
 	"strings"
 
@@ -33,7 +34,15 @@ func QuickAddPreview(deps quickAddDependencies) http.HandlerFunc {
 			return
 		}
 		project, err := deps.database.ResolveTaskProject(r.Context(), "")
-		if err == nil {
+		if draft.Project != "" {
+			tokenProject, tokenErr := deps.database.LoadProjectByName(r.Context(), draft.Project)
+			if tokenErr == nil {
+				draft.ProjectID = tokenProject.ID
+				draft.Project = tokenProject.DisplayName
+			} else if tokenErr == sql.ErrNoRows {
+				draft.ProjectNew = true
+			}
+		} else if err == nil {
 			draft.ProjectID = project.ID
 			draft.Project = project.DisplayName
 		}

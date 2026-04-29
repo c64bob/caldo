@@ -151,6 +151,9 @@ func parseQuickAddRecurrence(value string) *string {
 	if recurrence == "" {
 		return nil
 	}
+	if strings.ContainsAny(recurrence, "\r\n") {
+		return nil
+	}
 	return &recurrence
 }
 

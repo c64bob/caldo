@@ -83,6 +83,35 @@ func TestTaskCreateSuccessPersistsSyncedTask(t *testing.T) {
 	}
 }
 
+func TestTaskCreateRejectsRecurrenceWithCRLF(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskCreateHandlerTest(t)
+	seedTaskCreateHandlerProject(t, database)
+
+	key := bytes.Repeat([]byte{0x55}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	stub := &stubTaskCreateTodoClient{etag: `"etag-1"`}
+	h := TaskCreate(taskCreateDependencies{database: database, encryptionKey: key, todos: stub})
+
+	form := url.Values{"title": {"Buy milk"}, "recurrence": {"FREQ=DAILY\r\nATTENDEE:mailto:evil@example.com"}}
+	req := httptest.NewRequest(http.MethodPost, "/tasks", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+	if strings.Contains(stub.raw, "RRULE:") {
+		t.Fatalf("expected recurrence to be rejected from raw payload: %q", stub.raw)
+	}
+	if strings.Contains(stub.raw, "ATTENDEE:") {
+		t.Fatalf("expected injected line to be rejected from raw payload: %q", stub.raw)
+	}
+}
 func TestTaskCreateCalDAVFailureMarksTaskError(t *testing.T) {
 	t.Parallel()
 	database := openSQLiteForTaskCreateHandlerTest(t)

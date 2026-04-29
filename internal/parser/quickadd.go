@@ -1,11 +1,11 @@
 package parser
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
 )
-
 
 // QuickAddDraft contains parsed quick-add values for preview and persistence.
 type QuickAddDraft struct {
@@ -29,6 +29,7 @@ func parseQuickAddAt(input string, now time.Time) QuickAddDraft {
 	tokens := strings.Fields(strings.TrimSpace(input))
 	draft := QuickAddDraft{Labels: make([]string, 0)}
 	titleTokens := make([]string, 0, len(tokens))
+	remainingAfterRecurrence := make([]string, 0, len(tokens))
 
 	for _, token := range tokens {
 		switch {
@@ -53,11 +54,83 @@ func parseQuickAddAt(input string, now time.Time) QuickAddDraft {
 
 		titleTokens = append(titleTokens, token)
 	}
+	draft.Recurrence, remainingAfterRecurrence = parseNaturalRecurrence(titleTokens)
 
-	dueDate, remaining := parseNaturalDue(titleTokens, now)
+	dueDate, remaining := parseNaturalDue(remainingAfterRecurrence, now)
 	draft.Due = dueDate
 	draft.Title = strings.Join(remaining, " ")
 	return draft
+}
+
+func parseNaturalRecurrence(tokens []string) (string, []string) {
+	remaining := make([]string, 0, len(tokens))
+	for i := 0; i < len(tokens); {
+		matched, rrule, consumed := matchRecurrenceToken(tokens, i)
+		if matched {
+			return rrule, append(remaining, tokens[i+consumed:]...)
+		}
+		remaining = append(remaining, tokens[i])
+		i++
+	}
+	return "", remaining
+}
+
+func matchRecurrenceToken(tokens []string, i int) (bool, string, int) {
+	n := len(tokens)
+	lower := strings.ToLower(tokens[i])
+	switch lower {
+	case "täglich", "daily":
+		return true, "FREQ=DAILY", 1
+	case "wöchentlich", "weekly":
+		return true, "FREQ=WEEKLY", 1
+	case "monatlich", "monthly":
+		return true, "FREQ=MONTHLY", 1
+	case "jährlich", "yearly":
+		return true, "FREQ=YEARLY", 1
+	case "werktags", "weekdays":
+		return true, "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", 1
+	}
+
+	if i+1 < n && (lower == "jeden" || lower == "every") {
+		if wd, ok := weekdayToken(tokens[i+1]); ok {
+			return true, "FREQ=WEEKLY;BYDAY=" + weekdayToICal(wd), 2
+		}
+	}
+
+	if i+2 < n && lower == "alle" {
+		if interval, err := strconv.Atoi(tokens[i+1]); err == nil && interval > 0 {
+			switch strings.ToLower(tokens[i+2]) {
+			case "tag", "tage", "tagen":
+				return true, fmt.Sprintf("FREQ=DAILY;INTERVAL=%d", interval), 3
+			case "woche", "wochen":
+				return true, fmt.Sprintf("FREQ=WEEKLY;INTERVAL=%d", interval), 3
+			case "monat", "monate", "monaten":
+				return true, fmt.Sprintf("FREQ=MONTHLY;INTERVAL=%d", interval), 3
+			}
+		}
+	}
+	return false, "", 0
+}
+
+func weekdayToICal(wd time.Weekday) string {
+	switch wd {
+	case time.Monday:
+		return "MO"
+	case time.Tuesday:
+		return "TU"
+	case time.Wednesday:
+		return "WE"
+	case time.Thursday:
+		return "TH"
+	case time.Friday:
+		return "FR"
+	case time.Saturday:
+		return "SA"
+	case time.Sunday:
+		return "SU"
+	default:
+		return ""
+	}
 }
 
 func normalizePriorityToken(token string) (string, bool) {

@@ -81,3 +81,48 @@ func TestParseQuickAddUnknownTokensRemainInTitle(t *testing.T) {
 		t.Fatalf("unexpected title: %q", draft.Title)
 	}
 }
+
+func TestParseQuickAddRecurrencePatterns(t *testing.T) {
+	tests := []struct {
+		in        string
+		wantRRule string
+		wantTitle string
+	}{
+		{"Task jeden Montag", "FREQ=WEEKLY;BYDAY=MO", "Task"},
+		{"Task every monday", "FREQ=WEEKLY;BYDAY=MO", "Task"},
+		{"Task täglich", "FREQ=DAILY", "Task"},
+		{"Task daily", "FREQ=DAILY", "Task"},
+		{"Task wöchentlich", "FREQ=WEEKLY", "Task"},
+		{"Task weekly", "FREQ=WEEKLY", "Task"},
+		{"Task monatlich", "FREQ=MONTHLY", "Task"},
+		{"Task monthly", "FREQ=MONTHLY", "Task"},
+		{"Task jährlich", "FREQ=YEARLY", "Task"},
+		{"Task yearly", "FREQ=YEARLY", "Task"},
+		{"Task werktags", "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", "Task"},
+		{"Task weekdays", "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", "Task"},
+		{"Task alle 3 tage", "FREQ=DAILY;INTERVAL=3", "Task"},
+		{"Task alle 2 wochen", "FREQ=WEEKLY;INTERVAL=2", "Task"},
+		{"Task alle 4 monate", "FREQ=MONTHLY;INTERVAL=4", "Task"},
+	}
+
+	for _, tc := range tests {
+		draft := ParseQuickAdd(tc.in)
+		if draft.Recurrence != tc.wantRRule {
+			t.Fatalf("%q recurrence: got %q want %q", tc.in, draft.Recurrence, tc.wantRRule)
+		}
+		if draft.Title != tc.wantTitle {
+			t.Fatalf("%q title: got %q want %q", tc.in, draft.Title, tc.wantTitle)
+		}
+	}
+}
+
+func TestParseQuickAddUnsupportedComplexRecurrenceStaysNonRecurrence(t *testing.T) {
+	now := time.Date(2026, time.March, 4, 10, 0, 0, 0, time.UTC)
+	draft := parseQuickAddAt("Task every second monday", now)
+	if draft.Recurrence != "" {
+		t.Fatalf("expected no recurrence, got %q", draft.Recurrence)
+	}
+	if draft.Title != "Task every second" {
+		t.Fatalf("unexpected title: %q", draft.Title)
+	}
+}

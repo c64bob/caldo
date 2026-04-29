@@ -51,6 +51,26 @@ func TestTaskUndoPreconditionFailedMarksConflictKeepsSnapshot(t *testing.T) {
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE session_id='session-1' AND tab_id='tab-1';`, 1)
 }
 
+func TestTaskUndoDeletedTaskRecreatesResourceAndTaskRow(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskUndoHandlerTest(t)
+	seedTaskUndoHandlerData(t, database)
+	key := bytes.Repeat([]byte{0x6c}, 32)
+	_ = database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"})
+
+	h := TaskUndo(taskUpdateDependencies{database: database, encryptionKey: key, todos: &stubTaskUpdateTodoClient{createETag: `"etag-del"`}})
+	req := httptest.NewRequest(http.MethodPost, "/tasks/undo", nil)
+	req.Header.Set("X-Tab-ID", "tab-del")
+	req.Header.Set("X-Forwarded-User", "session-del")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%q", rr.Code, rr.Body.String())
+	}
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE session_id='session-del' AND tab_id='tab-del';`, 0)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM tasks WHERE uid='uid-del' AND sync_status='synced' AND etag='"etag-del"';`, 1)
+}
+
 func openSQLiteForTaskUndoHandlerTest(t *testing.T) *db.Database {
 	t.Helper()
 	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
@@ -76,6 +96,8 @@ INSERT INTO tasks (
 );
 INSERT INTO undo_snapshots (id, session_id, tab_id, task_id, action_type, snapshot_vtodo, snapshot_fields, etag_at_snapshot, created_at, expires_at)
 VALUES ('undo-1','session-1','tab-1','task-1','task_updated','BEGIN:VTODO\nUID:uid-1\nSUMMARY:before\nEND:VTODO',json_object('title','before','description','before description','status','completed','due_date','2026-05-01','due_at','2026-05-01T09:00:00Z','priority',3,'label_names','alpha,beta'),'"etag-1"',CURRENT_TIMESTAMP,DATETIME(CURRENT_TIMESTAMP,'+5 minutes'));
+INSERT INTO undo_snapshots (id, session_id, tab_id, task_id, action_type, snapshot_vtodo, snapshot_fields, etag_at_snapshot, created_at, expires_at)
+VALUES ('undo-del','session-del','tab-del','task-gone','task_deleted','BEGIN:VTODO\nUID:uid-del\nSUMMARY:before\nEND:VTODO',json_object('project_id','project-1','title','before','description','before description','status','needs-action','label_names','alpha'),'"etag-1"',CURRENT_TIMESTAMP,DATETIME(CURRENT_TIMESTAMP,'+5 minutes'));
 `); err != nil {
 		t.Fatalf("seed undo handler data: %v", err)
 	}

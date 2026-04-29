@@ -5,6 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"path"
+	"strings"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -23,6 +27,7 @@ type PreparedTaskUndo struct {
 	TaskID         string
 	ActionType     string
 	TodoHref       string
+	ProjectID      string
 	ExpectedETag   string
 	RawVTODO       string
 	PendingVersion int
@@ -68,10 +73,17 @@ WHERE session_id = ? AND tab_id = ?;
 		return PreparedTaskUndo{}, ErrUndoSnapshotExpired
 	}
 
-	if actionType != "task_updated" {
+	switch actionType {
+	case "task_updated":
+		return d.prepareTaskUpdateUndo(ctx, tx, snapshotID, taskID, snapshotVTODO, snapshotFields, etagAtSnapshot)
+	case "task_deleted":
+		return d.prepareTaskDeletedUndo(ctx, tx, snapshotID, snapshotVTODO, snapshotFields)
+	default:
 		return PreparedTaskUndo{}, ErrUndoActionNotSupported
 	}
+}
 
+func (d *Database) prepareTaskUpdateUndo(ctx context.Context, tx *sql.Tx, snapshotID, taskID, snapshotVTODO, snapshotFields string, etagAtSnapshot sql.NullString) (PreparedTaskUndo, error) {
 	var currentETag sql.NullString
 	var href string
 	var version int
@@ -124,7 +136,74 @@ WHERE id = ? AND server_version = ?;
 	}
 	tx = nil
 
-	return PreparedTaskUndo{SnapshotID: snapshotID, TaskID: taskID, ActionType: actionType, TodoHref: href, ExpectedETag: currentETag.String, RawVTODO: snapshotVTODO, PendingVersion: version + 1}, nil
+	return PreparedTaskUndo{SnapshotID: snapshotID, TaskID: taskID, ActionType: "task_updated", TodoHref: href, ExpectedETag: currentETag.String, RawVTODO: snapshotVTODO, PendingVersion: version + 1}, nil
+}
+
+func (d *Database) prepareTaskDeletedUndo(ctx context.Context, tx *sql.Tx, snapshotID, snapshotVTODO, snapshotFields string) (PreparedTaskUndo, error) {
+	var projectID string
+	if err := tx.QueryRowContext(ctx, `SELECT json_extract(?, '$.project_id');`, snapshotFields).Scan(&projectID); err != nil {
+		return PreparedTaskUndo{}, fmt.Errorf("prepare task undo: load deleted snapshot project id: %w", err)
+	}
+	var calendarHref string
+	var projectName string
+	if err := tx.QueryRowContext(ctx, `SELECT calendar_href, display_name FROM projects WHERE id = ?;`, projectID).Scan(&calendarHref, &projectName); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return PreparedTaskUndo{}, ErrTaskNotFound
+		}
+		return PreparedTaskUndo{}, fmt.Errorf("prepare task undo: load deleted snapshot project: %w", err)
+	}
+
+	taskID := uuid.NewString()
+	uid := extractUIDFromVTODO(snapshotVTODO)
+	href := buildTaskHref(calendarHref, uid)
+
+	result, err := tx.ExecContext(ctx, `
+INSERT INTO tasks (
+    id, project_id, uid, href, title, description, status, due_date, due_at, priority, label_names,
+    raw_vtodo, base_vtodo, project_name, sync_status, created_at, updated_at
+) VALUES (
+    ?, ?, ?, ?, json_extract(?, '$.title'), json_extract(?, '$.description'), json_extract(?, '$.status'),
+    json_extract(?, '$.due_date'), json_extract(?, '$.due_at'), json_extract(?, '$.priority'), json_extract(?, '$.label_names'),
+    ?, ?, ?, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+);
+`, taskID, projectID, uid, href, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotVTODO, snapshotVTODO, projectName)
+	if err != nil {
+		return PreparedTaskUndo{}, fmt.Errorf("prepare task undo: insert deleted task pending: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return PreparedTaskUndo{}, fmt.Errorf("prepare task undo: read inserted rows: %w", err)
+	}
+	if affected != 1 {
+		return PreparedTaskUndo{}, ErrTaskVersionMismatch
+	}
+	if err := tx.Commit(); err != nil {
+		return PreparedTaskUndo{}, fmt.Errorf("prepare task undo: commit deleted task transaction: %w", err)
+	}
+	tx = nil
+	return PreparedTaskUndo{SnapshotID: snapshotID, TaskID: taskID, ActionType: "task_deleted", TodoHref: href, ProjectID: projectID, RawVTODO: snapshotVTODO, PendingVersion: 0}, nil
+}
+
+func extractUIDFromVTODO(rawVTODO string) string {
+	normalized := strings.ReplaceAll(rawVTODO, "\\n", "\n")
+	for _, line := range strings.Split(normalized, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(strings.ToUpper(trimmed), "UID:") {
+			uid := strings.TrimSpace(trimmed[4:])
+			if uid != "" {
+				return uid
+			}
+		}
+	}
+	return uuid.NewString()
+}
+
+func buildTaskHref(calendarHref, uid string) string {
+	trimmed := strings.TrimSpace(calendarHref)
+	if strings.HasSuffix(trimmed, "/") {
+		return trimmed + uid + ".ics"
+	}
+	return path.Clean(trimmed + "/" + uid + ".ics")
 }
 
 // DeleteUndoSnapshot deletes a single undo snapshot by id.

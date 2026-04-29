@@ -54,6 +54,23 @@ func TestPrepareTaskUndoETagMismatchMarksConflict(t *testing.T) {
 	assertSingleTextResult(t, db, `SELECT sync_status FROM tasks WHERE id='task-1';`, "conflict")
 }
 
+func TestPrepareTaskUndoDeletedTaskInsertsPendingCreate(t *testing.T) {
+	t.Parallel()
+	db := openTaskUndoTestDB(t)
+	seedTaskUndoData(t, db)
+
+	prepared, err := db.PrepareTaskUndo(context.Background(), "session-del", "tab-del")
+	if err != nil {
+		t.Fatalf("prepare deleted undo: %v", err)
+	}
+	if prepared.ActionType != "task_deleted" {
+		t.Fatalf("unexpected action type: %s", prepared.ActionType)
+	}
+	assertSingleTextResult(t, db, `SELECT uid FROM tasks WHERE id='`+prepared.TaskID+`';`, "uid-del")
+	assertSingleTextResult(t, db, `SELECT href FROM tasks WHERE id='`+prepared.TaskID+`';`, "/cal/inbox/uid-del.ics")
+	assertSingleTextResult(t, db, `SELECT sync_status FROM tasks WHERE id='`+prepared.TaskID+`';`, "pending")
+}
+
 func openTaskUndoTestDB(t *testing.T) *Database {
 	t.Helper()
 	database, err := OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
@@ -81,7 +98,8 @@ INSERT INTO undo_snapshots (id, session_id, tab_id, task_id, action_type, snapsh
 VALUES
 ('undo-1','session-1','tab-1','task-1','task_updated','BEGIN:VTODO\nUID:uid-1\nSUMMARY:before\nEND:VTODO',json_object('title','before','description','before description','status','completed','due_date','2026-05-01','due_at','2026-05-01T09:00:00Z','priority',3,'label_names','alpha,beta'),'"etag-1"',CURRENT_TIMESTAMP,DATETIME(CURRENT_TIMESTAMP,'+5 minutes')),
 ('undo-exp','session-exp','tab-exp','task-1','task_updated','BEGIN:VTODO\nUID:uid-1\nSUMMARY:before\nEND:VTODO',json_object('title','before','description','before description','status','completed','due_date','2026-05-01','due_at','2026-05-01T09:00:00Z','priority',3,'label_names','alpha,beta'),'"etag-1"',CURRENT_TIMESTAMP,DATETIME(CURRENT_TIMESTAMP,'-1 minutes')),
-('undo-mm','session-mm','tab-mm','task-1','task_updated','BEGIN:VTODO\nUID:uid-1\nSUMMARY:before\nEND:VTODO',json_object('title','before','description','before description','status','completed','due_date','2026-05-01','due_at','2026-05-01T09:00:00Z','priority',3,'label_names','alpha,beta'),'"etag-old"',CURRENT_TIMESTAMP,DATETIME(CURRENT_TIMESTAMP,'+5 minutes'));
+('undo-mm','session-mm','tab-mm','task-1','task_updated','BEGIN:VTODO\nUID:uid-1\nSUMMARY:before\nEND:VTODO',json_object('title','before','description','before description','status','completed','due_date','2026-05-01','due_at','2026-05-01T09:00:00Z','priority',3,'label_names','alpha,beta'),'"etag-old"',CURRENT_TIMESTAMP,DATETIME(CURRENT_TIMESTAMP,'+5 minutes')),
+('undo-del','session-del','tab-del','task-gone','task_deleted','BEGIN:VTODO\nUID:uid-del\nSUMMARY:deleted\nEND:VTODO',json_object('project_id','project-1','title','deleted','description','deleted desc','status','needs-action','label_names','home'),'"etag-del"',CURRENT_TIMESTAMP,DATETIME(CURRENT_TIMESTAMP,'+5 minutes'));
 `); err != nil {
 		t.Fatalf("seed undo data: %v", err)
 	}

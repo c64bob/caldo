@@ -95,13 +95,14 @@ func TaskCreate(deps taskCreateDependencies) http.HandlerFunc {
 
 		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskCreatePersistTimeout)
 		defer cancel()
-		if err := deps.database.MarkTaskCreateSynced(persistCtx, taskID, etag); err != nil {
+		serverVersion, err := deps.database.MarkTaskCreateSynced(persistCtx, taskID, etag)
+		if err != nil {
 			http.Error(w, "failed to persist synced task", http.StatusInternalServerError)
 			return
 		}
 
 		if deps.broker != nil {
-			deps.broker.publish(appEvent{Type: "task", Resource: taskID, Version: 1, OriginConnection: strings.TrimSpace(r.Header.Get("X-Tab-ID"))})
+			deps.broker.publish(appEvent{Type: "task", Resource: taskID, Version: serverVersion, OriginConnection: strings.TrimSpace(r.Header.Get("X-Tab-ID"))})
 		}
 
 		w.WriteHeader(http.StatusCreated)

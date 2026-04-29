@@ -131,9 +131,6 @@ func TaskUpdate(deps taskUpdateDependencies) http.HandlerFunc {
 		prepared, err := deps.database.PrepareTaskUpdate(r.Context(), input)
 		if err != nil {
 			if errors.Is(err, db.ErrTaskVersionMismatch) {
-				if deps.broker != nil {
-					deps.broker.publish(appEvent{Type: "conflict", Resource: taskID, Version: prepared.PendingVersion, OriginConnection: tabID})
-				}
 				http.Error(w, "task version conflict", http.StatusConflict)
 				return
 			}
@@ -194,7 +191,7 @@ func TaskUpdate(deps taskUpdateDependencies) http.HandlerFunc {
 		}
 
 		if deps.broker != nil {
-			deps.broker.publish(appEvent{Type: "task", Resource: taskID, Version: prepared.PendingVersion, OriginConnection: tabID})
+			deps.broker.publish(appEvent{Type: "task", Resource: taskID, Version: prepared.PendingVersion + 1, OriginConnection: tabID})
 		}
 
 		w.WriteHeader(http.StatusOK)

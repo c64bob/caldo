@@ -45,11 +45,18 @@ func (d *Database) PrepareTaskDelete(ctx context.Context, input TaskDeleteInput)
 	var snapshotETag sql.NullString
 	var snapshotHref string
 	var snapshotProjectID string
+	var snapshotTitle string
+	var snapshotDescription sql.NullString
+	var snapshotStatus string
+	var snapshotDueDate sql.NullString
+	var snapshotDueAt sql.NullTime
+	var snapshotPriority sql.NullInt64
+	var snapshotLabelNames sql.NullString
 	if err := tx.QueryRowContext(ctx, `
-SELECT raw_vtodo, etag, href, project_id
+SELECT raw_vtodo, etag, href, project_id, title, description, status, due_date, due_at, priority, label_names
 FROM tasks
 WHERE id = ? AND server_version = ?;
-`, input.TaskID, input.ExpectedVersion).Scan(&snapshotRaw, &snapshotETag, &snapshotHref, &snapshotProjectID); err != nil {
+`, input.TaskID, input.ExpectedVersion).Scan(&snapshotRaw, &snapshotETag, &snapshotHref, &snapshotProjectID, &snapshotTitle, &snapshotDescription, &snapshotStatus, &snapshotDueDate, &snapshotDueAt, &snapshotPriority, &snapshotLabelNames); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return PreparedTaskDelete{}, ErrTaskVersionMismatch
 		}
@@ -60,7 +67,7 @@ WHERE id = ? AND server_version = ?;
 	if _, err := tx.ExecContext(ctx, `
 INSERT INTO undo_snapshots (
     id, session_id, tab_id, task_id, action_type, snapshot_vtodo, snapshot_fields, etag_at_snapshot, created_at, expires_at
-) VALUES (?, ?, ?, ?, 'task_deleted', ?, json_object('project_id', ?), ?, CURRENT_TIMESTAMP, ?)
+) VALUES (?, ?, ?, ?, 'task_deleted', ?, json_object('project_id', ?, 'title', ?, 'description', ?, 'status', ?, 'due_date', ?, 'due_at', ?, 'priority', ?, 'label_names', ?), ?, CURRENT_TIMESTAMP, ?)
 ON CONFLICT(session_id, tab_id) DO UPDATE SET
     id = excluded.id,
     task_id = excluded.task_id,
@@ -70,7 +77,7 @@ ON CONFLICT(session_id, tab_id) DO UPDATE SET
     etag_at_snapshot = excluded.etag_at_snapshot,
     created_at = CURRENT_TIMESTAMP,
     expires_at = excluded.expires_at;
-`, uuid.NewString(), input.SessionID, input.TabID, input.TaskID, snapshotRaw, snapshotProjectID, nullableString(snapshotETag.String), expiresAt.Format("2006-01-02T15:04:05Z")); err != nil {
+`, uuid.NewString(), input.SessionID, input.TabID, input.TaskID, snapshotRaw, snapshotProjectID, snapshotTitle, nullableString(snapshotDescription.String), snapshotStatus, nullableString(snapshotDueDate.String), nullableTimeToRFC3339(snapshotDueAt), nullableInt64(snapshotPriority), nullableString(snapshotLabelNames.String), nullableString(snapshotETag.String), expiresAt.Format("2006-01-02T15:04:05Z")); err != nil {
 		return PreparedTaskDelete{}, fmt.Errorf("prepare task delete: upsert undo snapshot: %w", err)
 	}
 

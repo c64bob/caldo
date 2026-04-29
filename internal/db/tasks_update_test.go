@@ -54,6 +54,14 @@ func TestPrepareTaskUpdateCreatesUndoSnapshotAndMarksPending(t *testing.T) {
 	if snapshotCount != 1 {
 		t.Fatalf("expected one snapshot, got %d", snapshotCount)
 	}
+
+	var snapshotTitle, snapshotStatus, snapshotLabelNames, snapshotEtag string
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT json_extract(snapshot_fields, '$.title'), json_extract(snapshot_fields, '$.status'), json_extract(snapshot_fields, '$.label_names'), etag_at_snapshot FROM undo_snapshots WHERE session_id = 'session-1' AND tab_id = 'tab-1';`).Scan(&snapshotTitle, &snapshotStatus, &snapshotLabelNames, &snapshotEtag); err != nil {
+		t.Fatalf("query undo snapshot fields: %v", err)
+	}
+	if snapshotTitle != "old" || snapshotStatus != "needs-action" || snapshotLabelNames != "home" || snapshotEtag != "\"etag-1\"" {
+		t.Fatalf("unexpected snapshot data: title=%q status=%q labels=%q etag=%q", snapshotTitle, snapshotStatus, snapshotLabelNames, snapshotEtag)
+	}
 }
 
 func TestPrepareTaskUpdateRejectsVersionMismatch(t *testing.T) {

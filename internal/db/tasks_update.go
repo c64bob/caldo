@@ -123,11 +123,18 @@ func (d *Database) PrepareTaskUpdate(ctx context.Context, input TaskUpdateInput)
 	var snapshotRaw string
 	var snapshotETag sql.NullString
 	var snapshotHref string
+	var snapshotTitle string
+	var snapshotDescription sql.NullString
+	var snapshotStatus string
+	var snapshotDueDate sql.NullString
+	var snapshotDueAt sql.NullTime
+	var snapshotPriority sql.NullInt64
+	var snapshotLabelNames sql.NullString
 	if err := tx.QueryRowContext(ctx, `
-SELECT raw_vtodo, etag, href
+SELECT raw_vtodo, etag, href, title, description, status, due_date, due_at, priority, label_names
 FROM tasks
 WHERE id = ? AND server_version = ?;
-`, input.TaskID, input.ExpectedVersion).Scan(&snapshotRaw, &snapshotETag, &snapshotHref); err != nil {
+`, input.TaskID, input.ExpectedVersion).Scan(&snapshotRaw, &snapshotETag, &snapshotHref, &snapshotTitle, &snapshotDescription, &snapshotStatus, &snapshotDueDate, &snapshotDueAt, &snapshotPriority, &snapshotLabelNames); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return PreparedTaskUpdate{}, ErrTaskVersionMismatch
 		}
@@ -138,7 +145,7 @@ WHERE id = ? AND server_version = ?;
 	if _, err := tx.ExecContext(ctx, `
 INSERT INTO undo_snapshots (
     id, session_id, tab_id, task_id, action_type, snapshot_vtodo, snapshot_fields, etag_at_snapshot, created_at, expires_at
-) VALUES (?, ?, ?, ?, 'task_updated', ?, '{}', ?, CURRENT_TIMESTAMP, ?)
+) VALUES (?, ?, ?, ?, 'task_updated', ?, json_object('title', ?, 'description', ?, 'status', ?, 'due_date', ?, 'due_at', ?, 'priority', ?, 'label_names', ?), ?, CURRENT_TIMESTAMP, ?)
 ON CONFLICT(session_id, tab_id) DO UPDATE SET
     id = excluded.id,
     task_id = excluded.task_id,
@@ -148,7 +155,7 @@ ON CONFLICT(session_id, tab_id) DO UPDATE SET
     etag_at_snapshot = excluded.etag_at_snapshot,
     created_at = CURRENT_TIMESTAMP,
     expires_at = excluded.expires_at;
-`, uuid.NewString(), input.SessionID, input.TabID, input.TaskID, snapshotRaw, nullableString(snapshotETag.String), expiresAt.Format("2006-01-02T15:04:05Z")); err != nil {
+`, uuid.NewString(), input.SessionID, input.TabID, input.TaskID, snapshotRaw, snapshotTitle, nullableString(snapshotDescription.String), snapshotStatus, nullableString(snapshotDueDate.String), nullableTimeToRFC3339(snapshotDueAt), nullableInt64(snapshotPriority), nullableString(snapshotLabelNames.String), nullableString(snapshotETag.String), expiresAt.Format("2006-01-02T15:04:05Z")); err != nil {
 		return PreparedTaskUpdate{}, fmt.Errorf("prepare task update: upsert undo snapshot: %w", err)
 	}
 
@@ -366,4 +373,18 @@ ORDER BY id;
 	}
 
 	return subtaskIDs, nil
+}
+
+func nullableTimeToRFC3339(value sql.NullTime) any {
+	if !value.Valid {
+		return nil
+	}
+	return value.Time.UTC().Format(time.RFC3339)
+}
+
+func nullableInt64(value sql.NullInt64) any {
+	if !value.Valid {
+		return nil
+	}
+	return value.Int64
 }

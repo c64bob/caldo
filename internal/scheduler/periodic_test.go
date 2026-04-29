@@ -17,6 +17,45 @@ type stubRunner struct {
 	ignoreContext bool
 }
 
+func TestPeriodicSchedulerRunSyncTickCleansUpArtifacts(t *testing.T) {
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	now := time.Now().UTC()
+	if _, err := database.Conn.ExecContext(context.Background(), `
+INSERT INTO projects (id, calendar_href, display_name, sync_strategy, created_at, updated_at)
+VALUES ('project-1', '/cal/p1/', 'Project 1', 'fullscan', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT INTO undo_snapshots (id, session_id, tab_id, task_id, action_type, snapshot_vtodo, snapshot_fields, created_at, expires_at)
+VALUES ('undo-expired', 's1', 't1', 'task-1', 'task_updated', 'BEGIN:VTODO\nEND:VTODO', '{}', CURRENT_TIMESTAMP, ?);
+INSERT INTO conflicts (id, task_id, project_id, conflict_type, created_at, resolved_at)
+VALUES ('conflict-old', 'task-1', 'project-1', 'field_conflict', CURRENT_TIMESTAMP, DATETIME(CURRENT_TIMESTAMP, '-8 days'));
+`, now.Add(-time.Minute)); err != nil {
+		t.Fatalf("seed cleanup data: %v", err)
+	}
+
+	runner := &stubRunner{}
+	s := NewPeriodicScheduler(nil, database, runner)
+	s.lastResolvedConflictCleanup = now.Add(-25 * time.Hour)
+	s.runSyncTick(context.Background())
+
+	var count int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM undo_snapshots`).Scan(&count); err != nil {
+		t.Fatalf("count undo snapshots: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected expired undo snapshots deleted, got %d", count)
+	}
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM conflicts WHERE id = 'conflict-old'`).Scan(&count); err != nil {
+		t.Fatalf("count conflicts: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected old resolved conflict deleted, got %d", count)
+	}
+}
+
 func (s *stubRunner) Run(ctx context.Context) error {
 	s.mu.Lock()
 	s.runs++

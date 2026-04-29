@@ -75,6 +75,12 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 			todos:         caldav.NewTodoClient(nil),
 			broker:        syncBroker,
 		}))
+		taskRouter.Post("/undo", TaskUndo(taskUpdateDependencies{
+			database:      database,
+			encryptionKey: csrfSecret,
+			todos:         caldav.NewTodoClient(nil),
+			broker:        syncBroker,
+		}))
 	})
 
 	router.Route("/projects", func(projectRouter chi.Router) {

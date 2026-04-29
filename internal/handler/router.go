@@ -21,6 +21,8 @@ var staticAssetsRoot = defaultStaticAssetsRoot()
 // NewRouter returns the HTTP router for Caldo.
 func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Manifest, setupComplete bool, csrfSecret []byte, database *db.Database, lifecycleCtx context.Context, scheduler SetupSchedulerStarter) http.Handler {
 	router := chi.NewRouter()
+	syncBroker := newSyncEventBroker()
+	syncDeps := syncDependencies{database: database, broker: syncBroker}
 	setupState := NewSetupState(setupComplete)
 	router.Use(RequestIDMiddleware())
 	router.Use(RecoveryMiddleware(logger))
@@ -36,6 +38,8 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 	router.Get("/upcoming", Upcoming(dateViewDependencies{database: database}))
 	router.Get("/overdue", Overdue(dateViewDependencies{database: database}))
 	router.Get("/search", Search(searchDependencies{database: database}))
+	router.Get("/events", SyncEvents(syncDeps))
+	router.Get("/sync/status", SyncStatus(syncDeps))
 	router.Handle("/static/*", staticFileServer(staticAssetsRoot))
 
 	router.Route("/tasks", func(taskRouter chi.Router) {
@@ -84,6 +88,11 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 			encryptionKey: csrfSecret,
 			calendar:      caldav.NewCalendarClient(nil),
 		}))
+	})
+
+	router.Route("/sync", func(syncRouter chi.Router) {
+		syncRouter.Use(SetupCSRFMiddleware(csrfSecret))
+		syncRouter.Post("/manual", ManualSync(syncDeps))
 	})
 
 	router.Route("/setup", func(setupRouter chi.Router) {

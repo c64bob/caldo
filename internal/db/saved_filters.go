@@ -113,14 +113,15 @@ func (d *Database) DeleteSavedFilter(ctx context.Context, id string, expectedVer
 	return nil
 }
 
-// EvaluateSavedFilter compiles the filter query. Invalid syntax returns an empty result set without error.
-func EvaluateSavedFilter(filterQuery string) (string, []any, bool, error) {
+// EvaluateSavedFilter compiles the filter query using the provided upcoming window in days.
+// Invalid syntax returns an empty result set without error.
+func EvaluateSavedFilter(filterQuery string, upcomingDays int) (string, []any, bool, error) {
 	tokens := query.LexFilter(filterQuery)
 	ast, err := query.ParseFilter(tokens)
 	if err != nil {
 		return "", nil, false, nil
 	}
-	where, args, err := query.CompileFilter(ast, query.CompileOptions{UpcomingDays: 7})
+	where, args, err := query.CompileFilter(ast, query.CompileOptions{UpcomingDays: upcomingDays})
 	if err != nil {
 		return "", nil, false, nil
 	}

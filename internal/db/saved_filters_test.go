@@ -46,7 +46,7 @@ func TestSavedFilterCRUDAndVersioning(t *testing.T) {
 }
 
 func TestEvaluateSavedFilterInvalidSyntaxReturnsEmpty(t *testing.T) {
-	where, args, ok, err := EvaluateSavedFilter("today AND (")
+	where, args, ok, err := EvaluateSavedFilter("today AND (", 7)
 	if err != nil {
 		t.Fatalf("evaluate saved filter: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestEvaluateSavedFilterInvalidSyntaxReturnsEmpty(t *testing.T) {
 }
 
 func TestEvaluateSavedFilterValidSyntax(t *testing.T) {
-	where, args, ok, err := EvaluateSavedFilter("today AND NOT completed:true")
+	where, args, ok, err := EvaluateSavedFilter("today AND NOT completed:true", 7)
 	if err != nil {
 		t.Fatalf("evaluate saved filter: %v", err)
 	}
@@ -65,5 +65,36 @@ func TestEvaluateSavedFilterValidSyntax(t *testing.T) {
 	}
 	if where == "" || len(args) == 0 {
 		t.Fatalf("expected compiled sql and args, got where=%q args=%v", where, args)
+	}
+}
+
+func TestEvaluateSavedFilterUsesProvidedUpcomingWindow(t *testing.T) {
+	whereThree, argsThree, ok, err := EvaluateSavedFilter("upcoming", 3)
+	if err != nil {
+		t.Fatalf("evaluate saved filter with 3-day window: %v", err)
+	}
+	if !ok {
+		t.Fatalf("expected valid query for 3-day window")
+	}
+
+	whereSeven, argsSeven, ok, err := EvaluateSavedFilter("upcoming", 7)
+	if err != nil {
+		t.Fatalf("evaluate saved filter with 7-day window: %v", err)
+	}
+	if !ok {
+		t.Fatalf("expected valid query for 7-day window")
+	}
+
+	if whereThree != whereSeven {
+		t.Fatalf("expected same sql template, got %q vs %q", whereThree, whereSeven)
+	}
+	if len(argsThree) != len(argsSeven) {
+		t.Fatalf("expected same arg length, got %d vs %d", len(argsThree), len(argsSeven))
+	}
+	if len(argsThree) < 2 || len(argsSeven) < 2 {
+		t.Fatalf("expected upcoming filter to produce date bounds, got %v and %v", argsThree, argsSeven)
+	}
+	if argsThree[1] == argsSeven[1] {
+		t.Fatalf("expected different upper bound dates for different upcoming windows, got %v", argsThree[1])
 	}
 }

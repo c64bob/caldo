@@ -43,9 +43,7 @@ func TestParseQuickAddParsesNumericPriorityTokens(t *testing.T) {
 }
 
 func TestParseQuickAddNaturalDueDateEnglishGerman(t *testing.T) {
-	oldNow := nowFunc
-	nowFunc = func() time.Time { return time.Date(2026, time.March, 4, 10, 0, 0, 0, time.UTC) }
-	t.Cleanup(func() { nowFunc = oldNow })
+	now := time.Date(2026, time.March, 4, 10, 0, 0, 0, time.UTC)
 
 	tests := []struct {
 		in      string
@@ -64,7 +62,7 @@ func TestParseQuickAddNaturalDueDateEnglishGerman(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		draft := ParseQuickAdd(tc.in)
+		draft := parseQuickAddAt(tc.in, now)
 		if draft.Due != tc.wantDue {
 			t.Fatalf("%q due: got %q want %q", tc.in, draft.Due, tc.wantDue)
 		}

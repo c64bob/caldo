@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-var nowFunc = time.Now
 
 // QuickAddDraft contains parsed quick-add values for preview and persistence.
 type QuickAddDraft struct {
@@ -23,6 +22,10 @@ type QuickAddDraft struct {
 
 // ParseQuickAdd extracts supported quick-add tokens and remaining title text.
 func ParseQuickAdd(input string) QuickAddDraft {
+	return parseQuickAddAt(input, time.Now().UTC())
+}
+
+func parseQuickAddAt(input string, now time.Time) QuickAddDraft {
 	tokens := strings.Fields(strings.TrimSpace(input))
 	draft := QuickAddDraft{Labels: make([]string, 0)}
 	titleTokens := make([]string, 0, len(tokens))
@@ -51,7 +54,7 @@ func ParseQuickAdd(input string) QuickAddDraft {
 		titleTokens = append(titleTokens, token)
 	}
 
-	dueDate, remaining := parseNaturalDue(titleTokens, nowFunc().UTC())
+	dueDate, remaining := parseNaturalDue(titleTokens, now)
 	draft.Due = dueDate
 	draft.Title = strings.Join(remaining, " ")
 	return draft

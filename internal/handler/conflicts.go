@@ -17,7 +17,7 @@ type conflictDependencies struct {
 // Conflicts renders the global unresolved conflict list.
 func Conflicts(deps conflictDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		results, err := deps.database.ListUnresolvedConflicts(r.Context(), 200)
+		results, err := deps.database.ListUnresolvedConflicts(r.Context())
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return

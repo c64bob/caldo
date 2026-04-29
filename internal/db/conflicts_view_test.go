@@ -24,7 +24,7 @@ VALUES ('resolved-1','task-1','project-1','field_conflict',CURRENT_TIMESTAMP,CUR
 		t.Fatalf("seed: %v", err)
 	}
 
-	rows, err := database.ListUnresolvedConflicts(context.Background(), 10)
+	rows, err := database.ListUnresolvedConflicts(context.Background())
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}

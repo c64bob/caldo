@@ -32,11 +32,7 @@ type ConflictDetail struct {
 }
 
 // ListUnresolvedConflicts returns unresolved conflicts ordered newest first.
-func (d *Database) ListUnresolvedConflicts(ctx context.Context, limit int) ([]ConflictListRow, error) {
-	if limit <= 0 {
-		limit = 100
-	}
-
+func (d *Database) ListUnresolvedConflicts(ctx context.Context) ([]ConflictListRow, error) {
 	rows, err := d.Conn.QueryContext(ctx, `
 SELECT c.id,
        c.task_id,
@@ -50,8 +46,8 @@ LEFT JOIN projects p ON p.id = c.project_id
 LEFT JOIN tasks t ON t.id = c.task_id
 WHERE c.resolved_at IS NULL
 ORDER BY c.created_at DESC
-LIMIT ?;
-`, limit)
+;
+`)
 	if err != nil {
 		return nil, fmt.Errorf("list unresolved conflicts: %w", err)
 	}

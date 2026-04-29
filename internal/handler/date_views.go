@@ -73,3 +73,51 @@ func Overdue(deps dateViewDependencies) http.HandlerFunc {
 		}
 	}
 }
+
+// Favorites renders favorite tasks.
+func Favorites(deps dateViewDependencies) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		results, err := deps.database.ListFavoriteTasks(r.Context(), 200)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := view.BaseLayout("Favoriten", view.DateScopedTasksPage("Favoriten", "Keine favorisierten Aufgaben.", results)).Render(r.Context(), w); err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+	}
+}
+
+// NoDate renders tasks without due date.
+func NoDate(deps dateViewDependencies) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		results, err := deps.database.ListNoDateTasks(r.Context(), 200)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := view.BaseLayout("Ohne Datum", view.DateScopedTasksPage("Ohne Datum", "Keine Aufgaben ohne Datum.", results)).Render(r.Context(), w); err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+	}
+}
+
+// Completed renders completed tasks if visibility is enabled.
+func Completed(deps dateViewDependencies) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		results, err := deps.database.ListCompletedTasks(r.Context(), 200)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := view.BaseLayout("Erledigt", view.DateScopedTasksPage("Erledigte Aufgaben", "Erledigte Aufgaben sind ausgeblendet.", results)).Render(r.Context(), w); err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+	}
+}

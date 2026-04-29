@@ -34,6 +34,79 @@ func (d *Database) ListOverdueTasks(ctx context.Context, referenceDate time.Time
 	AND due_iso_date < date(?)`, referenceDate, limit, 1)
 }
 
+// ListFavoriteTasks returns active favorite tasks.
+func (d *Database) ListFavoriteTasks(ctx context.Context, limit int) ([]DatedTaskViewRow, error) {
+	return d.listSimpleSystemTasks(ctx, `
+	AND (LOWER(COALESCE(t.label_names, '')) LIKE '%starred%')`, limit)
+}
+
+// ListNoDateTasks returns active tasks without a due date.
+func (d *Database) ListNoDateTasks(ctx context.Context, limit int) ([]DatedTaskViewRow, error) {
+	return d.listSimpleSystemTasks(ctx, `
+	AND due_iso_date IS NULL`, limit)
+}
+
+// ListCompletedTasks returns completed tasks when the visibility setting is enabled.
+func (d *Database) ListCompletedTasks(ctx context.Context, limit int) ([]DatedTaskViewRow, error) {
+	return d.listSimpleSystemTasks(ctx, `
+	AND cfg.show_completed = 1
+	AND t.status = 'completed'`, limit)
+}
+
+func (d *Database) listSimpleSystemTasks(ctx context.Context, whereSQL string, limit int) ([]DatedTaskViewRow, error) {
+	if limit <= 0 {
+		limit = 200
+	}
+
+	rows, err := d.Conn.QueryContext(ctx, `
+WITH cfg AS (
+	SELECT show_completed
+	FROM settings
+	WHERE id = 'default'
+),
+scoped_tasks AS (
+	SELECT
+		t.id,
+		t.title,
+		t.status,
+		COALESCE(t.project_name, '') AS project_name,
+		COALESCE(
+			date(t.due_at),
+			date(substr(t.due_at, 1, 19)),
+			date(substr(t.due_at, 1, 10)),
+			date(t.due_date)
+		) AS due_iso_date,
+		t.updated_at,
+		t.label_names
+	FROM tasks t
+)
+SELECT t.id, t.title, t.status, t.project_name, COALESCE(t.due_iso_date, '')
+FROM scoped_tasks t
+CROSS JOIN cfg
+WHERE 1=1
+`+whereSQL+`
+ORDER BY t.updated_at DESC
+LIMIT ?;`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list simple system tasks: %w", err)
+	}
+	defer rows.Close()
+
+	results := make([]DatedTaskViewRow, 0, limit)
+	for rows.Next() {
+		var row DatedTaskViewRow
+		if err := rows.Scan(&row.ID, &row.Title, &row.Status, &row.ProjectName, &row.DueISODate); err != nil {
+			return nil, fmt.Errorf("list simple system tasks: scan row: %w", err)
+		}
+		results = append(results, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list simple system tasks: iterate rows: %w", err)
+	}
+
+	return results, nil
+}
+
 func (d *Database) listDateScopedTasks(ctx context.Context, dateFilterSQL string, referenceDate time.Time, limit int, dateArgs int) ([]DatedTaskViewRow, error) {
 	if limit <= 0 {
 		limit = 200

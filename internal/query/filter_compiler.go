@@ -111,9 +111,9 @@ func (c *compiler) compileLeaf(node FilterNode) (string, error) {
 		return "priority = ?", nil
 	case TokenCompleted:
 		if strings.EqualFold(node.Value, "true") {
-			return "(sync_status = 'completed' AND completed_at IS NOT NULL)", nil
+			return "(status = 'completed' OR completed_at IS NOT NULL)", nil
 		}
-		return "(sync_status != 'completed' AND completed_at IS NULL)", nil
+		return "(status != 'completed' AND completed_at IS NULL)", nil
 	case TokenText:
 		c.args = append(c.args, node.Value+"*")
 		return "rowid IN (SELECT rowid FROM tasks_fts WHERE tasks_fts MATCH ?)", nil

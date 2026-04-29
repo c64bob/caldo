@@ -85,6 +85,33 @@ UPDATE settings SET default_project_id = 'project-1' WHERE id = 'default';
 	}
 }
 
+func TestProjectDeleteRequiresExpectedVersion(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	calendar := &fakeProjectDeleteCalendarClient{}
+	h := ProjectDelete(projectDeleteDependencies{database: database, encryptionKey: []byte("12345678901234567890123456789012"), calendar: calendar})
+
+	form := url.Values{"confirmation_name": {"Work"}}
+	request := httptest.NewRequest(http.MethodDelete, "/projects/project-1", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	responseRecorder := httptest.NewRecorder()
+
+	h(responseRecorder, request.WithContext(withProjectID(request.Context(), "project-1")))
+
+	if responseRecorder.Code != http.StatusBadRequest {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusBadRequest)
+	}
+	if calendar.deleteCalls != 0 {
+		t.Fatalf("expected no remote delete call, got %d", calendar.deleteCalls)
+	}
+}
+
 func TestProjectDeleteDoesNotPersistWhenRemoteDeleteFails(t *testing.T) {
 	t.Parallel()
 

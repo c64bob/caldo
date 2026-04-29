@@ -95,6 +95,33 @@ INSERT INTO tasks (
 	}
 }
 
+func TestProjectRenameRequiresExpectedVersion(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	calendar := &fakeProjectRenameCalendarClient{}
+	h := ProjectRename(projectRenameDependencies{database: database, encryptionKey: []byte("12345678901234567890123456789012"), calendar: calendar})
+
+	form := url.Values{"display_name": {"Renamed Work"}}
+	request := httptest.NewRequest(http.MethodPatch, "/projects/project-1", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	responseRecorder := httptest.NewRecorder()
+
+	h(responseRecorder, request.WithContext(withProjectID(request.Context(), "project-1")))
+
+	if responseRecorder.Code != http.StatusBadRequest {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusBadRequest)
+	}
+	if calendar.renameCalls != 0 {
+		t.Fatalf("expected no remote rename call, got %d", calendar.renameCalls)
+	}
+}
+
 func TestProjectRenameDoesNotPersistWhenRemoteRenameFails(t *testing.T) {
 	t.Parallel()
 

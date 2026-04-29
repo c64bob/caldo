@@ -38,6 +38,8 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 	router.Get("/upcoming", Upcoming(dateViewDependencies{database: database}))
 	router.Get("/overdue", Overdue(dateViewDependencies{database: database}))
 	router.Get("/search", Search(searchDependencies{database: database}))
+	router.Get("/conflicts", Conflicts(conflictDependencies{database: database}))
+	router.Get("/conflicts/{conflictID}", ConflictDetail(conflictDependencies{database: database}))
 	router.Get("/events", Events(syncDeps))
 	router.Get("/api/tasks/versions", TaskVersions(taskVersionsDependencies{database: database}))
 	router.Get("/sync/status", SyncStatus(syncDeps))

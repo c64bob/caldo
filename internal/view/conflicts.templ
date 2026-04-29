@@ -1,0 +1,47 @@
+package view
+
+import "caldo/internal/db"
+
+templ ConflictListPage(conflicts []db.ConflictListRow) {
+	<section class="space-y-4">
+		<h2 class="text-xl font-semibold">Konflikte</h2>
+		if len(conflicts) == 0 {
+			<p class="text-sm text-slate-600 dark:text-slate-400">Keine ungelösten Konflikte.</p>
+		}
+		if len(conflicts) > 0 {
+			<ul class="space-y-2" data-conflict-list>
+				for _, conflict := range conflicts {
+					<li class="rounded border border-slate-200 p-3 dark:border-slate-700">
+						<a class="font-medium underline" href={ templ.URL("/conflicts/" + conflict.ID) }>{ conflict.TaskTitle }</a>
+						<p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Typ: { conflict.ConflictType } · Projekt: { conflict.ProjectName }</p>
+					</li>
+				}
+			</ul>
+		}
+	</section>
+}
+
+templ ConflictDetailPage(conflict db.ConflictDetail) {
+	<section class="space-y-4">
+		<h2 class="text-xl font-semibold">Konfliktdetail</h2>
+		<p class="text-sm text-slate-600 dark:text-slate-400">Konflikttyp: { conflict.ConflictType } · Projekt: { conflict.ProjectName }</p>
+		if conflict.BaseVTODO.Valid {
+			<div>
+				<h3 class="font-medium">Ausgangsversion (Base)</h3>
+				<pre class="mt-1 overflow-x-auto rounded border border-slate-200 p-3 text-xs dark:border-slate-700">{ conflict.BaseVTODO.String }</pre>
+			</div>
+		}
+		if conflict.LocalVTODO.Valid {
+			<div>
+				<h3 class="font-medium">Lokale Version</h3>
+				<pre class="mt-1 overflow-x-auto rounded border border-slate-200 p-3 text-xs dark:border-slate-700">{ conflict.LocalVTODO.String }</pre>
+			</div>
+		}
+		if conflict.RemoteVTODO.Valid {
+			<div>
+				<h3 class="font-medium">Remote-Version</h3>
+				<pre class="mt-1 overflow-x-auto rounded border border-slate-200 p-3 text-xs dark:border-slate-700">{ conflict.RemoteVTODO.String }</pre>
+			</div>
+		}
+	</section>
+}

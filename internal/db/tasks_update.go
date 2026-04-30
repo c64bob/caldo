@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"caldo/internal/model"
 	"github.com/google/uuid"
 )
 
@@ -220,6 +221,9 @@ func syncTaskLabels(ctx context.Context, tx *sql.Tx, taskID string, labelNames s
 	for _, rawLabel := range labels {
 		label := strings.TrimSpace(rawLabel)
 		if label == "" {
+			continue
+		}
+		if strings.EqualFold(label, model.ReservedFavoriteCategory) {
 			continue
 		}
 

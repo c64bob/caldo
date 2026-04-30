@@ -15,6 +15,10 @@ var (
 	ErrTaskProjectNotFound = errors.New("task project not found")
 	// ErrTaskProjectUnavailable indicates that no valid default project is configured.
 	ErrTaskProjectUnavailable = errors.New("task project unavailable")
+	// ErrSubtaskParentNotFound indicates that the parent task does not exist.
+	ErrSubtaskParentNotFound = errors.New("subtask parent not found")
+	// ErrSubtaskParentIsSubtask indicates that direct subtasks cannot have child subtasks.
+	ErrSubtaskParentIsSubtask = errors.New("subtask parent is subtask")
 )
 
 // TaskProject describes the project context used for task creation.
@@ -31,6 +35,7 @@ type NewTaskInput struct {
 	UID         string
 	Href        string
 	Title       string
+	ParentID    string
 	RawVTODO    string
 }
 
@@ -96,13 +101,36 @@ func (d *Database) InsertPendingTask(ctx context.Context, input NewTaskInput) (s
 
 	if _, err := d.Conn.ExecContext(ctx, `
 INSERT INTO tasks (
-    id, project_id, uid, href, title, status, raw_vtodo, base_vtodo, project_name, sync_status, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, 'needs-action', ?, ?, ?, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
-`, taskID, input.ProjectID, input.UID, input.Href, input.Title, input.RawVTODO, input.RawVTODO, nullableString(input.ProjectName)); err != nil {
+    id, project_id, uid, href, title, status, parent_id, raw_vtodo, base_vtodo, project_name, sync_status, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, 'needs-action', ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+`, taskID, input.ProjectID, input.UID, input.Href, input.Title, nullableString(input.ParentID), input.RawVTODO, input.RawVTODO, nullableString(input.ProjectName)); err != nil {
 		return "", fmt.Errorf("insert pending task: insert task: %w", err)
 	}
 
 	return taskID, nil
+}
+
+// ResolveSubtaskParent validates that parentTaskID points to an existing root task and returns its project context and UID.
+func (d *Database) ResolveSubtaskParent(ctx context.Context, parentTaskID string) (TaskProject, string, error) {
+	var project TaskProject
+	var uid string
+	var hasParent bool
+	err := d.Conn.QueryRowContext(ctx, `
+SELECT p.id, p.calendar_href, p.display_name, t.uid, t.parent_id IS NOT NULL
+FROM tasks t
+JOIN projects p ON p.id = t.project_id
+WHERE t.id = ?;
+`, strings.TrimSpace(parentTaskID)).Scan(&project.ID, &project.CalendarHref, &project.DisplayName, &uid, &hasParent)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return TaskProject{}, "", ErrSubtaskParentNotFound
+		}
+		return TaskProject{}, "", fmt.Errorf("resolve subtask parent: %w", err)
+	}
+	if hasParent {
+		return TaskProject{}, "", ErrSubtaskParentIsSubtask
+	}
+	return project, uid, nil
 }
 
 // MarkTaskCreateSynced marks a pending task as synced, stores the returned ETag, and returns the committed server version.

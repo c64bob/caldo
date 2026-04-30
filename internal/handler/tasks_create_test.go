@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 
 	"caldo/internal/caldav"
 	"caldo/internal/db"
+	"github.com/go-chi/chi/v5"
 )
 
 type stubTaskCreateTodoClient struct {
@@ -110,6 +112,56 @@ func TestTaskCreateRejectsRecurrenceWithCRLF(t *testing.T) {
 	}
 	if strings.Contains(stub.raw, "ATTENDEE:") {
 		t.Fatalf("expected injected line to be rejected from raw payload: %q", stub.raw)
+	}
+}
+
+func TestTaskCreateRejectsParentFieldOnRootCreate(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskCreateHandlerTest(t)
+	seedTaskCreateHandlerProject(t, database)
+	key := bytes.Repeat([]byte{0x11}, 32)
+	_ = database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"})
+	stub := &stubTaskCreateTodoClient{etag: `"etag-1"`}
+	h := TaskCreate(taskCreateDependencies{database: database, encryptionKey: key, todos: stub})
+	form := url.Values{"title": {"Root"}, "parent_task_id": {"task-1"}}
+	req := httptest.NewRequest(http.MethodPost, "/tasks", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("unexpected status: %d", rr.Code)
+	}
+}
+
+func TestTaskCreateSubtaskSetsParentLinkAndParentID(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskCreateHandlerTest(t)
+	seedTaskCreateHandlerProject(t, database)
+	seedTaskCreateParentTask(t, database, "task-parent", "", "uid-parent")
+	key := bytes.Repeat([]byte{0x61}, 32)
+	_ = database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"})
+	stub := &stubTaskCreateTodoClient{etag: `"etag-sub"`}
+	h := TaskCreateSubtask(taskCreateDependencies{database: database, encryptionKey: key, todos: stub})
+	form := url.Values{"title": {"Child task"}}
+	req := httptest.NewRequest(http.MethodPost, "/tasks/task-parent/subtasks", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("taskID", "task-parent")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(stub.raw, "RELATED-TO;RELTYPE=PARENT:uid-parent") {
+		t.Fatalf("expected parent uid link in payload: %q", stub.raw)
+	}
+	var parentID sql.NullString
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT parent_id FROM tasks WHERE title='Child task'`).Scan(&parentID); err != nil {
+		t.Fatalf("query subtask parent: %v", err)
+	}
+	if !parentID.Valid || parentID.String != "task-parent" {
+		t.Fatalf("unexpected parent id: %#v", parentID)
 	}
 }
 func TestTaskCreateCalDAVFailureMarksTaskError(t *testing.T) {
@@ -254,6 +306,25 @@ UPDATE settings SET default_project_id = 'project-default' WHERE id = 'default';
 `); err != nil {
 		t.Fatalf("seed project: %v", err)
 	}
+}
+
+func seedTaskCreateParentTask(t *testing.T, database *db.Database, id string, parentID string, uid string) {
+	t.Helper()
+	raw := "BEGIN:VCALENDAR\nBEGIN:VTODO\nUID:" + uid + "\nSUMMARY:Parent\nSTATUS:NEEDS-ACTION\nEND:VTODO\nEND:VCALENDAR"
+	_, err := database.Conn.ExecContext(context.Background(), `
+INSERT INTO tasks (id, project_id, uid, href, etag, server_version, title, status, parent_id, raw_vtodo, base_vtodo, project_name, sync_status, created_at, updated_at)
+VALUES (?, 'project-default', ?, ?, '"etag"', 2, 'Parent', 'needs-action', ?, ?, ?, 'Inbox', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+`, id, uid, "/cal/inbox/"+uid+".ics", nullable(parentID), raw, raw)
+	if err != nil {
+		t.Fatalf("seed parent task: %v", err)
+	}
+}
+
+func nullable(value string) interface{} {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	return value
 }
 
 func openSQLiteForTaskCreateHandlerTest(t *testing.T) *db.Database {

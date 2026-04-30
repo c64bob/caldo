@@ -14,6 +14,7 @@ type SearchResult struct {
 	Description string
 	ProjectName string
 	LabelNames  string
+	RawVTODO    string
 }
 
 // SearchActiveTasks returns active tasks matching text tokens plus optional #project and @label filters.
@@ -28,7 +29,7 @@ func (d *Database) SearchActiveTasks(ctx context.Context, rawQuery string, limit
 	}
 
 	rows, err := d.Conn.QueryContext(ctx, `
-SELECT t.id, t.title, COALESCE(t.description, ''), COALESCE(t.project_name, ''), COALESCE(t.label_names, '')
+SELECT t.id, t.title, COALESCE(t.description, ''), COALESCE(t.project_name, ''), COALESCE(t.label_names, ''), COALESCE(t.raw_vtodo, '')
 FROM tasks_fts f
 JOIN tasks t ON t.rowid = f.rowid
 WHERE f.tasks_fts MATCH ?
@@ -44,7 +45,7 @@ LIMIT ?;
 	results := make([]SearchResult, 0, limit)
 	for rows.Next() {
 		var item SearchResult
-		if err := rows.Scan(&item.ID, &item.Title, &item.Description, &item.ProjectName, &item.LabelNames); err != nil {
+		if err := rows.Scan(&item.ID, &item.Title, &item.Description, &item.ProjectName, &item.LabelNames, &item.RawVTODO); err != nil {
 			return nil, fmt.Errorf("search active tasks: scan row: %w", err)
 		}
 		results = append(results, item)

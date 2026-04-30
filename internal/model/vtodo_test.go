@@ -70,3 +70,18 @@ func TestParseVTODOFieldsTreatsRelatedToWithoutReltypeAsParent(t *testing.T) {
 		t.Fatalf("unexpected parent uid: got %q", parsed.ParentUID)
 	}
 }
+
+func TestParseVTODOFieldsParsesAttachAsExternalAndInline(t *testing.T) {
+	t.Parallel()
+
+	parsed := ParseVTODOFields("BEGIN:VTODO\nUID:uid-5\nATTACH:https://example.com/file.txt\nATTACH;ENCODING=BASE64;VALUE=BINARY:AAAA\nEND:VTODO")
+	if len(parsed.Attachments) != 2 {
+		t.Fatalf("unexpected attachment count: got %d", len(parsed.Attachments))
+	}
+	if !parsed.Attachments[0].IsExternalURL || parsed.Attachments[0].Value != "https://example.com/file.txt" {
+		t.Fatalf("unexpected first attachment: %#v", parsed.Attachments[0])
+	}
+	if parsed.Attachments[1].IsExternalURL || parsed.Attachments[1].Value != "AAAA" {
+		t.Fatalf("unexpected second attachment: %#v", parsed.Attachments[1])
+	}
+}

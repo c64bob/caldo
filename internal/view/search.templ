@@ -1,9 +1,8 @@
 package view
 
-import "caldo/internal/db"
 import "strings"
 
-templ SearchPage(query string, results []db.SearchResult) {
+templ SearchPage(query string, results []SearchResultView) {
 	<section class="space-y-4">
 		<h2 class="text-xl font-semibold">Globale Suche</h2>
 		<form method="get" action="/search" class="space-y-2" role="search" aria-label="Globale Suche">
@@ -38,6 +37,22 @@ templ SearchPage(query string, results []db.SearchResult) {
 								 · Labels: { result.LabelNames }
 							}
 						</p>
+						if len(result.Attachments) > 0 {
+							<div class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+								<p>Anhänge:</p>
+								<ul class="ml-4 list-disc space-y-1">
+									for _, attachment := range result.Attachments {
+										<li>
+											if attachment.IsExternalURL {
+												<a href={ templ.SafeURL(attachment.Value) } target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">{ attachment.Value }</a>
+											} else {
+												Anhang vorhanden (inline/binary)
+											}
+										</li>
+									}
+								</ul>
+							</div>
+						}
 					</li>
 				}
 			</ul>

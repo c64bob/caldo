@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"caldo/internal/model"
 	"github.com/google/uuid"
 )
 
@@ -189,6 +190,10 @@ WHERE id = ? AND server_version = ?;
 		return PreparedTaskUpdate{}, ErrTaskVersionMismatch
 	}
 
+	if err := syncTaskLabels(ctx, tx, input.TaskID, input.LabelNames); err != nil {
+		return PreparedTaskUpdate{}, fmt.Errorf("prepare task update: sync task labels: %w", err)
+	}
+
 	if err := tx.Commit(); err != nil {
 		return PreparedTaskUpdate{}, fmt.Errorf("prepare task update: commit transaction: %w", err)
 	}
@@ -202,6 +207,47 @@ WHERE id = ? AND server_version = ?;
 		PendingVersion: input.ExpectedVersion + 1,
 		ProjectChanged: strings.TrimSpace(snapshotHref) != strings.TrimSpace(input.Href),
 	}, nil
+}
+
+func syncTaskLabels(ctx context.Context, tx *sql.Tx, taskID string, labelNames sql.NullString) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM task_labels WHERE task_id = ?;`, taskID); err != nil {
+		return fmt.Errorf("delete existing task labels: %w", err)
+	}
+	if !labelNames.Valid {
+		return nil
+	}
+
+	labels := strings.Split(labelNames.String, ",")
+	for _, rawLabel := range labels {
+		label := strings.TrimSpace(rawLabel)
+		if label == "" {
+			continue
+		}
+		if strings.EqualFold(label, model.ReservedFavoriteCategory) {
+			continue
+		}
+
+		labelID := "label-" + uuid.NewString()
+		if _, err := tx.ExecContext(ctx, `
+INSERT INTO labels (id, name, created_at)
+VALUES (?, ?, CURRENT_TIMESTAMP)
+ON CONFLICT(name COLLATE NOCASE) DO NOTHING;
+`, labelID, label); err != nil {
+			return fmt.Errorf("upsert label: %w", err)
+		}
+
+		if _, err := tx.ExecContext(ctx, `
+INSERT INTO task_labels (task_id, label_id)
+SELECT ?, id
+FROM labels
+WHERE name = ? COLLATE NOCASE
+ON CONFLICT(task_id, label_id) DO NOTHING;
+`, taskID, label); err != nil {
+			return fmt.Errorf("assign task label: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // MarkTaskUpdateSynced marks a pending task update as synced after successful CalDAV write.

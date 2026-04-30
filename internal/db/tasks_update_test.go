@@ -26,7 +26,7 @@ func TestPrepareTaskUpdateCreatesUndoSnapshotAndMarksPending(t *testing.T) {
 		Status:          "needs-action",
 		DueDate:         sql.NullString{String: "2026-06-01", Valid: true},
 		Priority:        sql.NullInt64{Int64: 3, Valid: true},
-		LabelNames:      sql.NullString{String: "home,urgent", Valid: true},
+		LabelNames:      sql.NullString{String: "home,STARRED,urgent", Valid: true},
 	})
 	if err != nil {
 		t.Fatalf("prepare task update: %v", err)
@@ -40,7 +40,7 @@ func TestPrepareTaskUpdateCreatesUndoSnapshotAndMarksPending(t *testing.T) {
 	if err := database.Conn.QueryRowContext(context.Background(), `SELECT sync_status, title, description, label_names, server_version FROM tasks WHERE id = 'task-1';`).Scan(&syncStatus, &title, &description, &labelNames, &version); err != nil {
 		t.Fatalf("query task: %v", err)
 	}
-	if syncStatus != "pending" || title != "new" || description != "desc" || labelNames != "home,urgent" {
+	if syncStatus != "pending" || title != "new" || description != "desc" || labelNames != "home,STARRED,urgent" {
 		t.Fatalf("unexpected task row: status=%q title=%q description=%q labels=%q", syncStatus, title, description, labelNames)
 	}
 	if prepared.PendingVersion != 3 || version != 3 {
@@ -62,6 +62,10 @@ func TestPrepareTaskUpdateCreatesUndoSnapshotAndMarksPending(t *testing.T) {
 	if snapshotTitle != "old" || snapshotStatus != "needs-action" || snapshotLabelNames != "home" || snapshotEtag != "\"etag-1\"" {
 		t.Fatalf("unexpected snapshot data: title=%q status=%q labels=%q etag=%q", snapshotTitle, snapshotStatus, snapshotLabelNames, snapshotEtag)
 	}
+
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM labels WHERE LOWER(name) = 'urgent';`, 1)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM labels WHERE LOWER(name) = 'starred';`, 0)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM task_labels WHERE task_id = 'task-1';`, 2)
 }
 
 func TestPrepareTaskUpdateRejectsVersionMismatch(t *testing.T) {

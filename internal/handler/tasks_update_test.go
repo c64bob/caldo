@@ -15,14 +15,15 @@ import (
 )
 
 type stubTaskUpdateTodoClient struct {
-	updateETag  string
-	updateErr   error
-	createETag  string
-	createErr   error
-	deleteErr   error
-	updateCalls int
-	createCalls int
-	lastHref    string
+	updateETag   string
+	updateErr    error
+	createETag   string
+	createErr    error
+	deleteErr    error
+	updateCalls  int
+	deleteCalls  int
+	createCalls  int
+	lastHref     string
 	lastRawVTODO string
 }
 
@@ -45,6 +46,7 @@ func (s *stubTaskUpdateTodoClient) PutVTODOCreate(_ context.Context, _ caldav.Cr
 }
 
 func (s *stubTaskUpdateTodoClient) DeleteVTODO(_ context.Context, _ caldav.Credentials, _ string, _ string) error {
+	s.deleteCalls++
 	return s.deleteErr
 }
 

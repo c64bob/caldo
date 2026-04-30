@@ -117,6 +117,44 @@ INSERT INTO tasks (
 	}
 }
 
+func TestListDirectSubtaskIDsReturnsAllDirectChildren(t *testing.T) {
+	t.Parallel()
+	database := openTaskUpdateTestDB(t)
+	seedTaskUpdateTestData(t, database)
+
+	if _, err := database.Conn.ExecContext(context.Background(), `
+INSERT INTO tasks (
+    id, project_id, uid, href, etag, server_version, title, status, parent_id, raw_vtodo, base_vtodo,
+    project_name, sync_status, created_at, updated_at
+) VALUES
+    ('child-a', 'project-1', 'uid-child-a', '/cal/inbox/uid-child-a.ics', '"etag-a"', 1, 'a', 'needs-action', 'task-1', 'BEGIN:VTODO
+UID:uid-child-a
+END:VTODO', 'BEGIN:VTODO
+UID:uid-child-a
+END:VTODO', 'Inbox', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('child-b', 'project-1', 'uid-child-b', '/cal/inbox/uid-child-b.ics', '"etag-b"', 1, 'b', 'completed', 'task-1', 'BEGIN:VTODO
+UID:uid-child-b
+END:VTODO', 'BEGIN:VTODO
+UID:uid-child-b
+END:VTODO', 'Inbox', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('grandchild', 'project-1', 'uid-grandchild', '/cal/inbox/uid-grandchild.ics', '"etag-c"', 1, 'c', 'needs-action', 'child-a', 'BEGIN:VTODO
+UID:uid-grandchild
+END:VTODO', 'BEGIN:VTODO
+UID:uid-grandchild
+END:VTODO', 'Inbox', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+`); err != nil {
+		t.Fatalf("seed subtasks: %v", err)
+	}
+
+	subtaskIDs, err := database.ListDirectSubtaskIDs(context.Background(), "task-1")
+	if err != nil {
+		t.Fatalf("list direct subtasks: %v", err)
+	}
+	if len(subtaskIDs) != 2 || subtaskIDs[0] != "child-a" || subtaskIDs[1] != "child-b" {
+		t.Fatalf("unexpected subtask ids: %#v", subtaskIDs)
+	}
+}
+
 func openTaskUpdateTestDB(t *testing.T) *Database {
 	t.Helper()
 	database, err := OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))

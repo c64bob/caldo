@@ -90,7 +90,7 @@ func ParseVTODOFields(raw string) VTODOFields {
 				fields.RRule = strings.TrimSpace(value)
 			}
 		case "RELATED-TO":
-			if propertyParamEquals(params, "RELTYPE", "PARENT") && fields.ParentUID == "" {
+			if fields.ParentUID == "" && (len(params) == 0 || propertyParamEquals(params, "RELTYPE", "PARENT")) {
 				fields.ParentUID = strings.TrimSpace(value)
 			}
 		case "CATEGORIES":

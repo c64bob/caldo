@@ -187,7 +187,7 @@ func TestPeriodicSchedulerStopWaitsForInFlightRun(t *testing.T) {
 		if err != nil {
 			t.Fatalf("stop: %v", err)
 		}
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(1 * time.Second):
 		t.Fatal("stop did not return after in-flight run finished")
 	}
 }

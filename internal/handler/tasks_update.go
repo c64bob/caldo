@@ -99,6 +99,9 @@ func TaskUpdate(deps taskUpdateDependencies) http.HandlerFunc {
 			Categories:  parseOptionalLabels(r.FormValue("labels")),
 			Priority:    parseOptionalInt(r.FormValue("priority")),
 		}
+		if recurrence := buildExplicitRRuleUpdate(r.PostForm); recurrence != nil {
+			patch.RRule = recurrence
+		}
 		if status == "completed" {
 			now := time.Now().UTC()
 			patch.CompletedAt = &now
@@ -252,6 +255,81 @@ func parseOptionalLabels(raw string) []string {
 		return nil
 	}
 	return labels
+}
+
+
+func buildExplicitRRuleUpdate(form map[string][]string) *string {
+	if _, ok := form["repeat_update"]; !ok {
+		return nil
+	}
+
+	freq := strings.ToUpper(strings.TrimSpace(firstFormValue(form, "repeat_freq")))
+	if freq == "" || freq == "NONE" {
+		empty := ""
+		return &empty
+	}
+
+	ruleParts := []string{}
+	interval := strings.TrimSpace(firstFormValue(form, "repeat_interval"))
+	if interval == "" {
+		interval = "1"
+	}
+
+	switch freq {
+	case "DAILY", "WEEKLY", "MONTHLY", "YEARLY":
+		ruleParts = append(ruleParts, "FREQ="+freq)
+	case "WEEKDAYS":
+		ruleParts = append(ruleParts, "FREQ=WEEKLY", "BYDAY=MO,TU,WE,TH,FR")
+	case "BYDAY":
+		day := strings.ToUpper(strings.TrimSpace(firstFormValue(form, "repeat_byday")))
+		if !isValidByDay(day) {
+			return nil
+		}
+		ruleParts = append(ruleParts, "FREQ=WEEKLY", "BYDAY="+day)
+	default:
+		return nil
+	}
+
+	if interval != "1" {
+		if n, err := strconv.Atoi(interval); err == nil && n > 0 {
+			ruleParts = append(ruleParts, "INTERVAL="+strconv.Itoa(n))
+		}
+	}
+
+	endType := strings.ToLower(strings.TrimSpace(firstFormValue(form, "repeat_end")))
+	switch endType {
+	case "", "never":
+	case "until":
+		if until := parseOptionalDate(firstFormValue(form, "repeat_until")); until != nil {
+			parsed, _ := time.Parse("2006-01-02", *until)
+			untilEndOfDayUTC := parsed.UTC().Add(24*time.Hour - time.Second)
+			ruleParts = append(ruleParts, "UNTIL="+untilEndOfDayUTC.Format("20060102T150405Z"))
+		}
+	case "count":
+		if n, err := strconv.Atoi(strings.TrimSpace(firstFormValue(form, "repeat_count"))); err == nil && n > 0 {
+			ruleParts = append(ruleParts, "COUNT="+strconv.Itoa(n))
+		}
+	}
+
+	rule := strings.Join(ruleParts, ";")
+	return &rule
+}
+
+func firstFormValue(form map[string][]string, key string) string {
+	values := form[key]
+	if len(values) == 0 {
+		return ""
+	}
+	return values[0]
+}
+
+func isValidByDay(value string) bool {
+	switch value {
+	case "MO", "TU", "WE", "TH", "FR", "SA", "SU":
+		return true
+	default:
+		return false
+	}
 }
 
 func stringPointer(value string) *string {

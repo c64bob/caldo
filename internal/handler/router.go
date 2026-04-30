@@ -82,6 +82,12 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 			todos:         caldav.NewTodoClient(nil),
 			broker:        syncBroker,
 		}))
+		taskRouter.Post("/{taskID}/favorite", TaskFavorite(taskUpdateDependencies{
+			database:      database,
+			encryptionKey: csrfSecret,
+			todos:         caldav.NewTodoClient(nil),
+			broker:        syncBroker,
+		}))
 		taskRouter.Delete("/{taskID}", TaskDelete(taskUpdateDependencies{
 			database:      database,
 			encryptionKey: csrfSecret,

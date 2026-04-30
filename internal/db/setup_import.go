@@ -92,12 +92,21 @@ func (d *Database) ReplaceSetupProjectTasks(ctx context.Context, projectID strin
 		}
 	}
 
+	parentUIDByUID := make(map[string]string, len(tasks))
 	for _, task := range tasks {
-		if strings.TrimSpace(task.ParentUID) == "" {
+		parentUIDByUID[task.UID] = strings.TrimSpace(task.ParentUID)
+	}
+
+	for _, task := range tasks {
+		parentUID := strings.TrimSpace(task.ParentUID)
+		if parentUID == "" {
+			continue
+		}
+		if strings.TrimSpace(parentUIDByUID[parentUID]) != "" {
 			continue
 		}
 		childID, okChild := idByUID[task.UID]
-		parentID, okParent := idByUID[task.ParentUID]
+		parentID, okParent := idByUID[parentUID]
 		if !okChild || !okParent {
 			continue
 		}

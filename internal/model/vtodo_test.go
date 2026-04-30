@@ -61,3 +61,12 @@ func TestParseVTODOFieldsParsesParentWithQuotedReltype(t *testing.T) {
 		t.Fatalf("unexpected parent uid: got %q", parsed.ParentUID)
 	}
 }
+
+func TestParseVTODOFieldsTreatsRelatedToWithoutReltypeAsParent(t *testing.T) {
+	t.Parallel()
+
+	parsed := ParseVTODOFields("BEGIN:VTODO\nUID:uid-4\nRELATED-TO:parent-4\nEND:VTODO")
+	if parsed.ParentUID != "parent-4" {
+		t.Fatalf("unexpected parent uid: got %q", parsed.ParentUID)
+	}
+}

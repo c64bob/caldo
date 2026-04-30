@@ -13,6 +13,7 @@ type DatedTaskViewRow struct {
 	Status      string
 	ProjectName string
 	DueISODate  string
+	IsSubtask   bool
 }
 
 // ListTodayTasks returns tasks due today plus overdue tasks.
@@ -77,15 +78,16 @@ scoped_tasks AS (
 			date(t.due_date)
 		) AS due_iso_date,
 		t.updated_at,
-		t.label_names
+		t.label_names,
+		t.parent_id
 	FROM tasks t
 )
-SELECT t.id, t.title, t.status, t.project_name, COALESCE(t.due_iso_date, '')
+SELECT t.id, t.title, t.status, t.project_name, COALESCE(t.due_iso_date, ''), t.parent_id IS NOT NULL
 FROM scoped_tasks t
 CROSS JOIN cfg
 WHERE 1=1
 `+whereSQL+`
-ORDER BY t.updated_at DESC
+ORDER BY COALESCE(t.parent_id, t.id), CASE WHEN t.parent_id IS NULL THEN 0 ELSE 1 END, t.updated_at DESC
 LIMIT ?;`, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list simple system tasks: %w", err)
@@ -95,7 +97,7 @@ LIMIT ?;`, limit)
 	results := make([]DatedTaskViewRow, 0, limit)
 	for rows.Next() {
 		var row DatedTaskViewRow
-		if err := rows.Scan(&row.ID, &row.Title, &row.Status, &row.ProjectName, &row.DueISODate); err != nil {
+		if err := rows.Scan(&row.ID, &row.Title, &row.Status, &row.ProjectName, &row.DueISODate, &row.IsSubtask); err != nil {
 			return nil, fmt.Errorf("list simple system tasks: scan row: %w", err)
 		}
 		results = append(results, row)
@@ -119,7 +121,7 @@ func (d *Database) listDateScopedTasks(ctx context.Context, dateFilterSQL string
 	}
 	args = append(args, limit)
 
-rows, err := d.Conn.QueryContext(ctx, `
+	rows, err := d.Conn.QueryContext(ctx, `
 WITH cfg AS (
 	SELECT show_completed, upcoming_days
 	FROM settings
@@ -137,7 +139,8 @@ scoped_tasks AS (
 			date(substr(t.due_at, 1, 10)),
 			date(t.due_date)
 		) AS due_iso_date,
-		t.updated_at
+		t.updated_at,
+		t.parent_id
 	FROM tasks t
 )
 SELECT
@@ -145,14 +148,15 @@ SELECT
 	t.title,
 	t.status,
 	t.project_name,
-	t.due_iso_date
+	t.due_iso_date,
+	t.parent_id IS NOT NULL
 FROM scoped_tasks t
 CROSS JOIN cfg
 WHERE
 	t.due_iso_date IS NOT NULL
 	`+dateFilterSQL+`
 	AND (cfg.show_completed = 1 OR t.status != 'completed')
-ORDER BY due_iso_date ASC, t.updated_at DESC
+ORDER BY due_iso_date ASC, COALESCE(t.parent_id, t.id), CASE WHEN t.parent_id IS NULL THEN 0 ELSE 1 END, t.updated_at DESC
 LIMIT ?;
 `, args...)
 	if err != nil {
@@ -163,7 +167,7 @@ LIMIT ?;
 	results := make([]DatedTaskViewRow, 0, limit)
 	for rows.Next() {
 		var row DatedTaskViewRow
-		if err := rows.Scan(&row.ID, &row.Title, &row.Status, &row.ProjectName, &row.DueISODate); err != nil {
+		if err := rows.Scan(&row.ID, &row.Title, &row.Status, &row.ProjectName, &row.DueISODate, &row.IsSubtask); err != nil {
 			return nil, fmt.Errorf("list date scoped tasks: scan row: %w", err)
 		}
 		results = append(results, row)

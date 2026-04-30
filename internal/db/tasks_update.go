@@ -387,6 +387,39 @@ func joinCalendarTaskHref(calendarHref string, uid string) string {
 	return trimmed + "/" + strings.TrimSpace(uid) + ".ics"
 }
 
+// ListDirectSubtaskIDs returns IDs of direct child tasks.
+func (d *Database) ListDirectSubtaskIDs(ctx context.Context, parentTaskID string) ([]string, error) {
+	trimmedParentTaskID := strings.TrimSpace(parentTaskID)
+	if trimmedParentTaskID == "" {
+		return nil, fmt.Errorf("list direct subtask ids: parent task id is required")
+	}
+
+	rows, err := d.Conn.QueryContext(ctx, `
+SELECT id
+FROM tasks
+WHERE parent_id = ?
+ORDER BY id;
+`, trimmedParentTaskID)
+	if err != nil {
+		return nil, fmt.Errorf("list direct subtask ids: query subtasks: %w", err)
+	}
+	defer rows.Close()
+
+	subtaskIDs := make([]string, 0)
+	for rows.Next() {
+		var taskID string
+		if scanErr := rows.Scan(&taskID); scanErr != nil {
+			return nil, fmt.Errorf("list direct subtask ids: scan subtask: %w", scanErr)
+		}
+		subtaskIDs = append(subtaskIDs, taskID)
+	}
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, fmt.Errorf("list direct subtask ids: iterate subtasks: %w", rowsErr)
+	}
+
+	return subtaskIDs, nil
+}
+
 // ListOpenDirectSubtaskIDs returns IDs of direct child tasks that are not completed.
 func (d *Database) ListOpenDirectSubtaskIDs(ctx context.Context, parentTaskID string) ([]string, error) {
 	trimmedParentTaskID := strings.TrimSpace(parentTaskID)

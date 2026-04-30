@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -27,6 +28,7 @@ func TaskDelete(deps taskUpdateDependencies) http.HandlerFunc {
 
 		taskID := chi.URLParam(r, "taskID")
 		expectedVersionValue := strings.TrimSpace(r.FormValue("expected_version"))
+		subtasksAction := strings.TrimSpace(r.FormValue("subtasks_action"))
 		if expectedVersionValue == "" && r.Method == http.MethodDelete {
 			expectedVersionValue = strings.TrimSpace(r.URL.Query().Get("expected_version"))
 			if expectedVersionValue == "" {
@@ -43,6 +45,9 @@ func TaskDelete(deps taskUpdateDependencies) http.HandlerFunc {
 					return
 				}
 				expectedVersionValue = strings.TrimSpace(values.Get("expected_version"))
+				if subtasksAction == "" {
+					subtasksAction = strings.TrimSpace(values.Get("subtasks_action"))
+				}
 			}
 		}
 
@@ -68,48 +73,81 @@ func TaskDelete(deps taskUpdateDependencies) http.HandlerFunc {
 			return
 		}
 
-		prepared, err := deps.database.PrepareTaskDelete(r.Context(), db.TaskDeleteInput{
-			TaskID:          taskID,
-			ExpectedVersion: expectedVersion,
-			SessionID:       sessionID,
-			TabID:           tabID,
-		})
+		directSubtaskIDs, err := deps.database.ListDirectSubtaskIDs(r.Context(), taskID)
 		if err != nil {
-			if errors.Is(err, db.ErrTaskVersionMismatch) {
-				http.Error(w, "task version conflict", http.StatusConflict)
-				return
-			}
-			http.Error(w, "failed to save pending task delete", http.StatusInternalServerError)
+			http.Error(w, "failed to load subtasks", http.StatusInternalServerError)
 			return
 		}
+		if len(directSubtaskIDs) > 0 {
+			switch subtasksAction {
+			case "":
+				http.Error(w, fmt.Sprintf("direct subtasks require confirmation: %d", len(directSubtaskIDs)), http.StatusConflict)
+				return
+			case "cancel":
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte("task deletion canceled"))
+				return
+			case "delete_all":
+			default:
+				http.Error(w, "invalid subtasks_action", http.StatusBadRequest)
+				return
+			}
+		}
 
+		deleteTaskIDs := append(append([]string{}, directSubtaskIDs...), taskID)
 		todoCredentials := caldav.Credentials{URL: creds.URL, Username: creds.Username, Password: creds.Password}
 
-		err = deps.todos.DeleteVTODO(r.Context(), todoCredentials, prepared.Href, prepared.ETag)
-		if err != nil {
-			persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskDeletePersistTimeout)
-			defer cancel()
-			if errors.Is(err, caldav.ErrPreconditionFailed) {
-				if markErr := deps.database.MarkTaskDeleteConflict(persistCtx, taskID, prepared.PendingVersion); markErr != nil {
-					http.Error(w, "failed to persist task delete conflict state", http.StatusInternalServerError)
-					return
-				}
+		for _, deleteTaskID := range deleteTaskIDs {
+			base, baseErr := deps.database.LoadTaskUpdateBase(r.Context(), deleteTaskID, "")
+			if baseErr != nil {
 				http.Error(w, "task version conflict", http.StatusConflict)
 				return
 			}
-			if markErr := deps.database.MarkTaskDeleteError(persistCtx, taskID, prepared.PendingVersion); markErr != nil {
-				http.Error(w, "failed to persist task delete error state", http.StatusInternalServerError)
+			deleteExpectedVersion := base.ExpectedVersion
+			if deleteTaskID == taskID {
+				deleteExpectedVersion = expectedVersion
+			}
+			prepared, prepErr := deps.database.PrepareTaskDelete(r.Context(), db.TaskDeleteInput{
+				TaskID:          deleteTaskID,
+				ExpectedVersion: deleteExpectedVersion,
+				SessionID:       sessionID,
+				TabID:           tabID,
+			})
+			if prepErr != nil {
+				if errors.Is(prepErr, db.ErrTaskVersionMismatch) {
+					http.Error(w, "task version conflict", http.StatusConflict)
+					return
+				}
+				http.Error(w, "failed to save pending task delete", http.StatusInternalServerError)
 				return
 			}
-			http.Error(w, "failed to delete task on caldav server", http.StatusBadGateway)
-			return
-		}
 
-		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskDeletePersistTimeout)
-		defer cancel()
-		if err := deps.database.MarkTaskDeleteSynced(persistCtx, taskID, prepared.PendingVersion); err != nil {
-			http.Error(w, "failed to persist synced task delete", http.StatusInternalServerError)
-			return
+			err = deps.todos.DeleteVTODO(r.Context(), todoCredentials, prepared.Href, prepared.ETag)
+			if err != nil {
+				persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskDeletePersistTimeout)
+				defer cancel()
+				if errors.Is(err, caldav.ErrPreconditionFailed) {
+					if markErr := deps.database.MarkTaskDeleteConflict(persistCtx, deleteTaskID, prepared.PendingVersion); markErr != nil {
+						http.Error(w, "failed to persist task delete conflict state", http.StatusInternalServerError)
+						return
+					}
+					http.Error(w, "task version conflict", http.StatusConflict)
+					return
+				}
+				if markErr := deps.database.MarkTaskDeleteError(persistCtx, deleteTaskID, prepared.PendingVersion); markErr != nil {
+					http.Error(w, "failed to persist task delete error state", http.StatusInternalServerError)
+					return
+				}
+				http.Error(w, "failed to delete task on caldav server", http.StatusBadGateway)
+				return
+			}
+
+			persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskDeletePersistTimeout)
+			defer cancel()
+			if err := deps.database.MarkTaskDeleteSynced(persistCtx, deleteTaskID, prepared.PendingVersion); err != nil {
+				http.Error(w, "failed to persist synced task delete", http.StatusInternalServerError)
+				return
+			}
 		}
 
 		w.WriteHeader(http.StatusOK)

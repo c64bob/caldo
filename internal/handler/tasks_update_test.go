@@ -238,6 +238,25 @@ VALUES ('project-2', '/cal/work/', 'Work', 'fullscan', FALSE, CURRENT_TIMESTAMP,
 }
 
 
+
+func TestBuildExplicitRRuleUpdateUntilUsesEndOfDay(t *testing.T) {
+	t.Parallel()
+	form := map[string][]string{
+		"repeat_update": {"1"},
+		"repeat_freq":   {"WEEKLY"},
+		"repeat_end":    {"until"},
+		"repeat_until":  {"2026-03-07"},
+	}
+
+	rule := buildExplicitRRuleUpdate(form)
+	if rule == nil {
+		t.Fatal("expected rrule")
+	}
+	if *rule != "FREQ=WEEKLY;UNTIL=20260307T235959Z" {
+		t.Fatalf("unexpected rule: %q", *rule)
+	}
+}
+
 func TestTaskUpdateExplicitRecurrenceReplace(t *testing.T) {
 	t.Parallel()
 	database := openSQLiteForTaskUpdateHandlerTest(t)

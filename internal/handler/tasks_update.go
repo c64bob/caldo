@@ -302,7 +302,8 @@ func buildExplicitRRuleUpdate(form map[string][]string) *string {
 	case "until":
 		if until := parseOptionalDate(firstFormValue(form, "repeat_until")); until != nil {
 			parsed, _ := time.Parse("2006-01-02", *until)
-			ruleParts = append(ruleParts, "UNTIL="+parsed.UTC().Format("20060102T000000Z"))
+			untilEndOfDayUTC := parsed.UTC().Add(24*time.Hour - time.Second)
+			ruleParts = append(ruleParts, "UNTIL="+untilEndOfDayUTC.Format("20060102T150405Z"))
 		}
 	case "count":
 		if n, err := strconv.Atoi(strings.TrimSpace(firstFormValue(form, "repeat_count"))); err == nil && n > 0 {

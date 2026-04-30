@@ -90,6 +90,8 @@ func TaskUpdate(deps taskUpdateDependencies) http.HandlerFunc {
 			description = stringPointer(strings.TrimSpace(r.FormValue("description")))
 		}
 
+		existingRRule := model.ParseVTODOFields(base.RawVTODO).RRule
+
 		patch := model.VTODOPatch{
 			Summary:     &title,
 			Description: description,
@@ -99,8 +101,10 @@ func TaskUpdate(deps taskUpdateDependencies) http.HandlerFunc {
 			Categories:  parseOptionalLabels(r.FormValue("labels")),
 			Priority:    parseOptionalInt(r.FormValue("priority")),
 		}
-		if recurrence := buildExplicitRRuleUpdate(r.PostForm); recurrence != nil {
-			patch.RRule = recurrence
+		if !model.IsComplexRRule(existingRRule) {
+			if recurrence := buildExplicitRRuleUpdate(r.PostForm); recurrence != nil {
+				patch.RRule = recurrence
+			}
 		}
 		if status == "completed" {
 			now := time.Now().UTC()
@@ -256,7 +260,6 @@ func parseOptionalLabels(raw string) []string {
 	}
 	return labels
 }
-
 
 func buildExplicitRRuleUpdate(form map[string][]string) *string {
 	if _, ok := form["repeat_update"]; !ok {

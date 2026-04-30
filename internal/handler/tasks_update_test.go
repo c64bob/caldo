@@ -237,8 +237,6 @@ VALUES ('project-2', '/cal/work/', 'Work', 'fullscan', FALSE, CURRENT_TIMESTAMP,
 	}
 }
 
-
-
 func TestBuildExplicitRRuleUpdateUntilUsesEndOfDay(t *testing.T) {
 	t.Parallel()
 	form := map[string][]string{
@@ -356,6 +354,61 @@ END:VCALENDAR' WHERE id='task-1';`); err != nil {
 		t.Fatalf("expected recurrence unchanged, raw=%q", rawVTODO)
 	}
 }
+
+func TestTaskUpdateDoesNotChangeComplexRecurrenceWithExplicitFlag(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskUpdateHandlerTest(t)
+	seedTaskUpdateHandlerData(t, database)
+
+	if _, err := database.Conn.ExecContext(context.Background(), `UPDATE tasks SET raw_vtodo = 'BEGIN:VCALENDAR
+BEGIN:VTODO
+UID:uid-1
+SUMMARY:old
+DESCRIPTION:old-desc
+STATUS:NEEDS-ACTION
+RRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=1
+END:VTODO
+END:VCALENDAR' WHERE id='task-1';`); err != nil {
+		t.Fatalf("seed recurrence: %v", err)
+	}
+
+	key := bytes.Repeat([]byte{0x66}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	h := TaskUpdate(taskUpdateDependencies{database: database, encryptionKey: key, todos: &stubTaskUpdateTodoClient{updateETag: `"etag-6"`}})
+	form := url.Values{
+		"expected_version": {"2"},
+		"title":            {"new title"},
+		"repeat_update":    {"1"},
+		"repeat_freq":      {"YEARLY"},
+	}
+	req := httptest.NewRequest(http.MethodPatch, "/tasks/task-1", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Tab-ID", "tab-1")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("taskID", "task-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+
+	var rawVTODO string
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT raw_vtodo FROM tasks WHERE id = 'task-1';`).Scan(&rawVTODO); err != nil {
+		t.Fatalf("query task: %v", err)
+	}
+	if !bytes.Contains([]byte(rawVTODO), []byte("RRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=1")) {
+		t.Fatalf("expected complex recurrence unchanged, raw=%q", rawVTODO)
+	}
+	if bytes.Contains([]byte(rawVTODO), []byte("RRULE:FREQ=YEARLY")) {
+		t.Fatalf("expected explicit recurrence update to be ignored for complex recurrence, raw=%q", rawVTODO)
+	}
+}
+
 func openSQLiteForTaskUpdateHandlerTest(t *testing.T) *db.Database {
 	t.Helper()
 	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))

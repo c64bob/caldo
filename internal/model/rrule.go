@@ -29,6 +29,13 @@ func IsComplexRRule(rule string) bool {
 	}
 
 	parts := strings.Split(trimmed, ";")
+	var (
+		freq       string
+		hasUntil   bool
+		hasCount   bool
+		hasByDay   bool
+		hasInvalid bool
+	)
 	for _, part := range parts {
 		part = strings.TrimSpace(part)
 		if part == "" {
@@ -51,14 +58,19 @@ func IsComplexRRule(rule string) bool {
 			if value != "DAILY" && value != "WEEKLY" && value != "MONTHLY" && value != "YEARLY" {
 				return true
 			}
+			freq = value
 		case "INTERVAL", "COUNT":
 			if !isPositiveNumber(value) {
 				return true
+			}
+			if key == "COUNT" {
+				hasCount = true
 			}
 		case "BYDAY":
 			if value == "" {
 				return true
 			}
+			hasByDay = true
 			days := strings.Split(value, ",")
 			for _, day := range days {
 				day = strings.TrimSpace(day)
@@ -70,7 +82,20 @@ func IsComplexRRule(rule string) bool {
 			if value == "" {
 				return true
 			}
+			hasUntil = true
+		default:
+			hasInvalid = true
 		}
+	}
+
+	if hasInvalid {
+		return true
+	}
+	if hasUntil && hasCount {
+		return true
+	}
+	if hasByDay && freq != "WEEKLY" {
+		return true
 	}
 
 	return false

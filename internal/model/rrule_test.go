@@ -14,6 +14,8 @@ func TestIsComplexRRule(t *testing.T) {
 		{name: "daily simple", rule: "FREQ=DAILY", want: false},
 		{name: "weekly weekdays simple", rule: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", want: false},
 		{name: "monthly interval count simple", rule: "FREQ=MONTHLY;INTERVAL=2;COUNT=5", want: false},
+		{name: "daily byday is complex", rule: "FREQ=DAILY;BYDAY=MO,TU", want: true},
+		{name: "count and until is complex", rule: "FREQ=WEEKLY;COUNT=4;UNTIL=20260307T235959Z", want: true},
 		{name: "set position is complex", rule: "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=1", want: true},
 		{name: "ordinal byday is complex", rule: "FREQ=MONTHLY;BYDAY=1MO,3MO", want: true},
 		{name: "monthday is complex", rule: "FREQ=MONTHLY;BYMONTHDAY=15,30", want: true},

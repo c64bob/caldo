@@ -18,6 +18,13 @@ type VTODOFields struct {
 	RRule       string
 	ParentUID   string
 	Categories  []string
+	Attachments []Attachment
+}
+
+// Attachment describes one ATTACH property extracted from a VTODO payload.
+type Attachment struct {
+	Value         string
+	IsExternalURL bool
 }
 
 // ParseVTODOFields extracts normalized fields from a raw iCalendar VTODO payload.
@@ -100,6 +107,15 @@ func ParseVTODOFields(raw string) VTODOFields {
 					fields.Categories = append(fields.Categories, category)
 				}
 			}
+		case "ATTACH":
+			attachmentValue := strings.TrimSpace(value)
+			if attachmentValue == "" {
+				break
+			}
+			fields.Attachments = append(fields.Attachments, Attachment{
+				Value:         attachmentValue,
+				IsExternalURL: strings.HasPrefix(strings.ToLower(attachmentValue), "http://") || strings.HasPrefix(strings.ToLower(attachmentValue), "https://"),
+			})
 		}
 	}
 

@@ -49,6 +49,12 @@ func TestSearchRouteReturnsActiveTasksOnly(t *testing.T) {
 	if !strings.Contains(body, "Globale Suche") {
 		t.Fatalf("response body missing search heading")
 	}
+	if !strings.Contains(body, `rel="noopener noreferrer"`) {
+		t.Fatalf("response body missing secure external attachment rel attribute: %q", body)
+	}
+	if !strings.Contains(body, "Anhang vorhanden (inline/binary)") {
+		t.Fatalf("response body missing inline attachment marker: %q", body)
+	}
 }
 
 func seedSearchRouteProjectAndTasks(t *testing.T, database *db.Database) {
@@ -67,8 +73,16 @@ INSERT INTO tasks (
 ) VALUES
 (
     'task-active', 'project-1', 'uid-active', '/calendars/work/task-active.ics', '"etag-active"', 1,
-    'Überweisung Rechnung', 'Prüfen', 'needs-action', 'BEGIN:VTODO\nUID:uid-active\nEND:VTODO',
-    'BEGIN:VTODO\nUID:uid-active\nEND:VTODO', 'Büro dringend', 'Finanzen', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+    'Überweisung Rechnung', 'Prüfen', 'needs-action', 'BEGIN:VTODO
+UID:uid-active
+ATTACH:https://example.com/rechnung.pdf
+ATTACH;ENCODING=BASE64;VALUE=BINARY:AAAA
+END:VTODO',
+    'BEGIN:VTODO
+UID:uid-active
+ATTACH:https://example.com/rechnung.pdf
+ATTACH;ENCODING=BASE64;VALUE=BINARY:AAAA
+END:VTODO', 'Büro dringend', 'Finanzen', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 ),
 (
     'task-completed', 'project-1', 'uid-completed', '/calendars/work/task-completed.ics', '"etag-completed"', 1,

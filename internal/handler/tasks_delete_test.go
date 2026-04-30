@@ -222,3 +222,45 @@ func TestTaskDeleteWithDirectSubtasksDeleteAllDeletesParentAndSubtasks(t *testin
 		}
 	}
 }
+
+func TestTaskDeleteWithDirectSubtasksDeleteAllVersionConflictDoesNotDeleteSubtasks(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskUpdateHandlerTest(t)
+	seedTaskUpdateHandlerData(t, database)
+	seedOpenSubtask(t, database, "task-child-1", "task-1")
+	seedOpenSubtask(t, database, "task-child-2", "task-1")
+
+	key := bytes.Repeat([]byte{0x77}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	stub := &stubTaskUpdateTodoClient{}
+	h := TaskDelete(taskUpdateDependencies{database: database, encryptionKey: key, todos: stub})
+	form := url.Values{"expected_version": {"1"}, "subtasks_action": {"delete_all"}}
+	req := httptest.NewRequest(http.MethodDelete, "/tasks/task-1", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Tab-ID", "tab-1")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("taskID", "task-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+	if stub.deleteCalls != 0 {
+		t.Fatalf("expected no CalDAV delete calls, got %d", stub.deleteCalls)
+	}
+
+	for _, taskID := range []string{"task-1", "task-child-1", "task-child-2"} {
+		var count int
+		if err := database.Conn.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM tasks WHERE id = ?;`, taskID).Scan(&count); err != nil {
+			t.Fatalf("count task %s: %v", taskID, err)
+		}
+		if count != 1 {
+			t.Fatalf("expected task %s to remain, got %d rows", taskID, count)
+		}
+	}
+}

@@ -93,6 +93,15 @@ func TaskDelete(deps taskUpdateDependencies) http.HandlerFunc {
 				return
 			}
 		}
+		parentBase, err := deps.database.LoadTaskUpdateBase(r.Context(), taskID, "")
+		if err != nil {
+			http.Error(w, "task version conflict", http.StatusConflict)
+			return
+		}
+		if parentBase.ExpectedVersion != expectedVersion {
+			http.Error(w, "task version conflict", http.StatusConflict)
+			return
+		}
 
 		deleteTaskIDs := append(append([]string{}, directSubtaskIDs...), taskID)
 		todoCredentials := caldav.Credentials{URL: creds.URL, Username: creds.Username, Password: creds.Password}

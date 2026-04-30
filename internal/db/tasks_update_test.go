@@ -62,6 +62,9 @@ func TestPrepareTaskUpdateCreatesUndoSnapshotAndMarksPending(t *testing.T) {
 	if snapshotTitle != "old" || snapshotStatus != "needs-action" || snapshotLabelNames != "home" || snapshotEtag != "\"etag-1\"" {
 		t.Fatalf("unexpected snapshot data: title=%q status=%q labels=%q etag=%q", snapshotTitle, snapshotStatus, snapshotLabelNames, snapshotEtag)
 	}
+
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM labels WHERE LOWER(name) = 'urgent';`, 1)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM task_labels WHERE task_id = 'task-1';`, 2)
 }
 
 func TestPrepareTaskUpdateRejectsVersionMismatch(t *testing.T) {

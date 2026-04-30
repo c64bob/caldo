@@ -72,13 +72,21 @@ func DateScopedTasksPage(heading string, emptyMessage string, tasks []db.DatedTa
 				return templ_7745c5c3_Err
 			}
 			for _, task := range tasks {
-				var templ_7745c5c3_Var4 = templ.KV("ml-6", task.IsSubtask)
-				templ_7745c5c3_Var5 := templ.CSSClasses{"rounded border border-slate-200 p-3 dark:border-slate-700", templ_7745c5c3_Var4}
+				var templ_7745c5c3_Var4 = []any{"rounded border border-slate-200 p-3 dark:border-slate-700", templ.KV("ml-6", task.IsSubtask)}
+				templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var4...)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<li class=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5.String()))
+				var templ_7745c5c3_Var5 string
+				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var4).String())
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 1, Col: 0}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

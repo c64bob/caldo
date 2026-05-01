@@ -115,6 +115,10 @@ func TestNewRouterRendersBaseLayoutOnRoot(t *testing.T) {
 		`href="/search"`,
 		`href="/conflicts"`,
 		`href="/settings"`,
+		`data-shortcut-help-dialog`,
+		`data-shortcut-help-close`,
+		`Neue Aufgabe`,
+		`Hilfe öffnen`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("response body missing %q", want)

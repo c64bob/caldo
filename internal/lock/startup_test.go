@@ -69,3 +69,23 @@ func TestReleaseNilStartupLock(t *testing.T) {
 		t.Fatalf("expected nil startup lock release to be no-op, got: %v", err)
 	}
 }
+
+func TestAcquireStartupLockCreatesMissingDirectory(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "nested", "state", "caldo.db")
+
+	lock, err := AcquireStartupLock(dbPath)
+	if err != nil {
+		t.Fatalf("acquire startup lock for nested path: %v", err)
+	}
+	defer func() {
+		if err := lock.Release(); err != nil {
+			t.Fatalf("release startup lock for nested path: %v", err)
+		}
+	}()
+
+	if lock.Path() != dbPath+".startup.lock" {
+		t.Fatalf("unexpected lock path: %s", lock.Path())
+	}
+}

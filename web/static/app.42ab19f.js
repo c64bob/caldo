@@ -35,7 +35,10 @@
 
   document.addEventListener('keydown', function (event) {
     if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey) return;
-    if (isTypingTarget(event.target)) return;
+    if (isTypingTarget(event.target)) {
+      navState.pendingView = null;
+      return;
+    }
 
     var key = event.key.toLowerCase();
     if (navState.pendingView) {

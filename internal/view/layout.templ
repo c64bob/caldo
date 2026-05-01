@@ -68,6 +68,7 @@ templ BaseLayout(title string, content templ.Component) {
 					@content
 				</main>
 			</div>
+			<div id="write-status" class="hidden fixed bottom-4 right-4 rounded border border-slate-300 bg-white px-3 py-2 text-sm shadow dark:border-slate-700 dark:bg-slate-900" aria-live="polite"></div>
 			<div id="notifications" aria-live="polite"></div>
 			<dialog data-shortcut-help-dialog class="w-full max-w-xl rounded border border-slate-300 p-0 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
 				<div class="p-4 space-y-3">

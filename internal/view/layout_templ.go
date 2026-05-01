@@ -359,14 +359,14 @@ func BaseLayout(title string, content templ.Component) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</main></div><div id=\"notifications\" aria-live=\"polite\"></div><dialog data-shortcut-help-dialog class=\"w-full max-w-xl rounded border border-slate-300 p-0 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100\"><div class=\"p-4 space-y-3\"><div class=\"flex items-center justify-between\"><h2 class=\"text-lg font-semibold\">Tastaturkürzel</h2><button type=\"button\" data-shortcut-help-close class=\"rounded border border-slate-300 px-2 py-1 text-sm dark:border-slate-700\">Schließen</button></div><ul class=\"space-y-2 text-sm\"><li><kbd class=\"rounded border px-1\">N</kbd> Neue Aufgabe</li><li><kbd class=\"rounded border px-1\">S</kbd> oder <kbd class=\"rounded border px-1\">/</kbd> Suche</li><li><kbd class=\"rounded border px-1\">G</kbd> dann <kbd class=\"rounded border px-1\">T</kbd> Heute</li><li><kbd class=\"rounded border px-1\">G</kbd> dann <kbd class=\"rounded border px-1\">U</kbd> Demnächst</li><li><kbd class=\"rounded border px-1\">?</kbd> Hilfe öffnen</li></ul></div></dialog><script defer src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</main></div><div id=\"write-status\" class=\"hidden fixed bottom-4 right-4 rounded border border-slate-300 bg-white px-3 py-2 text-sm shadow dark:border-slate-700 dark:bg-slate-900\" aria-live=\"polite\"></div><div id=\"notifications\" aria-live=\"polite\"></div><dialog data-shortcut-help-dialog class=\"w-full max-w-xl rounded border border-slate-300 p-0 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100\"><div class=\"p-4 space-y-3\"><div class=\"flex items-center justify-between\"><h2 class=\"text-lg font-semibold\">Tastaturkürzel</h2><button type=\"button\" data-shortcut-help-close class=\"rounded border border-slate-300 px-2 py-1 text-sm dark:border-slate-700\">Schließen</button></div><ul class=\"space-y-2 text-sm\"><li><kbd class=\"rounded border px-1\">N</kbd> Neue Aufgabe</li><li><kbd class=\"rounded border px-1\">S</kbd> oder <kbd class=\"rounded border px-1\">/</kbd> Suche</li><li><kbd class=\"rounded border px-1\">G</kbd> dann <kbd class=\"rounded border px-1\">T</kbd> Heute</li><li><kbd class=\"rounded border px-1\">G</kbd> dann <kbd class=\"rounded border px-1\">U</kbd> Demnächst</li><li><kbd class=\"rounded border px-1\">?</kbd> Hilfe öffnen</li></ul></div></dialog><script defer src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var29 string
 		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(AssetPath(ctx, "htmx.min.js"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 88, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 89, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 		if templ_7745c5c3_Err != nil {
@@ -379,7 +379,7 @@ func BaseLayout(title string, content templ.Component) templ.Component {
 		var templ_7745c5c3_Var30 string
 		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(AssetPath(ctx, "htmx-sse.js"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 89, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 90, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 		if templ_7745c5c3_Err != nil {
@@ -392,7 +392,7 @@ func BaseLayout(title string, content templ.Component) templ.Component {
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(AssetPath(ctx, "alpine.min.js"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 90, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 91, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {
@@ -405,7 +405,7 @@ func BaseLayout(title string, content templ.Component) templ.Component {
 		var templ_7745c5c3_Var32 string
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(AssetPath(ctx, "app.js"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 91, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 92, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 		if templ_7745c5c3_Err != nil {
@@ -476,7 +476,7 @@ func PlaceholderPage(title string) templ.Component {
 		var templ_7745c5c3_Var35 string
 		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 102, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 103, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 		if templ_7745c5c3_Err != nil {

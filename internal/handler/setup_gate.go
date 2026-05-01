@@ -1,6 +1,9 @@
 package handler
 
-import "net/http"
+import (
+	"net/http"
+	"strings"
+)
 
 // SetupGateMiddleware blocks normal routes until setup is completed.
 func SetupGateMiddleware(state *SetupState) func(http.Handler) http.Handler {
@@ -24,6 +27,11 @@ func SetupGateMiddleware(state *SetupState) func(http.Handler) http.Handler {
 			}
 
 			if _, ok := allowedWhenIncomplete[routeKey(r.Method, r.URL.Path)]; ok {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/static/") {
 				next.ServeHTTP(w, r)
 				return
 			}

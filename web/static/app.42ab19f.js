@@ -24,6 +24,77 @@
     dialog.showModal();
   }
 
+
+
+  var writeState = { pendingRequests: 0 };
+
+  function setWriteStatus(kind, message) {
+    var el = document.getElementById('write-status');
+    if (!el) return;
+    if (!message) {
+      el.textContent = '';
+      el.classList.add('hidden');
+      el.classList.remove('text-emerald-700', 'border-emerald-300', 'bg-emerald-50', 'text-amber-700', 'border-amber-300', 'bg-amber-50', 'text-red-700', 'border-red-300', 'bg-red-50');
+      return;
+    }
+
+    el.textContent = message;
+    el.classList.remove('hidden');
+    el.classList.remove('text-emerald-700', 'border-emerald-300', 'bg-emerald-50', 'text-amber-700', 'border-amber-300', 'bg-amber-50', 'text-red-700', 'border-red-300', 'bg-red-50');
+
+    if (kind === 'error') {
+      el.classList.add('text-red-700', 'border-red-300', 'bg-red-50');
+      return;
+    }
+
+    if (kind === 'saved') {
+      el.classList.add('text-emerald-700', 'border-emerald-300', 'bg-emerald-50');
+      return;
+    }
+
+    el.classList.add('text-amber-700', 'border-amber-300', 'bg-amber-50');
+  }
+
+  function clearSavedStatusSoon() {
+    window.setTimeout(function () {
+      if (writeState.pendingRequests === 0) {
+        setWriteStatus(null, '');
+      }
+    }, 1200);
+  }
+
+  document.body.addEventListener('htmx:beforeRequest', function (event) {
+    var method = ((event.detail && event.detail.requestConfig && event.detail.requestConfig.verb) || '').toUpperCase();
+    if (!method || method === 'GET') return;
+    writeState.pendingRequests += 1;
+    setWriteStatus('pending', 'Speichern …');
+  });
+
+  document.body.addEventListener('htmx:afterRequest', function (event) {
+    var method = ((event.detail && event.detail.requestConfig && event.detail.requestConfig.verb) || '').toUpperCase();
+    if (!method || method === 'GET') return;
+    if (writeState.pendingRequests > 0) {
+      writeState.pendingRequests -= 1;
+    }
+
+    var successful = !!(event.detail && event.detail.successful);
+    if (!successful) {
+      setWriteStatus('error', 'Speichern fehlgeschlagen. Änderungen prüfen.');
+      return;
+    }
+
+    if (writeState.pendingRequests === 0) {
+      setWriteStatus('saved', 'Gespeichert');
+      clearSavedStatusSoon();
+    }
+  });
+
+  window.addEventListener('beforeunload', function (event) {
+    if (writeState.pendingRequests <= 0) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
+
   document.addEventListener('click', function (event) {
     var closeButton = event.target.closest('[data-shortcut-help-close]');
     if (!closeButton) return;

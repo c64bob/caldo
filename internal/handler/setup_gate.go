@@ -2,11 +2,12 @@ package handler
 
 import (
 	"net/http"
-	"strings"
+
+	"caldo/internal/assets"
 )
 
 // SetupGateMiddleware blocks normal routes until setup is completed.
-func SetupGateMiddleware(state *SetupState) func(http.Handler) http.Handler {
+func SetupGateMiddleware(state *SetupState, manifest assets.Manifest) func(http.Handler) http.Handler {
 	allowedWhenIncomplete := map[string]struct{}{
 		routeKey(http.MethodGet, "/setup"):               {},
 		routeKey(http.MethodGet, "/setup/"):              {},
@@ -18,6 +19,8 @@ func SetupGateMiddleware(state *SetupState) func(http.Handler) http.Handler {
 		routeKey(http.MethodPost, "/setup/complete"):     {},
 		routeKey(http.MethodGet, "/health"):              {},
 	}
+
+	allowedStaticAssets := resolveSetupStaticAssetPaths(manifest)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -31,9 +34,11 @@ func SetupGateMiddleware(state *SetupState) func(http.Handler) http.Handler {
 				return
 			}
 
-			if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/static/") {
-				next.ServeHTTP(w, r)
-				return
+			if r.Method == http.MethodGet {
+				if _, ok := allowedStaticAssets[r.URL.Path]; ok {
+					next.ServeHTTP(w, r)
+					return
+				}
 			}
 
 			http.Redirect(w, r, "/setup", http.StatusFound)
@@ -43,4 +48,12 @@ func SetupGateMiddleware(state *SetupState) func(http.Handler) http.Handler {
 
 func routeKey(method string, path string) string {
 	return method + " " + path
+}
+
+func resolveSetupStaticAssetPaths(manifest assets.Manifest) map[string]struct{} {
+	allowed := make(map[string]struct{}, len(manifest))
+	for _, resolved := range manifest {
+		allowed["/static/"+resolved] = struct{}{}
+	}
+	return allowed
 }

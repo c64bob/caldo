@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"reflect"
 
 	"caldo/internal/assets"
 	"caldo/internal/config"
@@ -112,5 +113,24 @@ func logStartupError(logger *slog.Logger, err error) {
 		return
 	}
 
-	logger.Error("startup_failed", "error", err)
+	logger.Error(
+		"startup_failed",
+		"error_type",
+		reflect.TypeOf(err).String(),
+		"root_cause_type",
+		rootCauseType(err),
+	)
+}
+
+func rootCauseType(err error) string {
+	current := err
+	for {
+		next := errors.Unwrap(current)
+		if next == nil {
+			break
+		}
+		current = next
+	}
+
+	return reflect.TypeOf(current).String()
 }

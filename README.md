@@ -52,36 +52,66 @@ Die folgenden Abschnitte sollten im weiteren Projektverlauf ergänzt bzw. konkre
 
 ### 3) Voraussetzungen
 
-- [ ] Go-Version: `TODO`
-- [ ] Optional: Docker / Docker Compose Versionen: `TODO`
-- [ ] Reverse-Proxy-Anforderungen (Auth-Header): `TODO`
-- [ ] Unterstützte Browser (MVP): `TODO`
+- Go-Version: `1.24+` (nur für lokalen Build)
+- Docker Engine + Docker Compose Plugin (für Referenzdeployment)
+- Reverse Proxy mit vorgeschalteter Authentifizierung und TLS-Terminierung
 
 ### 4) Installation
 
 #### A) Als Go-Binary
 
 ```bash
-# TODO: konkrete Build- und Startbefehle ergänzen
+make build
+BASE_URL="https://todos.example.com" \
+ENCRYPTION_KEY="<base64-32-byte-key>" \
+PROXY_USER_HEADER="X-Authentik-Username" \
+DB_PATH="./caldo.db" \
+./bin/caldo
 ```
 
-#### B) Mit Docker
+#### B) Mit Docker Compose (Referenzdeployment)
 
 ```bash
-# TODO: konkrete docker compose Befehle ergänzen
+docker compose up -d --build
 ```
+
+Die Referenzkonfiguration in `docker-compose.yml` setzt auf:
+
+- lokalen Port-Bind auf `127.0.0.1:8080:8080`
+- persistentes Volume `caldo_data` für `/data`
+- Healthcheck auf `GET /health`
+- Restart-Policy `on-failure:3` (kein `unless-stopped`)
 
 ### 5) Konfiguration (Environment)
 
+Pflichtvariablen:
+
 | Variable | Pflicht | Beschreibung |
 |---|---:|---|
-| `BASE_URL` | Ja | Externe HTTPS-Basis-URL der Instanz |
-| `ENCRYPTION_KEY` | Ja | Base64-Schlüssel (32 Byte nach Decoding) |
-| `PROXY_USER_HEADER` | Ja | Headername für Reverse-Proxy-Auth |
-| `LOG_LEVEL` | Nein | Loglevel (Default: `info`) |
-| `TODO` | `TODO` | Weitere optionale Parameter ergänzen |
+| `BASE_URL` | Ja | Externe HTTPS-Basis-URL der Instanz (muss mit `https://` beginnen). |
+| `ENCRYPTION_KEY` | Ja | Base64-Schlüssel, der auf exakt 32 Byte decodiert. |
+| `PROXY_USER_HEADER` | Ja | Headername, über den der Reverse Proxy den Benutzer übergibt. |
 
-> Beispiel-`.env`: `TODO`
+Optionale Variablen:
+
+| Variable | Pflicht | Beschreibung |
+|---|---:|---|
+| `LOG_LEVEL` | Nein | Loglevel (Default: `info`). |
+| `PORT` | Nein | HTTP-Port im Container/Prozess (Default: `8080`). |
+| `DB_PATH` | Nein | Pfad zur SQLite-Datei (Default: `/data/caldo.db`). |
+
+> Wichtiger Hinweis: `BASE_URL` muss immer eine `https://`-URL sein – auch dann, wenn der Reverse Proxy intern per HTTP an Caldo weiterleitet.
+
+Beispiel `.env`:
+
+```dotenv
+BASE_URL=https://todos.example.com
+ENCRYPTION_KEY=<base64-encoded-32-byte-key>
+PROXY_USER_HEADER=X-Authentik-Username
+LOG_LEVEL=info
+PORT=8080
+DB_PATH=/data/caldo.db
+```
 
 ### 6) Nutzung
 

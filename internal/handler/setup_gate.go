@@ -36,6 +36,11 @@ func SetupGateMiddleware(state *SetupState, manifest assets.Manifest) func(http.
 				return
 			}
 
+			if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/static/") {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			http.Redirect(w, r, "/setup", http.StatusFound)
 		})
 	}

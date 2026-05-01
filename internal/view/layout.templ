@@ -1,5 +1,15 @@
 package view
 
+func navLinkClass(title string, activeTitles ...string) string {
+	base := "block rounded px-2 py-1 text-sm"
+	for _, candidate := range activeTitles {
+		if title == candidate {
+			return base + " bg-slate-200 font-semibold text-slate-900 dark:bg-slate-800 dark:text-slate-100"
+		}
+	}
+
+	return base + " underline"
+}
 
 templ BaseLayout(title string, content templ.Component) {
 	<!DOCTYPE html>
@@ -24,22 +34,34 @@ templ BaseLayout(title string, content templ.Component) {
 					<section>
 						<h2 class="text-sm font-medium mb-2">Systemfilter</h2>
 						<ul class="space-y-1" data-nav-system-filters>
-							<li><a class="text-sm underline" href="/today">Heute</a></li>
-							<li><a class="text-sm underline" href="/upcoming">Demnächst</a></li>
-							<li><a class="text-sm underline" href="/overdue">Überfällig</a></li>
-							<li><a class="text-sm underline" href="/favorites">Favoriten</a></li>
-							<li><a class="text-sm underline" href="/no-date">Ohne Datum</a></li>
-							<li><a class="text-sm underline" href="/completed">Erledigt</a></li>
-							<li><a class="text-sm underline" href="/conflicts">Konflikte</a></li>
+							<li><a class={ navLinkClass(title, "Heute") } href="/today">Heute</a></li>
+							<li><a class={ navLinkClass(title, "Demnächst") } href="/upcoming">Demnächst</a></li>
+							<li><a class={ navLinkClass(title, "Favoriten") } href="/favorites">Favoriten</a></li>
+							<li><a class={ navLinkClass(title, "Überfällig") } href="/overdue">Überfällig</a></li>
+							<li><a class={ navLinkClass(title, "Ohne Datum") } href="/no-date">Ohne Datum</a></li>
+							<li><a class={ navLinkClass(title, "Abgeschlossen") } href="/completed">Abgeschlossen</a></li>
+							<li><a class={ navLinkClass(title, "Suche") } href="/search">Suche</a></li>
+							<li><a class={ navLinkClass(title, "Konflikte") } href="/conflicts">Konflikte</a></li>
+							<li><a class={ navLinkClass(title, "Einstellungen") } href="/settings">Einstellungen</a></li>
 						</ul>
 					</section>
 					<section class="mt-6">
-						<h2 class="text-sm font-medium mb-2">Gespeicherte Filter</h2>
-						<ul data-nav-user-filters></ul>
+						<h2 class="text-sm font-medium mb-2">Filter</h2>
+						<ul data-nav-user-filters>
+							<li><a class={ navLinkClass(title, "Filter") } href="/filters">Filter</a></li>
+						</ul>
+					</section>
+					<section class="mt-6">
+						<h2 class="text-sm font-medium mb-2">Labels</h2>
+						<ul>
+							<li><a class={ navLinkClass(title, "Labels") } href="/labels">Labels</a></li>
+						</ul>
 					</section>
 					<section class="mt-6">
 						<h2 class="text-sm font-medium mb-2">Projekte</h2>
-						<ul data-nav-projects></ul>
+						<ul data-nav-projects>
+							<li><a class={ navLinkClass(title, "Projekte") } href="/projects">Projekte</a></li>
+						</ul>
 					</section>
 				</nav>
 				<main class="flex-1 p-6">
@@ -57,4 +79,10 @@ templ BaseLayout(title string, content templ.Component) {
 
 templ EmptyContent() {
 	<section></section>
+}
+
+templ PlaceholderPage(title string) {
+	<section>
+		<h2 class="text-xl font-semibold">{ title }</h2>
+	</section>
 }

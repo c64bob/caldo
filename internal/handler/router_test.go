@@ -51,7 +51,7 @@ func TestNewRouterRejectsNonHealthRequestWithoutProxyAuthHeader(t *testing.T) {
 
 	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
 	responseRecorder := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodGet, "/today", nil)
+	request := httptest.NewRequest(http.MethodGet, "/settings", nil)
 
 	NewRouter(logger, "X-Forwarded-User", testManifest(), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
 
@@ -103,6 +103,18 @@ func TestNewRouterRendersBaseLayoutOnRoot(t *testing.T) {
 		`/static/alpine.7cc80d0.min.js`,
 		`/static/app.42ab19f.js`,
 		`/static/app.8f3a1c2.css`,
+		`href="/today"`,
+		`href="/upcoming"`,
+		`href="/projects"`,
+		`href="/labels"`,
+		`href="/filters"`,
+		`href="/favorites"`,
+		`href="/overdue"`,
+		`href="/no-date"`,
+		`href="/completed"`,
+		`href="/search"`,
+		`href="/conflicts"`,
+		`href="/settings"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("response body missing %q", want)

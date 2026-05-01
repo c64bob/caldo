@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 // Manifest maps logical asset names to cache-busted file names.
@@ -23,6 +24,22 @@ func LoadManifest(path string) (Manifest, error) {
 
 	if len(manifest) == 0 {
 		return nil, fmt.Errorf("manifest is empty")
+	}
+
+	manifestDir := filepath.Dir(path)
+	for logicalName, resolvedName := range manifest {
+		if resolvedName == "" {
+			return nil, fmt.Errorf("asset %q resolves to empty filename", logicalName)
+		}
+
+		resolvedPath := filepath.Join(manifestDir, resolvedName)
+		info, statErr := os.Stat(resolvedPath)
+		if statErr != nil {
+			return nil, fmt.Errorf("asset %q missing file %q: %w", logicalName, resolvedName, statErr)
+		}
+		if info.IsDir() {
+			return nil, fmt.Errorf("asset %q points to directory %q", logicalName, resolvedName)
+		}
 	}
 
 	return manifest, nil

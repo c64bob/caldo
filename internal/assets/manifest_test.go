@@ -1,6 +1,7 @@
 package assets
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -36,5 +37,19 @@ func TestResolveFailsForUnknownAsset(t *testing.T) {
 	manifest := Manifest{"app.css": "app.8f3a1c2.css"}
 	if _, err := manifest.Resolve("unknown.css"); err == nil {
 		t.Fatal("expected error for unknown asset")
+	}
+}
+
+func TestLoadManifestFailsWhenMappedAssetDoesNotExist(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	manifestPath := filepath.Join(dir, "manifest.json")
+	if err := os.WriteFile(manifestPath, []byte(`{"app.css":"app.hash.css"}`), 0o600); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+
+	if _, err := LoadManifest(manifestPath); err == nil {
+		t.Fatal("expected error for missing asset file")
 	}
 }

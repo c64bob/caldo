@@ -1,10 +1,10 @@
-.PHONY: build dev tailwind templ test lint docker-build
+.PHONY: build dev tailwind templ verify-assets test lint docker-build
 
 BINARY := caldo
 BINARY_DIR := bin
 BINARY_PATH := $(BINARY_DIR)/$(BINARY)
 
-build: templ tailwind
+build: templ tailwind verify-assets
 	@mkdir -p $(BINARY_DIR)
 	go build -o $(BINARY_PATH) ./cmd/caldo
 
@@ -28,6 +28,9 @@ templ:
 
 test:
 	go test ./...
+
+verify-assets:
+	go test ./internal/assets -run TestLoadManifest -count=1
 
 lint:
 	go vet ./...

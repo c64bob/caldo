@@ -1,1 +1,2 @@
 /* Tailwind bundle placeholder for manifest validation in test/dev environments. */
+.htmx-indicator{opacity:0}.htmx-request .htmx-indicator,.htmx-request.htmx-indicator{opacity:1;transition:opacity .2s ease-in}

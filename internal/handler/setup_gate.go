@@ -2,11 +2,12 @@ package handler
 
 import (
 	"net/http"
-	"strings"
+
+	"caldo/internal/assets"
 )
 
 // SetupGateMiddleware blocks normal routes until setup is completed.
-func SetupGateMiddleware(state *SetupState) func(http.Handler) http.Handler {
+func SetupGateMiddleware(state *SetupState, manifest assets.Manifest) func(http.Handler) http.Handler {
 	allowedWhenIncomplete := map[string]struct{}{
 		routeKey(http.MethodGet, "/setup"):               {},
 		routeKey(http.MethodGet, "/setup/"):              {},
@@ -19,6 +20,10 @@ func SetupGateMiddleware(state *SetupState) func(http.Handler) http.Handler {
 		routeKey(http.MethodGet, "/health"):              {},
 	}
 
+	for _, assetPath := range manifest {
+		allowedWhenIncomplete[routeKey(http.MethodGet, "/static/"+assetPath)] = struct{}{}
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if state != nil && state.IsComplete() {
@@ -27,11 +32,6 @@ func SetupGateMiddleware(state *SetupState) func(http.Handler) http.Handler {
 			}
 
 			if _, ok := allowedWhenIncomplete[routeKey(r.Method, r.URL.Path)]; ok {
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/static/") {
 				next.ServeHTTP(w, r)
 				return
 			}

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"caldo/internal/assets"
 	"caldo/internal/logging"
 	"caldo/internal/view"
 	"github.com/google/uuid"
@@ -254,7 +255,7 @@ func TestReverseProxyAuthMiddlewareAllowsHealthWithoutAuth(t *testing.T) {
 func TestSetupGateMiddlewareRedirectsDisallowedRoutesWhenSetupIncomplete(t *testing.T) {
 	t.Parallel()
 
-	h := SetupGateMiddleware(NewSetupState(false))(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := SetupGateMiddleware(NewSetupState(false), testMiddlewareManifest())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
@@ -274,7 +275,7 @@ func TestSetupGateMiddlewareRedirectsDisallowedRoutesWhenSetupIncomplete(t *test
 func TestSetupGateMiddlewareAllowsStaticAssetsWhenSetupIncomplete(t *testing.T) {
 	t.Parallel()
 
-	h := SetupGateMiddleware(NewSetupState(false))(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := SetupGateMiddleware(NewSetupState(false), testMiddlewareManifest())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
@@ -289,7 +290,7 @@ func TestSetupGateMiddlewareAllowsStaticAssetsWhenSetupIncomplete(t *testing.T) 
 func TestSetupGateMiddlewareAllowsSetupRoutesWhenSetupIncomplete(t *testing.T) {
 	t.Parallel()
 
-	h := SetupGateMiddleware(NewSetupState(false))(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := SetupGateMiddleware(NewSetupState(false), testMiddlewareManifest())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
@@ -305,7 +306,7 @@ func TestSetupGateMiddlewareAllowsSetupRoutesWhenSetupIncomplete(t *testing.T) {
 func TestSetupGateMiddlewareAllowsAllRoutesWhenSetupComplete(t *testing.T) {
 	t.Parallel()
 
-	h := SetupGateMiddleware(NewSetupState(true))(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := SetupGateMiddleware(NewSetupState(true), testMiddlewareManifest())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
@@ -322,7 +323,7 @@ func TestSetupGateMiddlewareReflectsRuntimeCompletionState(t *testing.T) {
 	t.Parallel()
 
 	state := NewSetupState(false)
-	h := SetupGateMiddleware(state)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := SetupGateMiddleware(state, testMiddlewareManifest())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
@@ -401,5 +402,15 @@ func TestSetupCSRFMiddlewareExposesTokenOnSetupPageResponses(t *testing.T) {
 	}
 	if !cookie.HttpOnly {
 		t.Fatal("expected csrf cookie to be httpOnly")
+	}
+}
+
+func testMiddlewareManifest() assets.Manifest {
+	return assets.Manifest{
+		"app.css":       "app.8f3a1c2.css",
+		"app.js":        "app.5b3a7d6.js",
+		"htmx.min.js":   "htmx.5e741aa.min.js",
+		"htmx-sse.js":   "htmx-sse.9d2f6c1.js",
+		"alpine.min.js": "alpine.7cc80d0.min.js",
 	}
 }

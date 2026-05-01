@@ -73,6 +73,26 @@ func TestParseQuickAddNaturalDueDateEnglishGerman(t *testing.T) {
 	}
 }
 
+
+func TestParseQuickAddDoesNotParseCrossLanguageDueKeywords(t *testing.T) {
+	now := time.Date(2026, time.March, 4, 10, 0, 0, 0, time.UTC)
+
+	enDraft := parseQuickAddAt("Morgen meeting", now, "en")
+	if enDraft.Due != "" {
+		t.Fatalf("en due: got %q want empty", enDraft.Due)
+	}
+	if enDraft.Title != "Morgen meeting" {
+		t.Fatalf("en title: got %q want %q", enDraft.Title, "Morgen meeting")
+	}
+
+	deDraft := parseQuickAddAt("Tomorrow meeting", now, "de")
+	if deDraft.Due != "" {
+		t.Fatalf("de due: got %q want empty", deDraft.Due)
+	}
+	if deDraft.Title != "Tomorrow meeting" {
+		t.Fatalf("de title: got %q want %q", deDraft.Title, "Tomorrow meeting")
+	}
+}
 func TestParseQuickAddUnknownTokensRemainInTitle(t *testing.T) {
 	draft := ParseQuickAdd("Task maybe nextmon")
 	if draft.Due != "" {

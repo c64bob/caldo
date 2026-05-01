@@ -168,12 +168,26 @@ func matchDueToken(tokens []string, i int, now time.Time, language string) (bool
 	n := len(tokens)
 	lower := strings.ToLower(tokens[i])
 	switch lower {
-	case "heute", "today":
-		return true, now.Format("2006-01-02"), 1
-	case "morgen", "tomorrow":
-		return true, now.AddDate(0, 0, 1).Format("2006-01-02"), 1
+	case "heute":
+		if language == "de" {
+			return true, now.Format("2006-01-02"), 1
+		}
+	case "today":
+		if language == "en" {
+			return true, now.Format("2006-01-02"), 1
+		}
+	case "morgen":
+		if language == "de" {
+			return true, now.AddDate(0, 0, 1).Format("2006-01-02"), 1
+		}
+	case "tomorrow":
+		if language == "en" {
+			return true, now.AddDate(0, 0, 1).Format("2006-01-02"), 1
+		}
 	case "übermorgen":
-		return true, now.AddDate(0, 0, 2).Format("2006-01-02"), 1
+		if language == "de" {
+			return true, now.AddDate(0, 0, 2).Format("2006-01-02"), 1
+		}
 	}
 
 	if i+2 < n && lower == "in" {

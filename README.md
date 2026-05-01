@@ -52,7 +52,7 @@ Die folgenden Abschnitte sollten im weiteren Projektverlauf ergänzt bzw. konkre
 
 ### 3) Voraussetzungen
 
-- Go-Version: `1.23+` (nur für lokalen Build)
+- Go-Version: `1.24+` (nur für lokalen Build)
 - Docker Engine + Docker Compose Plugin (für Referenzdeployment)
 - Reverse Proxy mit vorgeschalteter Authentifizierung und TLS-Terminierung
 
@@ -65,6 +65,7 @@ make build
 BASE_URL="https://todos.example.com" \
 ENCRYPTION_KEY="<base64-32-byte-key>" \
 PROXY_USER_HEADER="X-Authentik-Username" \
+DB_PATH="./caldo.db" \
 ./bin/caldo
 ```
 

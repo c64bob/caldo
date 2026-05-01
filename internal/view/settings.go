@@ -44,10 +44,17 @@ func SettingsPageContent(settings db.AppSettings, proxyUserHeader string, httpsC
 <input class="mt-1 w-32 rounded border border-slate-300 px-2 py-1 dark:border-slate-700" type="number" min="1" name="upcoming_days" value="%d">
 </label>
 <label class="block">Sprache
-<input class="mt-1 w-48 rounded border border-slate-300 px-2 py-1 dark:border-slate-700" type="text" name="ui_language" value="%s">
+<select class="mt-1 w-48 rounded border border-slate-300 px-2 py-1 dark:border-slate-700 dark:bg-slate-900" name="ui_language">
+<option value="de" %s>Deutsch</option>
+<option value="en" %s>English</option>
+</select>
 </label>
 <label class="block">Dark Mode
-<input class="mt-1 w-48 rounded border border-slate-300 px-2 py-1 dark:border-slate-700" type="text" name="dark_mode" value="%s">
+<select class="mt-1 w-48 rounded border border-slate-300 px-2 py-1 dark:border-slate-700 dark:bg-slate-900" name="dark_mode">
+<option value="system" %s>System</option>
+<option value="light" %s>Hell</option>
+<option value="dark" %s>Dunkel</option>
+</select>
 </label>
 <button type="submit" class="rounded border border-slate-300 px-3 py-1 dark:border-slate-700">UI-Einstellungen speichern</button>
 </form>
@@ -57,7 +64,7 @@ func SettingsPageContent(settings db.AppSettings, proxyUserHeader string, httpsC
 <p class="mt-2">Reverse-Proxy-Header: <code>%s</code></p>
 <p>HTTPS-Status: %s</p>
 </div>
-</section>`, csrfToken, settings.SyncIntervalMinutes, csrfToken, csrfToken, checkedAttr(settings.ShowCompleted), settings.UpcomingDays, html.EscapeString(settings.UILanguage), html.EscapeString(settings.DarkMode), html.EscapeString(proxyUserHeader), httpsStatus)
+</section>`, csrfToken, settings.SyncIntervalMinutes, csrfToken, csrfToken, checkedAttr(settings.ShowCompleted), settings.UpcomingDays, selectedAttr(settings.UILanguage, "de"), selectedAttr(settings.UILanguage, "en"), selectedAttr(settings.DarkMode, "system"), selectedAttr(settings.DarkMode, "light"), selectedAttr(settings.DarkMode, "dark"), html.EscapeString(proxyUserHeader), httpsStatus)
 		return err
 	})
 }
@@ -65,6 +72,13 @@ func SettingsPageContent(settings db.AppSettings, proxyUserHeader string, httpsC
 func checkedAttr(v bool) string {
 	if v {
 		return "checked"
+	}
+	return ""
+}
+
+func selectedAttr(current string, expected string) string {
+	if current == expected {
+		return "selected"
 	}
 	return ""
 }

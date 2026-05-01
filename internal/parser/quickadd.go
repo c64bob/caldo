@@ -22,10 +22,15 @@ type QuickAddDraft struct {
 
 // ParseQuickAdd extracts supported quick-add tokens and remaining title text.
 func ParseQuickAdd(input string) QuickAddDraft {
-	return parseQuickAddAt(input, time.Now().UTC())
+	return ParseQuickAddWithLanguage(input, "de")
 }
 
-func parseQuickAddAt(input string, now time.Time) QuickAddDraft {
+// ParseQuickAddWithLanguage parses quick-add text using language-specific natural tokens.
+func ParseQuickAddWithLanguage(input string, language string) QuickAddDraft {
+	return parseQuickAddAt(input, time.Now().UTC(), normalizeLanguage(language))
+}
+
+func parseQuickAddAt(input string, now time.Time, language string) QuickAddDraft {
 	tokens := strings.Fields(strings.TrimSpace(input))
 	draft := QuickAddDraft{Labels: make([]string, 0)}
 	titleTokens := make([]string, 0, len(tokens))
@@ -54,18 +59,18 @@ func parseQuickAddAt(input string, now time.Time) QuickAddDraft {
 
 		titleTokens = append(titleTokens, token)
 	}
-	draft.Recurrence, remainingAfterRecurrence = parseNaturalRecurrence(titleTokens)
+	draft.Recurrence, remainingAfterRecurrence = parseNaturalRecurrence(titleTokens, language)
 
-	dueDate, remaining := parseNaturalDue(remainingAfterRecurrence, now)
+	dueDate, remaining := parseNaturalDue(remainingAfterRecurrence, now, language)
 	draft.Due = dueDate
 	draft.Title = strings.Join(remaining, " ")
 	return draft
 }
 
-func parseNaturalRecurrence(tokens []string) (string, []string) {
+func parseNaturalRecurrence(tokens []string, language string) (string, []string) {
 	remaining := make([]string, 0, len(tokens))
 	for i := 0; i < len(tokens); {
-		matched, rrule, consumed := matchRecurrenceToken(tokens, i)
+		matched, rrule, consumed := matchRecurrenceToken(tokens, i, language)
 		if matched {
 			return rrule, append(remaining, tokens[i+consumed:]...)
 		}
@@ -75,29 +80,59 @@ func parseNaturalRecurrence(tokens []string) (string, []string) {
 	return "", remaining
 }
 
-func matchRecurrenceToken(tokens []string, i int) (bool, string, int) {
+func matchRecurrenceToken(tokens []string, i int, language string) (bool, string, int) {
 	n := len(tokens)
 	lower := strings.ToLower(tokens[i])
 	switch lower {
-	case "täglich", "daily":
-		return true, "FREQ=DAILY", 1
-	case "wöchentlich", "weekly":
-		return true, "FREQ=WEEKLY", 1
-	case "monatlich", "monthly":
-		return true, "FREQ=MONTHLY", 1
-	case "jährlich", "yearly":
-		return true, "FREQ=YEARLY", 1
-	case "werktags", "weekdays":
-		return true, "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", 1
+	case "täglich":
+		if language == "de" {
+			return true, "FREQ=DAILY", 1
+		}
+	case "daily":
+		if language == "en" {
+			return true, "FREQ=DAILY", 1
+		}
+	case "wöchentlich":
+		if language == "de" {
+			return true, "FREQ=WEEKLY", 1
+		}
+	case "weekly":
+		if language == "en" {
+			return true, "FREQ=WEEKLY", 1
+		}
+	case "monatlich":
+		if language == "de" {
+			return true, "FREQ=MONTHLY", 1
+		}
+	case "monthly":
+		if language == "en" {
+			return true, "FREQ=MONTHLY", 1
+		}
+	case "jährlich":
+		if language == "de" {
+			return true, "FREQ=YEARLY", 1
+		}
+	case "yearly":
+		if language == "en" {
+			return true, "FREQ=YEARLY", 1
+		}
+	case "werktags":
+		if language == "de" {
+			return true, "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", 1
+		}
+	case "weekdays":
+		if language == "en" {
+			return true, "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", 1
+		}
 	}
 
-	if i+1 < n && (lower == "jeden" || lower == "every") {
-		if wd, ok := weekdayToken(tokens[i+1]); ok {
+	if i+1 < n && ((language == "de" && lower == "jeden") || (language == "en" && lower == "every")) {
+		if wd, ok := weekdayToken(tokens[i+1], language); ok {
 			return true, "FREQ=WEEKLY;BYDAY=" + weekdayToICal(wd), 2
 		}
 	}
 
-	if i+2 < n && lower == "alle" {
+	if i+2 < n && lower == "alle" && language == "de" {
 		if interval, err := strconv.Atoi(tokens[i+1]); err == nil && interval > 0 {
 			switch strings.ToLower(tokens[i+2]) {
 			case "tag", "tage", "tagen":
@@ -146,10 +181,10 @@ func normalizePriorityToken(token string) (string, bool) {
 	}
 }
 
-func parseNaturalDue(tokens []string, now time.Time) (string, []string) {
+func parseNaturalDue(tokens []string, now time.Time, language string) (string, []string) {
 	remaining := make([]string, 0, len(tokens))
 	for i := 0; i < len(tokens); {
-		matched, due, consumed := matchDueToken(tokens, i, now)
+		matched, due, consumed := matchDueToken(tokens, i, now, language)
 		if matched {
 			return due, append(remaining, tokens[i+consumed:]...)
 		}
@@ -159,57 +194,134 @@ func parseNaturalDue(tokens []string, now time.Time) (string, []string) {
 	return "", remaining
 }
 
-func matchDueToken(tokens []string, i int, now time.Time) (bool, string, int) {
+func matchDueToken(tokens []string, i int, now time.Time, language string) (bool, string, int) {
 	n := len(tokens)
 	lower := strings.ToLower(tokens[i])
 	switch lower {
-	case "heute", "today":
-		return true, now.Format("2006-01-02"), 1
-	case "morgen", "tomorrow":
-		return true, now.AddDate(0, 0, 1).Format("2006-01-02"), 1
+	case "heute":
+		if language == "de" {
+			return true, now.Format("2006-01-02"), 1
+		}
+	case "today":
+		if language == "en" {
+			return true, now.Format("2006-01-02"), 1
+		}
+	case "morgen":
+		if language == "de" {
+			return true, now.AddDate(0, 0, 1).Format("2006-01-02"), 1
+		}
+	case "tomorrow":
+		if language == "en" {
+			return true, now.AddDate(0, 0, 1).Format("2006-01-02"), 1
+		}
 	case "übermorgen":
-		return true, now.AddDate(0, 0, 2).Format("2006-01-02"), 1
+		if language == "de" {
+			return true, now.AddDate(0, 0, 2).Format("2006-01-02"), 1
+		}
 	}
 
 	if i+2 < n && lower == "in" {
 		if num, err := strconv.Atoi(tokens[i+1]); err == nil && num >= 0 {
 			unit := strings.ToLower(tokens[i+2])
-			if unit == "tagen" || unit == "tage" || unit == "days" || unit == "day" {
+			if (language == "de" && (unit == "tagen" || unit == "tage")) || (language == "en" && (unit == "days" || unit == "day")) {
 				return true, now.AddDate(0, 0, num).Format("2006-01-02"), 3
 			}
 		}
 	}
 
-	if i+1 < n && (lower == "next" || lower == "nächsten") {
-		if wd, ok := weekdayToken(tokens[i+1]); ok {
+	if i+1 < n && ((language == "en" && lower == "next") || (language == "de" && lower == "nächsten")) {
+		if wd, ok := weekdayToken(tokens[i+1], language); ok {
 			return true, nextWeekday(now, wd).Format("2006-01-02"), 2
 		}
 	}
 
-	if wd, ok := weekdayToken(tokens[i]); ok {
+	if wd, ok := weekdayToken(tokens[i], language); ok {
 		return true, nextWeekday(now, wd).Format("2006-01-02"), 1
 	}
 	return false, "", 0
 }
 
-func weekdayToken(token string) (time.Weekday, bool) {
+func weekdayToken(token string, language string) (time.Weekday, bool) {
 	switch strings.ToLower(token) {
-	case "montag", "monday":
+	case "montag":
+		if language != "de" {
+			return 0, false
+		}
 		return time.Monday, true
-	case "dienstag", "tuesday":
+	case "monday":
+		if language != "en" {
+			return 0, false
+		}
+		return time.Monday, true
+	case "dienstag":
+		if language != "de" {
+			return 0, false
+		}
 		return time.Tuesday, true
-	case "mittwoch", "wednesday":
+	case "tuesday":
+		if language != "en" {
+			return 0, false
+		}
+		return time.Tuesday, true
+	case "mittwoch":
+		if language != "de" {
+			return 0, false
+		}
 		return time.Wednesday, true
-	case "donnerstag", "thursday":
+	case "wednesday":
+		if language != "en" {
+			return 0, false
+		}
+		return time.Wednesday, true
+	case "donnerstag":
+		if language != "de" {
+			return 0, false
+		}
 		return time.Thursday, true
-	case "freitag", "friday":
+	case "thursday":
+		if language != "en" {
+			return 0, false
+		}
+		return time.Thursday, true
+	case "freitag":
+		if language != "de" {
+			return 0, false
+		}
 		return time.Friday, true
-	case "samstag", "saturday":
+	case "friday":
+		if language != "en" {
+			return 0, false
+		}
+		return time.Friday, true
+	case "samstag":
+		if language != "de" {
+			return 0, false
+		}
 		return time.Saturday, true
-	case "sonntag", "sunday":
+	case "saturday":
+		if language != "en" {
+			return 0, false
+		}
+		return time.Saturday, true
+	case "sonntag":
+		if language != "de" {
+			return 0, false
+		}
+		return time.Sunday, true
+	case "sunday":
+		if language != "en" {
+			return 0, false
+		}
 		return time.Sunday, true
 	}
 	return 0, false
+}
+
+func normalizeLanguage(language string) string {
+	if strings.EqualFold(strings.TrimSpace(language), "en") {
+		return "en"
+	}
+	return "de"
 }
 
 func nextWeekday(now time.Time, target time.Weekday) time.Time {

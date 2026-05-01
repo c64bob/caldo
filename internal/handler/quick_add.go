@@ -28,7 +28,11 @@ func QuickAddPage(deps quickAddDependencies) http.HandlerFunc {
 func QuickAddPreview(deps quickAddDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		text := strings.TrimSpace(r.FormValue("text"))
-		draft := parser.ParseQuickAdd(text)
+		language := "de"
+		if settings, err := deps.database.LoadAppSettings(r.Context()); err == nil {
+			language = settings.UILanguage
+		}
+		draft := parser.ParseQuickAddWithLanguage(text, language)
 		requestedProject := draft.Project
 		if draft.Title == "" {
 			http.Error(w, "title is required", http.StatusBadRequest)

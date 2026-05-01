@@ -33,28 +33,35 @@ Viele Nutzer möchten die Bedienqualität moderner Todo-Apps, aber mit eigener I
 
 ---
 
-## Empfohlene README-Abschnitte
+## README-Überblick
 
-Die folgenden Abschnitte sollten im weiteren Projektverlauf ergänzt bzw. konkretisiert werden.
+Die folgenden Abschnitte dokumentieren den aktuellen Stand von Caldo für Betrieb, Entwicklung und Fehlersuche.
 
 ### 1) Features
 
-- [ ] Kernfunktionen (Aufgaben, Projekte, Labels, Filter, Favoriten)
-- [ ] Ansichten (Heute, Demnächst, Überfällig)
-- [ ] Sync-Funktionen (manuell, periodisch, Konfliktlösung)
-- [ ] Setup-Wizard und Erstimport
+- Aufgabenverwaltung mit Todoist-naher UX (Erstellen, Bearbeiten, Abschließen, Löschen, Priorisierung)
+- Projekt- und Label-Organisation inklusive Favoriten
+- Standardansichten wie *Heute*, *Demnächst* und *Überfällig*
+- CalDAV-Synchronisation als führende Datenquelle (manuell und periodisch)
+- Konflikterkennung bei konkurrierenden Änderungen mit gezielter Konfliktbehandlung
+- Setup-Wizard für Erstkonfiguration, Kalenderauswahl und Initialimport
 
 ### 2) Architektur auf einen Blick
 
-- [ ] Komponentenübersicht (Web, Sync, Scheduler, DB)
-- [ ] Datenfluss lokal ↔ CalDAV
-- [ ] Invarianten (CalDAV führend, Write-Pfad, Konfliktregeln)
+- **Web/UI:** Go-HTTP-Server mit Chi, serverseitigen Templ-Views, HTMX für Interaktionen und Alpine.js für lokalen UI-State
+- **Sync:** CalDAV/WebDAV-Anbindung mit `emersion/go-webdav`, VTODO-Verarbeitung über `emersion/go-ical` plus Roundtrip-Schicht
+- **Persistenz:** SQLite (`modernc.org/sqlite`) im WAL-Modus
+- **Hintergrundarbeit:** In-Prozess-Scheduler (kein externer Job-Runner)
+- **Datenfluss:** UI-Aktion → validierter Write-Pfad (mit Versionsprüfung) → CalDAV-Write → lokaler Persistenz-Commit → SSE-Event
+- **Invarianten:** CalDAV bleibt führend; unbekannte VTODO-Felder müssen erhalten bleiben; Writes laufen über einen einzelnen synchronisierten Write-Pfad
 
 ### 3) Voraussetzungen
 
-- Go-Version: `1.24+` (nur für lokalen Build)
+- Go `1.24+` (für lokalen Build)
 - Docker Engine + Docker Compose Plugin (für Referenzdeployment)
 - Reverse Proxy mit vorgeschalteter Authentifizierung und TLS-Terminierung
+- Gültige HTTPS-Basis-URL für die Instanz (`BASE_URL`)
+- 32-Byte-Schlüssel als Base64 für `ENCRYPTION_KEY`
 
 ### 4) Installation
 
@@ -62,11 +69,7 @@ Die folgenden Abschnitte sollten im weiteren Projektverlauf ergänzt bzw. konkre
 
 ```bash
 make build
-BASE_URL="https://todos.example.com" \
-ENCRYPTION_KEY="<base64-32-byte-key>" \
-PROXY_USER_HEADER="X-Authentik-Username" \
-DB_PATH="./caldo.db" \
-./bin/caldo
+BASE_URL="https://todos.example.com" ENCRYPTION_KEY="<base64-32-byte-key>" PROXY_USER_HEADER="X-Authentik-Username" DB_PATH="./caldo.db" ./bin/caldo
 ```
 
 #### B) Mit Docker Compose (Referenzdeployment)
@@ -115,72 +118,101 @@ DB_PATH=/data/caldo.db
 
 ### 6) Nutzung
 
-- [ ] Setup-Wizard durchlaufen
-- [ ] CalDAV-Zugangsdaten hinterlegen
-- [ ] Kalenderauswahl / Default-Projekt konfigurieren
-- [ ] Erste Synchronisation prüfen
+1. Anwendung starten und Setup-Wizard aufrufen.
+2. CalDAV-Zugangsdaten hinterlegen und Verbindung prüfen.
+3. Kalender für den Import auswählen und Standardprojekt festlegen.
+4. Initialimport ausführen und Ergebnis im UI prüfen.
+5. Erste manuelle Synchronisation starten und Statusmeldungen kontrollieren.
 
 ### 7) Sicherheit & Datenschutz
 
-- [ ] Sicherheitsmodell (Reverse-Proxy-Auth, CSRF, HTTPS)
-- [ ] Logging-Grenzen (keine sensiblen Inhalte in Logs)
-- [ ] Geheimnisverwaltung (ENCRYPTION_KEY, Credentials)
+- Authentifizierung erfolgt ausschließlich über den vorgeschalteten Reverse Proxy (kein lokales Login).
+- Alle mutierenden Routen sind durch CSRF (Double-Submit-Cookie mit HMAC-Validierung) geschützt.
+- `GET /health` ist bewusst von Auth/CSRF ausgenommen.
+- Sensible Inhalte (z. B. Aufgabeninhalt, Credentials, Tokens, Schlüsselmaterial) dürfen nicht geloggt werden.
+- Assets werden lokal ausgeliefert; Laufzeit-CDNs sind nicht vorgesehen.
 
 ### 8) Entwicklung
 
 ```bash
-# TODO: lokale Entwickler-Shortcuts eintragen (make targets)
+make build
+go test ./...
+go test ./... -race
+go vet ./...
 ```
 
-- [ ] Projektstruktur (`cmd/`, `internal/`, `web/`, `docs/`) erläutern
-- [ ] Vorgehen bei Schema-Migrationen dokumentieren
-- [ ] Hinweise zu Templ/Tailwind-Generierung ergänzen
+Projektstruktur:
+
+- `cmd/caldo/` – Programmstart und Startup-Sequenz
+- `internal/` – Anwendungslogik (z. B. Handler, Sync, DB, Scheduler, Parser)
+- `web/` – statische Assets und Manifest
+- `docs/` – PRD, Architektur und Backlog
+
+Hinweise:
+
+- Nach Änderungen an `.templ`-Dateien `templ generate` ausführen und generierte `*_templ.go`-Dateien committen.
+- Migrationen werden über das eingebettete Migrationssystem verwaltet; bereits angewendete Migrationen dürfen nicht geändert werden.
 
 ### 9) Tests & Qualitätssicherung
 
+Verbindliche Basis-Checks:
+
 ```bash
-# TODO: verbindliche Checks dokumentieren
-# z. B. go test ./... -race
-#      go vet ./...
+go test ./...
+go test ./... -race
+go vet ./...
 ```
 
-- [ ] Teststrategie (Unit vs. Integration) kurz beschreiben
-- [ ] CI-Checks und Qualitäts-Gates dokumentieren
+Teststrategie:
+
+- Unit-Tests für reine Logik (z. B. Parsing, Roundtrip, Kryptografie)
+- Integrationsnahe Tests für SQLite-Verhalten über temporäre In-Memory-Datenbank
+- Keine echten CalDAV-Netzwerkzugriffe in Tests; stattdessen Mocks/Test Doubles
 
 ### 10) Betrieb (Operations)
 
-- [ ] Healthcheck-Endpunkt und Monitoring-Hinweise
-- [ ] Backup/Restore-Konzept für SQLite (`TODO`)
-- [ ] Update-Strategie inkl. Migrationen (`TODO`)
-- [ ] Logging/Observability (`TODO`)
+- **Healthcheck:** `GET /health` für Liveness/Readiness auf HTTP-Ebene
+- **Single-Process-Modell:** Eine aktive Instanz pro Datenverzeichnis
+- **SQLite-Betrieb:** WAL-Modus, ein synchronisierter Write-Pfad
+- **Migrationen:** Backup vor erster ausstehender Migration; Prüfsummenabweichungen führen zum Startup-Abbruch
+- **Monitoring-Basis:** HTTP-Status, Fehlercodes und Sync-Status beobachten (ohne sensible Nutzdaten)
 
 ### 11) Troubleshooting
 
-- [ ] Häufige Startfehler (z. B. ungültige ENVs)
-- [ ] CalDAV-Verbindungsprobleme
-- [ ] Konfliktfälle und empfohlene Auflösung
+- **Start schlägt fehl:** Pflicht-ENVs (`BASE_URL`, `ENCRYPTION_KEY`, `PROXY_USER_HEADER`) prüfen.
+- **Setup blockiert:** Reverse-Proxy-Auth-Header und HTTPS-Termination verifizieren.
+- **CalDAV-Probleme:** Erreichbarkeit, Credentials und Kalenderberechtigungen kontrollieren.
+- **Konflikte bei Änderungen:** Konfliktstatus im UI prüfen und bewusst manuell auflösen statt blind zu überschreiben.
+- **Asset-Fehler beim Start:** Vorhandensein von `web/static/manifest.json` sicherstellen.
 
 ### 12) Roadmap
 
-- [ ] MVP-Restumfang aus Backlog zusammenfassen
-- [ ] Geplante Post-MVP-Themen als Stichpunkte (`TODO`)
+- Fertigstellung des MVP-Umfangs gemäß `docs/backlog/`
+- Weitere Härtung von Synchronisations- und Konfliktfällen
+- Ausbau von Testabdeckung und operativer Dokumentation
+- Post-MVP-Themen werden nach MVP-Abschluss priorisiert
 
 ### 13) FAQ
 
-- [ ] „Ist Multi-User geplant?“
-- [ ] „Welche CalDAV-Server sind getestet?“ (`TODO`)
-- [ ] „Warum kein lokales Login?“
+- **Ist Multi-User geplant?**
+  Nein. Caldo ist für Single-User-Betrieb auf eigener Infrastruktur ausgelegt.
+- **Warum kein lokales Login?**
+  Sicherheit und Identität werden vollständig an den Reverse Proxy delegiert.
+- **Welche CalDAV-Server sind unterstützt?**
+  Caldo setzt auf offene CalDAV/WebDAV-Standards; praktische Kompatibilität hängt von Serververhalten und VTODO-Unterstützung ab.
 
 ### 14) Lizenz
 
-- [ ] Lizenztyp ergänzen (`TODO`)
-- [ ] Copyright-/Attribution-Hinweise (`TODO`)
+Die Lizenz ist in der Datei `LICENSE` im Repository geregelt.
 
 ### 15) Beitrag leisten (Contributing)
 
-- [ ] Contribution-Prozess (`TODO`)
-- [ ] Coding-Standards / Commit-Konventionen (`TODO`)
-- [ ] Review- und PR-Erwartungen (`TODO`)
+- Vor Änderungen bitte PRD (`docs/prd.md`) und Architektur (`docs/arch.md`) lesen.
+- Änderungen eng am Backlog-Umfang halten und Invarianten nicht verletzen.
+- Für Pull Requests:
+  - kleine, klar abgegrenzte Änderungen einreichen,
+  - Tests/Checks dokumentieren,
+  - bei Architekturkonflikten nicht raten, sondern offen adressieren.
 
 ---
 
@@ -192,4 +224,4 @@ DB_PATH=/data/caldo.db
 
 ## Hinweis
 
-Dieses README enthält bewusst Platzhalter, damit die noch offenen Implementierungsdetails im Projektverlauf sauber nachgezogen werden können, ohne Architekturentscheidungen vorwegzunehmen.
+Dieses README beschreibt den aktuellen Projektstand. Maßgeblich für Anforderungen und Architektur bleiben `docs/prd.md` und `docs/arch.md`.

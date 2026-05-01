@@ -51,7 +51,7 @@ func SettingsUIUpdate(database *db.Database) http.HandlerFunc {
 		showCompleted := strings.EqualFold(strings.TrimSpace(r.FormValue("show_completed")), "on")
 		uiLanguage := strings.TrimSpace(r.FormValue("ui_language"))
 		darkMode := strings.TrimSpace(r.FormValue("dark_mode"))
-		if uiLanguage == "" || darkMode == "" {
+		if !isSupportedUILanguage(uiLanguage) || !isSupportedDarkMode(darkMode) {
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
@@ -61,4 +61,12 @@ func SettingsUIUpdate(database *db.Database) http.HandlerFunc {
 		}
 		http.Redirect(w, r, "/settings", http.StatusSeeOther)
 	}
+}
+
+func isSupportedUILanguage(language string) bool {
+	return language == "de" || language == "en"
+}
+
+func isSupportedDarkMode(mode string) bool {
+	return mode == "light" || mode == "dark" || mode == "system"
 }

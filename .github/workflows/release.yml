@@ -27,6 +27,24 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Install templ
+        run: go install github.com/a-h/templ/cmd/templ@v0.3.865
+
+      - name: Install tailwindcss
+        env:
+          TAILWIND_VERSION: v4.2.4
+          TAILWIND_SHA256: cabeef049cdeab61a5fa6b65ea28a3e8e53b8a85e58883947868c730fc48bdec
+        run: |
+          curl -sSL "https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWIND_VERSION}/tailwindcss-linux-x64" -o /usr/local/bin/tailwindcss
+          echo "${TAILWIND_SHA256}  /usr/local/bin/tailwindcss" | sha256sum -c -
+          chmod +x /usr/local/bin/tailwindcss
+
+      - name: Generate templ files
+        run: templ generate
+
+      - name: Build Tailwind assets
+        run: tailwindcss -i ./web/static/tailwind.input.css -o ./web/static/tailwind.output.css --minify
+
       - name: Build binaries
         run: |
           mkdir -p dist

@@ -1,9 +1,12 @@
 .PHONY: build dev tailwind templ test lint docker-build
 
 BINARY := caldo
+BINARY_DIR := bin
+BINARY_PATH := $(BINARY_DIR)/$(BINARY)
 
-build:
-	go build ./...
+build: templ tailwind
+	@mkdir -p $(BINARY_DIR)
+	go build -o $(BINARY_PATH) ./cmd/caldo
 
 dev:
 	go run ./cmd/caldo

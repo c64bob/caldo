@@ -42,6 +42,9 @@ jobs:
       - name: Check tailwind diff
         run: git diff --exit-code
 
+      - name: Build Caldo binary
+        run: make build
+
   docker-build:
     runs-on: ubuntu-latest
     steps:

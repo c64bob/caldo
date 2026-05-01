@@ -17,7 +17,7 @@ func TestLoadManifest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Resolve returned error: %v", err)
 	}
-	if got != "app.8f3a1c2.css" {
+	if got != "tailwind.input.css" {
 		t.Fatalf("unexpected manifest mapping: got %q", got)
 	}
 }
@@ -33,7 +33,7 @@ func TestLoadManifestFailsForMissingFile(t *testing.T) {
 func TestResolveFailsForUnknownAsset(t *testing.T) {
 	t.Parallel()
 
-	manifest := Manifest{"app.css": "app.8f3a1c2.css"}
+	manifest := Manifest{"app.css": "tailwind.input.css"}
 	if _, err := manifest.Resolve("unknown.css"); err == nil {
 		t.Fatal("expected error for unknown asset")
 	}

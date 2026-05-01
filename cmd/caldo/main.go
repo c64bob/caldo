@@ -7,9 +7,11 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
+	"syscall"
 
 	"caldo/internal/assets"
 	"caldo/internal/config"
@@ -121,6 +123,10 @@ func logStartupError(logger *slog.Logger, err error) {
 		reflect.TypeOf(err).String(),
 		"root_cause_type",
 		rootCauseType(err),
+		"root_cause_errno",
+		rootCauseErrno(err),
+		"root_cause_path",
+		rootCausePath(err),
 	)
 }
 
@@ -168,4 +174,22 @@ func rootCauseLeafTypes(err error) []string {
 	}
 
 	return []string{reflect.TypeOf(err).String()}
+}
+
+func rootCauseErrno(err error) string {
+	var errno syscall.Errno
+	if !errors.As(err, &errno) {
+		return ""
+	}
+
+	return fmt.Sprintf("%d", int(errno))
+}
+
+func rootCausePath(err error) string {
+	var pathErr *os.PathError
+	if !errors.As(err, &pathErr) {
+		return ""
+	}
+
+	return filepath.Clean(pathErr.Path)
 }

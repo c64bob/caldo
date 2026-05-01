@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"syscall"
 )
 
@@ -19,6 +20,10 @@ type StartupLock struct {
 // AcquireStartupLock acquires an exclusive non-blocking startup lock for a database path.
 func AcquireStartupLock(dbPath string) (*StartupLock, error) {
 	lockPath := dbPath + ".startup.lock"
+	lockDir := filepath.Dir(lockPath)
+	if err := os.MkdirAll(lockDir, 0o755); err != nil {
+		return nil, fmt.Errorf("create startup lock directory: %w", err)
+	}
 
 	file, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {

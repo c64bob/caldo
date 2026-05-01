@@ -69,6 +69,22 @@ templ BaseLayout(title string, content templ.Component) {
 				</main>
 			</div>
 			<div id="notifications" aria-live="polite"></div>
+			<dialog data-shortcut-help-dialog class="w-full max-w-xl rounded border border-slate-300 p-0 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+				<div class="p-4 space-y-3">
+					<div class="flex items-center justify-between">
+						<h2 class="text-lg font-semibold">Tastaturkürzel</h2>
+						<button type="button" data-shortcut-help-close class="rounded border border-slate-300 px-2 py-1 text-sm dark:border-slate-700">Schließen</button>
+					</div>
+					<ul class="space-y-2 text-sm">
+						<li><kbd class="rounded border px-1">N</kbd> Neue Aufgabe</li>
+						<li><kbd class="rounded border px-1">S</kbd> oder <kbd class="rounded border px-1">/</kbd> Suche</li>
+						<li><kbd class="rounded border px-1">G</kbd> dann <kbd class="rounded border px-1">T</kbd> Heute</li>
+						<li><kbd class="rounded border px-1">G</kbd> dann <kbd class="rounded border px-1">U</kbd> Demnächst</li>
+						<li><kbd class="rounded border px-1">?</kbd> Hilfe öffnen</li>
+					</ul>
+				</div>
+			</dialog>
+
 			<script defer src={ AssetPath(ctx, "htmx.min.js") }></script>
 			<script defer src={ AssetPath(ctx, "htmx-sse.js") }></script>
 			<script defer src={ AssetPath(ctx, "alpine.min.js") }></script>

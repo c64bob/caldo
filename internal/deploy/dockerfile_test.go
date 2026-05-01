@@ -36,19 +36,19 @@ func TestDockerfileStory202Requirements(t *testing.T) {
 	if strings.Contains(runtime, " GO BUILD") || strings.Contains(runtime, " GO TEST") || strings.Contains(runtime, " GO RUN") || strings.Contains(runtime, " GO INSTALL") {
 		t.Fatalf("runtime image must not include go toolchain usage")
 	}
-	if !strings.Contains(upper, "USER CALDO") {
+	if !strings.Contains(runtime, "USER CALDO") {
 		t.Fatalf("runtime image must run as non-root user")
 	}
-	if !strings.Contains(upper, "EXPOSE 8080") {
+	if !strings.Contains(runtime, "EXPOSE 8080") {
 		t.Fatalf("runtime image must expose only port 8080")
 	}
 	if !strings.Contains(upper, "VOLUME [\"/DATA\"]") {
 		t.Fatalf("runtime image must declare /data as persistent volume")
 	}
-	if !regexp.MustCompile(`(?m)^RUN\s+.*(APK\s+ADD|ADDUSER)`).MatchString(upper) {
+	if !regexp.MustCompile(`(?m)^RUN\s+.*(APK\s+ADD|ADDUSER)`).MatchString(runtime) {
 		t.Fatalf("runtime stage must include setup commands")
 	}
-	if !strings.Contains(upper, "WGET") {
+	if !strings.Contains(runtime, "WGET") {
 		t.Fatalf("image must provide a healthcheck-capable tool like wget")
 	}
 }

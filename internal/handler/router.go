@@ -44,7 +44,7 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 	router.Get("/projects", ProjectsPage())
 	router.Get("/labels", LabelsPage())
 	router.Get("/filters", FiltersPage())
-	router.Get("/settings", SettingsPage())
+	router.Get("/settings", SettingsPage(database, proxyUserHeader))
 	router.Get("/quick-add", QuickAddPage(quickAddDependencies{database: database}))
 	router.Post("/quick-add/preview", QuickAddPreview(quickAddDependencies{database: database}))
 	router.Get("/conflicts", Conflicts(conflictDependencies{database: database}))

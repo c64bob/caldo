@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"sort"
+	"strings"
 
 	"caldo/internal/assets"
 	"caldo/internal/config"
@@ -123,14 +125,47 @@ func logStartupError(logger *slog.Logger, err error) {
 }
 
 func rootCauseType(err error) string {
-	current := err
-	for {
-		next := errors.Unwrap(current)
-		if next == nil {
-			break
-		}
-		current = next
+	types := rootCauseLeafTypes(err)
+	if len(types) == 0 {
+		return "<nil>"
 	}
 
-	return reflect.TypeOf(current).String()
+	sort.Strings(types)
+	return strings.Join(types, ",")
+}
+
+func rootCauseLeafTypes(err error) []string {
+	if err == nil {
+		return nil
+	}
+
+	type multiUnwrapper interface {
+		Unwrap() []error
+	}
+
+	if multi, ok := err.(multiUnwrapper); ok {
+		children := multi.Unwrap()
+		if len(children) == 0 {
+			return []string{reflect.TypeOf(err).String()}
+		}
+
+		seen := make(map[string]struct{})
+		types := make([]string, 0, len(children))
+		for _, child := range children {
+			for _, childType := range rootCauseLeafTypes(child) {
+				if _, exists := seen[childType]; exists {
+					continue
+				}
+				seen[childType] = struct{}{}
+				types = append(types, childType)
+			}
+		}
+		return types
+	}
+
+	if next := errors.Unwrap(err); next != nil {
+		return rootCauseLeafTypes(next)
+	}
+
+	return []string{reflect.TypeOf(err).String()}
 }

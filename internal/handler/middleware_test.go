@@ -270,6 +270,22 @@ func TestSetupGateMiddlewareRedirectsDisallowedRoutesWhenSetupIncomplete(t *test
 	}
 }
 
+
+func TestSetupGateMiddlewareAllowsStaticAssetsWhenSetupIncomplete(t *testing.T) {
+	t.Parallel()
+
+	h := SetupGateMiddleware(NewSetupState(false))(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/static/htmx.5e741aa.min.js", nil)
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("unexpected status code: got %d want %d", rr.Code, http.StatusNoContent)
+	}
+}
 func TestSetupGateMiddlewareAllowsSetupRoutesWhenSetupIncomplete(t *testing.T) {
 	t.Parallel()
 

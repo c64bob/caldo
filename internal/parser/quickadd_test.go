@@ -138,6 +138,24 @@ func TestParseQuickAddRecurrencePatterns(t *testing.T) {
 	}
 }
 
+func TestParseQuickAddDoesNotParseCrossLanguageRecurrenceKeywords(t *testing.T) {
+	enDraft := ParseQuickAddWithLanguage("Task täglich", "en")
+	if enDraft.Recurrence != "" {
+		t.Fatalf("en recurrence: got %q want empty", enDraft.Recurrence)
+	}
+	if enDraft.Title != "Task täglich" {
+		t.Fatalf("en title: got %q want %q", enDraft.Title, "Task täglich")
+	}
+
+	deDraft := ParseQuickAddWithLanguage("Task daily", "de")
+	if deDraft.Recurrence != "" {
+		t.Fatalf("de recurrence: got %q want empty", deDraft.Recurrence)
+	}
+	if deDraft.Title != "Task daily" {
+		t.Fatalf("de title: got %q want %q", deDraft.Title, "Task daily")
+	}
+}
+
 func TestParseQuickAddUnsupportedComplexRecurrenceStaysNonRecurrence(t *testing.T) {
 	now := time.Date(2026, time.March, 4, 10, 0, 0, 0, time.UTC)
 	draft := parseQuickAddAt("Task every second monday", now, "en")

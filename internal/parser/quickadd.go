@@ -84,16 +84,46 @@ func matchRecurrenceToken(tokens []string, i int, language string) (bool, string
 	n := len(tokens)
 	lower := strings.ToLower(tokens[i])
 	switch lower {
-	case "täglich", "daily":
-		return true, "FREQ=DAILY", 1
-	case "wöchentlich", "weekly":
-		return true, "FREQ=WEEKLY", 1
-	case "monatlich", "monthly":
-		return true, "FREQ=MONTHLY", 1
-	case "jährlich", "yearly":
-		return true, "FREQ=YEARLY", 1
-	case "werktags", "weekdays":
-		return true, "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", 1
+	case "täglich":
+		if language == "de" {
+			return true, "FREQ=DAILY", 1
+		}
+	case "daily":
+		if language == "en" {
+			return true, "FREQ=DAILY", 1
+		}
+	case "wöchentlich":
+		if language == "de" {
+			return true, "FREQ=WEEKLY", 1
+		}
+	case "weekly":
+		if language == "en" {
+			return true, "FREQ=WEEKLY", 1
+		}
+	case "monatlich":
+		if language == "de" {
+			return true, "FREQ=MONTHLY", 1
+		}
+	case "monthly":
+		if language == "en" {
+			return true, "FREQ=MONTHLY", 1
+		}
+	case "jährlich":
+		if language == "de" {
+			return true, "FREQ=YEARLY", 1
+		}
+	case "yearly":
+		if language == "en" {
+			return true, "FREQ=YEARLY", 1
+		}
+	case "werktags":
+		if language == "de" {
+			return true, "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", 1
+		}
+	case "weekdays":
+		if language == "en" {
+			return true, "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", 1
+		}
 	}
 
 	if i+1 < n && ((language == "de" && lower == "jeden") || (language == "en" && lower == "every")) {

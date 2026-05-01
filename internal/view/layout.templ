@@ -37,6 +37,9 @@ templ BaseLayout(title string, content templ.Component) {
 							<li><a class={ navLinkClass(title, "Heute") } href="/today">Heute</a></li>
 							<li><a class={ navLinkClass(title, "Demnächst") } href="/upcoming">Demnächst</a></li>
 							<li><a class={ navLinkClass(title, "Favoriten") } href="/favorites">Favoriten</a></li>
+							<li><a class={ navLinkClass(title, "Überfällig") } href="/overdue">Überfällig</a></li>
+							<li><a class={ navLinkClass(title, "Ohne Datum") } href="/no-date">Ohne Datum</a></li>
+							<li><a class={ navLinkClass(title, "Abgeschlossen") } href="/completed">Abgeschlossen</a></li>
 							<li><a class={ navLinkClass(title, "Suche") } href="/search">Suche</a></li>
 							<li><a class={ navLinkClass(title, "Konflikte") } href="/conflicts">Konflikte</a></li>
 							<li><a class={ navLinkClass(title, "Einstellungen") } href="/settings">Einstellungen</a></li>

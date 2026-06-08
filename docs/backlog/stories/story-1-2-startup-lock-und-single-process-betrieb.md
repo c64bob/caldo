@@ -3,6 +3,9 @@
 ## Name
 Story 1.2 — Startup-Lock und Single-Process-Betrieb
 
+## Status
+Umgesetzt
+
 ## Ziel
 Es läuft höchstens ein Caldo-Prozess pro Datenverzeichnis.
 

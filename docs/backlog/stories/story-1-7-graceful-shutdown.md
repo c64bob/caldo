@@ -3,6 +3,9 @@
 ## Name
 Story 1.7 — Graceful Shutdown
 
+## Status
+Umgesetzt
+
 ## Ziel
 Der Prozess beendet sich bei SIGTERM und SIGINT kontrolliert, ohne laufende CalDAV-Operationen abrupt abzubrechen.
 

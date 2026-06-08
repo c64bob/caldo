@@ -3,6 +3,9 @@
 ## Name
 Story 1.6 — Strukturiertes sicheres Logging
 
+## Status
+Umgesetzt
+
 ## Ziel
 Betriebslogs sind nützlich, aber frei von sensiblen Inhalten.
 

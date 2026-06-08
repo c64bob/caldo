@@ -3,6 +3,9 @@
 ## Name
 Story 20.1 — Go-Binary bauen
 
+## Status
+Umgesetzt
+
 ## Ziel
 Caldo ist als einzelnes Go-Binary lieferbar.
 

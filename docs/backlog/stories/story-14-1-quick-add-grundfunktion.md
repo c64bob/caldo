@@ -3,6 +3,9 @@
 ## Name
 Story 14.1 — Quick-Add-Grundfunktion
 
+## Status
+Umgesetzt
+
 ## Ziel
 Der Nutzer kann Aufgaben reibungsarm erfassen.
 

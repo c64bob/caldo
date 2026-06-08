@@ -3,6 +3,9 @@
 ## Name
 Story 22.3 — Projektvorschläge und Projektanlage in der Schnellanlage
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Die Schnellanlage unterstützt Todoist-nahe Projektauflösung bei unbekannten Projekten.
 

@@ -3,6 +3,9 @@
 ## Name
 Story 5.5 — Setup abschließen und Scheduler aktivieren
 
+## Status
+Umgesetzt
+
 ## Ziel
 Nach erfolgreichem Initialimport wechselt Caldo ohne Neustart in den Normalbetrieb.
 

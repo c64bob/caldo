@@ -3,6 +3,9 @@
 ## Name
 Story 1.3 — SQLite öffnen und robust konfigurieren
 
+## Status
+Umgesetzt
+
 ## Ziel
 SQLite ist als lokale MVP-Datenbank stabil vorbereitet.
 

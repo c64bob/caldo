@@ -3,6 +3,9 @@
 ## Name
 Story 19.4 — Einstellungen nach Setup
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Konfiguration kann nach dem Erststart im Normalbetrieb geändert werden.
 

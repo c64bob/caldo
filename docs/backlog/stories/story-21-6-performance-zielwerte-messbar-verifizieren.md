@@ -3,6 +3,9 @@
 ## Name
 Story 21.6 — Performance-Zielwerte messbar verifizieren
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 PRD-Performanceziele sind durch nachvollziehbare Messkriterien im Backlog abgebildet.
 

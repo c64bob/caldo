@@ -3,6 +3,9 @@
 ## Name
 Story 18.2 — Komplexe RRULEs erhalten
 
+## Status
+Umgesetzt
+
 ## Ziel
 Nicht unterstützte Wiederholungen gehen nicht verloren.
 

@@ -3,6 +3,9 @@
 ## Name
 Story 15.3 — Systemfilter bereitstellen
 
+## Status
+Umgesetzt
+
 ## Ziel
 Pflichtansichten sind ohne manuelle Filteranlage verfügbar.
 

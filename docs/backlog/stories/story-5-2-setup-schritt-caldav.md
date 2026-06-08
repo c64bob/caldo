@@ -3,6 +3,9 @@
 ## Name
 Story 5.2 — Setup-Schritt CalDAV
 
+## Status
+Umgesetzt
+
 ## Ziel
 Der Nutzer kann CalDAV-Zugangsdaten im Erststart erfassen und prüfen.
 

@@ -3,6 +3,9 @@
 ## Name
 Story 6.1 — VTODO-Felder extrahieren
 
+## Status
+Umgesetzt
+
 ## Ziel
 Caldo kann VTODOs lesen und bekannte Felder normalisieren.
 

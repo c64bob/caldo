@@ -3,6 +3,9 @@
 ## Name
 Story 17.1 — Unteraufgaben importieren und anzeigen
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Eine Ebene Unteraufgaben wird aus CalDAV sichtbar.
 

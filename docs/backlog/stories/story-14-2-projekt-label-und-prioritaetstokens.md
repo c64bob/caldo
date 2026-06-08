@@ -3,6 +3,9 @@
 ## Name
 Story 14.2 — Projekt-, Label- und Prioritätstokens
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Todoist-nahe Schnellsyntax ist nutzbar.
 

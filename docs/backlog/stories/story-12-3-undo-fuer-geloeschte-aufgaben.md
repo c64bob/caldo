@@ -3,6 +3,9 @@
 ## Name
 Story 12.3 — Undo für gelöschte Aufgaben
 
+## Status
+Umgesetzt
+
 ## Ziel
 Eine gelöschte Aufgabe kann aus Snapshot neu erstellt werden.
 

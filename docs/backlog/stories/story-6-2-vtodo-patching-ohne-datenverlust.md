@@ -3,6 +3,9 @@
 ## Name
 Story 6.2 — VTODO-Patching ohne Datenverlust
 
+## Status
+Umgesetzt
+
 ## Ziel
 Bekannte Feldänderungen zerstören keine unbekannten VTODO-Inhalte.
 

@@ -3,6 +3,9 @@
 ## Name
 Story 13.1 — Konflikte bei Remote-Sync erkennen
 
+## Status
+Umgesetzt
+
 ## Ziel
 Lokale und Remote-Änderungen werden verlustfrei verglichen.
 

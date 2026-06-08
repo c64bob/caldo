@@ -3,6 +3,9 @@
 ## Name
 Story 2.4 — Server-rendered UI-Asset-Grundlage
 
+## Status
+Umgesetzt
+
 ## Ziel
 Die Weboberfläche kann ohne Runtime-CDN ausgeliefert werden.
 

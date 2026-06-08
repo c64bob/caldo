@@ -3,6 +3,9 @@
 ## Name
 Story 19.5 — Dark Mode und UI-Sprache
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 MVP-Anforderungen für Darstellung und Sprache sind erfüllt.
 

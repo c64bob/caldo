@@ -3,6 +3,9 @@
 ## Name
 Story 6.3 — CalDAV-Operationen mit Timeout und Retry-Policy
 
+## Status
+Umgesetzt
+
 ## Ziel
 CalDAV-Zugriffe sind robust und kontrolliert.
 

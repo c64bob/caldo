@@ -3,6 +3,9 @@
 ## Name
 Story 7.4 — Aufgaben löschen
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Aufgaben können endgültig gelöscht werden.
 

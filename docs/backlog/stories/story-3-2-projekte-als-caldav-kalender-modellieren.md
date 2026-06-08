@@ -3,6 +3,9 @@
 ## Name
 Story 3.2 — Projekte als CalDAV-Kalender modellieren
 
+## Status
+Umgesetzt
+
 ## Ziel
 CalDAV-Kalender können lokal als Projekte verwaltet werden.
 

@@ -3,6 +3,9 @@
 ## Name
 Story 18.1 — Wiederholungseditor für MVP-Muster
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Der Nutzer kann einfache Wiederholungen bearbeiten.
 

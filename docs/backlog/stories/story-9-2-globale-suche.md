@@ -3,6 +3,9 @@
 ## Name
 Story 9.2 — Globale Suche
 
+## Status
+Umgesetzt
+
 ## Ziel
 Der Nutzer findet aktive Aufgaben schnell.
 

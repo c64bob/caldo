@@ -3,6 +3,9 @@
 ## Name
 Story 22.2 — Vollständige CalDAV-Einstellungen im Normalbetrieb
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Die Einstellungen im Normalbetrieb bilden die geforderten CalDAV-Elemente vollständig ab.
 

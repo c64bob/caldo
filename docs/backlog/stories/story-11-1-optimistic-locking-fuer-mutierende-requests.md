@@ -3,6 +3,9 @@
 ## Name
 Story 11.1 — Optimistic Locking für mutierende Requests
 
+## Status
+Umgesetzt
+
 ## Ziel
 Veraltete Tabs überschreiben keine neueren Daten.
 

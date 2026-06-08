@@ -3,6 +3,9 @@
 ## Name
 Story 8.2 — Projekt umbenennen
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Projektname und CalDAV-Kalendername bleiben konsistent.
 

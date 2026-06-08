@@ -3,6 +3,9 @@
 ## Name
 Story 15.2 — Gespeicherte Filter verwalten
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Der Nutzer kann eigene Aufgabenansichten speichern.
 

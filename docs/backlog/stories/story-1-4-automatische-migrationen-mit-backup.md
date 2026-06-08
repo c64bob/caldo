@@ -3,6 +3,9 @@
 ## Name
 Story 1.4 — Automatische Migrationen mit Backup
 
+## Status
+Umgesetzt
+
 ## Ziel
 Schemaänderungen laufen beim Start sicher und nachvollziehbar.
 

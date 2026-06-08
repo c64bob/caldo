@@ -3,6 +3,9 @@
 ## Name
 Story 13.4 — Konflikt manuell lösen
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Der Nutzer kann Konflikte ohne Datenverlust auflösen.
 

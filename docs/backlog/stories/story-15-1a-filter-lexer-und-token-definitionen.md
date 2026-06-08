@@ -3,6 +3,9 @@
 ## Name
 Story 15.1a — Filter-Lexer und Token-Definitionen
 
+## Status
+Umgesetzt
+
 ## Ziel
 Filterausdrücke können in eine Folge typisierter Tokens zerlegt werden.
 

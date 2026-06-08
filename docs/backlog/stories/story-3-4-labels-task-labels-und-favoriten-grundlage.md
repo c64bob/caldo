@@ -3,6 +3,9 @@
 ## Name
 Story 3.4 — Labels, Task-Labels und Favoriten-Grundlage
 
+## Status
+Umgesetzt
+
 ## Ziel
 Labels und Favoriten können lokal und VTODO-kompatibel abgebildet werden.
 

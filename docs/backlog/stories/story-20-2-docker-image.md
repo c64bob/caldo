@@ -3,6 +3,9 @@
 ## Name
 Story 20.2 — Docker-Image
 
+## Status
+Umgesetzt
+
 ## Ziel
 Caldo kann als Container betrieben werden.
 

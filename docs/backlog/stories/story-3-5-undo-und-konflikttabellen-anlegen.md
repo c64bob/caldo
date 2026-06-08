@@ -3,6 +3,9 @@
 ## Name
 Story 3.5 — Undo- und Konflikttabellen anlegen
 
+## Status
+Umgesetzt
+
 ## Ziel
 Spätere Undo- und Konfliktlogik hat eine sichere Datenbasis.
 

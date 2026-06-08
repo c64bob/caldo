@@ -3,6 +3,9 @@
 ## Name
 Story 21.2 — Tablet-Layout für Kernansichten
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Die Kernansichten sind auf Tablet-Auflösungen brauchbar bedienbar.
 

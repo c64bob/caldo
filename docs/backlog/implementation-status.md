@@ -7,7 +7,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 ## Zusammenfassung
 
 - Bestehende Stories: 54 `Umgesetzt`, 32 `Teilweise umgesetzt`, 3 `Offen`.
-- Neue Planungsstories: 1 `Umgesetzt`, 38 `Offen`.
+- Neue Planungsstories: 2 `Umgesetzt`, 37 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
 ## Legende
@@ -117,3 +117,4 @@ Die neuen Epics 23 bis 28 brechen die verbleibende UI- und QA-Arbeit in kleinere
 | Story | Status | Evidenzort |
 |---|---|---|
 | 23.1 | Umgesetzt | `docs/backlog/ui-design-principles.md` dokumentiert die visuelle Todoist-nahe Richtung, Desktop-First-Scope, Dichte, Akzentfarbe und Prioritaeten fuer Aufgabenzeilen, Sidebar, Dialoge und Statusmeldungen. |
+| 23.2 | Umgesetzt | `web/static/tailwind.input.css` definiert Caldo-Farb-, Oberflaechen-, Border-, Fokus- und Status-Tokens sowie Basisklassen fuer Buttons, Eingaben, Dialoge, Listenzeilen, Badges und Menues; bestehende Views verwenden diese Klassen. |

@@ -3,48 +3,48 @@ package view
 import "strings"
 
 templ SearchPage(query string, results []SearchResultView) {
-	<section class="space-y-4">
-		<h2 class="text-xl font-semibold">Globale Suche</h2>
+	<section class="caldo-page">
+		<h2 class="caldo-page-title">Globale Suche</h2>
 		<form method="get" action="/search" class="space-y-2" role="search" aria-label="Globale Suche">
-			<label for="global-search" class="block text-sm font-medium">Suche nach Aufgaben, #Projekt oder @Label</label>
+			<label for="global-search" class="caldo-label">Suche nach Aufgaben, #Projekt oder @Label</label>
 			<input
 				id="global-search"
 				type="search"
 				name="q"
 				value={ query }
-				class="w-full rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"
+				class="caldo-input"
 				placeholder="z. B. Rechnung #Finanzen @Büro"
 				autofocus
 				accesskey="k"
 			/>
-			<p class="text-sm text-slate-600 dark:text-slate-400">Tastaturkürzel: Alt+Shift+K (Browser-Standard für accesskey).</p>
+			<p class="caldo-muted">Tastaturkürzel: Alt+Shift+K (Browser-Standard für accesskey).</p>
 		</form>
 		if strings.TrimSpace(query) == "" {
-			<p class="text-sm text-slate-600 dark:text-slate-400">Gib einen Suchbegriff ein.</p>
+			<p class="caldo-muted">Gib einen Suchbegriff ein.</p>
 		} else if len(results) == 0 {
-			<p class="text-sm text-slate-600 dark:text-slate-400">Keine aktiven Aufgaben gefunden.</p>
+			<p class="caldo-muted">Keine aktiven Aufgaben gefunden.</p>
 		} else {
-			<ul class="space-y-2" data-search-results>
+			<ul class="caldo-list" data-search-results>
 				for _, result := range results {
-					<li data-task-id={ result.ID } class="rounded border border-slate-200 p-3 dark:border-slate-700">
+					<li data-task-id={ result.ID } class="caldo-task-row">
 						<p class="font-medium">{ result.Title }</p>
 						if result.Description != "" {
-							<p class="text-sm text-slate-600 dark:text-slate-400">{ result.Description }</p>
+							<p class="caldo-muted">{ result.Description }</p>
 						}
-						<p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+						<p class="caldo-meta mt-1">
 							Projekt: { result.ProjectName }
 							if result.LabelNames != "" {
 								 · Labels: { result.LabelNames }
 							}
 						</p>
 						if len(result.Attachments) > 0 {
-							<div class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+							<div class="caldo-meta mt-2">
 								<p>Anhänge:</p>
 								<ul class="ml-4 list-disc space-y-1">
 									for _, attachment := range result.Attachments {
 										<li>
 											if attachment.IsExternalURL {
-												<a href={ templ.SafeURL(attachment.Value) } target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">{ attachment.Value }</a>
+												<a href={ templ.SafeURL(attachment.Value) } target="_blank" rel="noopener noreferrer" class="caldo-list-link">{ attachment.Value }</a>
 											} else {
 												Anhang vorhanden (inline/binary)
 											}

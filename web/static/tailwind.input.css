@@ -2,6 +2,81 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+	:root {
+		--caldo-accent: #dc4c3e;
+		--caldo-accent-hover: #c83f32;
+		--caldo-accent-muted: #fff1ef;
+		--caldo-accent-border: #f7b4ad;
+		--caldo-bg: #ffffff;
+		--caldo-surface: #ffffff;
+		--caldo-surface-muted: #f7f7f5;
+		--caldo-border: #e5e5e0;
+		--caldo-border-strong: #d7d7d0;
+		--caldo-text: #20201d;
+		--caldo-text-muted: #6f6c67;
+		--caldo-text-subtle: #8a8680;
+		--caldo-focus: #dc4c3e;
+		--caldo-danger: #dc2626;
+		--caldo-danger-muted: #fef2f2;
+		--caldo-warning: #b45309;
+		--caldo-warning-muted: #fffbeb;
+		--caldo-success: #047857;
+		--caldo-success-muted: #ecfdf5;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:root {
+			--caldo-accent: #ff7a6f;
+			--caldo-accent-hover: #ff9188;
+			--caldo-accent-muted: #3b1713;
+			--caldo-accent-border: #7f2d25;
+			--caldo-bg: #171714;
+			--caldo-surface: #1f1f1b;
+			--caldo-surface-muted: #282722;
+			--caldo-border: #38362f;
+			--caldo-border-strong: #4a473e;
+			--caldo-text: #f4f1ea;
+			--caldo-text-muted: #b5afa5;
+			--caldo-text-subtle: #948e83;
+			--caldo-focus: #ff7a6f;
+			--caldo-danger: #f87171;
+			--caldo-danger-muted: #3b1111;
+			--caldo-warning: #fbbf24;
+			--caldo-warning-muted: #3a2505;
+			--caldo-success: #34d399;
+			--caldo-success-muted: #082f24;
+		}
+	}
+
+	.dark {
+		--caldo-accent: #ff7a6f;
+		--caldo-accent-hover: #ff9188;
+		--caldo-accent-muted: #3b1713;
+		--caldo-accent-border: #7f2d25;
+		--caldo-bg: #171714;
+		--caldo-surface: #1f1f1b;
+		--caldo-surface-muted: #282722;
+		--caldo-border: #38362f;
+		--caldo-border-strong: #4a473e;
+		--caldo-text: #f4f1ea;
+		--caldo-text-muted: #b5afa5;
+		--caldo-text-subtle: #948e83;
+		--caldo-focus: #ff7a6f;
+		--caldo-danger: #f87171;
+		--caldo-danger-muted: #3b1111;
+		--caldo-warning: #fbbf24;
+		--caldo-warning-muted: #3a2505;
+		--caldo-success: #34d399;
+		--caldo-success-muted: #082f24;
+	}
+
+	body {
+		background: var(--caldo-bg);
+		color: var(--caldo-text);
+	}
+}
+
 @layer components {
 	.htmx-indicator {
 		opacity: 0;
@@ -11,5 +86,252 @@
 	.htmx-request.htmx-indicator {
 		opacity: 1;
 		transition: opacity 200ms ease-in;
+	}
+
+	.caldo-page {
+		@apply max-w-4xl space-y-4;
+	}
+
+	.caldo-page-title {
+		@apply text-xl font-semibold tracking-normal;
+		color: var(--caldo-text);
+	}
+
+	.caldo-section-title {
+		@apply text-sm font-semibold tracking-normal;
+		color: var(--caldo-text-muted);
+	}
+
+	.caldo-muted {
+		@apply text-sm;
+		color: var(--caldo-text-muted);
+	}
+
+	.caldo-meta {
+		@apply text-xs;
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-button {
+		@apply inline-flex min-h-8 max-w-full items-center justify-center gap-1.5 truncate rounded-md border px-3 py-1.5 text-sm font-medium leading-5 transition;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border-strong);
+		color: var(--caldo-text);
+	}
+
+	.caldo-button:hover {
+		background: var(--caldo-surface-muted);
+	}
+
+	.caldo-button:focus-visible,
+	.caldo-input:focus-visible,
+	.caldo-select:focus-visible,
+	.caldo-check:focus-visible,
+	.caldo-nav-link:focus-visible,
+	.caldo-list-link:focus-visible {
+		outline: 2px solid var(--caldo-focus);
+		outline-offset: 2px;
+	}
+
+	.caldo-button:disabled,
+	.caldo-button[aria-disabled="true"] {
+		@apply cursor-not-allowed opacity-55;
+	}
+
+	.htmx-request .caldo-button,
+	.caldo-button.htmx-request {
+		@apply cursor-wait opacity-75;
+	}
+
+	.caldo-button-primary {
+		background: var(--caldo-accent);
+		border-color: var(--caldo-accent);
+		color: #ffffff;
+	}
+
+	.caldo-button-primary:hover {
+		background: var(--caldo-accent-hover);
+		border-color: var(--caldo-accent-hover);
+	}
+
+	.caldo-button-secondary {
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border-strong);
+		color: var(--caldo-text);
+	}
+
+	.caldo-button-ghost {
+		@apply border-transparent;
+		background: transparent;
+		color: var(--caldo-text-muted);
+	}
+
+	.caldo-button-ghost:hover {
+		background: var(--caldo-surface-muted);
+		color: var(--caldo-text);
+	}
+
+	.caldo-label {
+		@apply block text-sm font-medium;
+		color: var(--caldo-text);
+	}
+
+	.caldo-input,
+	.caldo-select {
+		@apply mt-1 w-full rounded-md border px-3 py-2 text-sm leading-5 transition;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border-strong);
+		color: var(--caldo-text);
+	}
+
+	.caldo-input::placeholder {
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-input:hover,
+	.caldo-select:hover {
+		border-color: var(--caldo-text-subtle);
+	}
+
+	.caldo-input:disabled,
+	.caldo-select:disabled {
+		@apply cursor-not-allowed opacity-60;
+		background: var(--caldo-surface-muted);
+	}
+
+	.caldo-input[aria-invalid="true"],
+	.caldo-input.is-error,
+	.caldo-select[aria-invalid="true"],
+	.caldo-select.is-error {
+		border-color: var(--caldo-danger);
+		background: var(--caldo-danger-muted);
+	}
+
+	.caldo-check {
+		@apply h-4 w-4 rounded border;
+		accent-color: var(--caldo-accent);
+		border-color: var(--caldo-border-strong);
+	}
+
+	.caldo-card {
+		@apply rounded-md border p-4;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-list {
+		@apply space-y-2;
+	}
+
+	.caldo-list-row {
+		@apply rounded-md border p-3 transition;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-list-row:hover {
+		background: var(--caldo-surface-muted);
+	}
+
+	.caldo-task-row {
+		@apply rounded-md border p-3 transition;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-task-row:hover {
+		background: var(--caldo-surface-muted);
+	}
+
+	.caldo-list-link {
+		@apply rounded-sm font-medium underline decoration-transparent underline-offset-2 transition;
+		color: var(--caldo-text);
+	}
+
+	.caldo-list-link:hover {
+		color: var(--caldo-accent);
+		text-decoration-color: var(--caldo-accent);
+	}
+
+	.caldo-badge {
+		@apply inline-flex min-h-5 max-w-full items-center truncate rounded-full border px-2 text-xs font-medium;
+		background: var(--caldo-surface-muted);
+		border-color: var(--caldo-border);
+		color: var(--caldo-text-muted);
+	}
+
+	.caldo-badge-accent {
+		background: var(--caldo-accent-muted);
+		border-color: var(--caldo-accent-border);
+		color: var(--caldo-accent);
+	}
+
+	.caldo-alert {
+		@apply rounded-md border p-3 text-sm;
+	}
+
+	.caldo-alert-error {
+		background: var(--caldo-danger-muted);
+		border-color: var(--caldo-danger);
+		color: var(--caldo-danger);
+	}
+
+	.caldo-alert-warning {
+		background: var(--caldo-warning-muted);
+		border-color: var(--caldo-warning);
+		color: var(--caldo-warning);
+	}
+
+	.caldo-dialog {
+		@apply w-full max-w-xl rounded-md border p-0;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border-strong);
+		color: var(--caldo-text);
+	}
+
+	.caldo-kbd {
+		@apply rounded border px-1 py-0.5 text-xs;
+		background: var(--caldo-surface-muted);
+		border-color: var(--caldo-border-strong);
+		color: var(--caldo-text);
+	}
+
+	.caldo-nav-link {
+		@apply block max-w-full truncate rounded-md px-2 py-1.5 text-sm font-medium no-underline transition;
+		color: var(--caldo-text-muted);
+	}
+
+	.caldo-nav-link:hover {
+		background: var(--caldo-surface-muted);
+		color: var(--caldo-text);
+	}
+
+	.caldo-nav-link-active {
+		background: var(--caldo-accent-muted);
+		color: var(--caldo-accent);
+	}
+
+	.caldo-toast {
+		@apply fixed bottom-4 right-4 rounded-md border px-3 py-2 text-sm shadow-sm;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border-strong);
+		color: var(--caldo-text);
+	}
+
+	.caldo-menu {
+		@apply min-w-44 rounded-md border p-1 shadow-sm;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border);
+		color: var(--caldo-text);
+	}
+
+	.caldo-menu-item {
+		@apply flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition;
+		color: var(--caldo-text);
+	}
+
+	.caldo-menu-item:hover,
+	.caldo-menu-item:focus-visible {
+		background: var(--caldo-surface-muted);
 	}
 }

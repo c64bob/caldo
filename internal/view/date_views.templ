@@ -3,16 +3,16 @@ package view
 import "caldo/internal/db"
 
 templ DateScopedTasksPage(heading string, emptyMessage string, tasks []db.DatedTaskViewRow) {
-	<section class="space-y-4">
-		<h2 class="text-xl font-semibold">{ heading }</h2>
+	<section class="caldo-page">
+		<h2 class="caldo-page-title">{ heading }</h2>
 		if len(tasks) == 0 {
-			<p class="text-sm text-slate-600 dark:text-slate-400">{ emptyMessage }</p>
+			<p class="caldo-muted">{ emptyMessage }</p>
 		} else {
-			<ul class="space-y-2" data-date-view-results>
+			<ul class="caldo-list" data-date-view-results>
 				for _, task := range tasks {
-					<li data-task-id={ task.ID } class={ "rounded border border-slate-200 p-3 dark:border-slate-700", templ.KV("ml-6", task.IsSubtask) }>
+					<li data-task-id={ task.ID } class={ "caldo-task-row", templ.KV("ml-6", task.IsSubtask) }>
 						<p class="font-medium">{ task.Title }</p>
-						<p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Fällig: { task.DueISODate } · Projekt: { task.ProjectName }</p>
+						<p class="caldo-meta mt-1">Fällig: { task.DueISODate } · Projekt: { task.ProjectName }</p>
 					</li>
 				}
 			</ul>

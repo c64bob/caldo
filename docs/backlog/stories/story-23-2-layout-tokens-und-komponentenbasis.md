@@ -4,7 +4,7 @@
 Story 23.2 — Layout-Tokens und Komponentenbasis
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Wiederkehrende UI-Werte und Basiskomponenten werden konsistent nutzbar gemacht.

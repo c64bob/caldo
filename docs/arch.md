@@ -31,7 +31,7 @@ Die Architektur folgt diesen Prinzipien:
 
 | Bereich | Entscheidung |
 |---|---|
-| Sprache | Go |
+| Sprache | Go 1.26 |
 | HTTP-Router | Chi |
 | Templates | Templ |
 | Datenbank | SQLite |
@@ -2298,13 +2298,13 @@ hinter einem Reverse Proxy, der TLS terminiert und den Auth-Header setzt.
 
 ```text
 Stage 1: builder
-  - golang:1.23-alpine
+  - golang:1.26-alpine
   - Tailwind CSS Build
   - templ generate
   - go build -o caldo ./cmd/caldo
 
 Stage 2: runtime
-  - alpine:latest
+  - alpine:3.22
   - nur Binary und web/static/
   - kein Go-Toolchain im Runtime-Image
   - Non-root-User: uid=1000

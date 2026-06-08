@@ -26,6 +26,12 @@ func TestDockerfileStory202Requirements(t *testing.T) {
 	if !strings.Contains(upper, "FROM ") || !strings.Contains(upper, " AS BUILDER") {
 		t.Fatalf("dockerfile must use multi-stage build")
 	}
+	if !strings.Contains(content, "FROM golang:1.26-alpine AS builder") {
+		t.Fatalf("builder stage must use the supported Go 1.26 alpine image")
+	}
+	if !strings.Contains(content, "github.com/a-h/templ/cmd/templ@v0.3.1020") {
+		t.Fatalf("builder stage must install the pinned templ generator")
+	}
 	if !strings.Contains(upper, "FROM ALPINE") {
 		t.Fatalf("dockerfile must have alpine runtime stage")
 	}

@@ -57,7 +57,7 @@ Die folgenden Abschnitte dokumentieren den aktuellen Stand von Caldo für Betrie
 
 ### 3) Voraussetzungen
 
-- Go `1.24+` (für lokalen Build)
+- Go `1.26+` (für lokalen Build)
 - Docker Engine + Docker Compose Plugin (für Referenzdeployment)
 - Reverse Proxy mit vorgeschalteter Authentifizierung und TLS-Terminierung
 - Gültige HTTPS-Basis-URL für die Instanz (`BASE_URL`)

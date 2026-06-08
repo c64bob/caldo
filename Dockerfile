@@ -1,9 +1,9 @@
-FROM golang:1.24-alpine AS builder
+FROM golang:1.26-alpine AS builder
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 RUN apk add --no-cache curl
-RUN go install github.com/a-h/templ/cmd/templ@v0.3.865
+RUN go install github.com/a-h/templ/cmd/templ@v0.3.1020
 ARG TAILWIND_VERSION=v3.4.17
 ARG TAILWIND_SHA256=7d24f7fa191d2193b78cd5f5a42a6093e14409521908529f42d80b11fde1f1d4
 RUN curl -sSL "https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWIND_VERSION}/tailwindcss-linux-x64" -o /usr/local/bin/tailwindcss \

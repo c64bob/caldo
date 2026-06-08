@@ -7,7 +7,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 ## Zusammenfassung
 
 - Bestehende Stories: 54 `Umgesetzt`, 32 `Teilweise umgesetzt`, 3 `Offen`.
-- Neue Planungsstories: 39 `Offen`.
+- Neue Planungsstories: 1 `Umgesetzt`, 38 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
 ## Legende
@@ -112,4 +112,8 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Neue Planungsstories
 
-Die neuen Epics 23 bis 28 brechen die verbleibende UI- und QA-Arbeit in kleinere Stories auf. Alle neuen Stories starten mit `Status: Offen` und enthalten keine Implementierungsdetails.
+Die neuen Epics 23 bis 28 brechen die verbleibende UI- und QA-Arbeit in kleinere Stories auf.
+
+| Story | Status | Evidenzort |
+|---|---|---|
+| 23.1 | Umgesetzt | `docs/backlog/ui-design-principles.md` dokumentiert die visuelle Todoist-nahe Richtung, Desktop-First-Scope, Dichte, Akzentfarbe und Prioritaeten fuer Aufgabenzeilen, Sidebar, Dialoge und Statusmeldungen. |

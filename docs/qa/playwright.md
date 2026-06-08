@@ -46,6 +46,16 @@ make e2e
 make e2e-headed
 ```
 
+## CI
+
+Der CI-Workflow führt Browser-QA in einem separaten Job aus. Der Job läuft nach den normalen Go-/Build-Checks, installiert Node über `actions/setup-node`, führt `npm ci` aus und installiert Chromium inklusive Linux-Systemabhängigkeiten mit:
+
+```bash
+npx playwright install --with-deps chromium
+```
+
+Bei Fehlschlägen werden Playwright-Report, Test-Artefakte und lokale Caldo/Staging-CalDAV-Logs als Workflow-Artefakt hochgeladen.
+
 Der Playwright-Global-Setup startet automatisch:
 
 - `cmd/stagecaldav` mit In-Memory-Testdaten

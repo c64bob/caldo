@@ -163,11 +163,21 @@ go test ./... -race
 go vet ./...
 ```
 
+Browser-QA ist als dev-only Playwright-Prozess dokumentiert:
+
+```bash
+npm ci
+npm run test:e2e
+```
+
+Die lokale Erstinstallation der Browser-Abhängigkeiten und die Root-Kommandos für Linux stehen in `docs/qa/playwright.md`.
+
 Teststrategie:
 
 - Unit-Tests für reine Logik (z. B. Parsing, Roundtrip, Kryptografie)
 - Integrationsnahe Tests für SQLite-Verhalten über temporäre In-Memory-Datenbank
 - Keine echten CalDAV-Netzwerkzugriffe in Tests; stattdessen Mocks/Test Doubles
+- Browser-Tests verwenden die lokale Staging-CalDAV-Testinstanz und temporäre Caldo-Datenbanken
 
 ### 10) Betrieb (Operations)
 

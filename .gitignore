@@ -25,3 +25,7 @@ go.work.sum
 
 # misc
 dist/
+node_modules/
+test-results/
+playwright-report/
+.playwright/

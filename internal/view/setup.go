@@ -13,15 +13,15 @@ import (
 // SetupCalDAVContent renders the setup CalDAV credential form.
 func SetupCalDAVContent(errorMessage string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		_, err := fmt.Fprint(w, `<section class="max-w-xl">
-		<h2 class="text-xl font-semibold">CalDAV einrichten</h2>
-		<p class="mt-2 text-sm text-slate-700 dark:text-slate-300">Verbindung zu deinem CalDAV-Server testen.</p>`)
+		_, err := fmt.Fprint(w, `<section class="caldo-page max-w-xl">
+		<h2 class="caldo-page-title">CalDAV einrichten</h2>
+		<p class="caldo-muted mt-2">Verbindung zu deinem CalDAV-Server testen.</p>`)
 		if err != nil {
 			return err
 		}
 
 		if errorMessage != "" {
-			if _, err := fmt.Fprintf(w, `<p class="mt-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">%s</p>`, html.EscapeString(errorMessage)); err != nil {
+			if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-error mt-4">%s</p>`, html.EscapeString(errorMessage)); err != nil {
 				return err
 			}
 		}
@@ -29,18 +29,18 @@ func SetupCalDAVContent(errorMessage string) templ.Component {
 		csrfToken := html.EscapeString(CSRFToken(ctx))
 		_, err = fmt.Fprintf(w, `<form class="mt-6 space-y-4" method="post" action="/setup/caldav" hx-post="/setup/caldav" hx-target="body" hx-swap="outerHTML" hx-push-url="false" hx-headers='{"X-CSRF-Token":"%s"}'>
 			<div>
-				<label for="caldav_url" class="block text-sm font-medium">CalDAV-URL</label>
-				<input id="caldav_url" name="caldav_url" type="url" required class="mt-1 w-full rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"/>
+				<label for="caldav_url" class="caldo-label">CalDAV-URL</label>
+				<input id="caldav_url" name="caldav_url" type="url" required class="caldo-input"/>
 			</div>
 			<div>
-				<label for="caldav_username" class="block text-sm font-medium">Benutzername</label>
-				<input id="caldav_username" name="caldav_username" type="text" required class="mt-1 w-full rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"/>
+				<label for="caldav_username" class="caldo-label">Benutzername</label>
+				<input id="caldav_username" name="caldav_username" type="text" required class="caldo-input"/>
 			</div>
 			<div>
-				<label for="caldav_password" class="block text-sm font-medium">Passwort / App-Passwort</label>
-				<input id="caldav_password" name="caldav_password" type="password" required class="mt-1 w-full rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-900"/>
+				<label for="caldav_password" class="caldo-label">Passwort / App-Passwort</label>
+				<input id="caldav_password" name="caldav_password" type="password" required class="caldo-input"/>
 			</div>
-			<button type="submit" class="rounded bg-slate-900 px-4 py-2 text-white dark:bg-slate-100 dark:text-slate-900">Verbindung testen</button>
+			<button type="submit" class="caldo-button caldo-button-primary">Verbindung testen</button>
 		</form>
 	</section>`, csrfToken)
 		return err
@@ -67,13 +67,13 @@ func SetupCalendarsContent(calendars []caldav.Calendar, errorMessage string, sel
 			}
 		}
 
-		if _, err := fmt.Fprint(w, `<section class="max-w-2xl">
-		<h2 class="text-xl font-semibold">Kalender auswählen</h2>
-		<p class="mt-2 text-sm text-slate-700 dark:text-slate-300">Wähle die Kalender, die als Projekte synchronisiert werden sollen, und setze ein Default-Projekt.</p>`); err != nil {
+		if _, err := fmt.Fprint(w, `<section class="caldo-page max-w-2xl">
+		<h2 class="caldo-page-title">Kalender auswählen</h2>
+		<p class="caldo-muted mt-2">Wähle die Kalender, die als Projekte synchronisiert werden sollen, und setze ein Default-Projekt.</p>`); err != nil {
 			return err
 		}
 		if errorMessage != "" {
-			if _, err := fmt.Fprintf(w, `<p class="mt-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">%s</p>`, html.EscapeString(errorMessage)); err != nil {
+			if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-error mt-4">%s</p>`, html.EscapeString(errorMessage)); err != nil {
 				return err
 			}
 		}
@@ -84,7 +84,7 @@ func SetupCalendarsContent(calendars []caldav.Calendar, errorMessage string, sel
 		}
 
 		if len(calendars) == 0 {
-			if _, err := fmt.Fprint(w, `<p class="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">Keine Kalender gefunden.</p>`); err != nil {
+			if _, err := fmt.Fprint(w, `<p class="caldo-alert caldo-alert-warning">Keine Kalender gefunden.</p>`); err != nil {
 				return err
 			}
 		} else {
@@ -103,13 +103,13 @@ func SetupCalendarsContent(calendars []caldav.Calendar, errorMessage string, sel
 					defaultChecked = ` checked`
 				}
 
-				if _, err := fmt.Fprintf(w, `<div class="rounded border border-slate-200 p-3 dark:border-slate-700">
+				if _, err := fmt.Fprintf(w, `<div class="caldo-list-row">
 <label class="flex items-center gap-2">
-  <input type="checkbox" name="calendar_href" value="%s"%s />
+  <input class="caldo-check" type="checkbox" name="calendar_href" value="%s"%s />
   <span class="font-medium">%s</span>
 </label>
-<label class="mt-2 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-  <input type="radio" name="default_calendar_href" value="%s"%s />
+<label class="caldo-muted mt-2 flex items-center gap-2">
+  <input class="caldo-check" type="radio" name="default_calendar_href" value="%s"%s />
   <span>Als Default-Projekt verwenden</span>
 </label>
 </div>`, html.EscapeString(calendar.Href), checked, html.EscapeString(calendar.DisplayName), html.EscapeString(calendar.Href), defaultChecked); err != nil {
@@ -122,11 +122,11 @@ func SetupCalendarsContent(calendars []caldav.Calendar, errorMessage string, sel
 		}
 
 		if _, err := fmt.Fprint(w, `<div class="space-y-2">
-<label for="new_default_project_name" class="block text-sm font-medium">Optional: neues Default-Projekt anlegen</label>
-<input id="new_default_project_name" name="new_default_project_name" type="text" class="mt-1 w-full rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-900" placeholder="z. B. Inbox"/>
-<p class="text-xs text-slate-600 dark:text-slate-300">Wenn gesetzt, wird ein neuer CalDAV-Kalender angelegt und als Default-Projekt verwendet.</p>
+<label for="new_default_project_name" class="caldo-label">Optional: neues Default-Projekt anlegen</label>
+<input id="new_default_project_name" name="new_default_project_name" type="text" class="caldo-input" placeholder="z. B. Inbox"/>
+<p class="caldo-meta">Wenn gesetzt, wird ein neuer CalDAV-Kalender angelegt und als Default-Projekt verwendet.</p>
 </div>
-<button type="submit" class="rounded bg-slate-900 px-4 py-2 text-white dark:bg-slate-100 dark:text-slate-900">Weiter zum Import</button>
+<button type="submit" class="caldo-button caldo-button-primary">Weiter zum Import</button>
 </form>
 </section>`); err != nil {
 			return err

@@ -1,14 +1,14 @@
 package view
 
 func navLinkClass(title string, activeTitles ...string) string {
-	base := "block rounded px-2 py-1 text-sm"
+	base := "caldo-nav-link"
 	for _, candidate := range activeTitles {
 		if title == candidate {
-			return base + " bg-slate-200 font-semibold text-slate-900 dark:bg-slate-800 dark:text-slate-100"
+			return base + " caldo-nav-link-active"
 		}
 	}
 
-	return base + " underline"
+	return base
 }
 
 templ BaseLayout(title string, content templ.Component) {
@@ -22,18 +22,18 @@ templ BaseLayout(title string, content templ.Component) {
 			<meta name="htmx-config" content='{"includeIndicatorStyles":false}'/>
 			<link rel="stylesheet" href={ AssetPath(ctx, "app.css") }/>
 		</head>
-		<body class="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+		<body class="min-h-screen">
 			<header class="border-b border-slate-200 dark:border-slate-800 p-4 flex justify-between items-center">
 				<h1 class="text-lg font-semibold">Caldo</h1>
 				<div class="flex items-center gap-3">
 					@SyncStatusBadge("idle", "nie")
-					<button type="button" data-theme-toggle class="rounded border border-slate-300 px-3 py-1 dark:border-slate-700">Dark Mode</button>
+					<button type="button" data-theme-toggle class="caldo-button caldo-button-secondary">Dark Mode</button>
 				</div>
 			</header>
 			<div class="flex">
 				<nav class="w-64 border-r border-slate-200 dark:border-slate-800 p-4" aria-label="Hauptnavigation">
 					<section>
-						<h2 class="text-sm font-medium mb-2">Systemfilter</h2>
+						<h2 class="caldo-section-title mb-2">Systemfilter</h2>
 						<ul class="space-y-1" data-nav-system-filters>
 							<li><a class={ navLinkClass(title, "Heute") } href="/today">Heute</a></li>
 							<li><a class={ navLinkClass(title, "Demnächst") } href="/upcoming">Demnächst</a></li>
@@ -47,19 +47,19 @@ templ BaseLayout(title string, content templ.Component) {
 						</ul>
 					</section>
 					<section class="mt-6">
-						<h2 class="text-sm font-medium mb-2">Filter</h2>
+						<h2 class="caldo-section-title mb-2">Filter</h2>
 						<ul data-nav-user-filters>
 							<li><a class={ navLinkClass(title, "Filter") } href="/filters">Filter</a></li>
 						</ul>
 					</section>
 					<section class="mt-6">
-						<h2 class="text-sm font-medium mb-2">Labels</h2>
+						<h2 class="caldo-section-title mb-2">Labels</h2>
 						<ul>
 							<li><a class={ navLinkClass(title, "Labels") } href="/labels">Labels</a></li>
 						</ul>
 					</section>
 					<section class="mt-6">
-						<h2 class="text-sm font-medium mb-2">Projekte</h2>
+						<h2 class="caldo-section-title mb-2">Projekte</h2>
 						<ul data-nav-projects>
 							<li><a class={ navLinkClass(title, "Projekte") } href="/projects">Projekte</a></li>
 						</ul>
@@ -69,20 +69,20 @@ templ BaseLayout(title string, content templ.Component) {
 					@content
 				</main>
 			</div>
-			<div id="write-status" class="hidden fixed bottom-4 right-4 rounded border border-slate-300 bg-white px-3 py-2 text-sm shadow dark:border-slate-700 dark:bg-slate-900" aria-live="polite"></div>
+			<div id="write-status" class="hidden caldo-toast" aria-live="polite"></div>
 			<div id="notifications" aria-live="polite"></div>
-			<dialog data-shortcut-help-dialog class="w-full max-w-xl rounded border border-slate-300 p-0 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+			<dialog data-shortcut-help-dialog class="caldo-dialog">
 				<div class="p-4 space-y-3">
 					<div class="flex items-center justify-between">
-						<h2 class="text-lg font-semibold">Tastaturkürzel</h2>
-						<button type="button" data-shortcut-help-close class="rounded border border-slate-300 px-2 py-1 text-sm dark:border-slate-700">Schließen</button>
+						<h2 class="caldo-page-title">Tastaturkürzel</h2>
+						<button type="button" data-shortcut-help-close class="caldo-button caldo-button-ghost">Schließen</button>
 					</div>
-					<ul class="space-y-2 text-sm">
-						<li><kbd class="rounded border px-1">N</kbd> Neue Aufgabe</li>
-						<li><kbd class="rounded border px-1">S</kbd> oder <kbd class="rounded border px-1">/</kbd> Suche</li>
-						<li><kbd class="rounded border px-1">G</kbd> dann <kbd class="rounded border px-1">T</kbd> Heute</li>
-						<li><kbd class="rounded border px-1">G</kbd> dann <kbd class="rounded border px-1">U</kbd> Demnächst</li>
-						<li><kbd class="rounded border px-1">?</kbd> Hilfe öffnen</li>
+					<ul class="caldo-menu">
+						<li class="caldo-menu-item"><kbd class="caldo-kbd">N</kbd> Neue Aufgabe</li>
+						<li class="caldo-menu-item"><kbd class="caldo-kbd">S</kbd> oder <kbd class="caldo-kbd">/</kbd> Suche</li>
+						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> dann <kbd class="caldo-kbd">T</kbd> Heute</li>
+						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> dann <kbd class="caldo-kbd">U</kbd> Demnächst</li>
+						<li class="caldo-menu-item"><kbd class="caldo-kbd">?</kbd> Hilfe öffnen</li>
 					</ul>
 				</div>
 			</dialog>
@@ -100,7 +100,7 @@ templ EmptyContent() {
 }
 
 templ PlaceholderPage(title string) {
-	<section>
-		<h2 class="text-xl font-semibold">{ title }</h2>
+	<section class="caldo-page">
+		<h2 class="caldo-page-title">{ title }</h2>
 	</section>
 }

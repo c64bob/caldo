@@ -14,11 +14,11 @@ import (
 // QuickAddPage renders the quick-add page.
 func QuickAddPage(draft *parser.QuickAddDraft, text string, errorMessage string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if _, err := fmt.Fprint(w, `<section class="space-y-4"><h2 class="text-xl font-semibold">Quick Add</h2><form method="post" action="/quick-add/preview" class="space-y-3"><label for="quick-add-text" class="block text-sm font-medium">Aufgabe</label><input id="quick-add-text" name="text" type="text" class="w-full rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-900" autofocus value="`+html.EscapeString(text)+`"/><button type="submit" accesskey="q" class="rounded border border-slate-300 px-3 py-2 dark:border-slate-700">Vorschau (Shortcut: Alt+Shift+Q)</button></form>`); err != nil {
+		if _, err := fmt.Fprint(w, `<section class="caldo-page"><h2 class="caldo-page-title">Quick Add</h2><form method="post" action="/quick-add/preview" class="space-y-3"><label for="quick-add-text" class="caldo-label">Aufgabe</label><input id="quick-add-text" name="text" type="text" class="caldo-input" autofocus value="`+html.EscapeString(text)+`"/><button type="submit" accesskey="q" class="caldo-button caldo-button-secondary">Vorschau (Shortcut: Alt+Shift+Q)</button></form>`); err != nil {
 			return err
 		}
 		if errorMessage != "" {
-			if _, err := fmt.Fprintf(w, `<p class="text-sm text-red-600">%s</p>`, html.EscapeString(errorMessage)); err != nil {
+			if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-error">%s</p>`, html.EscapeString(errorMessage)); err != nil {
 				return err
 			}
 		}
@@ -46,7 +46,7 @@ func quickAddPreviewContent(draft parser.QuickAddDraft) templ.Component {
 		if draft.ProjectUnresolved {
 			projectDetail += ` <span class="text-amber-600">(unbekannt – wird beim Speichern ignoriert)</span>`
 		}
-		_, err := fmt.Fprint(w, `<section class="rounded border border-slate-300 p-4 dark:border-slate-700"><h3 class="font-medium">Vorschau</h3><ul class="mt-2 text-sm space-y-1"><li><strong>Titel:</strong> `+html.EscapeString(draft.Title)+`</li><li><strong>Projekt:</strong> `+projectDetail+`</li><li><strong>Labels:</strong> `+labels+`</li><li><strong>Datum:</strong> `+html.EscapeString(draft.Due)+`</li><li><strong>Wiederholung:</strong> `+html.EscapeString(draft.Recurrence)+`</li><li><strong>Priorität:</strong> `+html.EscapeString(draft.Priority)+`</li></ul><form method="post" action="/tasks" hx-post="/tasks" hx-headers='{"X-CSRF-Token":"`+csrfToken+`"}' class="mt-3"><input type="hidden" name="title" value="`+html.EscapeString(draft.Title)+`"/><input type="hidden" name="project_id" value="`+html.EscapeString(draft.ProjectID)+`"/><input type="hidden" name="labels" value="`+labels+`"/><input type="hidden" name="priority" value="`+html.EscapeString(draft.Priority)+`"/><input type="hidden" name="recurrence" value="`+html.EscapeString(draft.Recurrence)+`"/><button type="submit" class="rounded bg-slate-900 px-3 py-2 text-white dark:bg-slate-100 dark:text-slate-900">Speichern</button></form></section></section>`)
+		_, err := fmt.Fprint(w, `<section class="caldo-card"><h3 class="font-medium">Vorschau</h3><ul class="mt-2 text-sm space-y-1"><li><strong>Titel:</strong> `+html.EscapeString(draft.Title)+`</li><li><strong>Projekt:</strong> `+projectDetail+`</li><li><strong>Labels:</strong> `+labels+`</li><li><strong>Datum:</strong> `+html.EscapeString(draft.Due)+`</li><li><strong>Wiederholung:</strong> `+html.EscapeString(draft.Recurrence)+`</li><li><strong>Priorität:</strong> `+html.EscapeString(draft.Priority)+`</li></ul><form method="post" action="/tasks" hx-post="/tasks" hx-headers='{"X-CSRF-Token":"`+csrfToken+`"}' class="mt-3"><input type="hidden" name="title" value="`+html.EscapeString(draft.Title)+`"/><input type="hidden" name="project_id" value="`+html.EscapeString(draft.ProjectID)+`"/><input type="hidden" name="labels" value="`+labels+`"/><input type="hidden" name="priority" value="`+html.EscapeString(draft.Priority)+`"/><input type="hidden" name="recurrence" value="`+html.EscapeString(draft.Recurrence)+`"/><button type="submit" class="caldo-button caldo-button-primary">Speichern</button></form></section></section>`)
 		return err
 	})
 }

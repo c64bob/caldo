@@ -31,7 +31,7 @@ func SearchPage(query string, results []SearchResultView) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"space-y-4\"><h2 class=\"text-xl font-semibold\">Globale Suche</h2><form method=\"get\" action=\"/search\" class=\"space-y-2\" role=\"search\" aria-label=\"Globale Suche\"><label for=\"global-search\" class=\"block text-sm font-medium\">Suche nach Aufgaben, #Projekt oder @Label</label> <input id=\"global-search\" type=\"search\" name=\"q\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"caldo-page\"><h2 class=\"caldo-page-title\">Globale Suche</h2><form method=\"get\" action=\"/search\" class=\"space-y-2\" role=\"search\" aria-label=\"Globale Suche\"><label for=\"global-search\" class=\"caldo-label\">Suche nach Aufgaben, #Projekt oder @Label</label> <input id=\"global-search\" type=\"search\" name=\"q\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -44,22 +44,22 @@ func SearchPage(query string, results []SearchResultView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"w-full rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-900\" placeholder=\"z. B. Rechnung #Finanzen @Büro\" autofocus accesskey=\"k\"><p class=\"text-sm text-slate-600 dark:text-slate-400\">Tastaturkürzel: Alt+Shift+K (Browser-Standard für accesskey).</p></form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"caldo-input\" placeholder=\"z. B. Rechnung #Finanzen @Büro\" autofocus accesskey=\"k\"><p class=\"caldo-muted\">Tastaturkürzel: Alt+Shift+K (Browser-Standard für accesskey).</p></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if strings.TrimSpace(query) == "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"text-sm text-slate-600 dark:text-slate-400\">Gib einen Suchbegriff ein.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"caldo-muted\">Gib einen Suchbegriff ein.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if len(results) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<p class=\"text-sm text-slate-600 dark:text-slate-400\">Keine aktiven Aufgaben gefunden.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<p class=\"caldo-muted\">Keine aktiven Aufgaben gefunden.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<ul class=\"space-y-2\" data-search-results>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<ul class=\"caldo-list\" data-search-results>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -77,7 +77,7 @@ func SearchPage(query string, results []SearchResultView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" class=\"rounded border border-slate-200 p-3 dark:border-slate-700\"><p class=\"font-medium\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" class=\"caldo-task-row\"><p class=\"font-medium\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -95,14 +95,14 @@ func SearchPage(query string, results []SearchResultView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if result.Description != "" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-sm text-slate-600 dark:text-slate-400\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"caldo-muted\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var5 string
 					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(result.Description)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/search.templ`, Line: 32, Col: 81}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/search.templ`, Line: 32, Col: 50}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {
@@ -113,7 +113,7 @@ func SearchPage(query string, results []SearchResultView) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"mt-1 text-xs text-slate-500 dark:text-slate-400\">Projekt: ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"caldo-meta mt-1\">Projekt: ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -150,7 +150,7 @@ func SearchPage(query string, results []SearchResultView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if len(result.Attachments) > 0 {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div class=\"mt-2 text-xs text-slate-500 dark:text-slate-400\"><p>Anhänge:</p><ul class=\"ml-4 list-disc space-y-1\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div class=\"caldo-meta mt-2\"><p>Anhänge:</p><ul class=\"ml-4 list-disc space-y-1\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -173,14 +173,14 @@ func SearchPage(query string, results []SearchResultView) templ.Component {
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"underline hover:no-underline\">")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"caldo-list-link\">")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 							var templ_7745c5c3_Var9 string
 							templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(attachment.Value)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/search.templ`, Line: 47, Col: 153}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/search.templ`, Line: 47, Col: 140}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 							if templ_7745c5c3_Err != nil {

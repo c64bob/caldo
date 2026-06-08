@@ -4,7 +4,7 @@
 Story 23.1 — Design-Referenz und UI-Prinzipien
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Die visuelle Zielrichtung wird fuer Caldo festgelegt, damit spaetere UI-Arbeit konsistent bleibt.

@@ -26,7 +26,7 @@ func TestTaskVersionsRouteReturnsVersions(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/tasks/versions?ids=task-1,missing&ids=task-2", nil)
 	req.Header.Set("X-Forwarded-User", "alice")
 	rr := httptest.NewRecorder()
-	NewRouter(logger, "X-Forwarded-User", testManifest(), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil).ServeHTTP(rr, req)
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil).ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
@@ -59,7 +59,7 @@ func TestTaskVersionsRouteAcceptsLegacyTaskIDParam(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/tasks/versions?task_id=task-1&task_id=task-2", nil)
 	req.Header.Set("X-Forwarded-User", "alice")
 	rr := httptest.NewRecorder()
-	NewRouter(logger, "X-Forwarded-User", testManifest(), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil).ServeHTTP(rr, req)
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil).ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
@@ -78,7 +78,7 @@ func TestTaskVersionsRouteRejectsMissingIDs(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/tasks/versions", nil)
 	req.Header.Set("X-Forwarded-User", "alice")
 	rr := httptest.NewRecorder()
-	NewRouter(logger, "X-Forwarded-User", testManifest(), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil).ServeHTTP(rr, req)
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil).ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())

@@ -18,10 +18,6 @@ profile.cov
 *.db-wal
 *.db-shm
 
-# generated frontend assets
-web/static/app.*.css
-web/static/app.*.js
-
 # workspace / env
 go.work
 go.work.sum

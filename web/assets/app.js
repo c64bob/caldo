@@ -24,8 +24,6 @@
     dialog.showModal();
   }
 
-
-
   var writeState = { pendingRequests: 0 };
 
   function setWriteStatus(kind, message) {
@@ -67,7 +65,7 @@
     var method = ((event.detail && event.detail.requestConfig && event.detail.requestConfig.verb) || '').toUpperCase();
     if (!method || method === 'GET') return;
     writeState.pendingRequests += 1;
-    setWriteStatus('pending', 'Speichern …');
+    setWriteStatus('pending', 'Speichern ...');
   });
 
   document.body.addEventListener('htmx:afterRequest', function (event) {

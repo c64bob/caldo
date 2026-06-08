@@ -1,15 +1,19 @@
 package assets
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
 func TestLoadManifest(t *testing.T) {
 	t.Parallel()
 
-	manifest, err := LoadManifest(filepath.Join("..", "..", "web", "static", "manifest.json"))
+	manifestPath := filepath.Join("..", "..", "web", "static", "manifest.json")
+	manifest, err := LoadManifest(manifestPath)
 	if err != nil {
 		t.Fatalf("LoadManifest returned error: %v", err)
 	}
@@ -18,8 +22,12 @@ func TestLoadManifest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Resolve returned error: %v", err)
 	}
-	if got != "app.8f3a1c2.css" {
-		t.Fatalf("unexpected manifest mapping: got %q", got)
+	if !strings.HasPrefix(got, "app.") || !strings.HasSuffix(got, ".css") {
+		t.Fatalf("unexpected app css mapping: got %q", got)
+	}
+
+	for _, resolved := range manifest {
+		assertAssetNameContainsHashPrefix(t, filepath.Dir(manifestPath), resolved)
 	}
 }
 
@@ -34,7 +42,7 @@ func TestLoadManifestFailsForMissingFile(t *testing.T) {
 func TestResolveFailsForUnknownAsset(t *testing.T) {
 	t.Parallel()
 
-	manifest := Manifest{"app.css": "app.8f3a1c2.css"}
+	manifest := Manifest{"app.css": "app.hash.css"}
 	if _, err := manifest.Resolve("unknown.css"); err == nil {
 		t.Fatal("expected error for unknown asset")
 	}
@@ -51,5 +59,20 @@ func TestLoadManifestFailsWhenMappedAssetDoesNotExist(t *testing.T) {
 
 	if _, err := LoadManifest(manifestPath); err == nil {
 		t.Fatal("expected error for missing asset file")
+	}
+}
+
+func assertAssetNameContainsHashPrefix(t *testing.T, dir string, resolved string) {
+	t.Helper()
+
+	data, err := os.ReadFile(filepath.Join(dir, resolved))
+	if err != nil {
+		t.Fatalf("read asset %q: %v", resolved, err)
+	}
+
+	sum := sha256.Sum256(data)
+	hashPrefix := fmt.Sprintf("%x", sum[:])[:7]
+	if !strings.Contains(resolved, "."+hashPrefix) {
+		t.Fatalf("asset %q does not contain content hash prefix %q", resolved, hashPrefix)
 	}
 }

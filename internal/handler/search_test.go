@@ -33,7 +33,7 @@ func TestSearchRouteReturnsActiveTasksOnly(t *testing.T) {
 	request.Header.Set("X-Forwarded-User", "alice")
 	responseRecorder := httptest.NewRecorder()
 
-	NewRouter(logger, "X-Forwarded-User", testManifest(), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil).ServeHTTP(responseRecorder, request)
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil).ServeHTTP(responseRecorder, request)
 
 	if responseRecorder.Code != http.StatusOK {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)

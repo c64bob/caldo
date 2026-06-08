@@ -32,8 +32,8 @@ jobs:
 
       - name: Install tailwindcss
         env:
-          TAILWIND_VERSION: v4.2.4
-          TAILWIND_SHA256: cabeef049cdeab61a5fa6b65ea28a3e8e53b8a85e58883947868c730fc48bdec
+          TAILWIND_VERSION: v3.4.17
+          TAILWIND_SHA256: 7d24f7fa191d2193b78cd5f5a42a6093e14409521908529f42d80b11fde1f1d4
         run: |
           curl -sSL "https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWIND_VERSION}/tailwindcss-linux-x64" -o /usr/local/bin/tailwindcss
           echo "${TAILWIND_SHA256}  /usr/local/bin/tailwindcss" | sha256sum -c -
@@ -42,8 +42,8 @@ jobs:
       - name: Generate templ files
         run: templ generate
 
-      - name: Build Tailwind assets
-        run: tailwindcss -i ./web/static/tailwind.input.css -o ./web/static/tailwind.output.css --minify
+      - name: Build static asset manifest
+        run: make assets
 
       - name: Build binaries
         run: |

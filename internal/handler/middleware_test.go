@@ -255,7 +255,7 @@ func TestReverseProxyAuthMiddlewareAllowsHealthWithoutAuth(t *testing.T) {
 func TestSetupGateMiddlewareRedirectsDisallowedRoutesWhenSetupIncomplete(t *testing.T) {
 	t.Parallel()
 
-	h := SetupGateMiddleware(NewSetupState(false), assets.Manifest{"app.css": "app.8f3a1c2.css", "htmx.min.js": "htmx.5e741aa.min.js"})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := SetupGateMiddleware(NewSetupState(false), assets.Manifest{"app.css": "app.hash.css", "htmx.min.js": "htmx.hash.min.js"})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
@@ -274,12 +274,12 @@ func TestSetupGateMiddlewareRedirectsDisallowedRoutesWhenSetupIncomplete(t *test
 func TestSetupGateMiddlewareAllowsStaticAssetsWhenSetupIncomplete(t *testing.T) {
 	t.Parallel()
 
-	h := SetupGateMiddleware(NewSetupState(false), assets.Manifest{"app.css": "app.8f3a1c2.css", "htmx.min.js": "htmx.5e741aa.min.js"})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := SetupGateMiddleware(NewSetupState(false), assets.Manifest{"app.css": "app.hash.css", "htmx.min.js": "htmx.hash.min.js"})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/static/htmx.5e741aa.min.js", nil)
+	req := httptest.NewRequest(http.MethodGet, "/static/htmx.hash.min.js", nil)
 	h.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusNoContent {
@@ -289,7 +289,7 @@ func TestSetupGateMiddlewareAllowsStaticAssetsWhenSetupIncomplete(t *testing.T) 
 func TestSetupGateMiddlewareRedirectsUnknownStaticAssetWhenSetupIncomplete(t *testing.T) {
 	t.Parallel()
 
-	h := SetupGateMiddleware(NewSetupState(false), assets.Manifest{"app.css": "app.8f3a1c2.css"})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := SetupGateMiddleware(NewSetupState(false), assets.Manifest{"app.css": "app.hash.css"})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
@@ -305,7 +305,7 @@ func TestSetupGateMiddlewareRedirectsUnknownStaticAssetWhenSetupIncomplete(t *te
 func TestSetupGateMiddlewareAllowsSetupRoutesWhenSetupIncomplete(t *testing.T) {
 	t.Parallel()
 
-	h := SetupGateMiddleware(NewSetupState(false), assets.Manifest{"app.css": "app.8f3a1c2.css", "htmx.min.js": "htmx.5e741aa.min.js"})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := SetupGateMiddleware(NewSetupState(false), assets.Manifest{"app.css": "app.hash.css", "htmx.min.js": "htmx.hash.min.js"})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
@@ -321,7 +321,7 @@ func TestSetupGateMiddlewareAllowsSetupRoutesWhenSetupIncomplete(t *testing.T) {
 func TestSetupGateMiddlewareAllowsAllRoutesWhenSetupComplete(t *testing.T) {
 	t.Parallel()
 
-	h := SetupGateMiddleware(NewSetupState(true), assets.Manifest{"app.css": "app.8f3a1c2.css"})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := SetupGateMiddleware(NewSetupState(true), assets.Manifest{"app.css": "app.hash.css"})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
@@ -338,7 +338,7 @@ func TestSetupGateMiddlewareReflectsRuntimeCompletionState(t *testing.T) {
 	t.Parallel()
 
 	state := NewSetupState(false)
-	h := SetupGateMiddleware(state, assets.Manifest{"app.css": "app.8f3a1c2.css"})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := SetupGateMiddleware(state, assets.Manifest{"app.css": "app.hash.css"})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 

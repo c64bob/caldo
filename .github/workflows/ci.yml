@@ -20,8 +20,12 @@ jobs:
         run: go install github.com/a-h/templ/cmd/templ@v0.3.865
 
       - name: Install tailwindcss
+        env:
+          TAILWIND_VERSION: v3.4.17
+          TAILWIND_SHA256: 7d24f7fa191d2193b78cd5f5a42a6093e14409521908529f42d80b11fde1f1d4
         run: |
-          curl -sSL https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 -o /usr/local/bin/tailwindcss
+          curl -sSL "https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWIND_VERSION}/tailwindcss-linux-x64" -o /usr/local/bin/tailwindcss
+          echo "${TAILWIND_SHA256}  /usr/local/bin/tailwindcss" | sha256sum -c -
           chmod +x /usr/local/bin/tailwindcss
 
       - name: Go vet
@@ -36,10 +40,10 @@ jobs:
       - name: Check generated templ diff
         run: git diff --exit-code
 
-      - name: Tailwind build
-        run: tailwindcss -i ./web/static/tailwind.input.css -o ./web/static/tailwind.output.css --minify
+      - name: Build static asset manifest
+        run: make assets
 
-      - name: Check tailwind diff
+      - name: Check static asset diff
         run: git diff --exit-code
 
       - name: Build Caldo binary

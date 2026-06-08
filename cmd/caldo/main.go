@@ -44,11 +44,6 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("load config: %w", err)
 	}
 
-	manifest, err := assets.LoadManifest("web/static/manifest.json")
-	if err != nil {
-		return fmt.Errorf("load static manifest: %w", err)
-	}
-
 	startupLock, err := lock.AcquireStartupLock(cfg.DBPath)
 	if err != nil {
 		return fmt.Errorf("acquire startup lock: %w", err)
@@ -57,7 +52,7 @@ func run(logger *slog.Logger) error {
 		_ = startupLock.Release()
 	}()
 
-	sqliteDB, err := db.OpenSQLite(cfg.DBPath)
+	sqliteDB, err := db.OpenSQLiteConnection(cfg.DBPath)
 	if err != nil {
 		return fmt.Errorf("open sqlite: %w", err)
 	}
@@ -65,16 +60,27 @@ func run(logger *slog.Logger) error {
 		_ = sqliteDB.Close()
 	}()
 
+	if err := sqliteDB.RunMigrations(context.Background(), cfg.DBPath); err != nil {
+		return err
+	}
+
+	appScheduler := scheduler.NewPeriodicScheduler(logger, sqliteDB, nil)
+
 	setupStatus, err := sqliteDB.LoadSetupStatus(context.Background())
 	if err != nil {
 		return fmt.Errorf("load setup status: %w", err)
 	}
 
-	appScheduler := scheduler.NewPeriodicScheduler(logger, sqliteDB, nil)
 	if setupStatus.Complete {
+		verifyCalDAVCredentials(context.Background(), logger, sqliteDB, cfg.EncryptionKey)
 		if err := appScheduler.Start(lifecycleCtx); err != nil {
 			return fmt.Errorf("start scheduler: %w", err)
 		}
+	}
+
+	manifest, err := assets.LoadManifest("web/static/manifest.json")
+	if err != nil {
+		return fmt.Errorf("load static manifest: %w", err)
 	}
 
 	server := &http.Server{
@@ -82,6 +88,14 @@ func run(logger *slog.Logger) error {
 		Handler: handler.NewRouter(logger, cfg.ProxyUserHeader, manifest, setupStatus.Complete, cfg.EncryptionKey, sqliteDB, lifecycleCtx, appScheduler),
 	}
 	server.RegisterOnShutdown(cancelLifecycle)
+
+	coordinator := shutdown.NewCoordinator(logger, appScheduler, shutdown.DefaultTimeout)
+	shutdownCode := make(chan int, 1)
+	shutdownReady := make(chan struct{})
+	go func() {
+		shutdownCode <- coordinator.HandleReady(context.Background(), server, shutdownReady)
+	}()
+	<-shutdownReady
 
 	serverErr := make(chan error, 1)
 	go func() {
@@ -93,12 +107,6 @@ func run(logger *slog.Logger) error {
 		serverErr <- nil
 	}()
 
-	coordinator := shutdown.NewCoordinator(logger, appScheduler, shutdown.DefaultTimeout)
-	shutdownCode := make(chan int, 1)
-	go func() {
-		shutdownCode <- coordinator.Handle(context.Background(), server)
-	}()
-
 	select {
 	case err := <-serverErr:
 		return err
@@ -107,6 +115,27 @@ func run(logger *slog.Logger) error {
 			return errShutdownTimeout
 		}
 		return <-serverErr
+	}
+}
+
+func verifyCalDAVCredentials(ctx context.Context, logger *slog.Logger, database *db.Database, encryptionKey []byte) {
+	if _, err := database.LoadCalDAVCredentials(ctx, encryptionKey); err != nil {
+		logger.Warn(
+			"caldav_credentials_unavailable",
+			"error_type", rootCauseType(err),
+			"code", calDAVCredentialErrorCode(err),
+		)
+	}
+}
+
+func calDAVCredentialErrorCode(err error) string {
+	switch {
+	case errors.Is(err, db.ErrCalDAVCredentialsNotConfigured):
+		return "not_configured"
+	case errors.Is(err, db.ErrCalDAVCredentialsUnavailable):
+		return "decrypt_failed"
+	default:
+		return "load_failed"
 	}
 }
 

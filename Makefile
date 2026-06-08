@@ -1,22 +1,20 @@
-.PHONY: build dev tailwind templ verify-assets test lint docker-build
+.PHONY: build dev assets tailwind templ verify-assets test lint docker-build
 
 BINARY := caldo
 BINARY_DIR := bin
 BINARY_PATH := $(BINARY_DIR)/$(BINARY)
 
-build: templ tailwind verify-assets
+build: templ assets verify-assets
 	@mkdir -p $(BINARY_DIR)
 	go build -o $(BINARY_PATH) ./cmd/caldo
 
 dev:
 	go run ./cmd/caldo
 
-tailwind:
-	@if command -v tailwindcss >/dev/null 2>&1; then \
-		tailwindcss -i ./web/static/tailwind.input.css -o ./web/static/tailwind.output.css --minify; \
-	else \
-		echo "tailwindcss not found; skipping local tailwind build"; \
-	fi
+assets:
+	./scripts/build-assets.sh
+
+tailwind: assets
 
 templ:
 	@if command -v templ >/dev/null 2>&1; then \

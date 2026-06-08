@@ -51,8 +51,20 @@ func NewCoordinator(logger *slog.Logger, scheduler Scheduler, timeout time.Durat
 
 // Handle waits for SIGTERM/SIGINT and runs graceful shutdown for scheduler and HTTP server.
 func (c *Coordinator) Handle(ctx context.Context, server *http.Server) int {
+	return c.handle(ctx, server, nil)
+}
+
+// HandleReady waits for SIGTERM/SIGINT after signaling that handlers have been registered.
+func (c *Coordinator) HandleReady(ctx context.Context, server *http.Server, ready chan<- struct{}) int {
+	return c.handle(ctx, server, ready)
+}
+
+func (c *Coordinator) handle(ctx context.Context, server *http.Server, ready chan<- struct{}) int {
 	signalCtx, stop := c.notifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
+	if ready != nil {
+		close(ready)
+	}
 
 	<-signalCtx.Done()
 

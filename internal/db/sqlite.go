@@ -21,8 +21,23 @@ type Database struct {
 	WriteMu sync.Mutex
 }
 
-// OpenSQLite opens the SQLite database and configures required PRAGMAs.
+// OpenSQLite opens the SQLite database, configures required PRAGMAs, and runs migrations.
 func OpenSQLite(path string) (*Database, error) {
+	database, err := OpenSQLiteConnection(path)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := database.RunMigrations(context.Background(), path); err != nil {
+		_ = database.Close()
+		return nil, err
+	}
+
+	return database, nil
+}
+
+// OpenSQLiteConnection opens the SQLite database and configures required PRAGMAs without running migrations.
+func OpenSQLiteConnection(path string) (*Database, error) {
 	dbConn, err := sql.Open(sqliteDriverName, path)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite database: %w", err)
@@ -54,17 +69,24 @@ func OpenSQLite(path string) (*Database, error) {
 		return nil, fmt.Errorf("set pragma busy_timeout: %w", err)
 	}
 
-	if err := migrations.Run(context.Background(), dbConn, path); err != nil {
-		_ = dbConn.Close()
-		return nil, fmt.Errorf("run migrations: %w", err)
-	}
-
-	if _, err := dbConn.Exec("PRAGMA foreign_keys = ON;"); err != nil {
-		_ = dbConn.Close()
-		return nil, fmt.Errorf("set pragma foreign_keys: %w", err)
-	}
-
 	return &Database{Conn: dbConn}, nil
+}
+
+// RunMigrations applies pending embedded SQLite migrations and enables foreign key checks.
+func (d *Database) RunMigrations(ctx context.Context, path string) error {
+	if d == nil || d.Conn == nil {
+		return fmt.Errorf("run migrations: database is not open")
+	}
+
+	if err := migrations.Run(ctx, d.Conn, path); err != nil {
+		return fmt.Errorf("run migrations: %w", err)
+	}
+
+	if _, err := d.Conn.ExecContext(ctx, "PRAGMA foreign_keys = ON;"); err != nil {
+		return fmt.Errorf("set pragma foreign_keys: %w", err)
+	}
+
+	return nil
 }
 
 // Close closes the wrapped SQLite database connection.

@@ -25,7 +25,7 @@ func TestConflictsPageShowsOnlyUnresolved(t *testing.T) {
 	seedConflictData(t, database)
 
 	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
-	r := NewRouter(logger, "X-User", testManifest(), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil)
+	r := NewRouter(logger, "X-User", testManifest(t), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil)
 	req := httptest.NewRequest(http.MethodGet, "/conflicts", nil)
 	req.Header.Set("X-User", "u")
 	rr := httptest.NewRecorder()

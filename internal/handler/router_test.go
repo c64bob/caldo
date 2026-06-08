@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -13,14 +14,19 @@ import (
 	"caldo/internal/view"
 )
 
-func testManifest() assets.Manifest {
-	return assets.Manifest{
-		"app.css":       "app.8f3a1c2.css",
-		"app.js":        "app.42ab19f.js",
-		"htmx.min.js":   "htmx.5e741aa.min.js",
-		"htmx-sse.js":   "htmx-sse.9d2f6c1.js",
-		"alpine.min.js": "alpine.7cc80d0.min.js",
+func testManifest(t *testing.T) assets.Manifest {
+	t.Helper()
+
+	manifest, err := assets.LoadManifest(filepath.Join("..", "..", "web", "static", "manifest.json"))
+	if err != nil {
+		t.Fatalf("load test manifest: %v", err)
 	}
+
+	return manifest
+}
+
+func staticAssetPath(manifest assets.Manifest, logicalName string) string {
+	return "/static/" + manifest[logicalName]
 }
 
 func TestNewRouterExposesHealthWithoutAuth(t *testing.T) {
@@ -30,7 +36,7 @@ func TestNewRouterExposesHealthWithoutAuth(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/health", nil)
 
-	NewRouter(logger, "X-Forwarded-User", testManifest(), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
 
 	if responseRecorder.Code != http.StatusOK {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
@@ -53,7 +59,7 @@ func TestNewRouterRejectsNonHealthRequestWithoutProxyAuthHeader(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/settings", nil)
 
-	NewRouter(logger, "X-Forwarded-User", testManifest(), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
 
 	if responseRecorder.Code != http.StatusForbidden {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusForbidden)
@@ -68,7 +74,7 @@ func TestNewRouterServesStaticAssetsWithLongTermCacheHeaders(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/static/manifest.json", nil)
 	request.Header.Set("X-Forwarded-User", "alice")
 
-	NewRouter(logger, "X-Forwarded-User", testManifest(), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
 
 	if responseRecorder.Code != http.StatusOK {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
@@ -81,12 +87,13 @@ func TestNewRouterServesStaticAssetsWithLongTermCacheHeaders(t *testing.T) {
 func TestNewRouterRendersBaseLayoutOnRoot(t *testing.T) {
 	t.Parallel()
 
+	manifest := testManifest(t)
 	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
 	responseRecorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/", nil)
 	request.Header.Set("X-Forwarded-User", "alice")
 
-	NewRouter(logger, "X-Forwarded-User", testManifest(), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
+	NewRouter(logger, "X-Forwarded-User", manifest, true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
 
 	if responseRecorder.Code != http.StatusOK {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
@@ -98,11 +105,11 @@ func TestNewRouterRendersBaseLayoutOnRoot(t *testing.T) {
 		`<meta name="csrf-token" content="">`,
 		`id="notifications"`,
 		`data-theme-toggle`,
-		`/static/htmx.5e741aa.min.js`,
-		`/static/htmx-sse.9d2f6c1.js`,
-		`/static/alpine.7cc80d0.min.js`,
-		`/static/app.42ab19f.js`,
-		`/static/app.8f3a1c2.css`,
+		staticAssetPath(manifest, "htmx.min.js"),
+		staticAssetPath(manifest, "htmx-sse.js"),
+		staticAssetPath(manifest, "alpine.min.js"),
+		staticAssetPath(manifest, "app.js"),
+		staticAssetPath(manifest, "app.css"),
 		`href="/today"`,
 		`href="/upcoming"`,
 		`href="/projects"`,
@@ -140,7 +147,7 @@ func TestNewRouterRedirectsNormalRouteToSetupWhenIncomplete(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/", nil)
 	request.Header.Set("X-Forwarded-User", "alice")
 
-	NewRouter(logger, "X-Forwarded-User", testManifest(), false, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), false, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
 
 	if responseRecorder.Code != http.StatusFound {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusFound)
@@ -158,7 +165,7 @@ func TestNewRouterAllowsSetupRouteWhenIncomplete(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/setup/", nil)
 	request.Header.Set("X-Forwarded-User", "alice")
 
-	NewRouter(logger, "X-Forwarded-User", testManifest(), false, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), false, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
 
 	if responseRecorder.Code != http.StatusOK {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
@@ -176,7 +183,7 @@ func TestNewRouterSetupMutatingRouteRequiresCSRFToken(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/setup/caldav", nil)
 	request.Header.Set("X-Forwarded-User", "alice")
 
-	NewRouter(logger, "X-Forwarded-User", testManifest(), false, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), false, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
 
 	if responseRecorder.Code != http.StatusForbidden {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusForbidden)
@@ -186,15 +193,16 @@ func TestNewRouterSetupMutatingRouteRequiresCSRFToken(t *testing.T) {
 func TestAssetManifestMiddlewarePreservesExistingCSRFToken(t *testing.T) {
 	t.Parallel()
 
+	manifest := testManifest(t)
 	request := httptest.NewRequest(http.MethodGet, "/", nil)
 	request = request.WithContext(view.WithCSRFToken(request.Context(), "token-123"))
 	responseRecorder := httptest.NewRecorder()
 
-	handler := AssetManifestMiddleware(testManifest())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := AssetManifestMiddleware(manifest)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := view.CSRFToken(r.Context()); got != "token-123" {
 			t.Fatalf("unexpected csrf token: got %q want %q", got, "token-123")
 		}
-		if got := view.AssetPath(r.Context(), "app.css"); got != "/static/app.8f3a1c2.css" {
+		if got := view.AssetPath(r.Context(), "app.css"); got != staticAssetPath(manifest, "app.css") {
 			t.Fatalf("unexpected asset path: got %q", got)
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -215,7 +223,7 @@ func TestNewRouterProjectMutatingRouteRequiresCSRFToken(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/projects", nil)
 	request.Header.Set("X-Forwarded-User", "alice")
 
-	NewRouter(logger, "X-Forwarded-User", testManifest(), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
 
 	if responseRecorder.Code != http.StatusForbidden {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusForbidden)
@@ -230,7 +238,7 @@ func TestNewRouterProjectRenameRouteRequiresCSRFToken(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPatch, "/projects/project-1", nil)
 	request.Header.Set("X-Forwarded-User", "alice")
 
-	NewRouter(logger, "X-Forwarded-User", testManifest(), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
 
 	if responseRecorder.Code != http.StatusForbidden {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusForbidden)
@@ -245,7 +253,7 @@ func TestNewRouterProjectDeleteRouteRequiresCSRFToken(t *testing.T) {
 	request := httptest.NewRequest(http.MethodDelete, "/projects/project-1", nil)
 	request.Header.Set("X-Forwarded-User", "alice")
 
-	NewRouter(logger, "X-Forwarded-User", testManifest(), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
 
 	if responseRecorder.Code != http.StatusForbidden {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusForbidden)

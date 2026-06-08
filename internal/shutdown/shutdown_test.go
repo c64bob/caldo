@@ -58,6 +58,43 @@ func TestHandleRegistersSIGINTAndSIGTERM(t *testing.T) {
 	}
 }
 
+func TestHandleReadySignalsAfterSignalHandlersRegistered(t *testing.T) {
+	t.Parallel()
+
+	coordinator := NewCoordinator(slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil)), nil, time.Second)
+
+	baseCtx, cancelSignal := context.WithCancel(context.Background())
+	t.Cleanup(cancelSignal)
+
+	var registered bool
+	coordinator.notifyContext = func(parent context.Context, signals ...os.Signal) (context.Context, context.CancelFunc) {
+		registered = true
+		return baseCtx, func() {}
+	}
+
+	ready := make(chan struct{})
+	finished := make(chan int, 1)
+	go func() {
+		finished <- coordinator.HandleReady(context.Background(), nil, ready)
+	}()
+
+	select {
+	case <-ready:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for ready signal")
+	}
+
+	if !registered {
+		t.Fatal("ready was signaled before signal handlers were registered")
+	}
+
+	cancelSignal()
+
+	if got := <-finished; got != ExitCodeSuccess {
+		t.Fatalf("unexpected exit code: got %d want %d", got, ExitCodeSuccess)
+	}
+}
+
 func TestHandleGracefulShutdownReturnsZero(t *testing.T) {
 	t.Parallel()
 

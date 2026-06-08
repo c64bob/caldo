@@ -3,6 +3,9 @@
 ## Name
 Story 12.1 — Undo-Snapshot bei Undo-fähigen Aktionen
 
+## Status
+Umgesetzt
+
 ## Ziel
 Die letzte Undo-fähige Aktion pro Tab kann rückgängig gemacht werden.
 

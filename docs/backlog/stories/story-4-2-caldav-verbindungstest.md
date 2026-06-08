@@ -3,6 +3,9 @@
 ## Name
 Story 4.2 — CalDAV-Verbindungstest
 
+## Status
+Umgesetzt
+
 ## Ziel
 CalDAV-Konfiguration wird nur nach echtem Verbindungstest akzeptiert.
 

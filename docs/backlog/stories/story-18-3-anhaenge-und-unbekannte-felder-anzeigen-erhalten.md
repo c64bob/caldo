@@ -3,6 +3,9 @@
 ## Name
 Story 18.3 — Anhänge und unbekannte Felder anzeigen/erhalten
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Nicht aktiv unterstützte VTODO-Inhalte bleiben erhalten und teils sichtbar.
 

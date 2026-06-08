@@ -3,6 +3,9 @@
 ## Name
 Story 20.3 — Docker-Compose-Referenzdeployment
 
+## Status
+Umgesetzt
+
 ## Ziel
 Self-Hoster können Caldo nachvollziehbar starten.
 

@@ -3,6 +3,9 @@
 ## Name
 Story 9.1 — FTS5-Suchindex aufbauen
 
+## Status
+Umgesetzt
+
 ## Ziel
 Globale Suche ist performant und konsistent.
 

@@ -3,6 +3,9 @@
 ## Name
 Story 11.3 — Fokus-Refresh
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Lange offene Tabs aktualisieren veraltete Fragmente beim Zurückkehren.
 

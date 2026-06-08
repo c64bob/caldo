@@ -3,6 +3,9 @@
 ## Name
 Story 10.4 — Sync-Cleanup-Jobs
 
+## Status
+Umgesetzt
+
 ## Ziel
 Kurzlebige technische Daten werden automatisch bereinigt.
 

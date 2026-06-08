@@ -3,6 +3,9 @@
 ## Name
 Story 12.2 — Undo ausführen
 
+## Status
+Umgesetzt
+
 ## Ziel
 Undo ist eine neue fachliche Gegenänderung mit CalDAV-Write.
 

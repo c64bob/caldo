@@ -3,6 +3,9 @@
 ## Name
 Story 5.4 — Initialimport ausführen
 
+## Status
+Umgesetzt
+
 ## Ziel
 Bestehende VTODOs werden vor Nutzung importiert.
 

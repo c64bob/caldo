@@ -3,6 +3,9 @@
 ## Name
 Story 13.3 — Globale Konfliktansicht
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Alle ungelösten Konflikte sind zentral auffindbar.
 

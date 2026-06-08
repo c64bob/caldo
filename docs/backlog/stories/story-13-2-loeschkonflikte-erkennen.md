@@ -3,6 +3,9 @@
 ## Name
 Story 13.2 — Löschkonflikte erkennen
 
+## Status
+Umgesetzt
+
 ## Ziel
 Edit/Delete- und Delete/Edit-Fälle werden explizit behandelt.
 

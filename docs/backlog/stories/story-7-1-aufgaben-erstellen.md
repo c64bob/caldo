@@ -3,6 +3,9 @@
 ## Name
 Story 7.1 — Aufgaben erstellen
 
+## Status
+Umgesetzt
+
 ## Ziel
 Neue Aufgaben werden im Default- oder gewählten Projekt erstellt und sofort zu CalDAV geschrieben.
 

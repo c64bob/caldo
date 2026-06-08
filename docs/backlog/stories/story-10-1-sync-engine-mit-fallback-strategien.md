@@ -3,6 +3,9 @@
 ## Name
 Story 10.1 — Sync Engine mit Fallback-Strategien
 
+## Status
+Umgesetzt
+
 ## Ziel
 Remote-Änderungen werden robust aus CalDAV importiert.
 

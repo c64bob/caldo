@@ -3,6 +3,9 @@
 ## Name
 Story 19.3 — Laufende Writes sichtbar machen
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Der Nutzer versteht, wann Änderungen noch nicht gespeichert sind.
 

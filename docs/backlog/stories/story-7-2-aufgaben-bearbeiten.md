@@ -3,6 +3,9 @@
 ## Name
 Story 7.2 — Aufgaben bearbeiten
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Kernfelder einer Aufgabe können geändert werden.
 

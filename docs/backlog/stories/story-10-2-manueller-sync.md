@@ -3,6 +3,9 @@
 ## Name
 Story 10.2 — Manueller Sync
 
+## Status
+Umgesetzt
+
 ## Ziel
 Der Nutzer kann jederzeit einen Full-Sync starten.
 

@@ -3,6 +3,9 @@
 ## Name
 Story 8.4 — Remote gelöschte Kalender bereinigen
 
+## Status
+Umgesetzt
+
 ## Ziel
 Remote-Kalenderlöschung wird autoritativ übernommen.
 

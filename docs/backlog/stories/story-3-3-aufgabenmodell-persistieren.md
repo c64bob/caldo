@@ -3,6 +3,9 @@
 ## Name
 Story 3.3 — Aufgabenmodell persistieren
 
+## Status
+Umgesetzt
+
 ## Ziel
 VTODO-Aufgaben können lokal vollständig genug gespeichert werden.
 

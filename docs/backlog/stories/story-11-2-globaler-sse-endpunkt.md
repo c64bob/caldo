@@ -3,6 +3,9 @@
 ## Name
 Story 11.2 — Globaler SSE-Endpunkt
 
+## Status
+Umgesetzt
+
 ## Ziel
 Offene Tabs werden über relevante Änderungen informiert.
 

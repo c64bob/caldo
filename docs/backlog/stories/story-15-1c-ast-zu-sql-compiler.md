@@ -3,6 +3,9 @@
 ## Name
 Story 15.1c — AST-zu-SQL-Compiler
 
+## Status
+Umgesetzt
+
 ## Ziel
 Ein AST wird in eine parametrisierte SQL-WHERE-Klausel übersetzt, die gegen die `tasks`-Tabelle ausgeführt werden kann.
 

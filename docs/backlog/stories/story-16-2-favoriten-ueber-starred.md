@@ -3,6 +3,9 @@
 ## Name
 Story 16.2 — Favoriten über STARRED
 
+## Status
+Umgesetzt
+
 ## Ziel
 Favoriten sind lokal sichtbar und CalDAV-kompatibel synchronisiert.
 

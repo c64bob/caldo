@@ -3,6 +3,9 @@
 ## Name
 Story 17.2 — Unteraufgabe erstellen
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Der Nutzer kann direkte Unteraufgaben anlegen.
 

@@ -3,6 +3,9 @@
 ## Name
 Story 2.3 — Session, Tab-ID und CSRF-Grundlage
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Mutierende UI-Aktionen sind sicher und tab-spezifisch nachvollziehbar.
 

@@ -3,6 +3,9 @@
 ## Name
 Story 1.0 — Projekt-Scaffold und Repository-Grundlage
 
+## Status
+Umgesetzt
+
 ## Ziel
 Das Repository hat eine vollständige, buildbare Grundstruktur – Go-Modul, Verzeichnisbaum, Build-Tooling, Deployment-Konfiguration und CI/CD-Workflows – sodass alle späteren Stories auf einem stabilen Fundament aufbauen.
 

@@ -3,6 +3,9 @@
 ## Name
 Story 15.1b — Filter-Parser und AST
 
+## Status
+Umgesetzt
+
 ## Ziel
 Eine Tokenliste wird zu einem Syntaxbaum (AST) geparst, der die Operatorprioritäten korrekt abbildet.
 

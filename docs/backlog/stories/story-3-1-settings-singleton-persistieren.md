@@ -3,6 +3,9 @@
 ## Name
 Story 3.1 — Settings-Singleton persistieren
 
+## Status
+Umgesetzt
+
 ## Ziel
 Setup-, CalDAV-, Sync- und UI-Einstellungen haben eine zentrale Persistenz.
 

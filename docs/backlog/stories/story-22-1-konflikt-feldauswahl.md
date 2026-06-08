@@ -3,6 +3,9 @@
 ## Name
 Story 22.1 — Konflikt-Feldauswahl in der Konfliktansicht
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Konflikte können feldweise in der UI aufgelöst werden.
 

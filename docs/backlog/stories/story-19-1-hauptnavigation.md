@@ -3,6 +3,9 @@
 ## Name
 Story 19.1 — Hauptnavigation
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Die App bietet die MVP-Navigationsstruktur.
 

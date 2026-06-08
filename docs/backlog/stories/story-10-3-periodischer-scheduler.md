@@ -3,6 +3,9 @@
 ## Name
 Story 10.3 — Periodischer Scheduler
 
+## Status
+Umgesetzt
+
 ## Ziel
 Remote-Änderungen werden serverseitig regelmäßig abgeholt.
 

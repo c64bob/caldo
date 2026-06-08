@@ -3,6 +3,9 @@
 ## Name
 Story 5.1 — Setup-Gate für Erststart
 
+## Status
+Umgesetzt
+
 ## Ziel
 Die normale App ist vor abgeschlossenem Setup nicht erreichbar.
 

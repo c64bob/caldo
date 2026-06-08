@@ -3,6 +3,9 @@
 ## Name
 Story 5.3 — Setup-Schritt Kalenderauswahl und Default-Projekt
 
+## Status
+Umgesetzt
+
 ## Ziel
 Der Nutzer wählt zu synchronisierende Kalender und ein Default-Projekt.
 

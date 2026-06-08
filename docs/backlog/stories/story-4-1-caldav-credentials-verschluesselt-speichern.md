@@ -3,6 +3,9 @@
 ## Name
 Story 4.1 — CalDAV-Credentials verschlüsselt speichern
 
+## Status
+Umgesetzt
+
 ## Ziel
 Zugangsdaten werden niemals im Klartext persistiert.
 

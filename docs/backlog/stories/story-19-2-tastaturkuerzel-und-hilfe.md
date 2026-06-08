@@ -3,6 +3,9 @@
 ## Name
 Story 19.2 — Tastaturkürzel und Hilfe
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Power-User können zentrale Aktionen per Tastatur ausführen.
 

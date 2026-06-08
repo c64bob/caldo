@@ -3,6 +3,9 @@
 ## Name
 Story 9.3 — Heute-, Demnächst- und Überfällig-Ansichten
 
+## Status
+Umgesetzt
+
 ## Ziel
 Die wichtigsten Systemansichten sind verfügbar.
 

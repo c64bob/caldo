@@ -3,6 +3,9 @@
 ## Name
 Story 1.5 — Healthcheck bereitstellen
 
+## Status
+Umgesetzt
+
 ## Ziel
 Deployments können erkennen, ob der Prozess läuft.
 

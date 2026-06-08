@@ -3,6 +3,9 @@
 ## Name
 Story 14.4 — Wiederholungen in Quick Add
 
+## Status
+Umgesetzt
+
 ## Ziel
 Wiederkehrende Aufgaben können direkt über natürliche Eingabe erstellt werden.
 

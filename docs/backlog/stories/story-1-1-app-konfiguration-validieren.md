@@ -3,6 +3,9 @@
 ## Name
 Story 1.1 — App-Konfiguration validieren
 
+## Status
+Umgesetzt
+
 ## Ziel
 Caldo startet nur mit gültiger Minimal-Konfiguration.
 

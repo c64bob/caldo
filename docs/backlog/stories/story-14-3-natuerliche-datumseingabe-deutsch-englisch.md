@@ -3,6 +3,9 @@
 ## Name
 Story 14.3 — Natürliche Datumseingabe Deutsch/Englisch
 
+## Status
+Umgesetzt
+
 ## Ziel
 Fälligkeitsdaten können natürlich eingegeben werden.
 

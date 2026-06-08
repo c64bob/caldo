@@ -3,6 +3,9 @@
 ## Name
 Story 2.2 — Reverse-Proxy-Authentifizierung
 
+## Status
+Umgesetzt
+
 ## Ziel
 Caldo nutzt ausschließlich vorgelagerte Authentifizierung.
 

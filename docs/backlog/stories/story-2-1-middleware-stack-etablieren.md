@@ -3,6 +3,9 @@
 ## Name
 Story 2.1 — Middleware-Stack etablieren
 
+## Status
+Umgesetzt
+
 ## Ziel
 Alle Requests laufen durch eine konsistente Sicherheits- und Fehlerbehandlung.
 

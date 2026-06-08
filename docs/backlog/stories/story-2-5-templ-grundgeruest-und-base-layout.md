@@ -3,6 +3,9 @@
 ## Name
 Story 2.5 — Templ-Grundgerüst und Base-Layout
 
+## Status
+Teilweise umgesetzt
+
 ## Ziel
 Alle späteren Handler können serverseitig gerenderte HTML-Responses zurückgeben, die auf einem konsistenten Base-Layout basieren, HTMX und Alpine.js nutzen und eine gültige Content Security Policy einhalten.
 

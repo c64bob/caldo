@@ -11,6 +11,7 @@ import (
 type SyncProject struct {
 	ID           string
 	CalendarHref string
+	DisplayName  string
 	SyncStrategy string
 	SyncToken    string
 	CTag         string
@@ -19,7 +20,7 @@ type SyncProject struct {
 // ListSyncProjects returns all projects with sync metadata.
 func (d *Database) ListSyncProjects(ctx context.Context) ([]SyncProject, error) {
 	rows, err := d.Conn.QueryContext(ctx, `
-SELECT id, calendar_href, sync_strategy, sync_token, ctag
+SELECT id, calendar_href, display_name, sync_strategy, sync_token, ctag
 FROM projects
 ORDER BY created_at ASC;
 `)
@@ -33,7 +34,7 @@ ORDER BY created_at ASC;
 		var item SyncProject
 		var syncToken sql.NullString
 		var ctag sql.NullString
-		if err := rows.Scan(&item.ID, &item.CalendarHref, &item.SyncStrategy, &syncToken, &ctag); err != nil {
+		if err := rows.Scan(&item.ID, &item.CalendarHref, &item.DisplayName, &item.SyncStrategy, &syncToken, &ctag); err != nil {
 			return nil, fmt.Errorf("list sync projects: scan row: %w", err)
 		}
 		item.SyncToken = strings.TrimSpace(syncToken.String)

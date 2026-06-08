@@ -1,4 +1,4 @@
-.PHONY: build dev assets tailwind templ verify-assets test lint docker-build
+.PHONY: build dev stage-caldav assets tailwind templ verify-assets test lint docker-build
 
 BINARY := caldo
 BINARY_DIR := bin
@@ -10,6 +10,9 @@ build: templ assets verify-assets
 
 dev:
 	go run ./cmd/caldo
+
+stage-caldav:
+	go run ./cmd/stagecaldav
 
 assets:
 	./scripts/build-assets.sh

@@ -14,6 +14,7 @@ import (
 	"syscall"
 
 	"caldo/internal/assets"
+	"caldo/internal/caldav"
 	"caldo/internal/config"
 	"caldo/internal/db"
 	"caldo/internal/handler"
@@ -21,6 +22,7 @@ import (
 	"caldo/internal/logging"
 	"caldo/internal/scheduler"
 	"caldo/internal/shutdown"
+	caldosync "caldo/internal/sync"
 )
 
 var errShutdownTimeout = errors.New("shutdown timeout exceeded")
@@ -64,7 +66,11 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 
-	appScheduler := scheduler.NewPeriodicScheduler(logger, sqliteDB, nil)
+	syncRunner, err := caldosync.NewRunner(sqliteDB, cfg.EncryptionKey, caldav.NewTodoClient(nil))
+	if err != nil {
+		return fmt.Errorf("initialize sync runner: %w", err)
+	}
+	appScheduler := scheduler.NewPeriodicScheduler(logger, sqliteDB, syncRunner)
 
 	setupStatus, err := sqliteDB.LoadSetupStatus(context.Background())
 	if err != nil {
@@ -85,7 +91,7 @@ func run(logger *slog.Logger) error {
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
-		Handler: handler.NewRouter(logger, cfg.ProxyUserHeader, manifest, setupStatus.Complete, cfg.EncryptionKey, sqliteDB, lifecycleCtx, appScheduler),
+		Handler: handler.NewRouter(logger, cfg.ProxyUserHeader, manifest, setupStatus.Complete, cfg.EncryptionKey, sqliteDB, lifecycleCtx, appScheduler, syncRunner),
 	}
 	server.RegisterOnShutdown(cancelLifecycle)
 

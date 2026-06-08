@@ -19,10 +19,14 @@ const staticAssetsCacheControl = "public, max-age=31536000, immutable"
 var staticAssetsRoot = defaultStaticAssetsRoot()
 
 // NewRouter returns the HTTP router for Caldo.
-func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Manifest, setupComplete bool, csrfSecret []byte, database *db.Database, lifecycleCtx context.Context, scheduler SetupSchedulerStarter) http.Handler {
+func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Manifest, setupComplete bool, csrfSecret []byte, database *db.Database, lifecycleCtx context.Context, scheduler SetupSchedulerStarter, runners ...manualSyncRunner) http.Handler {
 	router := chi.NewRouter()
 	syncBroker := newEventBroker()
-	syncDeps := syncDependencies{database: database, broker: syncBroker}
+	var runner manualSyncRunner
+	if len(runners) > 0 {
+		runner = runners[0]
+	}
+	syncDeps := syncDependencies{database: database, broker: syncBroker, runner: runner, lifecycleCtx: lifecycleCtx}
 	setupState := NewSetupState(setupComplete)
 	router.Use(RequestIDMiddleware())
 	router.Use(RecoveryMiddleware(logger))

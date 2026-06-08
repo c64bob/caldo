@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"caldo/internal/assets"
+	"caldo/internal/db"
 	"caldo/internal/logging"
 	"caldo/internal/view"
 )
@@ -188,6 +190,50 @@ func TestNewRouterSetupMutatingRouteRequiresCSRFToken(t *testing.T) {
 	if responseRecorder.Code != http.StatusForbidden {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusForbidden)
 	}
+}
+
+type routerManualSyncRunner struct {
+	called chan struct{}
+}
+
+func (r routerManualSyncRunner) Run(context.Context) error {
+	close(r.called)
+	return nil
+}
+
+func TestNewRouterManualSyncUsesProvidedRunner(t *testing.T) {
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	secret := []byte("12345678901234567890123456789012")
+	token, err := generateSignedCSRF(secret)
+	if err != nil {
+		t.Fatalf("generate csrf token: %v", err)
+	}
+	runner := routerManualSyncRunner{called: make(chan struct{})}
+	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
+	responseRecorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/sync/manual", nil)
+	request.Header.Set("X-Forwarded-User", "alice")
+	request.Header.Set(csrfHeaderName, token)
+	request.AddCookie(&http.Cookie{Name: csrfCookieName, Value: token})
+
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), true, secret, database, context.Background(), nil, runner).ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d body=%q", responseRecorder.Code, http.StatusOK, responseRecorder.Body.String())
+	}
+	select {
+	case <-runner.called:
+	case <-time.After(time.Second):
+		t.Fatal("expected runner to be called")
+	}
+	waitForSyncStatus(t, database, func(status db.SyncStatus) bool {
+		return status.State == "idle" && status.LastSuccessAt.Valid
+	})
 }
 
 func TestAssetManifestMiddlewarePreservesExistingCSRFToken(t *testing.T) {

@@ -130,6 +130,55 @@ func TestResolveConflictLocalSuccess(t *testing.T) {
 	}
 }
 
+func TestResolveConflictUsesRemoteETagStoredByFullScanConflict(t *testing.T) {
+	t.Parallel()
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	seedConflictData(t, database)
+	key := bytes.Repeat([]byte{0x34}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "a", Password: "b"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Conn.ExecContext(context.Background(), `
+UPDATE tasks
+SET etag='"etag-2"', raw_vtodo='BEGIN:VTODO\r\nUID:uid-1\r\nSUMMARY:Local\r\nEND:VTODO\r\n'
+WHERE id='task-1';
+UPDATE conflicts
+SET base_vtodo='BEGIN:VTODO\r\nUID:uid-1\r\nSUMMARY:Base\r\nEND:VTODO\r\n',
+    local_vtodo='BEGIN:VTODO\r\nUID:uid-1\r\nSUMMARY:Local\r\nEND:VTODO\r\n',
+    remote_vtodo='BEGIN:VTODO\r\nUID:uid-1\r\nSUMMARY:Remote\r\nEND:VTODO\r\n'
+WHERE id='open-1';
+`); err != nil {
+		t.Fatal(err)
+	}
+
+	todos := &stubTaskUpdateTodoClient{updateETag: `"etag-3"`}
+	h := ResolveConflict(taskUpdateDependencies{database: database, encryptionKey: key, todos: todos})
+	req := httptest.NewRequest(http.MethodPost, "/conflicts/open-1/resolve", strings.NewReader("resolution=local"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("conflictID", "open-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if todos.lastUpdateETag != `"etag-2"` {
+		t.Fatalf("expected conflict resolution to use remote etag, got %q", todos.lastUpdateETag)
+	}
+	var resolvedAt sql.NullString
+	if err := database.Conn.QueryRow(`SELECT resolved_at FROM conflicts WHERE id='open-1'`).Scan(&resolvedAt); err != nil {
+		t.Fatal(err)
+	}
+	if !resolvedAt.Valid {
+		t.Fatal("expected conflict to be marked resolved")
+	}
+}
+
 func TestResolveConflictKeepsUnresolvedOnWriteFailure(t *testing.T) {
 	t.Parallel()
 	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))

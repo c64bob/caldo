@@ -8,11 +8,10 @@ import (
 	"net/http"
 	"slices"
 	"strings"
-	"time"
 
 	"caldo/internal/caldav"
 	"caldo/internal/db"
-	"caldo/internal/model"
+	caldosync "caldo/internal/sync"
 	"caldo/internal/view"
 )
 
@@ -328,39 +327,7 @@ func executeSetupInitialImport(ctx context.Context, deps setupDependencies) {
 			return
 		}
 
-		tasks := make([]db.ImportedTask, 0, len(objects))
-		for _, object := range objects {
-			parsed := model.ParseVTODOFields(object.RawVTODO)
-			if parsed.UID == "" {
-				continue
-			}
-			labels, _ := model.CategoriesToLabelsAndFavorite(parsed.Categories)
-			completedAt := formatTimePointer(parsed.CompletedAt)
-			dueAt := formatTimePointer(parsed.DueAt)
-			title := parsed.Title
-			if title == "" {
-				title = parsed.UID
-			}
-
-			tasks = append(tasks, db.ImportedTask{
-				UID:         parsed.UID,
-				Href:        object.Href,
-				ETag:        object.ETag,
-				Title:       title,
-				Description: parsed.Description,
-				Status:      parsed.Status,
-				CompletedAt: completedAt,
-				DueDate:     parsed.DueDate,
-				DueAt:       dueAt,
-				Priority:    parsed.Priority,
-				RRule:       parsed.RRule,
-				ParentUID:   parsed.ParentUID,
-				RawVTODO:    object.RawVTODO,
-				BaseVTODO:   object.RawVTODO,
-				LabelNames:  labels,
-				ProjectName: project.DisplayName,
-			})
-		}
+		tasks := caldosync.MapCalendarObjects(objects, project.DisplayName)
 
 		if err := deps.database.ReplaceSetupProjectTasks(ctx, project.ID, tasks); err != nil {
 			deps.importBroker.Publish(setupImportEvent{Event: "error", Data: "import failed"})
@@ -374,14 +341,6 @@ func executeSetupInitialImport(ctx context.Context, deps setupDependencies) {
 	}
 
 	deps.importBroker.Publish(setupImportEvent{Event: "done", Data: `{"phase":"done"}`})
-}
-
-func formatTimePointer(v *time.Time) *string {
-	if v == nil {
-		return nil
-	}
-	formatted := v.UTC().Format(time.RFC3339)
-	return &formatted
 }
 
 // SetupComplete marks setup as complete, opens the setup gate, and starts the scheduler.

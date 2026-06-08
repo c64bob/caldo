@@ -3,6 +3,7 @@ package sync
 import (
 	"context"
 	"errors"
+	stdsync "sync"
 	"testing"
 )
 
@@ -23,6 +24,18 @@ func (s *stubStore) UpdateProjectSyncStrategy(_ context.Context, projectID strin
 type stubRunner struct{ err error }
 
 func (r stubRunner) Run(context.Context, ProjectState) error { return r.err }
+
+type blockingRunner struct {
+	started chan struct{}
+	release chan struct{}
+	once    stdsync.Once
+}
+
+func (r *blockingRunner) Run(context.Context, ProjectState) error {
+	r.once.Do(func() { close(r.started) })
+	<-r.release
+	return nil
+}
 
 func TestRunFallsBackAndPersistsEffectiveStrategy(t *testing.T) {
 	store := &stubStore{projects: []ProjectState{{ID: "p1", SyncStrategy: StrategyWebDAVSync}}}
@@ -55,5 +68,29 @@ func TestRunPropagatesNonFallbackError(t *testing.T) {
 	engine, _ := NewEngine(store, stubRunner{}, stubRunner{err: boom}, stubRunner{})
 	if err := engine.Run(context.Background()); !errors.Is(err, boom) {
 		t.Fatalf("expected boom, got %v", err)
+	}
+}
+
+func TestRunRejectsConcurrentRun(t *testing.T) {
+	store := &stubStore{projects: []ProjectState{{ID: "p1", SyncStrategy: StrategyFullScan}}}
+	runner := &blockingRunner{started: make(chan struct{}), release: make(chan struct{})}
+	engine, err := NewEngine(store, stubRunner{}, stubRunner{}, runner)
+	if err != nil {
+		t.Fatalf("new engine: %v", err)
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- engine.Run(context.Background())
+	}()
+	<-runner.started
+
+	if err := engine.Run(context.Background()); !errors.Is(err, ErrAlreadyRunning) {
+		t.Fatalf("expected ErrAlreadyRunning, got %v", err)
+	}
+
+	close(runner.release)
+	if err := <-done; err != nil {
+		t.Fatalf("first run: %v", err)
 	}
 }

@@ -10,9 +10,10 @@ import (
 )
 
 type syncDependencies struct {
-	database *db.Database
-	broker   *eventBroker
-	runner   manualSyncRunner
+	database     *db.Database
+	broker       *eventBroker
+	runner       manualSyncRunner
+	lifecycleCtx context.Context
 }
 
 type manualSyncRunner interface {
@@ -38,19 +39,39 @@ func ManualSync(deps syncDependencies) http.HandlerFunc {
 			return
 		}
 		if started {
-			deps.broker.publish(appEvent{Type: "sync", Resource: "sync_status", Version: 0, OriginConnection: "server"})
+			publishSyncStatusEvent(deps.broker)
 			if deps.runner == nil {
-				_ = deps.database.FinishManualSyncError(r.Context(), "sync_unavailable")
-			} else if err := deps.runner.Run(r.Context()); err != nil {
-				_ = deps.database.FinishManualSyncError(r.Context(), "sync_failed")
+				_ = deps.database.FinishManualSyncError(context.WithoutCancel(r.Context()), "sync_unavailable")
+				publishSyncStatusEvent(deps.broker)
 			} else {
-				_ = deps.database.FinishManualSyncSuccess(r.Context())
+				runCtx := deps.lifecycleCtx
+				if runCtx == nil {
+					runCtx = context.WithoutCancel(r.Context())
+				}
+				persistCtx := context.WithoutCancel(runCtx)
+				go finishManualSyncRun(runCtx, persistCtx, deps)
 			}
-			deps.broker.publish(appEvent{Type: "sync", Resource: "sync_status", Version: 0, OriginConnection: "server"})
 		}
 		status, _ := deps.database.LoadSyncStatus(r.Context())
 		_ = view.SyncStatusBadge(status.State, formatSyncTime(status.LastSuccessAt)).Render(r.Context(), w)
 	}
+}
+
+func finishManualSyncRun(runCtx context.Context, persistCtx context.Context, deps syncDependencies) {
+	if err := deps.runner.Run(runCtx); err != nil {
+		_ = deps.database.FinishManualSyncError(persistCtx, "sync_failed")
+		publishSyncStatusEvent(deps.broker)
+		return
+	}
+	_ = deps.database.FinishManualSyncSuccess(persistCtx)
+	publishSyncStatusEvent(deps.broker)
+}
+
+func publishSyncStatusEvent(broker *eventBroker) {
+	if broker == nil {
+		return
+	}
+	broker.publish(appEvent{Type: "sync", Resource: "sync_status", Version: 0, OriginConnection: "server"})
 }
 
 func formatSyncTime(ts sql.NullTime) string {

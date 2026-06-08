@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	stdsync "sync"
 )
 
 const (
@@ -16,10 +17,14 @@ const (
 // ErrFallbackRequired indicates that the current strategy cannot be used for this project.
 var ErrFallbackRequired = errors.New("sync strategy fallback required")
 
+// ErrAlreadyRunning indicates a full-sync run is already active.
+var ErrAlreadyRunning = errors.New("sync already running")
+
 // ProjectState carries per-project sync state needed by strategy runners.
 type ProjectState struct {
 	ID           string
 	CalendarHref string
+	DisplayName  string
 	SyncStrategy string
 	SyncToken    string
 	CTag         string
@@ -38,6 +43,7 @@ type StrategyRunner interface {
 
 // Engine runs project sync with fallback from webdav_sync -> ctag -> fullscan.
 type Engine struct {
+	mu         stdsync.Mutex
 	store      ProjectStore
 	webdavSync StrategyRunner
 	ctag       StrategyRunner
@@ -54,6 +60,11 @@ func NewEngine(store ProjectStore, webdavSync StrategyRunner, ctag StrategyRunne
 
 // Run executes one sync pass for all projects, applying per-project strategy fallback.
 func (e *Engine) Run(ctx context.Context) error {
+	if !e.mu.TryLock() {
+		return ErrAlreadyRunning
+	}
+	defer e.mu.Unlock()
+
 	projects, err := e.store.ListSyncProjects(ctx)
 	if err != nil {
 		return fmt.Errorf("sync run: list projects: %w", err)

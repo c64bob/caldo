@@ -129,7 +129,9 @@ web/static/manifest.json
 | `app.js` | Vanilla JS: Tastaturkürzel, `beforeunload`, Tab-ID, HTMX-Header-Injection |
 
 Alle JS-Dateien werden lokal im Repository versioniert.
-Kein CDN zur Laufzeit. Kein npm, kein Bundler außer Tailwind CSS.
+Kein CDN zur Laufzeit. Kein npm und kein Bundler außer Tailwind CSS für Runtime-Assets oder Produktions-Builds.
+
+Dev-only Ausnahme: npm ist ausschließlich für Playwright-basierte Browser-QA erlaubt. Diese Abhängigkeiten dürfen keine Runtime-Assets erzeugen, nicht in das Go-Binary oder Container-Image eingebunden werden und keine JS-App-Frameworks einführen.
 
 #### Invarianten
 
@@ -137,6 +139,7 @@ Kein CDN zur Laufzeit. Kein npm, kein Bundler außer Tailwind CSS.
 2. Cache-Busting erfolgt über Dateinamen-Hash, nicht über Query-Parameter.
 3. `manifest.json` wird beim Start einmal geladen und im Speicher gehalten.
 4. Fehlt `manifest.json` beim Start: harter Startabbruch mit `os.Exit(1)`.
+5. npm/Playwright bleibt Dev-/QA-Tooling und ist nicht Teil der Runtime-Asset-Pipeline.
 
 ---
 

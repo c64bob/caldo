@@ -1,0 +1,17 @@
+{
+  "name": "caldo",
+  "private": true,
+  "description": "Dev-only browser QA tooling for Caldo.",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "playwright:install": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -26,7 +26,7 @@ templ SearchPage(query string, results []SearchResultView) {
 		} else {
 			<ul class="space-y-2" data-search-results>
 				for _, result := range results {
-					<li class="rounded border border-slate-200 p-3 dark:border-slate-700">
+					<li data-task-id={ result.ID } class="rounded border border-slate-200 p-3 dark:border-slate-700">
 						<p class="font-medium">{ result.Title }</p>
 						if result.Description != "" {
 							<p class="text-sm text-slate-600 dark:text-slate-400">{ result.Description }</p>

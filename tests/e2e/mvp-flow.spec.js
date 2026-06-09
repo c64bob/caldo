@@ -88,11 +88,12 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await page.setViewportSize(desktopViewport);
 
   await gotoApp(page, '/search?q=%23Work');
-  const inlineTrigger = page.locator('[data-inline-task-create-trigger]');
+  const mainInlineCreate = page.locator('.caldo-inline-create').first();
+  const inlineTrigger = mainInlineCreate.locator('[data-inline-task-create-trigger]');
   await expect(inlineTrigger).toBeVisible();
   await ensureBrowserCSRFCookie(page);
   await inlineTrigger.click();
-  const inlineTitle = page.locator('[data-inline-task-create-title]');
+  const inlineTitle = mainInlineCreate.locator('[data-inline-task-create-title]');
   await expect(inlineTitle).toBeFocused();
   await inlineTitle.fill('E2E Inline Canceled');
   await inlineTitle.press('Escape');
@@ -173,6 +174,23 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(detailRow).toContainText('P1');
   await expect(detailRow).toContainText('panel');
   await expect(detailRow).toContainText('browser');
+
+  const panelTaskID = await detailRow.getAttribute('data-task-id');
+  await ensureBrowserCSRFCookie(page);
+  await detailRow.getByRole('button', { name: 'Unteraufgabe hinzufügen' }).click();
+  const subtaskForm = detailRow.locator('[data-subtask-create-form]');
+  await expect(subtaskForm).toBeVisible();
+  const subtaskTitle = subtaskForm.locator('[data-inline-task-create-title]');
+  await expect(subtaskTitle).toBeFocused();
+  await subtaskTitle.fill('E2E Browser Subtask');
+  await subtaskTitle.press('Enter');
+  const subtaskRow = page.locator('[data-task-id].caldo-task-row-subtask').filter({ hasText: 'E2E Browser Subtask' }).first();
+  await expect(subtaskRow).toBeVisible();
+  await expect(subtaskRow).toContainText('Unteraufgabe von E2E Panel Edited');
+  await expect(subtaskRow.locator('.caldo-task-checkbox[aria-label="Aufgabe erledigen"]')).toBeVisible();
+  await expect(subtaskRow.getByRole('button', { name: 'Unteraufgabe hinzufügen' })).toHaveCount(0);
+  detailRow = page.locator(`[data-task-id="${panelTaskID}"]`);
+  await expect(detailRow).toContainText('1 Unteraufgabe');
 
   await page.setViewportSize(mobileViewport);
   await detailRow.getByRole('button', { name: 'Details' }).click();

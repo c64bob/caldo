@@ -108,6 +108,9 @@ templ TaskRow(task TaskRowView) {
 					<p class="caldo-task-description">{ taskRowDescription(task) }</p>
 				}
 				<div class="caldo-task-meta-line">
+					for _, chip := range taskRelationshipChips(task) {
+						<span class={ chip.Class }>{ chip.Label }</span>
+					}
 					for _, chip := range taskMetaChips(task) {
 						<span class={ chip.Class }>{ chip.Label }</span>
 					}
@@ -231,6 +234,9 @@ templ TaskRow(task TaskRowView) {
 					</div>
 				</form>
 			}
+			if taskCanCreateSubtask(task) {
+				@SubtaskCreate(task)
+			}
 		</div>
 		if taskCanOpenDetail(task) {
 			@TaskDetailPanel(task)
@@ -239,6 +245,50 @@ templ TaskRow(task TaskRowView) {
 			@TaskDeleteDialog(task)
 		}
 	</li>
+}
+
+templ SubtaskCreate(task TaskRowView) {
+	<div class="caldo-subtask-create" data-inline-task-create data-subtask-create>
+		<button
+			type="button"
+			class="caldo-subtask-create-trigger"
+			data-inline-task-create-trigger
+			aria-expanded="false"
+		>
+			<span class="caldo-subtask-create-plus" aria-hidden="true">+</span>
+			<span>Unteraufgabe hinzufügen</span>
+		</button>
+		<form
+			method="post"
+			action={ taskSubtaskCreatePath(task) }
+			hx-post={ taskSubtaskCreatePath(task) }
+			hx-swap="none"
+			hx-disabled-elt="find button"
+			hx-headers={ taskCSRFHeaders(ctx) }
+			data-refresh-after-write="true"
+			data-inline-task-create-form
+			data-subtask-create-form
+			class="caldo-subtask-create-form"
+			hidden
+		>
+			<input
+				type="text"
+				name="title"
+				required
+				autocomplete="off"
+				class="caldo-input caldo-subtask-create-input"
+				placeholder="Unteraufgabe hinzufügen"
+				aria-label="Unteraufgabentitel"
+				data-inline-task-create-title
+			/>
+			<p class="caldo-alert caldo-alert-error caldo-inline-create-error" data-inline-task-create-error aria-live="polite" hidden>Unteraufgabe konnte nicht gespeichert werden.</p>
+			<div class="caldo-subtask-create-actions">
+				<button type="submit" class="caldo-button caldo-button-primary">Speichern</button>
+				<button type="button" class="caldo-button caldo-button-ghost" data-inline-task-create-cancel>Abbrechen</button>
+				<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
+			</div>
+		</form>
+	</div>
 }
 
 templ TaskDetailPanel(task TaskRowView) {
@@ -259,6 +309,9 @@ templ TaskDetailPanel(task TaskRowView) {
 			<div class="caldo-task-detail-state">
 				for _, state := range taskStateChips(task) {
 					<span class={ state.Class }>{ state.Label }</span>
+				}
+				for _, chip := range taskRelationshipChips(task) {
+					<span class={ chip.Class }>{ chip.Label }</span>
 				}
 				if taskRecurrence(task).Label != "" {
 					<span class="caldo-task-chip">{ taskRecurrence(task).Label }</span>

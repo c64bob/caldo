@@ -145,6 +145,11 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 		`data-task-delete-error`,
 		`Endgültig löschen`,
 		`data-task-delete-cancel`,
+		`data-subtask-create`,
+		`data-subtask-create-form`,
+		`hx-post="/tasks/task-1/subtasks"`,
+		`Unteraufgabe hinzufügen`,
+		`Unteraufgabentitel`,
 		`hidden`,
 		`hx-patch="/tasks/task-1"`,
 		`name="expected_version" value="3"`,
@@ -169,6 +174,87 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 	}
 	if strings.Contains(output, `name="labels" value="Büro, urgent, STARRED"`) {
 		t.Fatalf("reserved favorite category must not render in the label editor: %s", output)
+	}
+}
+
+func TestTaskRowRendersSubtaskRelationshipWithoutCreateAction(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	component := TaskRow(TaskRowView{
+		ID:            "child-1",
+		Title:         "Kindaufgabe",
+		ParentID:      "parent-1",
+		ParentTitle:   "Hauptaufgabe",
+		Status:        "needs-action",
+		SyncStatus:    "synced",
+		ServerVersion: 7,
+		IsSubtask:     true,
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render task row: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`data-task-id="child-1"`,
+		`caldo-task-row-subtask`,
+		`caldo-task-chip-subtask`,
+		`Unteraufgabe von Hauptaufgabe`,
+		`hx-post="/tasks/child-1/complete"`,
+		`name="expected_version" value="7"`,
+		`>Aufgabe erledigen<`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected subtask row to include %q in %s", want, output)
+		}
+	}
+	for _, unwanted := range []string{
+		`data-subtask-create`,
+		`/tasks/child-1/subtasks`,
+		`Unteraufgabe hinzufügen`,
+	} {
+		if strings.Contains(output, unwanted) {
+			t.Fatalf("subtask row must not include %q in %s", unwanted, output)
+		}
+	}
+}
+
+func TestTaskRowRendersFaultySubtaskRelationshipWithoutParentTitle(t *testing.T) {
+	t.Parallel()
+
+	component := TaskRow(TaskRowView{
+		ID:            "child-missing-parent",
+		Title:         "Verwaiste Unteraufgabe",
+		ParentID:      "missing-parent",
+		Status:        "completed",
+		SyncStatus:    "synced",
+		ServerVersion: 4,
+		IsSubtask:     true,
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(context.Background(), &rendered); err != nil {
+		t.Fatalf("render task row: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`caldo-task-row-subtask`,
+		`caldo-task-row-completed`,
+		`caldo-task-chip-subtask`,
+		`>Unteraufgabe<`,
+		`hx-post="/tasks/child-missing-parent/reopen"`,
+		`aria-pressed="true"`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected faulty subtask row to include %q in %s", want, output)
+		}
+	}
+	if strings.Contains(output, `Unteraufgabe von`) {
+		t.Fatalf("missing parent title must render a generic subtask chip: %s", output)
 	}
 }
 
@@ -267,6 +353,7 @@ func TestTaskRowRendersDetailPanelForSyncedTask(t *testing.T) {
 		Priority:      4,
 		HasPriority:   true,
 		ServerVersion: 3,
+		SubtaskCount:  2,
 		RRule:         "FREQ=WEEKLY;INTERVAL=2;COUNT=5",
 		Attachments: []model.Attachment{
 			{Value: "https://example.com/file.pdf", IsExternalURL: true},
@@ -307,6 +394,7 @@ func TestTaskRowRendersDetailPanelForSyncedTask(t *testing.T) {
 		`name="repeat_end"`,
 		`value="count" selected`,
 		`name="repeat_count" value="5"`,
+		`2 Unteraufgaben`,
 		`https://example.com/file.pdf`,
 		`rel="noopener noreferrer"`,
 		`Anhang vorhanden (inline/binary)`,

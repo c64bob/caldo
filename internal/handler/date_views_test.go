@@ -44,6 +44,13 @@ func TestTodayRouteShowsTodayAndOverdueTasks(t *testing.T) {
 		`hx-post="/tasks/task-today-active/complete"`,
 		`name="expected_version" value="3"`,
 		"Heute Beschreibung",
+		"Heute Unteraufgabe",
+		"Unteraufgabe von Heute Aufgabe",
+		"1 Unteraufgabe",
+		`caldo-task-row-subtask`,
+		`hx-post="/tasks/task-today-child/complete"`,
+		`hx-post="/tasks/task-overdue-active/subtasks"`,
+		`Unteraufgabe hinzufügen`,
 		"Heute",
 		"Büro",
 		"urgent",
@@ -195,15 +202,16 @@ INSERT INTO projects (
 
 INSERT INTO tasks (
 	id, project_id, uid, href, etag, server_version, title, description, status, raw_vtodo, base_vtodo,
-	priority, label_names, project_name, sync_status, due_date, due_at, created_at, updated_at
+	priority, label_names, project_name, sync_status, due_date, due_at, parent_id, created_at, updated_at
 ) VALUES
-('task-overdue-active','project-1','uid-overdue-active','/calendars/work/task-overdue-active.ics','"etag-1"',1,'Überfällige Aufgabe','','needs-action','BEGIN:VTODO\nUID:uid-overdue-active\nEND:VTODO','BEGIN:VTODO\nUID:uid-overdue-active\nEND:VTODO',NULL,'','Work','synced','2026-04-27',NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-('task-overdue-completed','project-1','uid-overdue-completed','/calendars/work/task-overdue-completed.ics','"etag-2"',1,'Überfällig erledigt','','completed','BEGIN:VTODO\nUID:uid-overdue-completed\nEND:VTODO','BEGIN:VTODO\nUID:uid-overdue-completed\nEND:VTODO',NULL,'','Work','synced','2026-04-26',NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-('task-today-active','project-1','uid-today-active','/calendars/work/task-today-active.ics','"etag-3"',3,'Heute Aufgabe','Heute Beschreibung','needs-action','BEGIN:VTODO\nUID:uid-today-active\nEND:VTODO','BEGIN:VTODO\nUID:uid-today-active\nEND:VTODO',4,'Büro,urgent','Work','pending','2026-04-28',NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-('task-upcoming-in-range','project-1','uid-upcoming-in-range','/calendars/work/task-upcoming-in-range.ics','"etag-4"',1,'Bald Aufgabe','','needs-action','BEGIN:VTODO\nUID:uid-upcoming-in-range\nEND:VTODO','BEGIN:VTODO\nUID:uid-upcoming-in-range\nEND:VTODO',NULL,'','Work','synced','2026-05-01',NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-('task-upcoming-day7','project-1','uid-upcoming-day7','/calendars/work/task-upcoming-day7.ics','"etag-5"',1,'In 7 Tagen','','needs-action','BEGIN:VTODO\nUID:uid-upcoming-day7\nEND:VTODO','BEGIN:VTODO\nUID:uid-upcoming-day7\nEND:VTODO',NULL,'','Work','synced','2026-05-05',NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-('task-without-due','project-1','uid-without-due','/calendars/work/task-without-due.ics','"etag-6"',1,'Ohne Fälligkeit','','needs-action','BEGIN:VTODO\nUID:uid-without-due\nEND:VTODO','BEGIN:VTODO\nUID:uid-without-due\nEND:VTODO',NULL,'','Work','synced',NULL,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
-('task-favorite','project-1','uid-favorite','/calendars/work/task-favorite.ics','"etag-7"',1,'Favorisierte Aufgabe','','needs-action','BEGIN:VTODO\nUID:uid-favorite\nEND:VTODO','BEGIN:VTODO\nUID:uid-favorite\nEND:VTODO',NULL,'STARRED,Work','Work','synced',NULL,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
+('task-overdue-active','project-1','uid-overdue-active','/calendars/work/task-overdue-active.ics','"etag-1"',1,'Überfällige Aufgabe','','needs-action','BEGIN:VTODO\nUID:uid-overdue-active\nEND:VTODO','BEGIN:VTODO\nUID:uid-overdue-active\nEND:VTODO',NULL,'','Work','synced','2026-04-27',NULL,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('task-overdue-completed','project-1','uid-overdue-completed','/calendars/work/task-overdue-completed.ics','"etag-2"',1,'Überfällig erledigt','','completed','BEGIN:VTODO\nUID:uid-overdue-completed\nEND:VTODO','BEGIN:VTODO\nUID:uid-overdue-completed\nEND:VTODO',NULL,'','Work','synced','2026-04-26',NULL,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('task-today-active','project-1','uid-today-active','/calendars/work/task-today-active.ics','"etag-3"',3,'Heute Aufgabe','Heute Beschreibung','needs-action','BEGIN:VTODO\nUID:uid-today-active\nEND:VTODO','BEGIN:VTODO\nUID:uid-today-active\nEND:VTODO',4,'Büro,urgent','Work','pending','2026-04-28',NULL,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('task-today-child','project-1','uid-today-child','/calendars/work/task-today-child.ics','"etag-child"',1,'Heute Unteraufgabe','','needs-action','BEGIN:VTODO\nUID:uid-today-child\nRELATED-TO;RELTYPE=PARENT:uid-today-active\nEND:VTODO','BEGIN:VTODO\nUID:uid-today-child\nRELATED-TO;RELTYPE=PARENT:uid-today-active\nEND:VTODO',NULL,'','Work','synced','2026-04-28',NULL,'task-today-active',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('task-upcoming-in-range','project-1','uid-upcoming-in-range','/calendars/work/task-upcoming-in-range.ics','"etag-4"',1,'Bald Aufgabe','','needs-action','BEGIN:VTODO\nUID:uid-upcoming-in-range\nEND:VTODO','BEGIN:VTODO\nUID:uid-upcoming-in-range\nEND:VTODO',NULL,'','Work','synced','2026-05-01',NULL,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('task-upcoming-day7','project-1','uid-upcoming-day7','/calendars/work/task-upcoming-day7.ics','"etag-5"',1,'In 7 Tagen','','needs-action','BEGIN:VTODO\nUID:uid-upcoming-day7\nEND:VTODO','BEGIN:VTODO\nUID:uid-upcoming-day7\nEND:VTODO',NULL,'','Work','synced','2026-05-05',NULL,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('task-without-due','project-1','uid-without-due','/calendars/work/task-without-due.ics','"etag-6"',1,'Ohne Fälligkeit','','needs-action','BEGIN:VTODO\nUID:uid-without-due\nEND:VTODO','BEGIN:VTODO\nUID:uid-without-due\nEND:VTODO',NULL,'','Work','synced',NULL,NULL,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),
+('task-favorite','project-1','uid-favorite','/calendars/work/task-favorite.ics','"etag-7"',1,'Favorisierte Aufgabe','','needs-action','BEGIN:VTODO\nUID:uid-favorite\nEND:VTODO','BEGIN:VTODO\nUID:uid-favorite\nEND:VTODO',NULL,'STARRED,Work','Work','synced',NULL,NULL,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
 `); err != nil {
 		t.Fatalf("seed date view tasks: %v", err)
 	}

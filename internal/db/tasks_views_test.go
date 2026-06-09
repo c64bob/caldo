@@ -76,6 +76,54 @@ INSERT INTO tasks (
 	}
 }
 
+func TestListTodayTasksIncludesSubtaskRelationshipMetadata(t *testing.T) {
+	t.Parallel()
+
+	database := openViewTestDB(t)
+	seedViewTasks(t, database)
+
+	if _, err := database.Conn.Exec(`
+INSERT INTO tasks (
+	id, project_id, uid, href, etag, server_version, title, description, status, parent_id, raw_vtodo, base_vtodo,
+	label_names, project_name, sync_status, due_date, created_at, updated_at
+) VALUES (
+	'task-today-child', 'project-1', 'uid-today-child', '/calendars/work/task-today-child.ics', '"etag-child"', 1,
+	'Heute Unteraufgabe', '', 'needs-action', 'task-today-active', 'BEGIN:VTODO\nUID:uid-today-child\nRELATED-TO;RELTYPE=PARENT:uid-today-active\nEND:VTODO',
+	'BEGIN:VTODO\nUID:uid-today-child\nRELATED-TO;RELTYPE=PARENT:uid-today-active\nEND:VTODO', '', 'Work', 'synced', '2026-04-28', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+);
+`); err != nil {
+		t.Fatalf("insert subtask: %v", err)
+	}
+
+	results, err := database.ListTodayTasks(context.Background(), time.Date(2026, 4, 28, 12, 0, 0, 0, time.UTC), 50)
+	if err != nil {
+		t.Fatalf("list today tasks: %v", err)
+	}
+
+	var parent DatedTaskViewRow
+	var child DatedTaskViewRow
+	for _, row := range results {
+		switch row.ID {
+		case "task-today-active":
+			parent = row
+		case "task-today-child":
+			child = row
+		}
+	}
+	if parent.ID == "" || child.ID == "" {
+		t.Fatalf("expected parent and child in today results: %#v", results)
+	}
+	if parent.SubtaskCount != 1 || parent.IsSubtask {
+		t.Fatalf("parent missing subtask count metadata: %#v", parent)
+	}
+	if child.ParentID != "task-today-active" ||
+		child.ParentTitle != "Heute Aufgabe" ||
+		!child.IsSubtask ||
+		child.SubtaskCount != 0 {
+		t.Fatalf("child missing relationship metadata: %#v", child)
+	}
+}
+
 func TestListUpcomingTasksUsesConfiguredWindow(t *testing.T) {
 	t.Parallel()
 

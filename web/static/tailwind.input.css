@@ -92,6 +92,74 @@
 		@apply max-w-4xl space-y-4;
 	}
 
+	.caldo-app-shell {
+		@apply flex min-h-screen;
+	}
+
+	.caldo-sidebar {
+		@apply sticky top-0 flex h-screen w-72 shrink-0 flex-col overflow-hidden border-r p-4;
+		background: var(--caldo-surface-muted);
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-sidebar-header {
+		@apply mb-4 min-w-0;
+	}
+
+	.caldo-brand {
+		@apply block truncate text-lg font-semibold tracking-normal;
+		color: var(--caldo-text);
+	}
+
+	.caldo-sidebar-nav {
+		@apply mt-5 min-h-0 flex-1 overflow-y-auto pr-1;
+	}
+
+	.caldo-sidebar-section {
+		@apply mt-5;
+	}
+
+	.caldo-sidebar-section:first-child {
+		@apply mt-0;
+	}
+
+	.caldo-workspace {
+		@apply flex min-w-0 flex-1 flex-col;
+		background: var(--caldo-bg);
+	}
+
+	.caldo-topbar {
+		@apply sticky top-0 z-20 flex min-h-16 items-center justify-between gap-4 border-b px-6 py-3;
+		background: var(--caldo-bg);
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-topbar-title {
+		@apply min-w-0;
+	}
+
+	.caldo-topbar-kicker {
+		@apply text-xs;
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-topbar-heading {
+		@apply truncate text-lg font-semibold tracking-normal;
+		color: var(--caldo-text);
+	}
+
+	.caldo-topbar-actions {
+		@apply flex shrink-0 flex-wrap items-center justify-end gap-2;
+	}
+
+	.caldo-main {
+		@apply min-w-0 flex-1 overflow-x-hidden px-6 py-6;
+	}
+
+	.caldo-content {
+		@apply min-w-0 max-w-4xl;
+	}
+
 	.caldo-page-title {
 		@apply text-xl font-semibold tracking-normal;
 		color: var(--caldo-text);
@@ -227,6 +295,7 @@
 		@apply rounded-md border p-3 transition;
 		background: var(--caldo-surface);
 		border-color: var(--caldo-border);
+		overflow-wrap: anywhere;
 	}
 
 	.caldo-list-row:hover {
@@ -237,6 +306,7 @@
 		@apply rounded-md border p-3 transition;
 		background: var(--caldo-surface);
 		border-color: var(--caldo-border);
+		overflow-wrap: anywhere;
 	}
 
 	.caldo-task-row:hover {
@@ -333,5 +403,18 @@
 	.caldo-menu-item:hover,
 	.caldo-menu-item:focus-visible {
 		background: var(--caldo-surface-muted);
+	}
+
+	.caldo-sync-status {
+		@apply flex min-w-0 items-center gap-2;
+	}
+
+	.caldo-sync-copy {
+		@apply flex min-w-0 flex-wrap items-center gap-2;
+	}
+
+	.caldo-sync-last {
+		@apply max-w-48 truncate text-xs;
+		color: var(--caldo-text-subtle);
 	}
 }

@@ -18,7 +18,7 @@ type quickAddDependencies struct {
 func QuickAddPage(deps quickAddDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.QuickAddPage(nil, "", "").Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Quick Add", view.QuickAddPage(nil, "", "")).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}

@@ -29,7 +29,7 @@ func SyncStatusBadge(state string, lastSuccess string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"flex items-center gap-2\" id=\"sync-status\" sse-connect=\"/events\" sse-swap=\"sync-status\"><button type=\"button\" class=\"caldo-button caldo-button-secondary\" hx-post=\"/sync/manual\" hx-target=\"#sync-status\" hx-swap=\"outerHTML\" hx-headers=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"caldo-sync-status\" id=\"sync-status\" sse-connect=\"/events\" sse-swap=\"sync-status\"><button type=\"button\" class=\"caldo-button caldo-button-secondary\" hx-post=\"/sync/manual\" hx-target=\"#sync-status\" hx-swap=\"outerHTML\" hx-headers=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -42,33 +42,33 @@ func SyncStatusBadge(state string, lastSuccess string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\">Jetzt synchronisieren</button><p class=\"caldo-muted\"><span class=\"caldo-badge caldo-badge-accent\">Status: ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\">Jetzt synchronisieren</button><p class=\"caldo-sync-copy\"><span class=\"caldo-badge caldo-badge-accent\">Status: ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(state)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/sync.templ`, Line: 6, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/sync.templ`, Line: 6, Col: 89}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</span> Letzter erfolgreicher Sync: ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</span><span class=\"caldo-sync-last\">Letzter Sync: ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(lastSuccess)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/sync.templ`, Line: 6, Col: 136}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/sync.templ`, Line: 6, Col: 155}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</span></p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

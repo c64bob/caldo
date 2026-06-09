@@ -8,6 +8,24 @@ import (
 	"testing"
 )
 
+func TestQuickAddPageUsesBaseLayout(t *testing.T) {
+	h := QuickAddPage(quickAddDependencies{})
+	req := httptest.NewRequest(http.MethodGet, "/quick-add", nil)
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "caldo-app-shell") || !strings.Contains(body, "caldo-sidebar") {
+		t.Fatalf("expected quick add page to render in app shell: %s", body)
+	}
+	if !strings.Contains(body, `href="/quick-add"`) || !strings.Contains(body, "Quick Add") {
+		t.Fatalf("expected quick add page links and content: %s", body)
+	}
+}
+
 func TestQuickAddPreviewUsesDefaultProject(t *testing.T) {
 	database := openSQLiteForTaskCreateHandlerTest(t)
 	seedTaskCreateHandlerProject(t, database)

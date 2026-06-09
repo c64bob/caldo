@@ -55,11 +55,18 @@ func TestBaseLayoutUsesComponentFoundationClasses(t *testing.T) {
 
 	output := rendered.String()
 	for _, want := range []string{
+		`caldo-app-shell`,
+		`caldo-sidebar`,
+		`caldo-topbar`,
+		`caldo-main`,
+		`caldo-content`,
 		`caldo-nav-link-active`,
 		`caldo-button caldo-button-secondary`,
 		`caldo-dialog`,
 		`caldo-kbd`,
 		`caldo-page-title`,
+		`href="/quick-add"`,
+		`href="/search"`,
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected layout to include component class %q", want)

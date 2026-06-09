@@ -4,7 +4,7 @@
 Story 23.3 — Desktop-App-Shell
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Die Desktop-Ansicht erhaelt eine stabile Shell mit Sidebar, Inhaltsbereich und globalen Aktionen.

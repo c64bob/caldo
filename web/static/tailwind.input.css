@@ -171,20 +171,20 @@
 	}
 
 	.caldo-topbar-primary {
-		@apply flex min-w-0 items-center gap-2;
+		@apply flex min-w-0 flex-1 items-center gap-2;
 	}
 
 	.caldo-topbar-title {
-		@apply min-w-0 flex-1;
+		@apply flex min-w-0 flex-1 flex-col justify-center;
 	}
 
 	.caldo-topbar-kicker {
-		@apply text-xs;
+		@apply whitespace-nowrap text-xs;
 		color: var(--caldo-text-subtle);
 	}
 
 	.caldo-topbar-heading {
-		@apply truncate text-lg font-semibold tracking-normal;
+		@apply block truncate text-lg font-semibold tracking-normal;
 		color: var(--caldo-text);
 	}
 
@@ -202,7 +202,7 @@
 
 	@media (min-width: 640px) {
 		.caldo-topbar-actions {
-			@apply flex shrink-0 flex-wrap items-center justify-end gap-2;
+			@apply flex w-auto shrink-0 flex-wrap items-center justify-end gap-2;
 		}
 
 		.caldo-topbar-actions > .caldo-sync-status {
@@ -250,6 +250,22 @@
 	.caldo-section-title {
 		@apply text-sm font-semibold tracking-normal;
 		color: var(--caldo-text-muted);
+	}
+
+	.caldo-state {
+		@apply rounded-md border p-4;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-state-error {
+		background: var(--caldo-danger-muted);
+		border-color: var(--caldo-danger);
+	}
+
+	.caldo-state-title {
+		@apply text-sm font-semibold tracking-normal;
+		color: var(--caldo-text);
 	}
 
 	.caldo-muted {
@@ -330,6 +346,11 @@
 	.htmx-request .caldo-button,
 	.caldo-button.htmx-request {
 		@apply cursor-wait opacity-75;
+	}
+
+	.htmx-request .caldo-button[type="submit"],
+	.htmx-request button[type="submit"].caldo-button {
+		@apply pointer-events-none;
 	}
 
 	.caldo-button-primary {
@@ -502,8 +523,23 @@
 	}
 
 	.caldo-nav-link {
-		@apply block max-w-full truncate rounded-md px-2 py-1.5 text-sm font-medium no-underline transition;
+		@apply flex max-w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium no-underline transition;
 		color: var(--caldo-text-muted);
+	}
+
+	.caldo-nav-label {
+		@apply min-w-0 flex-1 truncate;
+	}
+
+	.caldo-nav-count {
+		@apply inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-xs font-medium tabular-nums;
+		background: var(--caldo-surface);
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-nav-empty {
+		@apply truncate px-2 py-1 text-xs;
+		color: var(--caldo-text-subtle);
 	}
 
 	.caldo-nav-link:hover {
@@ -513,6 +549,11 @@
 
 	.caldo-nav-link-active {
 		background: var(--caldo-accent-muted);
+		color: var(--caldo-accent);
+	}
+
+	.caldo-nav-link-active .caldo-nav-count {
+		background: var(--caldo-surface);
 		color: var(--caldo-accent);
 	}
 
@@ -557,6 +598,27 @@
 	.caldo-sync-last {
 		@apply max-w-48 truncate text-xs;
 		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-loading-lines {
+		@apply mt-3 space-y-2;
+	}
+
+	.caldo-loading-lines span {
+		@apply block h-3 rounded;
+		background: var(--caldo-surface-muted);
+	}
+
+	.caldo-loading-lines span:nth-child(1) {
+		@apply w-11/12;
+	}
+
+	.caldo-loading-lines span:nth-child(2) {
+		@apply w-8/12;
+	}
+
+	.caldo-loading-lines span:nth-child(3) {
+		@apply w-10/12;
 	}
 
 	.caldo-mobile-nav-dialog {

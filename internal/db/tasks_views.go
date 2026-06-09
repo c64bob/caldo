@@ -38,13 +38,15 @@ func (d *Database) ListOverdueTasks(ctx context.Context, referenceDate time.Time
 // ListFavoriteTasks returns active favorite tasks.
 func (d *Database) ListFavoriteTasks(ctx context.Context, limit int) ([]DatedTaskViewRow, error) {
 	return d.listSimpleSystemTasks(ctx, `
-	AND (LOWER(COALESCE(t.label_names, '')) LIKE '%starred%')`, limit)
+	AND (LOWER(COALESCE(t.label_names, '')) LIKE '%starred%')
+	AND (cfg.show_completed = 1 OR t.status != 'completed')`, limit)
 }
 
 // ListNoDateTasks returns active tasks without a due date.
 func (d *Database) ListNoDateTasks(ctx context.Context, limit int) ([]DatedTaskViewRow, error) {
 	return d.listSimpleSystemTasks(ctx, `
-	AND due_iso_date IS NULL`, limit)
+	AND due_iso_date IS NULL
+	AND (cfg.show_completed = 1 OR t.status != 'completed')`, limit)
 }
 
 // ListCompletedTasks returns completed tasks when the visibility setting is enabled.

@@ -35,7 +35,10 @@ func QuickAddPreview(deps quickAddDependencies) http.HandlerFunc {
 		draft := parser.ParseQuickAddWithLanguage(text, language)
 		requestedProject := draft.Project
 		if draft.Title == "" {
-			http.Error(w, "title is required", http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			if err := view.ErrorState("Vorschau erstellen", "validierungsfehler", false).Render(r.Context(), w); err != nil {
+				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			}
 			return
 		}
 		project, err := deps.database.ResolveTaskProject(r.Context(), "")

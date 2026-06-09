@@ -89,3 +89,21 @@ Die Todoist-nahe UI sollte in Browser-QA regelmäßig gegen diese Punkte geprüf
 - Tastaturpfade für Suche, Navigation und neue Aufgabe
 
 Playwright-Screenshots sind der Feedback-Loop: Ansicht öffnen, Desktop und Mobile prüfen, CSS/Templ anpassen, erneut ausführen.
+
+## Visuelle Baselines
+
+`npm run test:e2e` erzeugt Review-Screenshots unter `test-results/e2e/baselines/`. Das Verzeichnis ist ein lokales QA-Artefakt und wird nicht committed.
+
+Die Baselines erfassen Desktop und Mobile für:
+
+- Setup
+- Inbox-Äquivalent über die Default-Projekt-Übersicht
+- Heute
+- Suche
+- Quick Add
+- Konflikte
+- Einstellungen
+
+Caldo hat laut `arch.md` und PRD keine separate globale Inbox unabhängig von CalDAV. Für UI-Reviews steht deshalb `inbox-equivalent-default-project-*` für die Default-Projekt-/Projektübersicht.
+
+Die E2E-Umgebung nutzt lokale Staging-Daten, keine echten CalDAV-Konten und keine privaten Aufgabeninhalte. Bei visuellen Änderungen: Test ausführen, Screenshots im Baseline-Verzeichnis prüfen, UI anpassen und den Test erneut ausführen.

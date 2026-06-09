@@ -11,37 +11,65 @@ func navLinkClass(title string, activeTitles ...string) string {
 	return base
 }
 
-templ shellNavSections(title string) {
+templ navLink(title string, item NavigationItem) {
+	<a class={ navLinkClass(title, item.ActiveTitles...) } href={ templ.URL(item.Href) }>
+		<span class="caldo-nav-label">{ item.Label }</span>
+		if item.HasCount {
+			<span class="caldo-nav-count" aria-label={ navCountText(item.Count) + " offene Einträge" }>{ navCountText(item.Count) }</span>
+		}
+	</a>
+}
+
+templ navEmpty(message string) {
+	<p class="caldo-nav-empty">{ message }</p>
+}
+
+templ shellNavSections(title string, nav NavigationSnapshot) {
 	<section class="caldo-sidebar-section">
 		<h2 class="caldo-section-title mb-2">Systemfilter</h2>
 		<ul class="space-y-1" data-nav-system-filters>
-			<li><a class={ navLinkClass(title, "Heute") } href="/today">Heute</a></li>
-			<li><a class={ navLinkClass(title, "Demnächst") } href="/upcoming">Demnächst</a></li>
-			<li><a class={ navLinkClass(title, "Favoriten") } href="/favorites">Favoriten</a></li>
-			<li><a class={ navLinkClass(title, "Überfällig") } href="/overdue">Überfällig</a></li>
-			<li><a class={ navLinkClass(title, "Ohne Datum") } href="/no-date">Ohne Datum</a></li>
-			<li><a class={ navLinkClass(title, "Abgeschlossen") } href="/completed">Abgeschlossen</a></li>
-			<li><a class={ navLinkClass(title, "Suche") } href="/search">Suche</a></li>
-			<li><a class={ navLinkClass(title, "Konflikte") } href="/conflicts">Konflikte</a></li>
-			<li><a class={ navLinkClass(title, "Einstellungen") } href="/settings">Einstellungen</a></li>
+			for _, item := range nav.System {
+				<li>@navLink(title, item)</li>
+			}
 		</ul>
 	</section>
 	<section class="caldo-sidebar-section">
 		<h2 class="caldo-section-title mb-2">Filter</h2>
-		<ul data-nav-user-filters>
-			<li><a class={ navLinkClass(title, "Filter") } href="/filters">Filter</a></li>
+		<ul class="space-y-1" data-nav-user-filters>
+			<li>@navLink(title, NavigationItem{Label: "Alle Filter", Href: "/filters", ActiveTitles: []string{"Filter", "Filter"}})</li>
+			if len(nav.SavedFilters) == 0 {
+				<li>@navEmpty("Keine gespeicherten Filter")</li>
+			} else {
+				for _, item := range nav.SavedFilters {
+					<li>@navLink(title, item)</li>
+				}
+			}
 		</ul>
 	</section>
 	<section class="caldo-sidebar-section">
 		<h2 class="caldo-section-title mb-2">Labels</h2>
-		<ul>
-			<li><a class={ navLinkClass(title, "Labels") } href="/labels">Labels</a></li>
+		<ul class="space-y-1" data-nav-labels>
+			<li>@navLink(title, NavigationItem{Label: "Alle Labels", Href: "/labels", ActiveTitles: []string{"Labels"}})</li>
+			if len(nav.Labels) == 0 {
+				<li>@navEmpty("Keine Labels")</li>
+			} else {
+				for _, item := range nav.Labels {
+					<li>@navLink(title, item)</li>
+				}
+			}
 		</ul>
 	</section>
 	<section class="caldo-sidebar-section">
 		<h2 class="caldo-section-title mb-2">Projekte</h2>
-		<ul data-nav-projects>
-			<li><a class={ navLinkClass(title, "Projekte") } href="/projects">Projekte</a></li>
+		<ul class="space-y-1" data-nav-projects>
+			<li>@navLink(title, NavigationItem{Label: "Alle Projekte", Href: "/projects", ActiveTitles: []string{"Projekte"}})</li>
+			if len(nav.Projects) == 0 {
+				<li>@navEmpty("Keine Projekte")</li>
+			} else {
+				for _, item := range nav.Projects {
+					<li>@navLink(title, item)</li>
+				}
+			}
 		</ul>
 	</section>
 }
@@ -66,7 +94,7 @@ templ BaseLayout(title string, content templ.Component) {
 					</div>
 					<a href="/quick-add" class="caldo-button caldo-button-primary w-full">Neue Aufgabe</a>
 					<nav class="caldo-sidebar-nav" aria-label="Hauptnavigation">
-						@shellNavSections(title)
+						@shellNavSections(title, Navigation(ctx))
 					</nav>
 				</aside>
 				<div class="caldo-workspace">
@@ -105,7 +133,7 @@ templ BaseLayout(title string, content templ.Component) {
 					</div>
 					<a href="/quick-add" class="caldo-button caldo-button-primary w-full">Neue Aufgabe</a>
 					<nav class="caldo-mobile-nav" aria-label="Mobile Hauptnavigation">
-						@shellNavSections(title)
+						@shellNavSections(title, Navigation(ctx))
 					</nav>
 				</div>
 			</dialog>

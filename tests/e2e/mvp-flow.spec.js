@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const fs = require('node:fs');
 const {
   appFormRequest,
   expectNoSearchResult,
@@ -13,7 +14,12 @@ const {
 const { appURL, readState } = require('./helpers/state');
 const { createRemoteTask, deleteRemoteTask, stageState, updateRemoteTask } = require('./helpers/stage');
 
+const baselineDir = 'test-results/e2e/baselines';
+const desktopViewport = { width: 1440, height: 1000 };
+const mobileViewport = { width: 390, height: 844 };
+
 test('MVP setup, sync, write-through, and conflict flow works in a browser session', async ({ page }) => {
+  fs.mkdirSync(baselineDir, { recursive: true });
   const state = readState();
 
   const health = await page.request.get(appURL('/health'));
@@ -22,6 +28,8 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await gotoApp(page, '/');
   await expect(page).toHaveURL(/\/setup$/);
   await expect(page.getByRole('heading', { name: 'CalDAV einrichten' })).toBeVisible();
+  await captureBaselineSet(page, 'setup');
+  await page.setViewportSize(desktopViewport);
 
   let response = await appFormRequest(page, 'POST', '/setup/caldav', {
     caldav_url: state.stageBaseURL,
@@ -55,7 +63,19 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(page.getByRole('heading', { name: 'Globale Suche' })).toBeVisible();
   await expect(page.locator('[data-search-results]').filter({ hasText: 'Stage Seed Task' })).toBeVisible();
 
-  await page.setViewportSize({ width: 390, height: 844 });
+  await gotoApp(page, '/projects');
+  await captureBaselineSet(page, 'inbox-equivalent-default-project');
+  await gotoApp(page, '/today');
+  await captureBaselineSet(page, 'today');
+  await gotoApp(page, '/search?q=Stage');
+  await captureBaselineSet(page, 'search');
+  await gotoApp(page, '/quick-add');
+  await captureBaselineSet(page, 'quick-add');
+  await gotoApp(page, '/settings');
+  await captureBaselineSet(page, 'settings');
+  await gotoApp(page, '/search?q=Stage');
+
+  await page.setViewportSize(mobileViewport);
   await expect(page.getByRole('button', { name: 'Navigation öffnen' })).toBeVisible();
   await page.getByRole('button', { name: 'Navigation öffnen' }).click();
   await expect(page.getByRole('navigation', { name: 'Mobile Hauptnavigation' })).toBeVisible();
@@ -64,7 +84,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await page.getByRole('button', { name: 'Schließen' }).click();
   await expect(page.locator('.caldo-topbar a[href="/search"]')).toBeVisible();
   await expect(page.locator('.caldo-topbar a[href="/quick-add"]')).toBeVisible();
-  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.setViewportSize(desktopViewport);
 
   const beforeCreate = await stageState();
   response = await appFormRequest(page, 'POST', '/tasks/', {
@@ -149,6 +169,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await gotoApp(page, '/conflicts');
   const conflictLink = page.locator('[data-conflict-list] a').first();
   await expect(conflictLink).toBeVisible();
+  await captureBaselineSet(page, 'conflicts');
   const conflictHref = await conflictLink.getAttribute('href');
   expect(conflictHref).toMatch(/^\/conflicts\//);
 
@@ -162,6 +183,16 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   expect(response.status()).toBe(200);
 
   await gotoApp(page, '/conflicts');
-  await expect(page.getByText('Keine ungelösten Konflikte.')).toBeVisible();
+  await expect(page.getByText('Keine ungelösten Konflikte')).toBeVisible();
   await expectSearchResult(page, 'E2E Remote Conflict Edit');
 });
+
+async function captureBaselineSet(page, name) {
+  await captureBaseline(page, `${name}-desktop`, desktopViewport);
+  await captureBaseline(page, `${name}-mobile`, mobileViewport);
+}
+
+async function captureBaseline(page, name, viewport) {
+  await page.setViewportSize(viewport);
+  await page.screenshot({ path: `${baselineDir}/${name}.png`, fullPage: true });
+}

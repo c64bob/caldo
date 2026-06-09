@@ -141,6 +141,49 @@ func TestNewRouterRendersBaseLayoutOnRoot(t *testing.T) {
 	}
 }
 
+func TestNavigationPagesRenderPersistedEntries(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if _, err := database.Conn.Exec(`
+INSERT INTO projects (id, calendar_href, display_name, sync_strategy, is_default, created_at, updated_at)
+VALUES ('project-1', '/cal/inbox/', 'Inbox', 'fullscan', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT INTO labels (id, name, created_at) VALUES ('label-1', 'Büro', CURRENT_TIMESTAMP);
+INSERT INTO tasks (id, project_id, uid, href, etag, title, status, raw_vtodo, sync_status, created_at, updated_at)
+VALUES ('task-1', 'project-1', 'uid-1', '/cal/inbox/task-1.ics', '"etag-1"', 'Task 1', 'needs-action', 'BEGIN:VTODO\nUID:uid-1\nEND:VTODO', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT INTO task_labels (task_id, label_id) VALUES ('task-1', 'label-1');
+INSERT INTO saved_filters (id, name, query) VALUES ('filter-1', 'Heute Fokus', 'today');
+`); err != nil {
+		t.Fatalf("seed navigation pages: %v", err)
+	}
+
+	router := NewRouter(logging.New(bytes.NewBuffer(nil), "production", "info"), "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil)
+	for _, tc := range []struct {
+		path string
+		want string
+	}{
+		{path: "/projects", want: "Inbox"},
+		{path: "/labels", want: "Büro"},
+		{path: "/filters", want: "Heute Fokus"},
+	} {
+		responseRecorder := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodGet, tc.path, nil)
+		request.Header.Set("X-Forwarded-User", "alice")
+		router.ServeHTTP(responseRecorder, request)
+		if responseRecorder.Code != http.StatusOK {
+			t.Fatalf("%s status: got %d want %d", tc.path, responseRecorder.Code, http.StatusOK)
+		}
+		body := responseRecorder.Body.String()
+		if !strings.Contains(body, tc.want) || !strings.Contains(body, `data-navigation-overview`) || !strings.Contains(body, `caldo-nav-count`) {
+			t.Fatalf("%s body missing persisted navigation content: %s", tc.path, body)
+		}
+	}
+}
+
 func TestNewRouterRedirectsNormalRouteToSetupWhenIncomplete(t *testing.T) {
 	t.Parallel()
 

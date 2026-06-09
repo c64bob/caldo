@@ -20,7 +20,7 @@ func Search(deps searchDependencies) http.HandlerFunc {
 
 		results, err := deps.database.SearchActiveTasks(r.Context(), query, 50)
 		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			renderPageError(w, r, "Suche", "Suche laden", http.StatusInternalServerError)
 			return
 		}
 

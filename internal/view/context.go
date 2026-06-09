@@ -11,6 +11,7 @@ type contextKey string
 const (
 	assetManifestKey contextKey = "asset_manifest"
 	csrfTokenKey     contextKey = "csrf_token"
+	navigationKey    contextKey = "navigation"
 )
 
 // WithAssetManifest stores the static asset manifest in request context.

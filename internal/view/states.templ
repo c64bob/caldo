@@ -1,0 +1,29 @@
+package view
+
+templ EmptyState(title string, message string) {
+	<section class="caldo-state" data-empty-state>
+		<p class="caldo-state-title">{ title }</p>
+		<p class="caldo-muted">{ message }</p>
+	</section>
+}
+
+templ ErrorState(action string, errorClass string, retryAllowed bool) {
+	<section class="caldo-state caldo-state-error" data-error-state>
+		<p class="caldo-state-title">{ action } fehlgeschlagen</p>
+		<p class="caldo-muted">Fehlerklasse: { errorClass }</p>
+		if retryAllowed {
+			<a href="" class="caldo-button caldo-button-secondary mt-3">Erneut versuchen</a>
+		}
+	</section>
+}
+
+templ LoadingState(message string) {
+	<section class="caldo-state" data-loading-state aria-live="polite">
+		<p class="caldo-state-title">{ message }</p>
+		<div class="caldo-loading-lines" aria-hidden="true">
+			<span></span>
+			<span></span>
+			<span></span>
+		</div>
+	</section>
+}

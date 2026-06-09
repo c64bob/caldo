@@ -6,7 +6,7 @@ templ ConflictListPage(conflicts []db.ConflictListRow) {
 	<section class="caldo-page">
 		<h2 class="caldo-page-title">Konflikte</h2>
 		if len(conflicts) == 0 {
-			<p class="caldo-muted">Keine ungelösten Konflikte.</p>
+			@EmptyState("Keine ungelösten Konflikte", "Lokale und entfernte Versionen sind aktuell nicht in Konflikt.")
 		}
 		if len(conflicts) > 0 {
 			<ul class="caldo-list" data-conflict-list>
@@ -28,19 +28,19 @@ templ ConflictDetailPage(conflict db.ConflictDetail) {
 		if conflict.BaseVTODO.Valid {
 			<div>
 				<h3 class="font-medium">Ausgangsversion (Base)</h3>
-				<pre class="caldo-card mt-1 overflow-x-auto text-xs">{ conflict.BaseVTODO.String }</pre>
+				<pre class="caldo-card mt-1 max-w-full overflow-x-auto text-xs">{ conflict.BaseVTODO.String }</pre>
 			</div>
 		}
 		if conflict.LocalVTODO.Valid {
 			<div>
 				<h3 class="font-medium">Lokale Version</h3>
-				<pre class="caldo-card mt-1 overflow-x-auto text-xs">{ conflict.LocalVTODO.String }</pre>
+				<pre class="caldo-card mt-1 max-w-full overflow-x-auto text-xs">{ conflict.LocalVTODO.String }</pre>
 			</div>
 		}
 		if conflict.RemoteVTODO.Valid {
 			<div>
 				<h3 class="font-medium">Remote-Version</h3>
-				<pre class="caldo-card mt-1 overflow-x-auto text-xs">{ conflict.RemoteVTODO.String }</pre>
+				<pre class="caldo-card mt-1 max-w-full overflow-x-auto text-xs">{ conflict.RemoteVTODO.String }</pre>
 			</div>
 		}
 	</section>

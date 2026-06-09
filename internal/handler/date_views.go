@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"caldo/internal/db"
+	"caldo/internal/model"
 	"caldo/internal/view"
 )
 
@@ -169,6 +170,7 @@ func inlineCreateForDate(placeholder string, dueDate time.Time) view.InlineTaskC
 func datedTaskRows(rows []db.DatedTaskViewRow, projectOptions []view.TaskProjectOption) []view.TaskRowView {
 	tasks := make([]view.TaskRowView, 0, len(rows))
 	for _, row := range rows {
+		fields := model.ParseVTODOFields(row.RawVTODO)
 		tasks = append(tasks, view.TaskRowView{
 			ID:             row.ID,
 			ProjectID:      row.ProjectID,
@@ -183,6 +185,8 @@ func datedTaskRows(rows []db.DatedTaskViewRow, projectOptions []view.TaskProject
 			HasPriority:    row.HasPriority,
 			ServerVersion:  row.ServerVersion,
 			IsSubtask:      row.IsSubtask,
+			RRule:          fields.RRule,
+			Attachments:    fields.Attachments,
 			ProjectOptions: projectOptions,
 		})
 	}

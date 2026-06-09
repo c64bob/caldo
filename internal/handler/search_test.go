@@ -59,6 +59,9 @@ func TestSearchRouteReturnsActiveTasksOnly(t *testing.T) {
 		"dringend",
 		"P1",
 		"Fehler",
+		`data-task-detail-open`,
+		`data-task-detail-dialog`,
+		`Letzter Schreibversuch ist fehlgeschlagen`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("response body missing task row detail %q: %q", want, body)

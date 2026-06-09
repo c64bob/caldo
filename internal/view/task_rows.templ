@@ -57,6 +57,17 @@ templ TaskRow(task TaskRowView) {
 							Bearbeiten
 						</button>
 					}
+					if taskCanOpenDetail(task) {
+						<button
+							type="button"
+							class="caldo-task-detail-open"
+							data-task-detail-open
+							aria-haspopup="dialog"
+							aria-controls={ taskDOMID("task-detail", task) }
+						>
+							Details
+						</button>
+					}
 				</div>
 				if taskRowDescription(task) != "" {
 					<p class="caldo-task-description">{ taskRowDescription(task) }</p>
@@ -153,7 +164,178 @@ templ TaskRow(task TaskRowView) {
 				</form>
 			}
 		</div>
+		if taskCanOpenDetail(task) {
+			@TaskDetailPanel(task)
+		}
 	</li>
+}
+
+templ TaskDetailPanel(task TaskRowView) {
+	<dialog
+		id={ taskDOMID("task-detail", task) }
+		class="caldo-task-detail-dialog"
+		data-task-detail-dialog
+		aria-labelledby={ taskDOMID("task-detail-title", task) }
+	>
+		<div class="caldo-task-detail-shell">
+			<header class="caldo-task-detail-header">
+				<div class="caldo-task-detail-heading">
+					<p class="caldo-meta">Aufgabe</p>
+					<h2 id={ taskDOMID("task-detail-title", task) } class="caldo-task-detail-title">{ taskRowTitle(task) }</h2>
+				</div>
+				<button type="button" class="caldo-icon-button caldo-task-detail-close" data-task-detail-close aria-label="Details schließen">×</button>
+			</header>
+			<div class="caldo-task-detail-state">
+				for _, state := range taskStateChips(task) {
+					<span class={ state.Class }>{ state.Label }</span>
+				}
+				if taskRecurrence(task).Label != "" {
+					<span class="caldo-task-chip">{ taskRecurrence(task).Label }</span>
+				}
+			</div>
+			if taskDetailStatusMessage(task) != "" {
+				<p class="caldo-alert caldo-alert-warning caldo-task-detail-status">{ taskDetailStatusMessage(task) }</p>
+			}
+			<p class="caldo-alert caldo-alert-error caldo-task-detail-error" data-task-detail-error aria-live="polite" hidden>Aufgabe konnte nicht gespeichert werden.</p>
+			<form
+				method="post"
+				action={ taskEditPath(task) }
+				hx-patch={ taskEditPath(task) }
+				hx-swap="none"
+				hx-disabled-elt="find button"
+				hx-headers={ taskCSRFHeaders(ctx) }
+				data-refresh-after-write="true"
+				data-task-detail-form
+				class="caldo-task-detail-form"
+				aria-label={ "Aufgabendetails bearbeiten: " + taskRowTitle(task) }
+			>
+				<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
+				<input type="hidden" name="status" value={ task.Status }/>
+				<label class="caldo-task-detail-field caldo-task-detail-field-wide">
+					<span>Titel</span>
+					<input
+						type="text"
+						name="title"
+						required
+						autocomplete="off"
+						class="caldo-input caldo-task-detail-title-input"
+						value={ taskRowTitle(task) }
+						data-task-detail-title
+						disabled?={ !taskCanDetailEdit(task) }
+					/>
+				</label>
+				<label class="caldo-task-detail-field caldo-task-detail-field-wide">
+					<span>Beschreibung</span>
+					<textarea name="description" rows="7" class="caldo-input caldo-task-detail-description" disabled?={ !taskCanDetailEdit(task) }>{ taskRowDescription(task) }</textarea>
+				</label>
+				<div class="caldo-task-detail-grid">
+					<label class="caldo-task-detail-field">
+						<span>Projekt</span>
+						if len(taskProjectOptions(task)) > 0 {
+							<select name="project_id" class="caldo-select" disabled?={ !taskCanDetailEdit(task) }>
+								for _, project := range taskProjectOptions(task) {
+									<option value={ project.ID } selected?={ strings.TrimSpace(project.ID) == strings.TrimSpace(task.ProjectID) }>{ project.Name }</option>
+								}
+							</select>
+						} else {
+							<input type="hidden" name="project_id" value={ task.ProjectID } disabled?={ !taskCanDetailEdit(task) }/>
+							<span class="caldo-task-detail-static">{ task.ProjectName }</span>
+						}
+					</label>
+					<label class="caldo-task-detail-field">
+						<span>Fälligkeit</span>
+						<input type="date" name="due_date" value={ task.DueISODate } class="caldo-input" disabled?={ !taskCanDetailEdit(task) }/>
+					</label>
+					<label class="caldo-task-detail-field">
+						<span>Priorität</span>
+						<select name="priority" class="caldo-select" disabled?={ !taskCanDetailEdit(task) }>
+							for _, priority := range taskPriorityOptions() {
+								<option value={ priority.Value } selected?={ priority.Value == taskPriorityValue(task) }>{ priority.Label }</option>
+							}
+						</select>
+					</label>
+					<label class="caldo-task-detail-field caldo-task-detail-field-wide">
+						<span>Labels</span>
+						<input type="text" name="labels" value={ taskEditableLabels(task) } class="caldo-input" autocomplete="off" disabled?={ !taskCanDetailEdit(task) }/>
+					</label>
+				</div>
+				<section class="caldo-task-detail-section" aria-label="Wiederholung">
+					<div class="caldo-task-detail-section-heading">
+						<h3>Wiederholung</h3>
+					</div>
+					if taskRecurrence(task).Editable {
+						<input type="hidden" name="repeat_update" value="1" disabled?={ !taskCanDetailEdit(task) }/>
+						<div class="caldo-task-detail-grid">
+							<label class="caldo-task-detail-field">
+								<span>Rhythmus</span>
+								<select name="repeat_freq" class="caldo-select" disabled?={ !taskCanDetailEdit(task) }>
+									for _, option := range taskRecurrenceFrequencyOptions() {
+										<option value={ option.Value } selected?={ option.Value == taskRecurrence(task).Frequency }>{ option.Label }</option>
+									}
+								</select>
+							</label>
+							<label class="caldo-task-detail-field">
+								<span>Intervall</span>
+								<input type="number" min="1" step="1" name="repeat_interval" value={ taskRecurrence(task).Interval } class="caldo-input" disabled?={ !taskCanDetailEdit(task) }/>
+							</label>
+							<label class="caldo-task-detail-field">
+								<span>Wochentag</span>
+								<select name="repeat_byday" class="caldo-select" disabled?={ !taskCanDetailEdit(task) }>
+									for _, option := range taskByDayOptions() {
+										<option value={ option.Value } selected?={ option.Value == taskRecurrence(task).ByDay }>{ option.Label }</option>
+									}
+								</select>
+							</label>
+							<label class="caldo-task-detail-field">
+								<span>Ende</span>
+								<select name="repeat_end" class="caldo-select" disabled?={ !taskCanDetailEdit(task) }>
+									for _, option := range taskRecurrenceEndOptions() {
+										<option value={ option.Value } selected?={ option.Value == taskRecurrence(task).End }>{ option.Label }</option>
+									}
+								</select>
+							</label>
+							<label class="caldo-task-detail-field">
+								<span>Bis</span>
+								<input type="date" name="repeat_until" value={ taskRecurrence(task).Until } class="caldo-input" disabled?={ !taskCanDetailEdit(task) }/>
+							</label>
+							<label class="caldo-task-detail-field">
+								<span>Anzahl</span>
+								<input type="number" min="1" step="1" name="repeat_count" value={ taskRecurrence(task).Count } class="caldo-input" disabled?={ !taskCanDetailEdit(task) }/>
+							</label>
+						</div>
+					} else {
+						<p class="caldo-task-detail-static">{ taskRecurrence(task).Label }</p>
+						<p class="caldo-meta">Komplexe Wiederholung wird unverändert erhalten.</p>
+					}
+				</section>
+				<section class="caldo-task-detail-section" aria-label="Anhänge">
+					<div class="caldo-task-detail-section-heading">
+						<h3>Anhänge</h3>
+					</div>
+					if len(task.Attachments) > 0 {
+						<ul class="caldo-task-detail-attachments">
+							for _, attachment := range task.Attachments {
+								<li>
+									if attachment.IsExternalURL {
+										<a href={ templ.SafeURL(attachment.Value) } target="_blank" rel="noopener noreferrer" class="caldo-task-detail-attachment-link">{ attachment.Value }</a>
+									} else {
+										<span class="caldo-task-detail-static">Anhang vorhanden (inline/binary)</span>
+									}
+								</li>
+							}
+						</ul>
+					} else {
+						<p class="caldo-muted">Keine Anhänge</p>
+					}
+				</section>
+				<div class="caldo-task-detail-actions">
+					<button type="submit" class="caldo-button caldo-button-primary" disabled?={ !taskCanDetailEdit(task) }>Speichern</button>
+					<button type="button" class="caldo-button caldo-button-ghost" data-task-detail-close>Schließen</button>
+					<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
+				</div>
+			</form>
+		</div>
+	</dialog>
 }
 
 templ InlineTaskCreate(create InlineTaskCreateView) {

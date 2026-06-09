@@ -21,6 +21,7 @@ type DatedTaskViewRow struct {
 	SyncStatus    string
 	ServerVersion int
 	IsSubtask     bool
+	RawVTODO      string
 }
 
 // ListTodayTasks returns tasks due today plus overdue tasks.
@@ -93,7 +94,8 @@ scoped_tasks AS (
 		t.label_names,
 		t.sync_status,
 		t.server_version,
-		t.parent_id
+		t.parent_id,
+		COALESCE(t.raw_vtodo, '') AS raw_vtodo
 	FROM tasks t
 )
 SELECT
@@ -109,7 +111,8 @@ SELECT
 	COALESCE(t.label_names, ''),
 	t.sync_status,
 	t.server_version,
-	t.parent_id IS NOT NULL
+	t.parent_id IS NOT NULL,
+	t.raw_vtodo
 FROM scoped_tasks t
 CROSS JOIN cfg
 WHERE 1=1
@@ -124,7 +127,7 @@ LIMIT ?;`, limit)
 	results := make([]DatedTaskViewRow, 0, limit)
 	for rows.Next() {
 		var row DatedTaskViewRow
-		if err := rows.Scan(&row.ID, &row.ProjectID, &row.Title, &row.Description, &row.Status, &row.ProjectName, &row.DueISODate, &row.Priority, &row.HasPriority, &row.LabelNames, &row.SyncStatus, &row.ServerVersion, &row.IsSubtask); err != nil {
+		if err := rows.Scan(&row.ID, &row.ProjectID, &row.Title, &row.Description, &row.Status, &row.ProjectName, &row.DueISODate, &row.Priority, &row.HasPriority, &row.LabelNames, &row.SyncStatus, &row.ServerVersion, &row.IsSubtask, &row.RawVTODO); err != nil {
 			return nil, fmt.Errorf("list simple system tasks: scan row: %w", err)
 		}
 		results = append(results, row)
@@ -173,7 +176,8 @@ scoped_tasks AS (
 		t.label_names,
 		t.sync_status,
 		t.server_version,
-		t.parent_id
+		t.parent_id,
+		COALESCE(t.raw_vtodo, '') AS raw_vtodo
 	FROM tasks t
 )
 SELECT
@@ -189,7 +193,8 @@ SELECT
 	COALESCE(t.label_names, ''),
 	t.sync_status,
 	t.server_version,
-	t.parent_id IS NOT NULL
+	t.parent_id IS NOT NULL,
+	t.raw_vtodo
 FROM scoped_tasks t
 CROSS JOIN cfg
 WHERE
@@ -207,7 +212,7 @@ LIMIT ?;
 	results := make([]DatedTaskViewRow, 0, limit)
 	for rows.Next() {
 		var row DatedTaskViewRow
-		if err := rows.Scan(&row.ID, &row.ProjectID, &row.Title, &row.Description, &row.Status, &row.ProjectName, &row.DueISODate, &row.Priority, &row.HasPriority, &row.LabelNames, &row.SyncStatus, &row.ServerVersion, &row.IsSubtask); err != nil {
+		if err := rows.Scan(&row.ID, &row.ProjectID, &row.Title, &row.Description, &row.Status, &row.ProjectName, &row.DueISODate, &row.Priority, &row.HasPriority, &row.LabelNames, &row.SyncStatus, &row.ServerVersion, &row.IsSubtask, &row.RawVTODO); err != nil {
 			return nil, fmt.Errorf("list date scoped tasks: scan row: %w", err)
 		}
 		results = append(results, row)

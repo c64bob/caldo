@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
+	"unicode"
 
 	"caldo/internal/model"
 )
@@ -25,6 +27,7 @@ type TaskRowView struct {
 	HasPriority    bool
 	ServerVersion  int
 	IsSubtask      bool
+	RRule          string
 	Attachments    []model.Attachment
 	ProjectOptions []TaskProjectOption
 }
@@ -47,6 +50,22 @@ type InlineTaskCreateView struct {
 type taskRowChip struct {
 	Label string
 	Class string
+}
+
+type taskRecurrenceEditor struct {
+	Editable  bool
+	Label     string
+	Frequency string
+	Interval  string
+	ByDay     string
+	End       string
+	Until     string
+	Count     string
+}
+
+type taskSelectOption struct {
+	Value string
+	Label string
 }
 
 func taskRowTitle(task TaskRowView) string {
@@ -91,6 +110,24 @@ func taskEditPath(task TaskRowView) string {
 	return "/tasks/" + url.PathEscape(strings.TrimSpace(task.ID))
 }
 
+func taskDOMID(prefix string, task TaskRowView) string {
+	id := strings.TrimSpace(task.ID)
+	if id == "" {
+		id = "task"
+	}
+	builder := strings.Builder{}
+	builder.WriteString(prefix)
+	builder.WriteString("-")
+	for _, r := range id {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' {
+			builder.WriteRune(r)
+			continue
+		}
+		builder.WriteRune('-')
+	}
+	return builder.String()
+}
+
 func taskCSRFHeaders(ctx context.Context) string {
 	encoded, err := json.Marshal(map[string]string{"X-CSRF-Token": CSRFToken(ctx)})
 	if err != nil {
@@ -128,6 +165,27 @@ func taskCanToggleCompletion(task TaskRowView) bool {
 
 func taskCanInlineEdit(task TaskRowView) bool {
 	return taskCanToggleCompletion(task)
+}
+
+func taskCanOpenDetail(task TaskRowView) bool {
+	return strings.TrimSpace(task.ID) != "" && task.ServerVersion > 0
+}
+
+func taskCanDetailEdit(task TaskRowView) bool {
+	return taskCanInlineEdit(task)
+}
+
+func taskDetailStatusMessage(task TaskRowView) string {
+	switch strings.ToLower(strings.TrimSpace(task.SyncStatus)) {
+	case "pending":
+		return "Änderung wird noch gespeichert."
+	case "error":
+		return "Letzter Schreibversuch ist fehlgeschlagen. Die Aufgabe ist nicht als gespeichert markiert."
+	case "conflict":
+		return "Für diese Aufgabe liegt ein Konflikt vor. Änderungen sind bis zur Konfliktlösung gesperrt."
+	default:
+		return ""
+	}
 }
 
 func taskMetaChips(task TaskRowView) []taskRowChip {
@@ -200,6 +258,208 @@ func taskProjectOptions(task TaskRowView) []TaskProjectOption {
 		options = append([]TaskProjectOption{{ID: task.ProjectID, Name: task.ProjectName}}, options...)
 	}
 	return options
+}
+
+func taskRecurrence(task TaskRowView) taskRecurrenceEditor {
+	rule := strings.TrimSpace(task.RRule)
+	if rule == "" {
+		return taskRecurrenceEditor{
+			Editable:  true,
+			Label:     "Keine",
+			Frequency: "NONE",
+			Interval:  "1",
+			ByDay:     "MO",
+			End:       "never",
+		}
+	}
+
+	parts, ok := parseRRuleParts(rule)
+	if !ok || model.IsComplexRRule(rule) {
+		return taskReadOnlyRecurrence(rule)
+	}
+
+	frequency := strings.ToUpper(parts["FREQ"])
+	if frequency == "" {
+		return taskReadOnlyRecurrence(rule)
+	}
+	editor := taskRecurrenceEditor{
+		Editable:  true,
+		Label:     taskRRuleLabel(parts),
+		Frequency: frequency,
+		Interval:  parts["INTERVAL"],
+		ByDay:     "MO",
+		End:       "never",
+	}
+	if editor.Interval == "" {
+		editor.Interval = "1"
+	}
+
+	if byDay := strings.ToUpper(strings.TrimSpace(parts["BYDAY"])); byDay != "" {
+		switch {
+		case frequency == "WEEKLY" && byDay == "MO,TU,WE,TH,FR":
+			editor.Frequency = "WEEKDAYS"
+		case frequency == "WEEKLY" && taskIsSingleSupportedByDay(byDay):
+			editor.Frequency = "BYDAY"
+			editor.ByDay = byDay
+		default:
+			return taskReadOnlyRecurrence(rule)
+		}
+	}
+
+	if until := strings.TrimSpace(parts["UNTIL"]); until != "" {
+		editor.End = "until"
+		editor.Until = taskRRuleUntilDate(until)
+		if editor.Until == "" {
+			return taskReadOnlyRecurrence(rule)
+		}
+	}
+	if count := strings.TrimSpace(parts["COUNT"]); count != "" {
+		if editor.End == "until" {
+			return taskReadOnlyRecurrence(rule)
+		}
+		editor.End = "count"
+		editor.Count = count
+	}
+
+	return editor
+}
+
+func taskReadOnlyRecurrence(rule string) taskRecurrenceEditor {
+	return taskRecurrenceEditor{
+		Editable: false,
+		Label:    "RRULE: " + strings.TrimSpace(rule),
+	}
+}
+
+func parseRRuleParts(rule string) (map[string]string, bool) {
+	parts := strings.Split(rule, ";")
+	result := make(map[string]string, len(parts))
+	for _, rawPart := range parts {
+		part := strings.TrimSpace(rawPart)
+		if part == "" {
+			continue
+		}
+		key, value, ok := strings.Cut(part, "=")
+		if !ok {
+			return nil, false
+		}
+		key = strings.ToUpper(strings.TrimSpace(key))
+		value = strings.ToUpper(strings.TrimSpace(value))
+		if key == "" || value == "" {
+			return nil, false
+		}
+		result[key] = value
+	}
+	return result, true
+}
+
+func taskRRuleLabel(parts map[string]string) string {
+	frequency := strings.ToUpper(strings.TrimSpace(parts["FREQ"]))
+	byDay := strings.ToUpper(strings.TrimSpace(parts["BYDAY"]))
+	interval := strings.TrimSpace(parts["INTERVAL"])
+	base := "Wiederholt"
+	switch frequency {
+	case "DAILY":
+		base = "Täglich"
+	case "WEEKLY":
+		if byDay == "MO,TU,WE,TH,FR" {
+			base = "Werktags"
+		} else if taskIsSingleSupportedByDay(byDay) {
+			base = "Wöchentlich " + taskByDayLabel(byDay)
+		} else {
+			base = "Wöchentlich"
+		}
+	case "MONTHLY":
+		base = "Monatlich"
+	case "YEARLY":
+		base = "Jährlich"
+	}
+	if interval != "" && interval != "1" {
+		base += " · alle " + interval
+	}
+	if count := strings.TrimSpace(parts["COUNT"]); count != "" {
+		base += " · " + count + " mal"
+	}
+	if until := taskRRuleUntilDate(parts["UNTIL"]); until != "" {
+		base += " · bis " + until
+	}
+	return base
+}
+
+func taskRRuleUntilDate(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return ""
+	}
+	for _, layout := range []string{"20060102T150405Z", "20060102"} {
+		parsed, err := time.Parse(layout, trimmed)
+		if err == nil {
+			return parsed.UTC().Format("2006-01-02")
+		}
+	}
+	return ""
+}
+
+func taskIsSingleSupportedByDay(value string) bool {
+	switch strings.ToUpper(strings.TrimSpace(value)) {
+	case "MO", "TU", "WE", "TH", "FR", "SA", "SU":
+		return true
+	default:
+		return false
+	}
+}
+
+func taskByDayOptions() []taskSelectOption {
+	return []taskSelectOption{
+		{Value: "MO", Label: "Montag"},
+		{Value: "TU", Label: "Dienstag"},
+		{Value: "WE", Label: "Mittwoch"},
+		{Value: "TH", Label: "Donnerstag"},
+		{Value: "FR", Label: "Freitag"},
+		{Value: "SA", Label: "Samstag"},
+		{Value: "SU", Label: "Sonntag"},
+	}
+}
+
+func taskRecurrenceFrequencyOptions() []taskSelectOption {
+	return []taskSelectOption{
+		{Value: "NONE", Label: "Keine"},
+		{Value: "DAILY", Label: "Täglich"},
+		{Value: "WEEKLY", Label: "Wöchentlich"},
+		{Value: "WEEKDAYS", Label: "Werktags"},
+		{Value: "BYDAY", Label: "Wöchentlich am Wochentag"},
+		{Value: "MONTHLY", Label: "Monatlich"},
+		{Value: "YEARLY", Label: "Jährlich"},
+	}
+}
+
+func taskRecurrenceEndOptions() []taskSelectOption {
+	return []taskSelectOption{
+		{Value: "never", Label: "Nie"},
+		{Value: "until", Label: "Bis Datum"},
+		{Value: "count", Label: "Nach Anzahl"},
+	}
+}
+
+func taskByDayLabel(value string) string {
+	switch strings.ToUpper(strings.TrimSpace(value)) {
+	case "MO":
+		return "Montag"
+	case "TU":
+		return "Dienstag"
+	case "WE":
+		return "Mittwoch"
+	case "TH":
+		return "Donnerstag"
+	case "FR":
+		return "Freitag"
+	case "SA":
+		return "Samstag"
+	case "SU":
+		return "Sonntag"
+	default:
+		return ""
+	}
 }
 
 func taskStateChips(task TaskRowView) []taskRowChip {

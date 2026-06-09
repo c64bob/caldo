@@ -607,20 +607,24 @@
 		text-decoration-color: var(--caldo-accent);
 	}
 
-	.caldo-task-edit-open {
+	.caldo-task-edit-open,
+	.caldo-task-detail-open {
 		@apply shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium transition;
 		color: var(--caldo-text-subtle);
 	}
 
 	.caldo-task-edit-open:hover,
-	.caldo-task-edit-open:focus-visible {
+	.caldo-task-edit-open:focus-visible,
+	.caldo-task-detail-open:hover,
+	.caldo-task-detail-open:focus-visible {
 		background: var(--caldo-surface-muted);
 		color: var(--caldo-accent);
 		outline: 2px solid transparent;
 		outline-offset: 2px;
 	}
 
-	.caldo-task-edit-open:focus-visible {
+	.caldo-task-edit-open:focus-visible,
+	.caldo-task-detail-open:focus-visible {
 		outline-color: var(--caldo-focus);
 	}
 
@@ -678,6 +682,146 @@
 
 	.caldo-task-edit-actions {
 		@apply flex min-w-0 flex-wrap items-center gap-2;
+	}
+
+	.caldo-task-detail-dialog {
+		@apply m-0 max-h-none w-full max-w-none overflow-hidden rounded-none border-0 p-0;
+		background: var(--caldo-surface);
+		color: var(--caldo-text);
+		height: 100dvh;
+		inset: 0 0 0 auto;
+		width: min(100vw, 34rem);
+	}
+
+	@media (max-width: 639px) {
+		.caldo-task-detail-dialog {
+			@apply rounded-md border;
+			border-color: var(--caldo-border-strong);
+			height: calc(100dvh - 0.5rem);
+			inset: auto;
+			margin: 0.25rem;
+			width: calc(100vw - 0.5rem);
+		}
+	}
+
+	.caldo-task-detail-dialog::backdrop {
+		background: rgb(0 0 0 / 0.35);
+	}
+
+	.caldo-task-detail-shell {
+		@apply flex h-full min-h-0 min-w-0 flex-col;
+	}
+
+	.caldo-task-detail-header {
+		@apply flex min-w-0 shrink-0 items-start gap-3 border-b px-4 py-3;
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-task-detail-heading {
+		@apply min-w-0 flex-1 space-y-1;
+	}
+
+	.caldo-task-detail-title {
+		@apply text-lg font-semibold leading-6 tracking-normal;
+		color: var(--caldo-text);
+		overflow-wrap: anywhere;
+	}
+
+	.caldo-task-detail-close {
+		@apply shrink-0 text-lg leading-none;
+	}
+
+	.caldo-task-detail-state {
+		@apply flex min-w-0 shrink-0 flex-wrap items-center gap-1.5 border-b px-4 py-2;
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-task-detail-status,
+	.caldo-task-detail-error {
+		@apply mx-4 mt-3 shrink-0;
+	}
+
+	.caldo-task-detail-form {
+		@apply min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto px-4 py-4;
+	}
+
+	.caldo-task-detail-field {
+		@apply min-w-0 space-y-1 text-xs font-medium;
+		color: var(--caldo-text-muted);
+	}
+
+	.caldo-task-detail-field .caldo-input,
+	.caldo-task-detail-field .caldo-select {
+		@apply mt-0;
+	}
+
+	.caldo-task-detail-title-input,
+	.caldo-task-detail-description {
+		overflow-wrap: anywhere;
+	}
+
+	.caldo-task-detail-grid {
+		@apply grid min-w-0 gap-3;
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	@media (min-width: 640px) {
+		.caldo-task-detail-grid {
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		}
+	}
+
+	.caldo-task-detail-field-wide {
+		@apply min-w-0;
+	}
+
+	@media (min-width: 640px) {
+		.caldo-task-detail-field-wide {
+			grid-column: 1 / -1;
+		}
+	}
+
+	.caldo-task-detail-static {
+		@apply block min-h-9 rounded border px-3 py-2 text-sm font-normal leading-5;
+		background: var(--caldo-surface-muted);
+		border-color: var(--caldo-border);
+		color: var(--caldo-text);
+		overflow-wrap: anywhere;
+	}
+
+	.caldo-task-detail-section {
+		@apply min-w-0 space-y-3 border-t pt-4;
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-task-detail-section-heading {
+		@apply flex min-w-0 items-center justify-between gap-3;
+	}
+
+	.caldo-task-detail-section-heading h3 {
+		@apply text-sm font-semibold leading-5 tracking-normal;
+		color: var(--caldo-text);
+	}
+
+	.caldo-task-detail-attachments {
+		@apply min-w-0 space-y-2;
+	}
+
+	.caldo-task-detail-attachment-link {
+		@apply block min-w-0 max-w-full rounded-sm text-sm leading-5 underline decoration-transparent underline-offset-2 transition;
+		color: var(--caldo-text-muted);
+		overflow-wrap: anywhere;
+	}
+
+	.caldo-task-detail-attachment-link:hover,
+	.caldo-task-detail-attachment-link:focus-visible {
+		color: var(--caldo-accent);
+		text-decoration-color: var(--caldo-accent);
+	}
+
+	.caldo-task-detail-actions {
+		@apply flex min-w-0 flex-wrap items-center gap-2 border-t pt-4;
+		border-color: var(--caldo-border);
 	}
 
 	.caldo-inline-create {

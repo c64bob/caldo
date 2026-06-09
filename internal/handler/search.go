@@ -33,6 +33,7 @@ func Search(deps searchDependencies) http.HandlerFunc {
 
 		items := make([]view.TaskRowView, 0, len(results))
 		for _, result := range results {
+			fields := model.ParseVTODOFields(result.RawVTODO)
 			items = append(items, view.TaskRowView{
 				ID:             result.ID,
 				ProjectID:      result.ProjectID,
@@ -46,7 +47,8 @@ func Search(deps searchDependencies) http.HandlerFunc {
 				Priority:       result.Priority,
 				HasPriority:    result.HasPriority,
 				ServerVersion:  result.ServerVersion,
-				Attachments:    model.ParseVTODOFields(result.RawVTODO).Attachments,
+				RRule:          fields.RRule,
+				Attachments:    fields.Attachments,
 				ProjectOptions: projectOptions,
 			})
 		}

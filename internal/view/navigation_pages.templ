@@ -1,0 +1,24 @@
+package view
+
+templ NavigationOverviewPage(heading string, emptyTitle string, items []NavigationOverviewItem) {
+	<section class="caldo-page">
+		<h2 class="caldo-page-title">{ heading }</h2>
+		if len(items) == 0 {
+			@EmptyState(emptyTitle, "Die Gruppe ist eingerichtet, enthält aber noch keine Einträge.")
+		} else {
+			<ul class="caldo-list" data-navigation-overview>
+				for _, item := range items {
+					<li class="caldo-list-row">
+						<a class="caldo-list-link" href={ templ.URL(item.Href) }>{ item.Name }</a>
+						<p class="caldo-meta mt-1">
+							{ item.Meta }
+							if item.HasCount {
+								 · { navCountText(item.Count) } offen
+							}
+						</p>
+					</li>
+				}
+			</ul>
+		}
+	</section>
+}

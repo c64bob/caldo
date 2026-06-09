@@ -19,7 +19,7 @@ func Conflicts(deps conflictDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		results, err := deps.database.ListUnresolvedConflicts(r.Context())
 		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			renderPageError(w, r, "Konflikte", "Konflikte laden", http.StatusInternalServerError)
 			return
 		}
 
@@ -37,10 +37,10 @@ func ConflictDetail(deps conflictDependencies) http.HandlerFunc {
 		detail, err := deps.database.GetUnresolvedConflictByID(r.Context(), conflictID)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				http.NotFound(w, r)
+				renderPageError(w, r, "Konfliktdetail", "Konfliktdetail laden", http.StatusNotFound)
 				return
 			}
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			renderPageError(w, r, "Konfliktdetail", "Konfliktdetail laden", http.StatusInternalServerError)
 			return
 		}
 

@@ -6,7 +6,7 @@ templ DateScopedTasksPage(heading string, emptyMessage string, tasks []db.DatedT
 	<section class="caldo-page">
 		<h2 class="caldo-page-title">{ heading }</h2>
 		if len(tasks) == 0 {
-			<p class="caldo-muted">{ emptyMessage }</p>
+			@EmptyState(emptyMessage, "Es gibt in dieser Ansicht gerade nichts zu bearbeiten.")
 		} else {
 			<ul class="caldo-list" data-date-view-results>
 				for _, task := range tasks {

@@ -27,7 +27,7 @@ func SetupCalDAVContent(errorMessage string) templ.Component {
 		}
 
 		csrfToken := html.EscapeString(CSRFToken(ctx))
-		_, err = fmt.Fprintf(w, `<form class="mt-6 space-y-4" method="post" action="/setup/caldav" hx-post="/setup/caldav" hx-target="body" hx-swap="outerHTML" hx-push-url="false" hx-headers='{"X-CSRF-Token":"%s"}'>
+		_, err = fmt.Fprintf(w, `<form class="mt-6 space-y-4" method="post" action="/setup/caldav" hx-post="/setup/caldav" hx-target="body" hx-swap="outerHTML" hx-push-url="false" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
 			<div>
 				<label for="caldav_url" class="caldo-label">CalDAV-URL</label>
 				<input id="caldav_url" name="caldav_url" type="url" required class="caldo-input"/>
@@ -41,6 +41,7 @@ func SetupCalDAVContent(errorMessage string) templ.Component {
 				<input id="caldav_password" name="caldav_password" type="password" required class="caldo-input"/>
 			</div>
 			<button type="submit" class="caldo-button caldo-button-primary">Verbindung testen</button>
+			<span class="htmx-indicator caldo-meta ml-2" aria-live="polite">Verbindung wird getestet ...</span>
 		</form>
 	</section>`, csrfToken)
 		return err
@@ -79,7 +80,7 @@ func SetupCalendarsContent(calendars []caldav.Calendar, errorMessage string, sel
 		}
 
 		csrfToken := html.EscapeString(CSRFToken(ctx))
-		if _, err := fmt.Fprintf(w, `<form class="mt-6 space-y-6" method="post" action="/setup/calendars" hx-post="/setup/calendars" hx-target="body" hx-swap="outerHTML" hx-push-url="false" hx-headers='{"X-CSRF-Token":"%s"}'>`, csrfToken); err != nil {
+		if _, err := fmt.Fprintf(w, `<form class="mt-6 space-y-6" method="post" action="/setup/calendars" hx-post="/setup/calendars" hx-target="body" hx-swap="outerHTML" hx-push-url="false" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>`, csrfToken); err != nil {
 			return err
 		}
 
@@ -127,6 +128,7 @@ func SetupCalendarsContent(calendars []caldav.Calendar, errorMessage string, sel
 <p class="caldo-meta">Wenn gesetzt, wird ein neuer CalDAV-Kalender angelegt und als Default-Projekt verwendet.</p>
 </div>
 <button type="submit" class="caldo-button caldo-button-primary">Weiter zum Import</button>
+<span class="htmx-indicator caldo-meta ml-2" aria-live="polite">Speichern ...</span>
 </form>
 </section>`); err != nil {
 			return err

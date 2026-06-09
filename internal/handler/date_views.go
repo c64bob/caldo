@@ -27,7 +27,7 @@ func Today(deps dateViewDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		results, err := deps.database.ListTodayTasks(r.Context(), nowFn(), 200)
 		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			renderPageError(w, r, "Heute", "Heute laden", http.StatusInternalServerError)
 			return
 		}
 
@@ -45,7 +45,7 @@ func Upcoming(deps dateViewDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		results, err := deps.database.ListUpcomingTasks(r.Context(), nowFn(), 200)
 		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			renderPageError(w, r, "Demnächst", "Demnächst laden", http.StatusInternalServerError)
 			return
 		}
 
@@ -63,7 +63,7 @@ func Overdue(deps dateViewDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		results, err := deps.database.ListOverdueTasks(r.Context(), nowFn(), 200)
 		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			renderPageError(w, r, "Überfällig", "Überfällig laden", http.StatusInternalServerError)
 			return
 		}
 
@@ -79,7 +79,7 @@ func Favorites(deps dateViewDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		results, err := deps.database.ListFavoriteTasks(r.Context(), 200)
 		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			renderPageError(w, r, "Favoriten", "Favoriten laden", http.StatusInternalServerError)
 			return
 		}
 
@@ -95,7 +95,7 @@ func NoDate(deps dateViewDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		results, err := deps.database.ListNoDateTasks(r.Context(), 200)
 		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			renderPageError(w, r, "Ohne Datum", "Ohne Datum laden", http.StatusInternalServerError)
 			return
 		}
 
@@ -111,7 +111,7 @@ func Completed(deps dateViewDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		results, err := deps.database.ListCompletedTasks(r.Context(), 200)
 		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			renderPageError(w, r, "Erledigt", "Erledigte Aufgaben laden", http.StatusInternalServerError)
 			return
 		}
 

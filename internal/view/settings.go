@@ -26,19 +26,21 @@ func SettingsPageContent(settings db.AppSettings, proxyUserHeader string, httpsC
 </div>
 <div class="caldo-card">
 <h3 class="font-medium">Sync</h3>
-<form class="mt-3 space-y-2" method="post" action="/settings/sync" hx-post="/settings/sync" hx-headers='{"X-CSRF-Token":"%s"}'>
+<form class="mt-3 space-y-2" method="post" action="/settings/sync" hx-post="/settings/sync" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
 <label class="caldo-label">Intervall (Minuten)
 <input class="caldo-input w-32" type="number" min="1" name="sync_interval_minutes" value="%d">
 </label>
 <button type="submit" class="caldo-button caldo-button-secondary">Sync-Einstellungen speichern</button>
+<span class="htmx-indicator caldo-meta ml-2" aria-live="polite">Speichern ...</span>
 </form>
-<form class="mt-3" method="post" action="/sync/manual" hx-post="/sync/manual" hx-headers='{"X-CSRF-Token":"%s"}'>
+<form class="mt-3" method="post" action="/sync/manual" hx-post="/sync/manual" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
 <button type="submit" class="caldo-button caldo-button-primary">Jetzt synchronisieren</button>
+<span class="htmx-indicator caldo-meta ml-2" aria-live="polite">Synchronisieren ...</span>
 </form>
 </div>
 <div class="caldo-card">
 <h3 class="font-medium">UI</h3>
-<form class="mt-3 space-y-3 text-sm" method="post" action="/settings/ui" hx-post="/settings/ui" hx-headers='{"X-CSRF-Token":"%s"}'>
+<form class="mt-3 space-y-3 text-sm" method="post" action="/settings/ui" hx-post="/settings/ui" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
 <label class="flex items-center gap-2"><input class="caldo-check" type="checkbox" name="show_completed" %s> Erledigte Aufgaben anzeigen</label>
 <label class="caldo-label">Demnächst-Zeitraum (Tage)
 <input class="caldo-input w-32" type="number" min="1" name="upcoming_days" value="%d">
@@ -57,6 +59,7 @@ func SettingsPageContent(settings db.AppSettings, proxyUserHeader string, httpsC
 </select>
 </label>
 <button type="submit" class="caldo-button caldo-button-secondary">UI-Einstellungen speichern</button>
+<span class="htmx-indicator caldo-meta ml-2" aria-live="polite">Speichern ...</span>
 </form>
 </div>
 <div class="caldo-card text-sm">

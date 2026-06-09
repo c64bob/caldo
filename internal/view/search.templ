@@ -20,9 +20,9 @@ templ SearchPage(query string, results []SearchResultView) {
 			<p class="caldo-muted">Tastaturkürzel: Alt+Shift+K (Browser-Standard für accesskey).</p>
 		</form>
 		if strings.TrimSpace(query) == "" {
-			<p class="caldo-muted">Gib einen Suchbegriff ein.</p>
+			@EmptyState("Noch keine Suche", "Gib einen Suchbegriff ein.")
 		} else if len(results) == 0 {
-			<p class="caldo-muted">Keine aktiven Aufgaben gefunden.</p>
+			@EmptyState("Keine aktiven Aufgaben gefunden", "Passe den Suchbegriff oder Projekt- und Labeltokens an.")
 		} else {
 			<ul class="caldo-list" data-search-results>
 				for _, result := range results {

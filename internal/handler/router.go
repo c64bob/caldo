@@ -35,6 +35,7 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 	router.Use(ReverseProxyAuthMiddleware(proxyUserHeader))
 	router.Use(SetupGateMiddleware(setupState, manifest))
 	router.Use(AssetManifestMiddleware(manifest))
+	router.Use(navigationMiddleware(database, setupState))
 
 	router.Get("/health", Health)
 	router.Get("/", Home)
@@ -45,9 +46,8 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 	router.Get("/no-date", NoDate(dateViewDependencies{database: database}))
 	router.Get("/completed", Completed(dateViewDependencies{database: database}))
 	router.Get("/search", Search(searchDependencies{database: database}))
-	router.Get("/projects", ProjectsPage())
-	router.Get("/labels", LabelsPage())
-	router.Get("/filters", FiltersPage())
+	router.Get("/labels", LabelsPage(database))
+	router.Get("/filters", FiltersPage(database))
 	router.Get("/settings", SettingsPage(database, proxyUserHeader))
 	router.With(SetupCSRFMiddleware(csrfSecret)).Post("/settings/sync", SettingsSyncUpdate(database))
 	router.With(SetupCSRFMiddleware(csrfSecret)).Post("/settings/ui", SettingsUIUpdate(database))
@@ -119,25 +119,28 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 	})
 
 	router.Route("/projects", func(projectRouter chi.Router) {
-		projectRouter.Use(SetupCSRFMiddleware(csrfSecret))
-		projectRouter.Post("/", ProjectCreate(projectCreateDependencies{
-			database:      database,
-			encryptionKey: csrfSecret,
-			calendar:      caldav.NewCalendarClient(nil),
-			broker:        syncBroker,
-		}))
-		projectRouter.Patch("/{projectID}", ProjectRename(projectRenameDependencies{
-			database:      database,
-			encryptionKey: csrfSecret,
-			calendar:      caldav.NewCalendarClient(nil),
-			broker:        syncBroker,
-		}))
-		projectRouter.Delete("/{projectID}", ProjectDelete(projectDeleteDependencies{
-			database:      database,
-			encryptionKey: csrfSecret,
-			calendar:      caldav.NewCalendarClient(nil),
-			broker:        syncBroker,
-		}))
+		projectRouter.Get("/", ProjectsPage(database))
+		projectRouter.Group(func(mutatingProjectRouter chi.Router) {
+			mutatingProjectRouter.Use(SetupCSRFMiddleware(csrfSecret))
+			mutatingProjectRouter.Post("/", ProjectCreate(projectCreateDependencies{
+				database:      database,
+				encryptionKey: csrfSecret,
+				calendar:      caldav.NewCalendarClient(nil),
+				broker:        syncBroker,
+			}))
+			mutatingProjectRouter.Patch("/{projectID}", ProjectRename(projectRenameDependencies{
+				database:      database,
+				encryptionKey: csrfSecret,
+				calendar:      caldav.NewCalendarClient(nil),
+				broker:        syncBroker,
+			}))
+			mutatingProjectRouter.Delete("/{projectID}", ProjectDelete(projectDeleteDependencies{
+				database:      database,
+				encryptionKey: csrfSecret,
+				calendar:      caldav.NewCalendarClient(nil),
+				broker:        syncBroker,
+			}))
+		})
 	})
 
 	router.Route("/sync", func(syncRouter chi.Router) {

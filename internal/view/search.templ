@@ -2,7 +2,7 @@ package view
 
 import "strings"
 
-templ SearchPage(query string, results []TaskRowView) {
+templ SearchPage(query string, results []TaskRowView, create InlineTaskCreateView) {
 	<section class="caldo-page">
 		<h2 class="caldo-page-title">Globale Suche</h2>
 		<form method="get" action="/search" class="space-y-2" role="search" aria-label="Globale Suche">
@@ -30,5 +30,6 @@ templ SearchPage(query string, results []TaskRowView) {
 				}
 			</ul>
 		}
+		@InlineTaskCreate(create)
 	</section>
 }

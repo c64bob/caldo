@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -43,8 +44,41 @@ func Search(deps searchDependencies) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout("Suche", view.SearchPage(query, items)).Render(r.Context(), w); err != nil {
+		create := inlineCreateForSearch(r.Context(), deps.database, query)
+		if err := view.BaseLayout("Suche", view.SearchPage(query, items, create)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
+}
+
+func inlineCreateForSearch(ctx context.Context, database *db.Database, query string) view.InlineTaskCreateView {
+	if database == nil {
+		return view.InlineTaskCreateView{}
+	}
+	projectName, ok := projectOnlySearchQuery(query)
+	if !ok {
+		return view.InlineTaskCreateView{}
+	}
+	project, err := database.LoadProjectByName(ctx, projectName)
+	if err != nil {
+		return view.InlineTaskCreateView{}
+	}
+	return view.InlineTaskCreateView{
+		Enabled:     true,
+		ProjectID:   project.ID,
+		ProjectName: project.DisplayName,
+		Placeholder: "Aufgabe in " + project.DisplayName + " hinzufügen",
+	}
+}
+
+func projectOnlySearchQuery(query string) (string, bool) {
+	trimmed := strings.TrimSpace(query)
+	if !strings.HasPrefix(trimmed, "#") {
+		return "", false
+	}
+	projectName := strings.TrimSpace(strings.TrimPrefix(trimmed, "#"))
+	if projectName == "" || strings.Contains(projectName, "#") || strings.Contains(projectName, "@") {
+		return "", false
+	}
+	return projectName, true
 }

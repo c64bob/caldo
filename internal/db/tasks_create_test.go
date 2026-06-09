@@ -62,6 +62,11 @@ func TestInsertPendingTaskAndStatusTransitions(t *testing.T) {
 		UID:         "uid-1",
 		Href:        "/cal/inbox/uid-1.ics",
 		Title:       "Task title",
+		Description: "Task description",
+		DueDate:     sql.NullString{String: "2026-06-09", Valid: true},
+		Priority:    sql.NullInt64{Int64: 1, Valid: true},
+		RRule:       "FREQ=WEEKLY;BYDAY=MO",
+		LabelNames:  sql.NullString{String: "home,work", Valid: true},
 		RawVTODO:    "BEGIN:VCALENDAR\nEND:VCALENDAR",
 	})
 	if err != nil {
@@ -79,11 +84,26 @@ func TestInsertPendingTaskAndStatusTransitions(t *testing.T) {
 	var syncStatus string
 	var etag sql.NullString
 	var serverVersion int
-	if err := database.Conn.QueryRowContext(context.Background(), `SELECT sync_status, etag, server_version FROM tasks WHERE id = ?;`, taskID).Scan(&syncStatus, &etag, &serverVersion); err != nil {
+	var description sql.NullString
+	var dueDate sql.NullString
+	var priority sql.NullInt64
+	var rrule sql.NullString
+	var labelNames sql.NullString
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT sync_status, etag, server_version, description, date(due_date), priority, rrule, label_names FROM tasks WHERE id = ?;`, taskID).Scan(&syncStatus, &etag, &serverVersion, &description, &dueDate, &priority, &rrule, &labelNames); err != nil {
 		t.Fatalf("query task: %v", err)
 	}
 	if syncStatus != "synced" || !etag.Valid || etag.String != `"etag-1"` || serverVersion != 2 {
 		t.Fatalf("unexpected synced state: status=%q etag=%q version=%d", syncStatus, etag.String, serverVersion)
+	}
+	if !description.Valid || description.String != "Task description" || !dueDate.Valid || dueDate.String != "2026-06-09" || !priority.Valid || priority.Int64 != 1 || !rrule.Valid || rrule.String != "FREQ=WEEKLY;BYDAY=MO" || !labelNames.Valid || labelNames.String != "home,work" {
+		t.Fatalf("unexpected denormalized create fields: description=%#v due=%#v priority=%#v rrule=%#v labels=%#v", description, dueDate, priority, rrule, labelNames)
+	}
+	var labelCount int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM task_labels WHERE task_id = ?;`, taskID).Scan(&labelCount); err != nil {
+		t.Fatalf("query task labels: %v", err)
+	}
+	if labelCount != 2 {
+		t.Fatalf("unexpected task label count: got %d want 2", labelCount)
 	}
 
 	if err := database.MarkTaskCreateError(context.Background(), taskID); err != nil {

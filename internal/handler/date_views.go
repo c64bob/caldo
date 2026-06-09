@@ -25,14 +25,16 @@ func Today(deps dateViewDependencies) http.HandlerFunc {
 	nowFn := withDefaultNow(deps.now)
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		results, err := deps.database.ListTodayTasks(r.Context(), nowFn(), 200)
+		reference := nowFn()
+		results, err := deps.database.ListTodayTasks(r.Context(), reference, 200)
 		if err != nil {
 			renderPageError(w, r, "Heute", "Heute laden", http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout("Heute", view.DateScopedTasksPage("Heute", "Keine fälligen oder überfälligen Aufgaben.", datedTaskRows(results))).Render(r.Context(), w); err != nil {
+		create := inlineCreateForDate("Aufgabe für heute hinzufügen", reference)
+		if err := view.BaseLayout("Heute", view.DateScopedTasksPage("Heute", "Keine fälligen oder überfälligen Aufgaben.", datedTaskRows(results), create)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -43,14 +45,16 @@ func Upcoming(deps dateViewDependencies) http.HandlerFunc {
 	nowFn := withDefaultNow(deps.now)
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		results, err := deps.database.ListUpcomingTasks(r.Context(), nowFn(), 200)
+		reference := nowFn()
+		results, err := deps.database.ListUpcomingTasks(r.Context(), reference, 200)
 		if err != nil {
 			renderPageError(w, r, "Demnächst", "Demnächst laden", http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout("Demnächst", view.DateScopedTasksPage("Demnächst", "Keine demnächst fälligen Aufgaben.", datedTaskRows(results))).Render(r.Context(), w); err != nil {
+		create := inlineCreateForDate("Aufgabe für demnächst hinzufügen", reference.AddDate(0, 0, 1))
+		if err := view.BaseLayout("Demnächst", view.DateScopedTasksPage("Demnächst", "Keine demnächst fälligen Aufgaben.", datedTaskRows(results), create)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -68,7 +72,7 @@ func Overdue(deps dateViewDependencies) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout("Überfällig", view.DateScopedTasksPage("Überfällig", "Keine überfälligen Aufgaben.", datedTaskRows(results))).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Überfällig", view.DateScopedTasksPage("Überfällig", "Keine überfälligen Aufgaben.", datedTaskRows(results), view.InlineTaskCreateView{})).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -84,7 +88,7 @@ func Favorites(deps dateViewDependencies) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout("Favoriten", view.DateScopedTasksPage("Favoriten", "Keine favorisierten Aufgaben.", datedTaskRows(results))).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Favoriten", view.DateScopedTasksPage("Favoriten", "Keine favorisierten Aufgaben.", datedTaskRows(results), view.InlineTaskCreateView{})).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -100,7 +104,8 @@ func NoDate(deps dateViewDependencies) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout("Ohne Datum", view.DateScopedTasksPage("Ohne Datum", "Keine Aufgaben ohne Datum.", datedTaskRows(results))).Render(r.Context(), w); err != nil {
+		create := view.InlineTaskCreateView{Enabled: true, Placeholder: "Aufgabe ohne Datum hinzufügen"}
+		if err := view.BaseLayout("Ohne Datum", view.DateScopedTasksPage("Ohne Datum", "Keine Aufgaben ohne Datum.", datedTaskRows(results), create)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -116,9 +121,17 @@ func Completed(deps dateViewDependencies) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout("Erledigt", view.DateScopedTasksPage("Erledigte Aufgaben", "Erledigte Aufgaben sind ausgeblendet.", datedTaskRows(results))).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Erledigt", view.DateScopedTasksPage("Erledigte Aufgaben", "Erledigte Aufgaben sind ausgeblendet.", datedTaskRows(results), view.InlineTaskCreateView{})).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
+	}
+}
+
+func inlineCreateForDate(placeholder string, dueDate time.Time) view.InlineTaskCreateView {
+	return view.InlineTaskCreateView{
+		Enabled:     true,
+		DueDate:     dueDate.UTC().Format("2006-01-02"),
+		Placeholder: placeholder,
 	}
 }
 

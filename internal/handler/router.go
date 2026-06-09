@@ -35,6 +35,7 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 	router.Use(ReverseProxyAuthMiddleware(proxyUserHeader))
 	router.Use(SetupGateMiddleware(setupState, manifest))
 	router.Use(AssetManifestMiddleware(manifest))
+	router.Use(CSRFTokenMiddleware(csrfSecret))
 	router.Use(navigationMiddleware(database, setupState))
 
 	router.Get("/health", Health)

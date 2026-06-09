@@ -35,6 +35,12 @@ type NewTaskInput struct {
 	UID         string
 	Href        string
 	Title       string
+	Description string
+	DueDate     sql.NullString
+	DueAt       sql.NullTime
+	Priority    sql.NullInt64
+	RRule       string
+	LabelNames  sql.NullString
 	ParentID    string
 	RawVTODO    string
 }
@@ -99,12 +105,25 @@ func (d *Database) InsertPendingTask(ctx context.Context, input NewTaskInput) (s
 	d.WriteMu.Lock()
 	defer d.WriteMu.Unlock()
 
-	if _, err := d.Conn.ExecContext(ctx, `
+	tx, err := d.Conn.BeginTx(ctx, nil)
+	if err != nil {
+		return "", fmt.Errorf("insert pending task: begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx, `
 INSERT INTO tasks (
-    id, project_id, uid, href, title, status, parent_id, raw_vtodo, base_vtodo, project_name, sync_status, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, 'needs-action', ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
-`, taskID, input.ProjectID, input.UID, input.Href, input.Title, nullableString(input.ParentID), input.RawVTODO, input.RawVTODO, nullableString(input.ProjectName)); err != nil {
+    id, project_id, uid, href, title, description, status, due_date, due_at, priority, rrule,
+    parent_id, raw_vtodo, base_vtodo, label_names, project_name, sync_status, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, 'needs-action', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+`, taskID, input.ProjectID, input.UID, input.Href, input.Title, nullableString(input.Description), nullValue(input.DueDate), nullValue(input.DueAt), nullValue(input.Priority), nullableString(input.RRule), nullableString(input.ParentID), input.RawVTODO, input.RawVTODO, nullValue(input.LabelNames), nullableString(input.ProjectName)); err != nil {
 		return "", fmt.Errorf("insert pending task: insert task: %w", err)
+	}
+	if err := syncTaskLabels(ctx, tx, taskID, input.LabelNames); err != nil {
+		return "", fmt.Errorf("insert pending task: sync labels: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return "", fmt.Errorf("insert pending task: commit transaction: %w", err)
 	}
 
 	return taskID, nil

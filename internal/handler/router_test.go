@@ -102,9 +102,15 @@ func TestNewRouterRendersBaseLayoutOnRoot(t *testing.T) {
 	}
 
 	body := responseRecorder.Body.String()
+	csrfToken := responseRecorder.Header().Get(csrfHeaderName)
+	if csrfToken == "" {
+		t.Fatal("expected csrf token response header")
+	}
+	if !strings.Contains(body, `<meta name="csrf-token" content="`+csrfToken+`">`) {
+		t.Fatal("expected csrf token in base layout meta tag")
+	}
 	for _, want := range []string{
 		"<!doctype html>",
-		`<meta name="csrf-token" content="">`,
 		`id="notifications"`,
 		`data-theme-toggle`,
 		staticAssetPath(manifest, "htmx.min.js"),

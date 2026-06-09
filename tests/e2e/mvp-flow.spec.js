@@ -2,6 +2,7 @@ const { test, expect } = require('@playwright/test');
 const fs = require('node:fs');
 const {
   appFormRequest,
+  ensureBrowserCSRFCookie,
   expectNoSearchResult,
   expectSearchResult,
   gotoApp,
@@ -85,6 +86,23 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(page.locator('.caldo-topbar a[href="/search"]')).toBeVisible();
   await expect(page.locator('.caldo-topbar a[href="/quick-add"]')).toBeVisible();
   await page.setViewportSize(desktopViewport);
+
+  await gotoApp(page, '/search?q=%23Work');
+  const inlineTrigger = page.locator('[data-inline-task-create-trigger]');
+  await expect(inlineTrigger).toBeVisible();
+  await ensureBrowserCSRFCookie(page);
+  await inlineTrigger.click();
+  const inlineTitle = page.locator('[data-inline-task-create-title]');
+  await expect(inlineTitle).toBeFocused();
+  await inlineTitle.fill('E2E Inline Canceled');
+  await inlineTitle.press('Escape');
+  await expect(inlineTitle).toBeHidden();
+  await inlineTrigger.click();
+  await expect(inlineTitle).toHaveValue('');
+  await inlineTitle.fill('E2E Inline Created');
+  await inlineTitle.press('Enter');
+  await expect.poll(async () => page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Created' }).count()).toBe(1);
+  await waitForSearchResult(page, 'E2E Inline Created');
 
   const beforeCreate = await stageState();
   response = await appFormRequest(page, 'POST', '/tasks/', {

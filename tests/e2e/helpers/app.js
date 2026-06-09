@@ -27,6 +27,18 @@ async function appFormRequest(page, method, pathname, fields = {}, options = {})
   });
 }
 
+async function ensureBrowserCSRFCookie(page) {
+  const token = await currentCSRFToken(page);
+  // The app emits Secure CSRF cookies; e2e serves over local HTTP, so seed a browser cookie for HTMX writes.
+  await page.context().addCookies([{
+    name: 'caldo_csrf',
+    value: token,
+    url: appURL('/'),
+    httpOnly: true,
+    sameSite: 'Strict'
+  }]);
+}
+
 async function currentCSRFToken(page) {
   const token = await page.locator('meta[name="csrf-token"]').getAttribute('content');
   if (token) {
@@ -110,6 +122,7 @@ async function searchHasResults(page, title) {
 
 module.exports = {
   appFormRequest,
+  ensureBrowserCSRFCookie,
   expectNoSearchResult,
   expectSearchResult,
   gotoApp,

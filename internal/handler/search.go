@@ -24,15 +24,21 @@ func Search(deps searchDependencies) http.HandlerFunc {
 			return
 		}
 
-		items := make([]view.SearchResultView, 0, len(results))
+		items := make([]view.TaskRowView, 0, len(results))
 		for _, result := range results {
-			items = append(items, view.SearchResultView{
-				ID:          result.ID,
-				Title:       result.Title,
-				Description: result.Description,
-				ProjectName: result.ProjectName,
-				LabelNames:  result.LabelNames,
-				Attachments: model.ParseVTODOFields(result.RawVTODO).Attachments,
+			items = append(items, view.TaskRowView{
+				ID:            result.ID,
+				Title:         result.Title,
+				Description:   result.Description,
+				ProjectName:   result.ProjectName,
+				LabelNames:    result.LabelNames,
+				DueISODate:    result.DueISODate,
+				Status:        result.Status,
+				SyncStatus:    result.SyncStatus,
+				Priority:      result.Priority,
+				HasPriority:   result.HasPriority,
+				ServerVersion: result.ServerVersion,
+				Attachments:   model.ParseVTODOFields(result.RawVTODO).Attachments,
 			})
 		}
 

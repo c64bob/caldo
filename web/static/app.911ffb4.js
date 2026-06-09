@@ -2,6 +2,14 @@
   'use strict';
 
   var navState = { pendingView: null };
+  var tabID = newTabID();
+
+  function newTabID() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return window.crypto.randomUUID();
+    }
+    return 'tab-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+  }
 
   function isTypingTarget(target) {
     if (!target || !(target instanceof Element)) return false;
@@ -78,6 +86,20 @@
     }, 1200);
   }
 
+  function csrfToken() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') || '' : '';
+  }
+
+  document.body.addEventListener('htmx:configRequest', function (event) {
+    if (!event.detail || !event.detail.headers) return;
+    event.detail.headers['X-Tab-ID'] = tabID;
+    var token = csrfToken();
+    if (token && !event.detail.headers['X-CSRF-Token']) {
+      event.detail.headers['X-CSRF-Token'] = token;
+    }
+  });
+
   document.body.addEventListener('htmx:beforeRequest', function (event) {
     var method = ((event.detail && event.detail.requestConfig && event.detail.requestConfig.verb) || '').toUpperCase();
     if (!method || method === 'GET') return;
@@ -101,6 +123,10 @@
     if (writeState.pendingRequests === 0) {
       setWriteStatus('saved', 'Gespeichert');
       clearSavedStatusSoon();
+    }
+
+    if (closestElement(event.detail && event.detail.elt, '[data-refresh-after-write]')) {
+      window.location.reload();
     }
   });
 

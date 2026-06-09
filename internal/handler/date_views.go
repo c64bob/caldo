@@ -32,7 +32,7 @@ func Today(deps dateViewDependencies) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout("Heute", view.DateScopedTasksPage("Heute", "Keine fälligen oder überfälligen Aufgaben.", results)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Heute", view.DateScopedTasksPage("Heute", "Keine fälligen oder überfälligen Aufgaben.", datedTaskRows(results))).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -50,7 +50,7 @@ func Upcoming(deps dateViewDependencies) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout("Demnächst", view.DateScopedTasksPage("Demnächst", "Keine demnächst fälligen Aufgaben.", results)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Demnächst", view.DateScopedTasksPage("Demnächst", "Keine demnächst fälligen Aufgaben.", datedTaskRows(results))).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -68,7 +68,7 @@ func Overdue(deps dateViewDependencies) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout("Überfällig", view.DateScopedTasksPage("Überfällig", "Keine überfälligen Aufgaben.", results)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Überfällig", view.DateScopedTasksPage("Überfällig", "Keine überfälligen Aufgaben.", datedTaskRows(results))).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -84,7 +84,7 @@ func Favorites(deps dateViewDependencies) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout("Favoriten", view.DateScopedTasksPage("Favoriten", "Keine favorisierten Aufgaben.", results)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Favoriten", view.DateScopedTasksPage("Favoriten", "Keine favorisierten Aufgaben.", datedTaskRows(results))).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -100,7 +100,7 @@ func NoDate(deps dateViewDependencies) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout("Ohne Datum", view.DateScopedTasksPage("Ohne Datum", "Keine Aufgaben ohne Datum.", results)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Ohne Datum", view.DateScopedTasksPage("Ohne Datum", "Keine Aufgaben ohne Datum.", datedTaskRows(results))).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -116,8 +116,29 @@ func Completed(deps dateViewDependencies) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout("Erledigt", view.DateScopedTasksPage("Erledigte Aufgaben", "Erledigte Aufgaben sind ausgeblendet.", results)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Erledigt", view.DateScopedTasksPage("Erledigte Aufgaben", "Erledigte Aufgaben sind ausgeblendet.", datedTaskRows(results))).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
+}
+
+func datedTaskRows(rows []db.DatedTaskViewRow) []view.TaskRowView {
+	tasks := make([]view.TaskRowView, 0, len(rows))
+	for _, row := range rows {
+		tasks = append(tasks, view.TaskRowView{
+			ID:            row.ID,
+			Title:         row.Title,
+			Description:   row.Description,
+			ProjectName:   row.ProjectName,
+			LabelNames:    row.LabelNames,
+			DueISODate:    row.DueISODate,
+			Status:        row.Status,
+			SyncStatus:    row.SyncStatus,
+			Priority:      row.Priority,
+			HasPriority:   row.HasPriority,
+			ServerVersion: row.ServerVersion,
+			IsSubtask:     row.IsSubtask,
+		})
+	}
+	return tasks
 }

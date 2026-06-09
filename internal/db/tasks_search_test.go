@@ -44,6 +44,19 @@ func TestSearchActiveTasksMatchesTextProjectAndLabelTokens(t *testing.T) {
 	if results[0].ID != "task-active" {
 		t.Fatalf("unexpected result id: got %q want %q", results[0].ID, "task-active")
 	}
+
+	result := results[0]
+	if result.Description != "Prüfen" ||
+		result.ProjectName != "Finanzen" ||
+		result.LabelNames != "Büro,dringend" ||
+		result.DueISODate != "2026-06-09" ||
+		result.Priority != 1 ||
+		!result.HasPriority ||
+		result.SyncStatus != "error" ||
+		result.ServerVersion != 5 ||
+		result.RawVTODO == "" {
+		t.Fatalf("search result missing row metadata: %#v", result)
+	}
 }
 
 func TestSearchActiveTasksExcludesCompletedByDefault(t *testing.T) {
@@ -78,17 +91,17 @@ func seedSearchTasks(t *testing.T, database *Database) {
 	if _, err := database.Conn.Exec(`
 INSERT INTO tasks (
     id, project_id, uid, href, etag, server_version, title, description, status, raw_vtodo, base_vtodo,
-    label_names, project_name, sync_status, created_at, updated_at
+    label_names, project_name, sync_status, due_date, priority, created_at, updated_at
 ) VALUES
 (
-    'task-active', 'project-1', 'uid-active', '/calendars/work/task-active.ics', '"etag-active"', 1,
+    'task-active', 'project-1', 'uid-active', '/calendars/work/task-active.ics', '"etag-active"', 5,
     'Überweisung Rechnung', 'Prüfen', 'needs-action', 'BEGIN:VTODO\nUID:uid-active\nEND:VTODO',
-    'BEGIN:VTODO\nUID:uid-active\nEND:VTODO', 'Büro dringend', 'Finanzen', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+    'BEGIN:VTODO\nUID:uid-active\nEND:VTODO', 'Büro,dringend', 'Finanzen', 'error', '2026-06-09', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 ),
 (
     'task-completed', 'project-1', 'uid-completed', '/calendars/work/task-completed.ics', '"etag-completed"', 1,
     'Überfällige Rechnung', 'Archiv', 'completed', 'BEGIN:VTODO\nUID:uid-completed\nEND:VTODO',
-    'BEGIN:VTODO\nUID:uid-completed\nEND:VTODO', 'Büro erledigt', 'Finanzen', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+    'BEGIN:VTODO\nUID:uid-completed\nEND:VTODO', 'Büro,erledigt', 'Finanzen', 'synced', '2026-06-08', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 );
 `); err != nil {
 		t.Fatalf("insert tasks: %v", err)

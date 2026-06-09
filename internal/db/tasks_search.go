@@ -9,12 +9,18 @@ import (
 
 // SearchResult contains one task row returned by global search.
 type SearchResult struct {
-	ID          string
-	Title       string
-	Description string
-	ProjectName string
-	LabelNames  string
-	RawVTODO    string
+	ID            string
+	Title         string
+	Description   string
+	Status        string
+	ProjectName   string
+	LabelNames    string
+	DueISODate    string
+	Priority      int
+	HasPriority   bool
+	SyncStatus    string
+	ServerVersion int
+	RawVTODO      string
 }
 
 // SearchActiveTasks returns active tasks matching text tokens plus optional #project and @label filters.
@@ -29,7 +35,25 @@ func (d *Database) SearchActiveTasks(ctx context.Context, rawQuery string, limit
 	}
 
 	rows, err := d.Conn.QueryContext(ctx, `
-SELECT t.id, t.title, COALESCE(t.description, ''), COALESCE(t.project_name, ''), COALESCE(t.label_names, ''), COALESCE(t.raw_vtodo, '')
+SELECT
+	t.id,
+	t.title,
+	COALESCE(t.description, ''),
+	t.status,
+	COALESCE(t.project_name, ''),
+	COALESCE(t.label_names, ''),
+	COALESCE(
+		date(t.due_at),
+		date(substr(t.due_at, 1, 19)),
+		date(substr(t.due_at, 1, 10)),
+		date(t.due_date),
+		''
+	),
+	COALESCE(t.priority, 0),
+	t.priority IS NOT NULL,
+	t.sync_status,
+	t.server_version,
+	COALESCE(t.raw_vtodo, '')
 FROM tasks_fts f
 JOIN tasks t ON t.rowid = f.rowid
 WHERE f.tasks_fts MATCH ?
@@ -45,7 +69,7 @@ LIMIT ?;
 	results := make([]SearchResult, 0, limit)
 	for rows.Next() {
 		var item SearchResult
-		if err := rows.Scan(&item.ID, &item.Title, &item.Description, &item.ProjectName, &item.LabelNames, &item.RawVTODO); err != nil {
+		if err := rows.Scan(&item.ID, &item.Title, &item.Description, &item.Status, &item.ProjectName, &item.LabelNames, &item.DueISODate, &item.Priority, &item.HasPriority, &item.SyncStatus, &item.ServerVersion, &item.RawVTODO); err != nil {
 			return nil, fmt.Errorf("search active tasks: scan row: %w", err)
 		}
 		results = append(results, item)

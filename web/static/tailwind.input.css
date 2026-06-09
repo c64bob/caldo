@@ -434,6 +434,10 @@
 		@apply space-y-2;
 	}
 
+	.caldo-task-list {
+		@apply space-y-0;
+	}
+
 	.caldo-list-row {
 		@apply rounded-md border p-3 transition;
 		background: var(--caldo-surface);
@@ -446,14 +450,161 @@
 	}
 
 	.caldo-task-row {
-		@apply rounded-md border p-3 transition;
-		background: var(--caldo-surface);
+		@apply border-b px-0 py-3 transition;
+		background: transparent;
 		border-color: var(--caldo-border);
 		overflow-wrap: anywhere;
 	}
 
-	.caldo-task-row:hover {
+	.caldo-task-row:last-child {
+		@apply border-b-0;
+	}
+
+	.caldo-task-row:hover,
+	.caldo-task-row:focus-within,
+	.caldo-task-row:focus-visible {
 		background: var(--caldo-surface-muted);
+	}
+
+	.caldo-task-row-grid {
+		@apply grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] gap-2 px-1;
+	}
+
+	.caldo-task-row-subtask .caldo-task-row-grid {
+		@apply pl-7;
+	}
+
+	.caldo-task-check-form {
+		@apply pt-0.5;
+	}
+
+	.caldo-task-checkbox {
+		@apply flex h-5 w-5 items-center justify-center rounded-full border transition;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border-strong);
+		color: var(--caldo-accent);
+	}
+
+	.caldo-task-checkbox:hover,
+	.caldo-task-checkbox:focus-visible {
+		border-color: var(--caldo-accent);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+	}
+
+	.caldo-task-checkbox:focus-visible {
+		outline-color: var(--caldo-focus);
+	}
+
+	.caldo-task-checkbox:disabled {
+		@apply cursor-not-allowed opacity-50;
+	}
+
+	.caldo-task-row-completed .caldo-task-checkbox {
+		background: var(--caldo-accent);
+		border-color: var(--caldo-accent);
+		color: #fff;
+	}
+
+	.caldo-task-checkbox-mark {
+		@apply hidden h-2 w-3 rotate-[-45deg] border-b-2 border-l-2;
+		border-color: currentColor;
+	}
+
+	.caldo-task-row-completed .caldo-task-checkbox-mark {
+		@apply block;
+	}
+
+	.caldo-task-content {
+		@apply min-w-0 space-y-1;
+	}
+
+	.caldo-task-title-line {
+		@apply flex min-w-0 items-start gap-2;
+	}
+
+	.caldo-task-title {
+		@apply min-w-0 flex-1 text-sm font-medium leading-5;
+		color: var(--caldo-text);
+		overflow-wrap: anywhere;
+	}
+
+	.caldo-task-row-completed .caldo-task-title {
+		color: var(--caldo-text-muted);
+		text-decoration: line-through;
+		text-decoration-thickness: 1px;
+		text-decoration-color: var(--caldo-text-subtle);
+	}
+
+	.caldo-task-description {
+		@apply max-w-full text-sm leading-5;
+		color: var(--caldo-text-muted);
+		overflow-wrap: anywhere;
+	}
+
+	.caldo-task-meta-line,
+	.caldo-task-attachments {
+		@apply flex min-w-0 flex-wrap items-center gap-1.5;
+	}
+
+	.caldo-task-chip,
+	.caldo-task-state {
+		@apply inline-flex min-h-5 max-w-full items-center truncate rounded border px-1.5 text-xs leading-4;
+		background: var(--caldo-surface-muted);
+		border-color: var(--caldo-border);
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-task-chip-label {
+		color: var(--caldo-text-muted);
+	}
+
+	.caldo-task-chip-due {
+		color: var(--caldo-success);
+	}
+
+	.caldo-task-priority-p1 {
+		border-color: var(--caldo-danger);
+		color: var(--caldo-danger);
+	}
+
+	.caldo-task-priority-p2 {
+		border-color: var(--caldo-warning);
+		color: var(--caldo-warning);
+	}
+
+	.caldo-task-priority-p3 {
+		border-color: var(--caldo-border-strong);
+		color: var(--caldo-text-muted);
+	}
+
+	.caldo-task-state-pending {
+		background: var(--caldo-warning-muted);
+		border-color: var(--caldo-warning);
+		color: var(--caldo-warning);
+	}
+
+	.caldo-task-state-error,
+	.caldo-task-state-conflict {
+		background: var(--caldo-danger-muted);
+		border-color: var(--caldo-danger);
+		color: var(--caldo-danger);
+	}
+
+	.caldo-task-row-error,
+	.caldo-task-row-conflict {
+		border-color: var(--caldo-danger);
+	}
+
+	.caldo-task-attachment-link {
+		@apply min-w-0 max-w-full truncate rounded-sm text-xs underline decoration-transparent underline-offset-2 transition;
+		color: var(--caldo-text-muted);
+	}
+
+	.caldo-task-attachment-link:hover,
+	.caldo-task-attachment-link:focus-visible {
+		color: var(--caldo-accent);
+		text-decoration-color: var(--caldo-accent);
 	}
 
 	.caldo-list-link {

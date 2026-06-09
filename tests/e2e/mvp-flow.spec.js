@@ -134,6 +134,19 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(inlineEditRow).toContainText('P2');
   await expect(inlineEditRow).toContainText('browser');
   await expect(inlineEditRow).toContainText('inline');
+  await ensureBrowserCSRFCookie(page);
+  await expect(inlineEditRow.getByRole('button', { name: 'Favorit setzen' })).toHaveAttribute('aria-pressed', 'false');
+  await inlineEditRow.getByRole('button', { name: 'Favorit setzen' }).click();
+  inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
+  await expect(inlineEditRow.getByRole('button', { name: 'Favorit entfernen' })).toHaveAttribute('aria-pressed', 'true');
+  await gotoApp(page, '/favorites');
+  inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
+  await expect(inlineEditRow).toBeVisible();
+  await inlineEditRow.getByRole('button', { name: 'Favorit entfernen' }).click();
+  await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' })).toHaveCount(0);
+  await gotoApp(page, '/search?q=%23Work');
+  inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
+  await expect(inlineEditRow.getByRole('button', { name: 'Favorit setzen' })).toHaveAttribute('aria-pressed', 'false');
 
   let detailDialog = inlineEditRow.locator('[data-task-detail-dialog]');
   await expect(detailDialog).toBeHidden();

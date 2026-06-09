@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +22,7 @@ type TaskRowView struct {
 	ProjectName    string
 	LabelNames     string
 	DueISODate     string
+	TodayISODate   string
 	Status         string
 	SyncStatus     string
 	Priority       int
@@ -48,6 +50,11 @@ type InlineTaskCreateView struct {
 }
 
 type taskRowChip struct {
+	Label string
+	Class string
+}
+
+type taskDueChip struct {
 	Label string
 	Class string
 }
@@ -112,6 +119,10 @@ func taskEditPath(task TaskRowView) string {
 
 func taskDeletePath(task TaskRowView) string {
 	return taskEditPath(task)
+}
+
+func taskFavoritePath(task TaskRowView) string {
+	return "/tasks/" + url.PathEscape(strings.TrimSpace(task.ID)) + "/favorite"
 }
 
 func taskDOMID(prefix string, task TaskRowView) string {
@@ -183,6 +194,40 @@ func taskCanDelete(task TaskRowView) bool {
 	return taskCanToggleCompletion(task)
 }
 
+func taskCanShowFavorite(task TaskRowView) bool {
+	return strings.TrimSpace(task.ID) != "" && task.ServerVersion > 0
+}
+
+func taskIsFavorite(task TaskRowView) bool {
+	for _, label := range rawTaskLabels(task.LabelNames) {
+		if strings.EqualFold(label, model.ReservedFavoriteCategory) {
+			return true
+		}
+	}
+	return false
+}
+
+func taskFavoriteLabel(task TaskRowView) string {
+	if taskIsFavorite(task) {
+		return "Favorit entfernen"
+	}
+	return "Favorit setzen"
+}
+
+func taskFavoritePressed(task TaskRowView) string {
+	if taskIsFavorite(task) {
+		return "true"
+	}
+	return "false"
+}
+
+func taskFavoriteNextValue(task TaskRowView) string {
+	if taskIsFavorite(task) {
+		return "false"
+	}
+	return "true"
+}
+
 func taskDetailStatusMessage(task TaskRowView) string {
 	switch strings.ToLower(strings.TrimSpace(task.SyncStatus)) {
 	case "pending":
@@ -198,9 +243,8 @@ func taskDetailStatusMessage(task TaskRowView) string {
 
 func taskMetaChips(task TaskRowView) []taskRowChip {
 	chips := make([]taskRowChip, 0, 4)
-	if due := strings.TrimSpace(task.DueISODate); due != "" {
-		chips = append(chips, taskRowChip{Label: "Fällig " + due, Class: "caldo-task-chip caldo-task-chip-due"})
-	}
+	due := taskDueStateChip(task)
+	chips = append(chips, taskRowChip{Label: due.Label, Class: due.Class})
 	if project := strings.TrimSpace(task.ProjectName); project != "" {
 		chips = append(chips, taskRowChip{Label: project, Class: "caldo-task-chip"})
 	}
@@ -208,6 +252,31 @@ func taskMetaChips(task TaskRowView) []taskRowChip {
 		chips = append(chips, taskRowChip{Label: priority, Class: "caldo-task-chip " + taskPriorityClass(task)})
 	}
 	return chips
+}
+
+func taskDueStateChip(task TaskRowView) taskDueChip {
+	due := strings.TrimSpace(task.DueISODate)
+	if due == "" {
+		return taskDueChip{Label: "Ohne Datum", Class: "caldo-task-chip caldo-task-chip-due caldo-task-chip-due-none"}
+	}
+
+	today := taskTodayISODate(task)
+	switch {
+	case due < today:
+		return taskDueChip{Label: "Überfällig " + due, Class: "caldo-task-chip caldo-task-chip-due caldo-task-chip-due-overdue"}
+	case due == today:
+		return taskDueChip{Label: "Heute", Class: "caldo-task-chip caldo-task-chip-due caldo-task-chip-due-today"}
+	default:
+		return taskDueChip{Label: "Fällig " + due, Class: "caldo-task-chip caldo-task-chip-due caldo-task-chip-due-future"}
+	}
+}
+
+func taskTodayISODate(task TaskRowView) string {
+	today := strings.TrimSpace(task.TodayISODate)
+	if today != "" {
+		return today
+	}
+	return time.Now().UTC().Format("2006-01-02")
 }
 
 func taskLabelChips(task TaskRowView) []taskRowChip {
@@ -492,11 +561,11 @@ func taskPriorityLabel(task TaskRowView) string {
 	}
 	switch {
 	case task.Priority <= 4:
-		return "P1"
+		return "P1 Hoch"
 	case task.Priority <= 6:
-		return "P2"
+		return "P2 Mittel"
 	default:
-		return "P3"
+		return "P3 Niedrig"
 	}
 }
 
@@ -515,6 +584,26 @@ func taskPriorityClass(task TaskRowView) string {
 }
 
 func splitTaskLabels(raw string) []string {
+	labels := rawTaskLabels(raw)
+	filtered := labels[:0]
+	for _, label := range labels {
+		if strings.EqualFold(label, model.ReservedFavoriteCategory) {
+			continue
+		}
+		filtered = append(filtered, label)
+	}
+	sort.Slice(filtered, func(i, j int) bool {
+		left := strings.ToLower(filtered[i])
+		right := strings.ToLower(filtered[j])
+		if left == right {
+			return filtered[i] < filtered[j]
+		}
+		return left < right
+	})
+	return filtered
+}
+
+func rawTaskLabels(raw string) []string {
 	parts := strings.FieldsFunc(raw, func(r rune) bool {
 		return r == ',' || r == ';' || r == '\n' || r == '\t'
 	})
@@ -522,7 +611,7 @@ func splitTaskLabels(raw string) []string {
 	seen := make(map[string]struct{}, len(parts))
 	for _, part := range parts {
 		label := strings.TrimSpace(part)
-		if label == "" || strings.EqualFold(label, model.ReservedFavoriteCategory) {
+		if label == "" {
 			continue
 		}
 		key := strings.ToLower(label)

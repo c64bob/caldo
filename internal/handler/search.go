@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"time"
 
 	"caldo/internal/db"
 	"caldo/internal/model"
@@ -32,6 +33,7 @@ func Search(deps searchDependencies) http.HandlerFunc {
 		}
 
 		items := make([]view.TaskRowView, 0, len(results))
+		todayISODate := time.Now().UTC().Format("2006-01-02")
 		for _, result := range results {
 			fields := model.ParseVTODOFields(result.RawVTODO)
 			items = append(items, view.TaskRowView{
@@ -42,6 +44,7 @@ func Search(deps searchDependencies) http.HandlerFunc {
 				ProjectName:    result.ProjectName,
 				LabelNames:     result.LabelNames,
 				DueISODate:     result.DueISODate,
+				TodayISODate:   todayISODate,
 				Status:         result.Status,
 				SyncStatus:     result.SyncStatus,
 				Priority:       result.Priority,

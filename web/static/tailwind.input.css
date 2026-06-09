@@ -556,6 +556,35 @@
 		text-decoration-color: var(--caldo-text-subtle);
 	}
 
+	.caldo-task-favorite-form {
+		@apply shrink-0;
+	}
+
+	.caldo-task-favorite-button {
+		@apply inline-flex h-6 w-6 items-center justify-center rounded-sm text-base leading-none transition;
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-task-favorite-button:hover,
+	.caldo-task-favorite-button:focus-visible {
+		background: var(--caldo-surface-muted);
+		color: var(--caldo-warning);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+	}
+
+	.caldo-task-favorite-button:focus-visible {
+		outline-color: var(--caldo-focus);
+	}
+
+	.caldo-task-favorite-button:disabled {
+		@apply cursor-not-allowed opacity-50;
+	}
+
+	.caldo-task-favorite-button-active {
+		color: var(--caldo-warning);
+	}
+
 	.caldo-task-description {
 		@apply max-w-full text-sm leading-5;
 		color: var(--caldo-text-muted);
@@ -576,11 +605,32 @@
 	}
 
 	.caldo-task-chip-label {
+		@apply max-w-32;
 		color: var(--caldo-text-muted);
 	}
 
 	.caldo-task-chip-due {
 		color: var(--caldo-success);
+	}
+
+	.caldo-task-chip-due-today {
+		background: var(--caldo-success-muted);
+		border-color: var(--caldo-success);
+		color: var(--caldo-success);
+	}
+
+	.caldo-task-chip-due-overdue {
+		background: var(--caldo-danger-muted);
+		border-color: var(--caldo-danger);
+		color: var(--caldo-danger);
+	}
+
+	.caldo-task-chip-due-future {
+		color: var(--caldo-success);
+	}
+
+	.caldo-task-chip-due-none {
+		color: var(--caldo-text-subtle);
 	}
 
 	.caldo-task-priority-p1 {

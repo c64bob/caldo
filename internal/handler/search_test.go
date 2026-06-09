@@ -53,11 +53,13 @@ func TestSearchRouteReturnsActiveTasksOnly(t *testing.T) {
 		`hx-post="/tasks/task-active/complete"`,
 		`name="expected_version" value="5"`,
 		"Prüfen",
-		"Fällig 2026-06-09",
+		"Heute",
 		"Finanzen",
 		"Büro",
 		"dringend",
-		"P1",
+		"P1 Hoch",
+		`data-task-favorite-form`,
+		`aria-label="Favorit setzen"`,
 		"Fehler",
 		`data-task-detail-open`,
 		`data-task-detail-dialog`,
@@ -139,12 +141,12 @@ END:VTODO',
 UID:uid-active
 ATTACH:https://example.com/rechnung.pdf
 ATTACH;ENCODING=BASE64;VALUE=BINARY:AAAA
-END:VTODO', 'Büro,dringend', 'Finanzen', 'error', '2026-06-09', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+END:VTODO', 'Büro,dringend', 'Finanzen', 'error', date('now'), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 ),
 (
     'task-completed', 'project-1', 'uid-completed', '/calendars/work/task-completed.ics', '"etag-completed"', 1,
     'Überfällige Rechnung', 'Archiv', 'completed', 'BEGIN:VTODO\nUID:uid-completed\nEND:VTODO',
-    'BEGIN:VTODO\nUID:uid-completed\nEND:VTODO', 'Büro,erledigt', 'Finanzen', 'synced', '2026-06-08', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+    'BEGIN:VTODO\nUID:uid-completed\nEND:VTODO', 'Büro,erledigt', 'Finanzen', 'synced', date('now', '-1 day'), NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 );
 `); err != nil {
 		t.Fatalf("seed search route data: %v", err)

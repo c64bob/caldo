@@ -20,6 +20,7 @@ func TestTaskRowRendersTodoistLikeMetadataAndCompletionControl(t *testing.T) {
 		ProjectName:   "Work",
 		LabelNames:    "Büro,urgent,STARRED",
 		DueISODate:    "2026-06-09",
+		TodayISODate:  "2026-06-09",
 		Status:        "needs-action",
 		SyncStatus:    "pending",
 		Priority:      1,
@@ -41,11 +42,16 @@ func TestTaskRowRendersTodoistLikeMetadataAndCompletionControl(t *testing.T) {
 		`X-CSRF-Token`,
 		`Sehr lange Aufgabe mit Metadaten`,
 		`Beschreibung vorhanden`,
-		`Fällig 2026-06-09`,
+		`Heute`,
 		`Work`,
 		`Büro`,
 		`urgent`,
-		`P1`,
+		`P1 Hoch`,
+		`data-task-favorite-form`,
+		`hx-post="/tasks/task-1/favorite"`,
+		`name="favorite" value="false"`,
+		`aria-label="Favorit entfernen"`,
+		`aria-pressed="true"`,
 		`Speichert`,
 	} {
 		if !strings.Contains(output, want) {
@@ -100,8 +106,9 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 		Title:         "Editierbare Aufgabe",
 		Description:   "Alter Text",
 		ProjectName:   "Inbox",
-		LabelNames:    "Büro,urgent,STARRED",
+		LabelNames:    "urgent,Büro,STARRED",
 		DueISODate:    "2026-06-09",
+		TodayISODate:  "2026-06-09",
 		Status:        "needs-action",
 		SyncStatus:    "synced",
 		Priority:      4,
@@ -123,6 +130,9 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 		`data-inline-task-display`,
 		`data-inline-task-edit-open`,
 		`data-inline-task-edit-form`,
+		`data-task-favorite-form`,
+		`aria-label="Favorit entfernen"`,
+		`aria-pressed="true"`,
 		`data-task-actions`,
 		`data-task-action-form`,
 		`>Aufgabe erledigen<`,
@@ -159,6 +169,52 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 	}
 	if strings.Contains(output, `name="labels" value="Büro, urgent, STARRED"`) {
 		t.Fatalf("reserved favorite category must not render in the label editor: %s", output)
+	}
+}
+
+func TestTaskRowRendersDueStateChips(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		due   string
+		want  string
+		class string
+	}{
+		{name: "none", due: "", want: "Ohne Datum", class: "caldo-task-chip-due-none"},
+		{name: "overdue", due: "2026-06-08", want: "Überfällig 2026-06-08", class: "caldo-task-chip-due-overdue"},
+		{name: "today", due: "2026-06-09", want: "Heute", class: "caldo-task-chip-due-today"},
+		{name: "future", due: "2026-06-10", want: "Fällig 2026-06-10", class: "caldo-task-chip-due-future"},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			component := TaskRow(TaskRowView{
+				ID:            "task-" + tt.name,
+				Title:         "Due " + tt.name,
+				DueISODate:    tt.due,
+				TodayISODate:  "2026-06-09",
+				Status:        "needs-action",
+				SyncStatus:    "synced",
+				ServerVersion: 1,
+			})
+
+			var rendered bytes.Buffer
+			if err := component.Render(context.Background(), &rendered); err != nil {
+				t.Fatalf("render task row: %v", err)
+			}
+
+			output := rendered.String()
+			if !strings.Contains(output, tt.want) {
+				t.Fatalf("expected due chip %q in %s", tt.want, output)
+			}
+			if !strings.Contains(output, tt.class) {
+				t.Fatalf("expected due chip class %q in %s", tt.class, output)
+			}
+		})
 	}
 }
 
@@ -205,6 +261,7 @@ func TestTaskRowRendersDetailPanelForSyncedTask(t *testing.T) {
 		ProjectName:   "Inbox",
 		LabelNames:    "Büro,urgent,STARRED",
 		DueISODate:    "2026-06-09",
+		TodayISODate:  "2026-06-09",
 		Status:        "needs-action",
 		SyncStatus:    "synced",
 		Priority:      4,
@@ -301,6 +358,9 @@ func TestTaskRowRendersConflictDetailPanelReadOnly(t *testing.T) {
 	}
 	if strings.Contains(output, `data-task-delete-form`) {
 		t.Fatalf("conflict task must not render delete form: %s", output)
+	}
+	if !strings.Contains(output, `data-task-favorite-form`) || !strings.Contains(output, `disabled`) {
+		t.Fatalf("conflict task must render disabled favorite state: %s", output)
 	}
 }
 

@@ -41,7 +41,7 @@ func Today(deps dateViewDependencies) http.HandlerFunc {
 			return
 		}
 		create := inlineCreateForDate("Aufgabe für heute hinzufügen", reference)
-		if err := view.BaseLayout("Heute", view.DateScopedTasksPage("Heute", "Keine fälligen oder überfälligen Aufgaben.", datedTaskRows(results, projectOptions), create)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Heute", view.DateScopedTasksPage("Heute", "Keine fälligen oder überfälligen Aufgaben.", datedTaskRows(results, projectOptions, reference), create)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -66,7 +66,7 @@ func Upcoming(deps dateViewDependencies) http.HandlerFunc {
 			return
 		}
 		create := inlineCreateForDate("Aufgabe für demnächst hinzufügen", reference.AddDate(0, 0, 1))
-		if err := view.BaseLayout("Demnächst", view.DateScopedTasksPage("Demnächst", "Keine demnächst fälligen Aufgaben.", datedTaskRows(results, projectOptions), create)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Demnächst", view.DateScopedTasksPage("Demnächst", "Keine demnächst fälligen Aufgaben.", datedTaskRows(results, projectOptions, reference), create)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -77,7 +77,8 @@ func Overdue(deps dateViewDependencies) http.HandlerFunc {
 	nowFn := withDefaultNow(deps.now)
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		results, err := deps.database.ListOverdueTasks(r.Context(), nowFn(), 200)
+		reference := nowFn()
+		results, err := deps.database.ListOverdueTasks(r.Context(), reference, 200)
 		if err != nil {
 			renderPageError(w, r, "Überfällig", "Überfällig laden", http.StatusInternalServerError)
 			return
@@ -89,7 +90,7 @@ func Overdue(deps dateViewDependencies) http.HandlerFunc {
 			renderPageError(w, r, "Überfällig", "Überfällig laden", http.StatusInternalServerError)
 			return
 		}
-		if err := view.BaseLayout("Überfällig", view.DateScopedTasksPage("Überfällig", "Keine überfälligen Aufgaben.", datedTaskRows(results, projectOptions), view.InlineTaskCreateView{})).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Überfällig", view.DateScopedTasksPage("Überfällig", "Keine überfälligen Aufgaben.", datedTaskRows(results, projectOptions, reference), view.InlineTaskCreateView{})).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -97,7 +98,10 @@ func Overdue(deps dateViewDependencies) http.HandlerFunc {
 
 // Favorites renders favorite tasks.
 func Favorites(deps dateViewDependencies) http.HandlerFunc {
+	nowFn := withDefaultNow(deps.now)
+
 	return func(w http.ResponseWriter, r *http.Request) {
+		reference := nowFn()
 		results, err := deps.database.ListFavoriteTasks(r.Context(), 200)
 		if err != nil {
 			renderPageError(w, r, "Favoriten", "Favoriten laden", http.StatusInternalServerError)
@@ -110,7 +114,7 @@ func Favorites(deps dateViewDependencies) http.HandlerFunc {
 			renderPageError(w, r, "Favoriten", "Favoriten laden", http.StatusInternalServerError)
 			return
 		}
-		if err := view.BaseLayout("Favoriten", view.DateScopedTasksPage("Favoriten", "Keine favorisierten Aufgaben.", datedTaskRows(results, projectOptions), view.InlineTaskCreateView{})).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Favoriten", view.DateScopedTasksPage("Favoriten", "Keine favorisierten Aufgaben.", datedTaskRows(results, projectOptions, reference), view.InlineTaskCreateView{})).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -118,7 +122,10 @@ func Favorites(deps dateViewDependencies) http.HandlerFunc {
 
 // NoDate renders tasks without due date.
 func NoDate(deps dateViewDependencies) http.HandlerFunc {
+	nowFn := withDefaultNow(deps.now)
+
 	return func(w http.ResponseWriter, r *http.Request) {
+		reference := nowFn()
 		results, err := deps.database.ListNoDateTasks(r.Context(), 200)
 		if err != nil {
 			renderPageError(w, r, "Ohne Datum", "Ohne Datum laden", http.StatusInternalServerError)
@@ -132,7 +139,7 @@ func NoDate(deps dateViewDependencies) http.HandlerFunc {
 			return
 		}
 		create := view.InlineTaskCreateView{Enabled: true, Placeholder: "Aufgabe ohne Datum hinzufügen"}
-		if err := view.BaseLayout("Ohne Datum", view.DateScopedTasksPage("Ohne Datum", "Keine Aufgaben ohne Datum.", datedTaskRows(results, projectOptions), create)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Ohne Datum", view.DateScopedTasksPage("Ohne Datum", "Keine Aufgaben ohne Datum.", datedTaskRows(results, projectOptions, reference), create)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -140,7 +147,10 @@ func NoDate(deps dateViewDependencies) http.HandlerFunc {
 
 // Completed renders completed tasks if visibility is enabled.
 func Completed(deps dateViewDependencies) http.HandlerFunc {
+	nowFn := withDefaultNow(deps.now)
+
 	return func(w http.ResponseWriter, r *http.Request) {
+		reference := nowFn()
 		results, err := deps.database.ListCompletedTasks(r.Context(), 200)
 		if err != nil {
 			renderPageError(w, r, "Erledigt", "Erledigte Aufgaben laden", http.StatusInternalServerError)
@@ -153,7 +163,7 @@ func Completed(deps dateViewDependencies) http.HandlerFunc {
 			renderPageError(w, r, "Erledigt", "Erledigte Aufgaben laden", http.StatusInternalServerError)
 			return
 		}
-		if err := view.BaseLayout("Erledigt", view.DateScopedTasksPage("Erledigte Aufgaben", "Erledigte Aufgaben sind ausgeblendet.", datedTaskRows(results, projectOptions), view.InlineTaskCreateView{})).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Erledigt", view.DateScopedTasksPage("Erledigte Aufgaben", "Erledigte Aufgaben sind ausgeblendet.", datedTaskRows(results, projectOptions, reference), view.InlineTaskCreateView{})).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -167,8 +177,9 @@ func inlineCreateForDate(placeholder string, dueDate time.Time) view.InlineTaskC
 	}
 }
 
-func datedTaskRows(rows []db.DatedTaskViewRow, projectOptions []view.TaskProjectOption) []view.TaskRowView {
+func datedTaskRows(rows []db.DatedTaskViewRow, projectOptions []view.TaskProjectOption, referenceDate time.Time) []view.TaskRowView {
 	tasks := make([]view.TaskRowView, 0, len(rows))
+	todayISODate := referenceDate.UTC().Format("2006-01-02")
 	for _, row := range rows {
 		fields := model.ParseVTODOFields(row.RawVTODO)
 		tasks = append(tasks, view.TaskRowView{
@@ -179,6 +190,7 @@ func datedTaskRows(rows []db.DatedTaskViewRow, projectOptions []view.TaskProject
 			ProjectName:    row.ProjectName,
 			LabelNames:     row.LabelNames,
 			DueISODate:     row.DueISODate,
+			TodayISODate:   todayISODate,
 			Status:         row.Status,
 			SyncStatus:     row.SyncStatus,
 			Priority:       row.Priority,

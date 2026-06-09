@@ -474,6 +474,7 @@
 		background: transparent;
 		border-color: var(--caldo-border);
 		overflow-wrap: anywhere;
+		position: relative;
 	}
 
 	.caldo-task-row:last-child {
@@ -491,7 +492,16 @@
 	}
 
 	.caldo-task-row-subtask .caldo-task-row-grid {
-		@apply pl-7;
+		@apply pl-8;
+	}
+
+	.caldo-task-row-subtask::before {
+		bottom: 0.75rem;
+		content: "";
+		left: 0.75rem;
+		position: absolute;
+		top: 0.75rem;
+		border-left: 2px solid var(--caldo-border-strong);
 	}
 
 	.caldo-task-check-form {
@@ -606,6 +616,13 @@
 
 	.caldo-task-chip-label {
 		@apply max-w-32;
+		color: var(--caldo-text-muted);
+	}
+
+	.caldo-task-chip-subtask {
+		@apply max-w-64;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border-strong);
 		color: var(--caldo-text-muted);
 	}
 
@@ -763,6 +780,45 @@
 	}
 
 	.caldo-task-edit-actions {
+		@apply flex min-w-0 flex-wrap items-center gap-2;
+	}
+
+	.caldo-subtask-create {
+		@apply mt-2 min-w-0 px-1;
+		grid-column: 2 / -1;
+	}
+
+	.caldo-subtask-create-trigger {
+		@apply inline-flex min-h-8 min-w-0 max-w-full items-center gap-2 rounded-sm px-1.5 text-sm transition;
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-subtask-create-trigger:hover,
+	.caldo-subtask-create-trigger:focus-visible {
+		background: var(--caldo-surface-muted);
+		color: var(--caldo-accent);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+	}
+
+	.caldo-subtask-create-trigger:focus-visible {
+		outline-color: var(--caldo-focus);
+	}
+
+	.caldo-subtask-create-plus {
+		@apply flex h-5 w-5 shrink-0 items-center justify-center text-base leading-none;
+		color: var(--caldo-accent);
+	}
+
+	.caldo-subtask-create-form {
+		@apply space-y-2 py-1;
+	}
+
+	.caldo-subtask-create-input {
+		@apply mt-0;
+	}
+
+	.caldo-subtask-create-actions {
 		@apply flex min-w-0 flex-wrap items-center gap-2;
 	}
 

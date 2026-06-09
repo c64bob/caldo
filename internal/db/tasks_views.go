@@ -20,7 +20,10 @@ type DatedTaskViewRow struct {
 	LabelNames    string
 	SyncStatus    string
 	ServerVersion int
+	ParentID      string
+	ParentTitle   string
 	IsSubtask     bool
+	SubtaskCount  int
 	RawVTODO      string
 }
 
@@ -95,8 +98,11 @@ scoped_tasks AS (
 		t.sync_status,
 		t.server_version,
 		t.parent_id,
+		COALESCE(parent.title, '') AS parent_title,
+		(SELECT COUNT(1) FROM tasks child WHERE child.parent_id = t.id) AS subtask_count,
 		COALESCE(t.raw_vtodo, '') AS raw_vtodo
 	FROM tasks t
+	LEFT JOIN tasks parent ON parent.id = t.parent_id
 )
 SELECT
 	t.id,
@@ -111,7 +117,10 @@ SELECT
 	COALESCE(t.label_names, ''),
 	t.sync_status,
 	t.server_version,
+	COALESCE(t.parent_id, ''),
+	t.parent_title,
 	t.parent_id IS NOT NULL,
+	t.subtask_count,
 	t.raw_vtodo
 FROM scoped_tasks t
 CROSS JOIN cfg
@@ -127,7 +136,7 @@ LIMIT ?;`, limit)
 	results := make([]DatedTaskViewRow, 0, limit)
 	for rows.Next() {
 		var row DatedTaskViewRow
-		if err := rows.Scan(&row.ID, &row.ProjectID, &row.Title, &row.Description, &row.Status, &row.ProjectName, &row.DueISODate, &row.Priority, &row.HasPriority, &row.LabelNames, &row.SyncStatus, &row.ServerVersion, &row.IsSubtask, &row.RawVTODO); err != nil {
+		if err := rows.Scan(&row.ID, &row.ProjectID, &row.Title, &row.Description, &row.Status, &row.ProjectName, &row.DueISODate, &row.Priority, &row.HasPriority, &row.LabelNames, &row.SyncStatus, &row.ServerVersion, &row.ParentID, &row.ParentTitle, &row.IsSubtask, &row.SubtaskCount, &row.RawVTODO); err != nil {
 			return nil, fmt.Errorf("list simple system tasks: scan row: %w", err)
 		}
 		results = append(results, row)
@@ -177,8 +186,11 @@ scoped_tasks AS (
 		t.sync_status,
 		t.server_version,
 		t.parent_id,
+		COALESCE(parent.title, '') AS parent_title,
+		(SELECT COUNT(1) FROM tasks child WHERE child.parent_id = t.id) AS subtask_count,
 		COALESCE(t.raw_vtodo, '') AS raw_vtodo
 	FROM tasks t
+	LEFT JOIN tasks parent ON parent.id = t.parent_id
 )
 SELECT
 	t.id,
@@ -193,7 +205,10 @@ SELECT
 	COALESCE(t.label_names, ''),
 	t.sync_status,
 	t.server_version,
+	COALESCE(t.parent_id, ''),
+	t.parent_title,
 	t.parent_id IS NOT NULL,
+	t.subtask_count,
 	t.raw_vtodo
 FROM scoped_tasks t
 CROSS JOIN cfg
@@ -212,7 +227,7 @@ LIMIT ?;
 	results := make([]DatedTaskViewRow, 0, limit)
 	for rows.Next() {
 		var row DatedTaskViewRow
-		if err := rows.Scan(&row.ID, &row.ProjectID, &row.Title, &row.Description, &row.Status, &row.ProjectName, &row.DueISODate, &row.Priority, &row.HasPriority, &row.LabelNames, &row.SyncStatus, &row.ServerVersion, &row.IsSubtask, &row.RawVTODO); err != nil {
+		if err := rows.Scan(&row.ID, &row.ProjectID, &row.Title, &row.Description, &row.Status, &row.ProjectName, &row.DueISODate, &row.Priority, &row.HasPriority, &row.LabelNames, &row.SyncStatus, &row.ServerVersion, &row.ParentID, &row.ParentTitle, &row.IsSubtask, &row.SubtaskCount, &row.RawVTODO); err != nil {
 			return nil, fmt.Errorf("list date scoped tasks: scan row: %w", err)
 		}
 		results = append(results, row)

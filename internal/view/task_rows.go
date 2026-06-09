@@ -23,12 +23,15 @@ type TaskRowView struct {
 	LabelNames     string
 	DueISODate     string
 	TodayISODate   string
+	ParentID       string
+	ParentTitle    string
 	Status         string
 	SyncStatus     string
 	Priority       int
 	HasPriority    bool
 	ServerVersion  int
 	IsSubtask      bool
+	SubtaskCount   int
 	RRule          string
 	Attachments    []model.Attachment
 	ProjectOptions []TaskProjectOption
@@ -125,6 +128,10 @@ func taskFavoritePath(task TaskRowView) string {
 	return "/tasks/" + url.PathEscape(strings.TrimSpace(task.ID)) + "/favorite"
 }
 
+func taskSubtaskCreatePath(task TaskRowView) string {
+	return "/tasks/" + url.PathEscape(strings.TrimSpace(task.ID)) + "/subtasks"
+}
+
 func taskDOMID(prefix string, task TaskRowView) string {
 	id := strings.TrimSpace(task.ID)
 	if id == "" {
@@ -194,6 +201,10 @@ func taskCanDelete(task TaskRowView) bool {
 	return taskCanToggleCompletion(task)
 }
 
+func taskCanCreateSubtask(task TaskRowView) bool {
+	return !task.IsSubtask && taskCanToggleCompletion(task)
+}
+
 func taskCanShowFavorite(task TaskRowView) bool {
 	return strings.TrimSpace(task.ID) != "" && task.ServerVersion > 0
 }
@@ -252,6 +263,29 @@ func taskMetaChips(task TaskRowView) []taskRowChip {
 		chips = append(chips, taskRowChip{Label: priority, Class: "caldo-task-chip " + taskPriorityClass(task)})
 	}
 	return chips
+}
+
+func taskRelationshipChips(task TaskRowView) []taskRowChip {
+	chips := make([]taskRowChip, 0, 1)
+	if task.IsSubtask {
+		label := "Unteraufgabe"
+		if parentTitle := strings.TrimSpace(task.ParentTitle); parentTitle != "" {
+			label = "Unteraufgabe von " + parentTitle
+		}
+		chips = append(chips, taskRowChip{Label: label, Class: "caldo-task-chip caldo-task-chip-subtask"})
+		return chips
+	}
+	if task.SubtaskCount > 0 {
+		chips = append(chips, taskRowChip{Label: taskSubtaskCountLabel(task.SubtaskCount), Class: "caldo-task-chip caldo-task-chip-subtask"})
+	}
+	return chips
+}
+
+func taskSubtaskCountLabel(count int) string {
+	if count == 1 {
+		return "1 Unteraufgabe"
+	}
+	return strconv.Itoa(count) + " Unteraufgaben"
 }
 
 func taskDueStateChip(task TaskRowView) taskDueChip {

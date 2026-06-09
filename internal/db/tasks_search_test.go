@@ -85,6 +85,63 @@ func TestSearchActiveTasksExcludesCompletedByDefault(t *testing.T) {
 	}
 }
 
+func TestSearchActiveTasksIncludesSubtaskRelationshipMetadata(t *testing.T) {
+	t.Parallel()
+
+	database, err := OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := database.Close(); err != nil {
+			t.Fatalf("close sqlite: %v", err)
+		}
+	})
+
+	seedFTSProject(t, database)
+	seedSearchTasks(t, database)
+	if _, err := database.Conn.Exec(`
+INSERT INTO tasks (
+    id, project_id, uid, href, etag, server_version, title, description, status, parent_id, raw_vtodo, base_vtodo,
+    label_names, project_name, sync_status, due_date, priority, created_at, updated_at
+) VALUES (
+    'task-child', 'project-1', 'uid-child', '/calendars/work/task-child.ics', '"etag-child"', 1,
+    'Rechnung Unteraufgabe', 'Kind', 'needs-action', 'task-active', 'BEGIN:VTODO\nUID:uid-child\nRELATED-TO;RELTYPE=PARENT:uid-active\nEND:VTODO',
+    'BEGIN:VTODO\nUID:uid-child\nRELATED-TO;RELTYPE=PARENT:uid-active\nEND:VTODO', 'Büro', 'Finanzen', 'synced', '2026-06-09', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+);
+`); err != nil {
+		t.Fatalf("insert child task: %v", err)
+	}
+
+	results, err := database.SearchActiveTasks(context.Background(), "rechnung", 25)
+	if err != nil {
+		t.Fatalf("search active tasks: %v", err)
+	}
+
+	var parent SearchResult
+	var child SearchResult
+	for _, result := range results {
+		switch result.ID {
+		case "task-active":
+			parent = result
+		case "task-child":
+			child = result
+		}
+	}
+	if parent.ID == "" || child.ID == "" {
+		t.Fatalf("expected parent and child in search results: %#v", results)
+	}
+	if parent.SubtaskCount != 1 || parent.IsSubtask {
+		t.Fatalf("parent missing subtask count metadata: %#v", parent)
+	}
+	if child.ParentID != "task-active" ||
+		child.ParentTitle != "Überweisung Rechnung" ||
+		!child.IsSubtask ||
+		child.SubtaskCount != 0 {
+		t.Fatalf("child missing relationship metadata: %#v", child)
+	}
+}
+
 func seedSearchTasks(t *testing.T, database *Database) {
 	t.Helper()
 

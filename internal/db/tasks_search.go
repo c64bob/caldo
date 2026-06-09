@@ -21,6 +21,10 @@ type SearchResult struct {
 	HasPriority   bool
 	SyncStatus    string
 	ServerVersion int
+	ParentID      string
+	ParentTitle   string
+	IsSubtask     bool
+	SubtaskCount  int
 	RawVTODO      string
 }
 
@@ -55,12 +59,17 @@ SELECT
 	t.priority IS NOT NULL,
 	t.sync_status,
 	t.server_version,
+	COALESCE(t.parent_id, ''),
+	COALESCE(parent.title, ''),
+	t.parent_id IS NOT NULL,
+	(SELECT COUNT(1) FROM tasks child WHERE child.parent_id = t.id),
 	COALESCE(t.raw_vtodo, '')
 FROM tasks_fts f
 JOIN tasks t ON t.rowid = f.rowid
+LEFT JOIN tasks parent ON parent.id = t.parent_id
 WHERE f.tasks_fts MATCH ?
   AND t.status != 'completed'
-ORDER BY bm25(tasks_fts), t.updated_at DESC
+ORDER BY bm25(tasks_fts), COALESCE(t.parent_id, t.id), CASE WHEN t.parent_id IS NULL THEN 0 ELSE 1 END, t.updated_at DESC
 LIMIT ?;
 `, matchExpr, limit)
 	if err != nil {
@@ -71,7 +80,7 @@ LIMIT ?;
 	results := make([]SearchResult, 0, limit)
 	for rows.Next() {
 		var item SearchResult
-		if err := rows.Scan(&item.ID, &item.ProjectID, &item.Title, &item.Description, &item.Status, &item.ProjectName, &item.LabelNames, &item.DueISODate, &item.Priority, &item.HasPriority, &item.SyncStatus, &item.ServerVersion, &item.RawVTODO); err != nil {
+		if err := rows.Scan(&item.ID, &item.ProjectID, &item.Title, &item.Description, &item.Status, &item.ProjectName, &item.LabelNames, &item.DueISODate, &item.Priority, &item.HasPriority, &item.SyncStatus, &item.ServerVersion, &item.ParentID, &item.ParentTitle, &item.IsSubtask, &item.SubtaskCount, &item.RawVTODO); err != nil {
 			return nil, fmt.Errorf("search active tasks: scan row: %w", err)
 		}
 		results = append(results, item)

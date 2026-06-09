@@ -57,6 +57,11 @@ func TestSearchRouteReturnsActiveTasksOnly(t *testing.T) {
 		"Finanzen",
 		"Büro",
 		"dringend",
+		"Rechnung Unteraufgabe",
+		"Unteraufgabe von Überweisung Rechnung",
+		"1 Unteraufgabe",
+		`caldo-task-row-subtask`,
+		`hx-post="/tasks/task-child/complete"`,
 		"P1 Hoch",
 		`data-task-favorite-form`,
 		`aria-label="Favorit setzen"`,
@@ -128,7 +133,7 @@ INSERT INTO projects (
 
 INSERT INTO tasks (
     id, project_id, uid, href, etag, server_version, title, description, status, raw_vtodo, base_vtodo,
-    label_names, project_name, sync_status, due_date, priority, created_at, updated_at
+    label_names, project_name, sync_status, due_date, priority, parent_id, created_at, updated_at
 ) VALUES
 (
     'task-active', 'project-1', 'uid-active', '/calendars/work/task-active.ics', '"etag-active"', 5,
@@ -141,12 +146,23 @@ END:VTODO',
 UID:uid-active
 ATTACH:https://example.com/rechnung.pdf
 ATTACH;ENCODING=BASE64;VALUE=BINARY:AAAA
-END:VTODO', 'Büro,dringend', 'Finanzen', 'error', date('now'), 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+END:VTODO', 'Büro,dringend', 'Finanzen', 'error', date('now'), 1, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+),
+(
+    'task-child', 'project-1', 'uid-child', '/calendars/work/task-child.ics', '"etag-child"', 1,
+    'Rechnung Unteraufgabe', 'Kind', 'needs-action', 'BEGIN:VTODO
+UID:uid-child
+RELATED-TO;RELTYPE=PARENT:uid-active
+END:VTODO',
+    'BEGIN:VTODO
+UID:uid-child
+RELATED-TO;RELTYPE=PARENT:uid-active
+END:VTODO', 'Büro', 'Finanzen', 'synced', date('now'), NULL, 'task-active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 ),
 (
     'task-completed', 'project-1', 'uid-completed', '/calendars/work/task-completed.ics', '"etag-completed"', 1,
     'Überfällige Rechnung', 'Archiv', 'completed', 'BEGIN:VTODO\nUID:uid-completed\nEND:VTODO',
-    'BEGIN:VTODO\nUID:uid-completed\nEND:VTODO', 'Büro,erledigt', 'Finanzen', 'synced', date('now', '-1 day'), NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+    'BEGIN:VTODO\nUID:uid-completed\nEND:VTODO', 'Büro,erledigt', 'Finanzen', 'synced', date('now', '-1 day'), NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 );
 `); err != nil {
 		t.Fatalf("seed search route data: %v", err)

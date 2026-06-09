@@ -104,6 +104,37 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect.poll(async () => page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Created' }).count()).toBe(1);
   await waitForSearchResult(page, 'E2E Inline Created');
 
+  await gotoApp(page, '/search?q=%23Work');
+  let inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Created' }).first();
+  let inlineEditForm = inlineEditRow.locator('[data-inline-task-edit-form]');
+  await expect(inlineEditForm).toBeHidden();
+  await inlineEditRow.getByRole('button', { name: 'Bearbeiten' }).click();
+  inlineEditForm = inlineEditRow.locator('[data-inline-task-edit-form]');
+  await expect(inlineEditForm).toBeVisible();
+  await expect(inlineEditForm.locator('[name="title"]')).toBeFocused();
+  await inlineEditForm.locator('[name="title"]').fill('E2E Inline Edit Canceled');
+  await inlineEditForm.getByRole('button', { name: 'Abbrechen' }).click();
+  await expect(inlineEditForm).toBeHidden();
+  await expect(inlineEditRow).toContainText('E2E Inline Created');
+  await expect(inlineEditRow).not.toContainText('E2E Inline Edit Canceled');
+
+  await inlineEditRow.getByRole('button', { name: 'Bearbeiten' }).click();
+  inlineEditForm = inlineEditRow.locator('[data-inline-task-edit-form]');
+  await inlineEditForm.locator('[name="title"]').fill('E2E Inline Edited');
+  await inlineEditForm.locator('[name="description"]').fill('edited inline through browser');
+  await inlineEditForm.locator('[name="due_date"]').fill('2026-06-10');
+  await inlineEditForm.locator('[name="priority"]').selectOption('5');
+  await inlineEditForm.locator('[name="labels"]').fill('browser, inline');
+  await inlineEditForm.getByRole('button', { name: 'Speichern' }).focus();
+  await page.keyboard.press('Enter');
+  await waitForSearchResult(page, 'E2E Inline Edited');
+  inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
+  await expect(inlineEditRow).toContainText('edited inline through browser');
+  await expect(inlineEditRow).toContainText('Fällig 2026-06-10');
+  await expect(inlineEditRow).toContainText('P2');
+  await expect(inlineEditRow).toContainText('browser');
+  await expect(inlineEditRow).toContainText('inline');
+
   const beforeCreate = await stageState();
   response = await appFormRequest(page, 'POST', '/tasks/', {
     title: 'E2E Local Created'

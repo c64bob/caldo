@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"caldo/internal/model"
@@ -11,19 +12,27 @@ import (
 
 // TaskRowView contains all fields rendered by the shared task-list row.
 type TaskRowView struct {
-	ID            string
-	Title         string
-	Description   string
-	ProjectName   string
-	LabelNames    string
-	DueISODate    string
-	Status        string
-	SyncStatus    string
-	Priority      int
-	HasPriority   bool
-	ServerVersion int
-	IsSubtask     bool
-	Attachments   []model.Attachment
+	ID             string
+	ProjectID      string
+	Title          string
+	Description    string
+	ProjectName    string
+	LabelNames     string
+	DueISODate     string
+	Status         string
+	SyncStatus     string
+	Priority       int
+	HasPriority    bool
+	ServerVersion  int
+	IsSubtask      bool
+	Attachments    []model.Attachment
+	ProjectOptions []TaskProjectOption
+}
+
+// TaskProjectOption contains one project selectable from inline task editing.
+type TaskProjectOption struct {
+	ID   string
+	Name string
 }
 
 // InlineTaskCreateView contains context hints for the inline task creator.
@@ -78,6 +87,10 @@ func taskCompletionPath(task TaskRowView) string {
 	return "/tasks/" + url.PathEscape(strings.TrimSpace(task.ID)) + "/" + action
 }
 
+func taskEditPath(task TaskRowView) string {
+	return "/tasks/" + url.PathEscape(strings.TrimSpace(task.ID))
+}
+
 func taskCSRFHeaders(ctx context.Context) string {
 	encoded, err := json.Marshal(map[string]string{"X-CSRF-Token": CSRFToken(ctx)})
 	if err != nil {
@@ -113,6 +126,10 @@ func taskCanToggleCompletion(task TaskRowView) bool {
 	return status == "" || status == "synced"
 }
 
+func taskCanInlineEdit(task TaskRowView) bool {
+	return taskCanToggleCompletion(task)
+}
+
 func taskMetaChips(task TaskRowView) []taskRowChip {
 	chips := make([]taskRowChip, 0, 4)
 	if due := strings.TrimSpace(task.DueISODate); due != "" {
@@ -134,6 +151,55 @@ func taskLabelChips(task TaskRowView) []taskRowChip {
 		chips = append(chips, taskRowChip{Label: label, Class: "caldo-task-chip caldo-task-chip-label"})
 	}
 	return chips
+}
+
+func taskEditableLabels(task TaskRowView) string {
+	return strings.Join(splitTaskLabels(task.LabelNames), ", ")
+}
+
+func taskPriorityValue(task TaskRowView) string {
+	if !task.HasPriority || task.Priority <= 0 {
+		return ""
+	}
+	return strconv.Itoa(task.Priority)
+}
+
+type taskPriorityOption struct {
+	Value string
+	Label string
+}
+
+func taskPriorityOptions() []taskPriorityOption {
+	return []taskPriorityOption{
+		{Value: "", Label: "Keine"},
+		{Value: "1", Label: "P1 - 1"},
+		{Value: "2", Label: "P1 - 2"},
+		{Value: "3", Label: "P1 - 3"},
+		{Value: "4", Label: "P1 - 4"},
+		{Value: "5", Label: "P2 - 5"},
+		{Value: "6", Label: "P2 - 6"},
+		{Value: "7", Label: "P3 - 7"},
+		{Value: "8", Label: "P3 - 8"},
+		{Value: "9", Label: "P3 - 9"},
+	}
+}
+
+func taskProjectOptions(task TaskRowView) []TaskProjectOption {
+	options := make([]TaskProjectOption, 0, len(task.ProjectOptions)+1)
+	seenCurrent := strings.TrimSpace(task.ProjectID) == ""
+	for _, option := range task.ProjectOptions {
+		if strings.TrimSpace(option.ID) == "" {
+			continue
+		}
+		if strings.TrimSpace(option.ID) == strings.TrimSpace(task.ProjectID) {
+			seenCurrent = true
+		}
+		options = append(options, option)
+	}
+	if !seenCurrent {
+		options = append([]TaskProjectOption{{ID: task.ProjectID, Name: task.ProjectName}}, options...)
+	}
+	return options
 }
 
 func taskStateChips(task TaskRowView) []taskRowChip {

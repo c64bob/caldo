@@ -607,6 +607,79 @@
 		text-decoration-color: var(--caldo-accent);
 	}
 
+	.caldo-task-edit-open {
+		@apply shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium transition;
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-task-edit-open:hover,
+	.caldo-task-edit-open:focus-visible {
+		background: var(--caldo-surface-muted);
+		color: var(--caldo-accent);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+	}
+
+	.caldo-task-edit-open:focus-visible {
+		outline-color: var(--caldo-focus);
+	}
+
+	.caldo-task-edit-form {
+		@apply min-w-0 space-y-2 px-1 pb-1;
+		grid-column: 2 / -1;
+	}
+
+	.caldo-task-edit-field {
+		@apply min-w-0 space-y-1 text-xs font-medium;
+		color: var(--caldo-text-muted);
+	}
+
+	.caldo-task-edit-field .caldo-input,
+	.caldo-task-edit-field .caldo-select {
+		@apply mt-0;
+	}
+
+	.caldo-task-edit-title,
+	.caldo-task-edit-description {
+		overflow-wrap: anywhere;
+	}
+
+	.caldo-task-edit-grid {
+		@apply grid min-w-0 gap-2;
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	@media (min-width: 640px) {
+		.caldo-task-edit-grid {
+			grid-template-columns: minmax(0, 1fr) minmax(9rem, 0.75fr) minmax(8rem, 0.75fr);
+		}
+	}
+
+	.caldo-task-edit-field-wide {
+		@apply min-w-0;
+	}
+
+	@media (min-width: 640px) {
+		.caldo-task-edit-field-wide {
+			grid-column: 1 / -1;
+		}
+	}
+
+	.caldo-task-edit-static {
+		@apply block min-h-9 truncate rounded border px-3 py-2 text-sm font-normal;
+		background: var(--caldo-surface-muted);
+		border-color: var(--caldo-border);
+		color: var(--caldo-text);
+	}
+
+	.caldo-task-edit-error {
+		@apply py-2;
+	}
+
+	.caldo-task-edit-actions {
+		@apply flex min-w-0 flex-wrap items-center gap-2;
+	}
+
 	.caldo-inline-create {
 		@apply border-b py-2;
 		border-color: var(--caldo-border);

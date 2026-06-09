@@ -9,6 +9,7 @@ import (
 // DatedTaskViewRow contains fields rendered in date-based system views.
 type DatedTaskViewRow struct {
 	ID            string
+	ProjectID     string
 	Title         string
 	Description   string
 	Status        string
@@ -76,6 +77,7 @@ WITH cfg AS (
 scoped_tasks AS (
 	SELECT
 		t.id,
+		t.project_id,
 		t.title,
 		COALESCE(t.description, '') AS description,
 		t.status,
@@ -96,6 +98,7 @@ scoped_tasks AS (
 )
 SELECT
 	t.id,
+	t.project_id,
 	t.title,
 	t.description,
 	t.status,
@@ -121,7 +124,7 @@ LIMIT ?;`, limit)
 	results := make([]DatedTaskViewRow, 0, limit)
 	for rows.Next() {
 		var row DatedTaskViewRow
-		if err := rows.Scan(&row.ID, &row.Title, &row.Description, &row.Status, &row.ProjectName, &row.DueISODate, &row.Priority, &row.HasPriority, &row.LabelNames, &row.SyncStatus, &row.ServerVersion, &row.IsSubtask); err != nil {
+		if err := rows.Scan(&row.ID, &row.ProjectID, &row.Title, &row.Description, &row.Status, &row.ProjectName, &row.DueISODate, &row.Priority, &row.HasPriority, &row.LabelNames, &row.SyncStatus, &row.ServerVersion, &row.IsSubtask); err != nil {
 			return nil, fmt.Errorf("list simple system tasks: scan row: %w", err)
 		}
 		results = append(results, row)
@@ -154,6 +157,7 @@ WITH cfg AS (
 scoped_tasks AS (
 	SELECT
 		t.id,
+		t.project_id,
 		t.title,
 		COALESCE(t.description, '') AS description,
 		t.status,
@@ -174,6 +178,7 @@ scoped_tasks AS (
 )
 SELECT
 	t.id,
+	t.project_id,
 	t.title,
 	t.description,
 	t.status,
@@ -202,7 +207,7 @@ LIMIT ?;
 	results := make([]DatedTaskViewRow, 0, limit)
 	for rows.Next() {
 		var row DatedTaskViewRow
-		if err := rows.Scan(&row.ID, &row.Title, &row.Description, &row.Status, &row.ProjectName, &row.DueISODate, &row.Priority, &row.HasPriority, &row.LabelNames, &row.SyncStatus, &row.ServerVersion, &row.IsSubtask); err != nil {
+		if err := rows.Scan(&row.ID, &row.ProjectID, &row.Title, &row.Description, &row.Status, &row.ProjectName, &row.DueISODate, &row.Priority, &row.HasPriority, &row.LabelNames, &row.SyncStatus, &row.ServerVersion, &row.IsSubtask); err != nil {
 			return nil, fmt.Errorf("list date scoped tasks: scan row: %w", err)
 		}
 		results = append(results, row)

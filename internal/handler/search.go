@@ -25,21 +25,29 @@ func Search(deps searchDependencies) http.HandlerFunc {
 			return
 		}
 
+		projectOptions, err := taskEditProjectOptions(r.Context(), deps.database)
+		if err != nil {
+			renderPageError(w, r, "Suche", "Suche laden", http.StatusInternalServerError)
+			return
+		}
+
 		items := make([]view.TaskRowView, 0, len(results))
 		for _, result := range results {
 			items = append(items, view.TaskRowView{
-				ID:            result.ID,
-				Title:         result.Title,
-				Description:   result.Description,
-				ProjectName:   result.ProjectName,
-				LabelNames:    result.LabelNames,
-				DueISODate:    result.DueISODate,
-				Status:        result.Status,
-				SyncStatus:    result.SyncStatus,
-				Priority:      result.Priority,
-				HasPriority:   result.HasPriority,
-				ServerVersion: result.ServerVersion,
-				Attachments:   model.ParseVTODOFields(result.RawVTODO).Attachments,
+				ID:             result.ID,
+				ProjectID:      result.ProjectID,
+				Title:          result.Title,
+				Description:    result.Description,
+				ProjectName:    result.ProjectName,
+				LabelNames:     result.LabelNames,
+				DueISODate:     result.DueISODate,
+				Status:         result.Status,
+				SyncStatus:     result.SyncStatus,
+				Priority:       result.Priority,
+				HasPriority:    result.HasPriority,
+				ServerVersion:  result.ServerVersion,
+				Attachments:    model.ParseVTODOFields(result.RawVTODO).Attachments,
+				ProjectOptions: projectOptions,
 			})
 		}
 

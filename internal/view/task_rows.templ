@@ -41,11 +41,21 @@ templ TaskRow(task TaskRowView) {
 					<span aria-hidden="true" class="caldo-task-checkbox-mark"></span>
 				</button>
 			</form>
-			<div class="caldo-task-content">
+			<div class="caldo-task-content" data-inline-task-display>
 				<div class="caldo-task-title-line">
 					<p class="caldo-task-title">{ taskRowTitle(task) }</p>
 					for _, state := range taskStateChips(task) {
 						<span class={ state.Class }>{ state.Label }</span>
+					}
+					if taskCanInlineEdit(task) {
+						<button
+							type="button"
+							class="caldo-task-edit-open"
+							data-inline-task-edit-open
+							aria-expanded="false"
+						>
+							Bearbeiten
+						</button>
 					}
 				</div>
 				if taskRowDescription(task) != "" {
@@ -71,6 +81,77 @@ templ TaskRow(task TaskRowView) {
 					</div>
 				}
 			</div>
+			if taskCanInlineEdit(task) {
+				<form
+					method="post"
+					action={ taskEditPath(task) }
+					hx-patch={ taskEditPath(task) }
+					hx-swap="none"
+					hx-disabled-elt="find button"
+					hx-headers={ taskCSRFHeaders(ctx) }
+					data-refresh-after-write="true"
+					data-inline-task-edit-form
+					class="caldo-task-edit-form"
+					aria-label={ "Aufgabe bearbeiten: " + taskRowTitle(task) }
+					hidden
+				>
+					<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
+					<input type="hidden" name="status" value={ task.Status }/>
+					<label class="caldo-task-edit-field">
+						<span>Titel</span>
+						<input
+							type="text"
+							name="title"
+							required
+							autocomplete="off"
+							class="caldo-input caldo-task-edit-title"
+							value={ taskRowTitle(task) }
+							data-inline-task-edit-title
+						/>
+					</label>
+					<label class="caldo-task-edit-field">
+						<span>Beschreibung</span>
+						<textarea name="description" rows="3" class="caldo-input caldo-task-edit-description">{ taskRowDescription(task) }</textarea>
+					</label>
+					<div class="caldo-task-edit-grid">
+						<label class="caldo-task-edit-field">
+							<span>Projekt</span>
+							if len(taskProjectOptions(task)) > 0 {
+								<select name="project_id" class="caldo-select">
+									for _, project := range taskProjectOptions(task) {
+										<option value={ project.ID } selected?={ strings.TrimSpace(project.ID) == strings.TrimSpace(task.ProjectID) }>{ project.Name }</option>
+									}
+								</select>
+							} else {
+								<input type="hidden" name="project_id" value={ task.ProjectID }/>
+								<span class="caldo-task-edit-static">{ task.ProjectName }</span>
+							}
+						</label>
+						<label class="caldo-task-edit-field">
+							<span>Fällig</span>
+							<input type="date" name="due_date" value={ task.DueISODate } class="caldo-input"/>
+						</label>
+						<label class="caldo-task-edit-field">
+							<span>Priorität</span>
+							<select name="priority" class="caldo-select">
+								for _, priority := range taskPriorityOptions() {
+									<option value={ priority.Value } selected?={ priority.Value == taskPriorityValue(task) }>{ priority.Label }</option>
+								}
+							</select>
+						</label>
+						<label class="caldo-task-edit-field caldo-task-edit-field-wide">
+							<span>Labels</span>
+							<input type="text" name="labels" value={ taskEditableLabels(task) } class="caldo-input" autocomplete="off"/>
+						</label>
+					</div>
+					<p class="caldo-alert caldo-alert-error caldo-task-edit-error" data-inline-task-edit-error aria-live="polite" hidden>Aufgabe konnte nicht gespeichert werden.</p>
+					<div class="caldo-task-edit-actions">
+						<button type="submit" class="caldo-button caldo-button-primary">Speichern</button>
+						<button type="button" class="caldo-button caldo-button-ghost" data-inline-task-edit-cancel>Abbrechen</button>
+						<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
+					</div>
+				</form>
+			}
 		</div>
 	</li>
 }

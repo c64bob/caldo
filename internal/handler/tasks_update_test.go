@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -155,6 +156,86 @@ func TestTaskUpdatePreservesDescriptionWhenOmitted(t *testing.T) {
 	}
 	if !bytes.Contains([]byte(rawVTODO), []byte("DESCRIPTION:old-desc")) {
 		t.Fatalf("unexpected raw vtodo: %q", rawVTODO)
+	}
+}
+
+func TestTaskUpdateClearsExplicitFieldsAndPreservesFavoriteCategory(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskUpdateHandlerTest(t)
+	seedTaskUpdateHandlerData(t, database)
+
+	if _, err := database.Conn.ExecContext(context.Background(), `
+UPDATE tasks
+SET raw_vtodo = 'BEGIN:VCALENDAR
+BEGIN:VTODO
+UID:uid-1
+SUMMARY:old
+DESCRIPTION:old-desc
+STATUS:NEEDS-ACTION
+DUE;VALUE=DATE:20260710
+PRIORITY:4
+CATEGORIES:home,STARRED
+END:VTODO
+END:VCALENDAR',
+    due_date = '2026-07-10',
+    priority = 4,
+    label_names = 'home,STARRED'
+WHERE id = 'task-1';
+`); err != nil {
+		t.Fatalf("seed editable fields: %v", err)
+	}
+
+	key := bytes.Repeat([]byte{0x72}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	h := TaskUpdate(taskUpdateDependencies{database: database, encryptionKey: key, todos: &stubTaskUpdateTodoClient{updateETag: `"etag-clear"`}})
+	form := url.Values{
+		"expected_version": {"2"},
+		"title":            {"old"},
+		"description":      {""},
+		"status":           {"needs-action"},
+		"due_date":         {""},
+		"priority":         {""},
+		"labels":           {""},
+	}
+	req := httptest.NewRequest(http.MethodPatch, "/tasks/task-1", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Tab-ID", "tab-1")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("taskID", "task-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+
+	var rawVTODO string
+	var description, dueDate, labelNames sql.NullString
+	var priority sql.NullInt64
+	if err := database.Conn.QueryRowContext(context.Background(), `
+SELECT raw_vtodo, description, due_date, priority, label_names
+FROM tasks
+WHERE id = 'task-1';
+`).Scan(&rawVTODO, &description, &dueDate, &priority, &labelNames); err != nil {
+		t.Fatalf("query task: %v", err)
+	}
+	for _, notWant := range []string{"DESCRIPTION:", "DUE", "PRIORITY:", "home"} {
+		if bytes.Contains([]byte(rawVTODO), []byte(notWant)) {
+			t.Fatalf("raw vtodo unexpectedly contains %q: %q", notWant, rawVTODO)
+		}
+	}
+	if !bytes.Contains([]byte(rawVTODO), []byte("CATEGORIES:STARRED")) {
+		t.Fatalf("expected favorite category to be preserved, raw=%q", rawVTODO)
+	}
+	if description.Valid || dueDate.Valid || priority.Valid {
+		t.Fatalf("expected cleared nullable fields, description=%#v dueDate=%#v priority=%#v", description, dueDate, priority)
+	}
+	if !labelNames.Valid || labelNames.String != "STARRED" {
+		t.Fatalf("expected only favorite label name to remain, got %#v", labelNames)
 	}
 }
 

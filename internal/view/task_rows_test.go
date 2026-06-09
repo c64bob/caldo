@@ -88,6 +88,66 @@ func TestTaskRowRendersCompletedReopenControlAndConflictState(t *testing.T) {
 	}
 }
 
+func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	component := TaskRow(TaskRowView{
+		ID:            "task-1",
+		ProjectID:     "project-1",
+		Title:         "Editierbare Aufgabe",
+		Description:   "Alter Text",
+		ProjectName:   "Inbox",
+		LabelNames:    "Büro,urgent,STARRED",
+		DueISODate:    "2026-06-09",
+		Status:        "needs-action",
+		SyncStatus:    "synced",
+		Priority:      4,
+		HasPriority:   true,
+		ServerVersion: 3,
+		ProjectOptions: []TaskProjectOption{
+			{ID: "project-1", Name: "Inbox"},
+			{ID: "project-2", Name: "Work"},
+		},
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render task row: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`data-inline-task-display`,
+		`data-inline-task-edit-open`,
+		`data-inline-task-edit-form`,
+		`hidden`,
+		`hx-patch="/tasks/task-1"`,
+		`name="expected_version" value="3"`,
+		`name="status" value="needs-action"`,
+		`name="title"`,
+		`value="Editierbare Aufgabe"`,
+		`Alter Text`,
+		`name="project_id"`,
+		`value="project-1" selected`,
+		`value="project-2"`,
+		`name="due_date" value="2026-06-09"`,
+		`name="priority"`,
+		`value="4" selected`,
+		`name="labels" value="Büro, urgent"`,
+		`data-inline-task-edit-cancel`,
+		`data-inline-task-edit-error`,
+		`X-CSRF-Token`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected inline edit form to include %q in %s", want, output)
+		}
+	}
+	if strings.Contains(output, `name="labels" value="Büro, urgent, STARRED"`) {
+		t.Fatalf("reserved favorite category must not render in the label editor: %s", output)
+	}
+}
+
 func TestInlineTaskCreateRendersContextAndControls(t *testing.T) {
 	t.Parallel()
 

@@ -53,6 +53,9 @@ func TestTodayRouteShowsTodayAndOverdueTasks(t *testing.T) {
 		`Aufgabe für heute hinzufügen`,
 		`name="due_date" value="2026-04-28"`,
 		`hx-post="/tasks/"`,
+		`data-inline-task-edit-form`,
+		`hx-patch="/tasks/task-overdue-active"`,
+		`name="project_id"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("response body missing task row detail %q: %q", want, body)

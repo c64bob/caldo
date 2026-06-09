@@ -23,6 +23,12 @@ type ProjectRecord struct {
 	SyncStrategy string
 }
 
+// ProjectOption contains one selectable project for task editing.
+type ProjectOption struct {
+	ID          string
+	DisplayName string
+}
+
 // InsertProject inserts a newly created project after successful remote calendar creation.
 func (d *Database) InsertProject(ctx context.Context, input NewProjectInput) (ProjectRecord, error) {
 	calendarHref := strings.TrimSpace(input.CalendarHref)
@@ -59,4 +65,31 @@ INSERT INTO projects (
 	}
 
 	return project, nil
+}
+
+// ListProjectOptions returns projects in the same order used by navigation.
+func (d *Database) ListProjectOptions(ctx context.Context) ([]ProjectOption, error) {
+	rows, err := d.Conn.QueryContext(ctx, `
+SELECT id, display_name
+FROM projects
+ORDER BY is_default DESC, display_name COLLATE NOCASE ASC;
+`)
+	if err != nil {
+		return nil, fmt.Errorf("list project options: %w", err)
+	}
+	defer rows.Close()
+
+	projects := make([]ProjectOption, 0)
+	for rows.Next() {
+		var project ProjectOption
+		if err := rows.Scan(&project.ID, &project.DisplayName); err != nil {
+			return nil, fmt.Errorf("list project options: scan project: %w", err)
+		}
+		projects = append(projects, project)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list project options: iterate projects: %w", err)
+	}
+
+	return projects, nil
 }

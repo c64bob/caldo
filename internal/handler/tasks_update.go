@@ -68,9 +68,11 @@ func TaskUpdate(deps taskUpdateDependencies) http.HandlerFunc {
 			return
 		}
 
+		baseFields := model.ParseVTODOFields(base.RawVTODO)
+
 		title := strings.TrimSpace(r.FormValue("title"))
 		if title == "" {
-			title = model.ParseVTODOFields(base.RawVTODO).Title
+			title = baseFields.Title
 		}
 		if title == "" {
 			http.Error(w, "title is required", http.StatusBadRequest)
@@ -79,7 +81,7 @@ func TaskUpdate(deps taskUpdateDependencies) http.HandlerFunc {
 
 		status := strings.TrimSpace(strings.ToLower(r.FormValue("status")))
 		if status == "" {
-			status = model.ParseVTODOFields(base.RawVTODO).Status
+			status = baseFields.Status
 		}
 		if status == "" {
 			status = "needs-action"
@@ -90,17 +92,16 @@ func TaskUpdate(deps taskUpdateDependencies) http.HandlerFunc {
 			description = stringPointer(strings.TrimSpace(r.FormValue("description")))
 		}
 
-		existingRRule := model.ParseVTODOFields(base.RawVTODO).RRule
+		existingRRule := baseFields.RRule
 
 		patch := model.VTODOPatch{
 			Summary:     &title,
 			Description: description,
 			Status:      &status,
-			DueDate:     parseOptionalDate(r.FormValue("due_date")),
-			DueAt:       parseOptionalDateTime(r.FormValue("due_at")),
-			Categories:  parseOptionalLabels(r.FormValue("labels")),
-			Priority:    parseOptionalInt(r.FormValue("priority")),
 		}
+		applyDuePatch(r.PostForm, baseFields, &patch)
+		applyPriorityPatch(r.PostForm, &patch)
+		applyLabelPatch(r.PostForm, baseFields.Categories, &patch)
 		if !model.IsComplexRRule(existingRRule) {
 			if recurrence := buildExplicitRRuleUpdate(r.PostForm); recurrence != nil {
 				patch.RRule = recurrence
@@ -242,10 +243,68 @@ func parseOptionalDateTime(raw string) *time.Time {
 	return &utc
 }
 
-func parseOptionalLabels(raw string) []string {
+func applyDuePatch(form map[string][]string, baseFields model.VTODOFields, patch *model.VTODOPatch) {
+	if _, ok := form["due_at"]; ok {
+		dueAtRaw := strings.TrimSpace(firstFormValue(form, "due_at"))
+		if dueAtRaw == "" {
+			patch.ClearDue = true
+			return
+		}
+		patch.DueAt = parseOptionalDateTime(dueAtRaw)
+		return
+	}
+
+	if _, ok := form["due_date"]; !ok {
+		return
+	}
+	dueDateRaw := strings.TrimSpace(firstFormValue(form, "due_date"))
+	if dueDateRaw == "" {
+		patch.ClearDue = true
+		return
+	}
+	parsedDate := parseOptionalDate(dueDateRaw)
+	if parsedDate == nil {
+		return
+	}
+	if baseFields.DueAt != nil {
+		if date, err := time.Parse("2006-01-02", *parsedDate); err == nil {
+			existingTime := baseFields.DueAt.UTC()
+			combined := time.Date(date.Year(), date.Month(), date.Day(), existingTime.Hour(), existingTime.Minute(), existingTime.Second(), existingTime.Nanosecond(), time.UTC)
+			patch.DueAt = &combined
+			return
+		}
+	}
+	patch.DueDate = parsedDate
+}
+
+func applyPriorityPatch(form map[string][]string, patch *model.VTODOPatch) {
+	if _, ok := form["priority"]; !ok {
+		return
+	}
+	priorityRaw := strings.TrimSpace(firstFormValue(form, "priority"))
+	if priorityRaw == "" {
+		patch.ClearPriority = true
+		return
+	}
+	patch.Priority = parseOptionalInt(priorityRaw)
+}
+
+func applyLabelPatch(form map[string][]string, existingCategories []string, patch *model.VTODOPatch) {
+	if _, ok := form["labels"]; !ok {
+		return
+	}
+	_, isFavorite := model.CategoriesToLabelsAndFavorite(existingCategories)
+	categories, err := model.LabelsAndFavoriteToCategories(parseLabels(firstFormValue(form, "labels")), isFavorite)
+	if err != nil {
+		return
+	}
+	patch.Categories = categories
+}
+
+func parseLabels(raw string) []string {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
-		return nil
+		return []string{}
 	}
 	parts := strings.Split(trimmed, ",")
 	labels := make([]string, 0, len(parts))
@@ -255,6 +314,11 @@ func parseOptionalLabels(raw string) []string {
 			labels = append(labels, label)
 		}
 	}
+	return labels
+}
+
+func parseOptionalLabels(raw string) []string {
+	labels := parseLabels(raw)
 	if len(labels) == 0 {
 		return nil
 	}

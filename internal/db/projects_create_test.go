@@ -84,3 +84,34 @@ func TestInsertProjectValidatesRequiredFields(t *testing.T) {
 		t.Fatalf("expected display name validation error, got %v", err)
 	}
 }
+
+func TestListProjectOptionsOrdersDefaultFirst(t *testing.T) {
+	t.Parallel()
+
+	database, err := OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	if _, err := database.Conn.ExecContext(context.Background(), `
+INSERT INTO projects (id, calendar_href, display_name, sync_strategy, is_default, created_at, updated_at)
+VALUES
+('project-work', '/cal/work/', 'Work', 'fullscan', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('project-inbox', '/cal/inbox/', 'Inbox', 'fullscan', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('project-home', '/cal/home/', 'Home', 'fullscan', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+`); err != nil {
+		t.Fatalf("seed projects: %v", err)
+	}
+
+	options, err := database.ListProjectOptions(context.Background())
+	if err != nil {
+		t.Fatalf("list project options: %v", err)
+	}
+	if len(options) != 3 {
+		t.Fatalf("unexpected project count: got %d", len(options))
+	}
+	if options[0].ID != "project-inbox" || options[1].ID != "project-home" || options[2].ID != "project-work" {
+		t.Fatalf("unexpected project order: %#v", options)
+	}
+}

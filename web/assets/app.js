@@ -14,6 +14,11 @@
     window.location.assign(path);
   }
 
+  function closestElement(target, selector) {
+    if (!target || !(target instanceof Element)) return null;
+    return target.closest(selector);
+  }
+
   function toggleHelpDialog() {
     var dialog = document.querySelector('[data-shortcut-help-dialog]');
     if (!dialog) return;
@@ -22,6 +27,18 @@
       return;
     }
     dialog.showModal();
+  }
+
+  function openMobileNav() {
+    var dialog = document.querySelector('[data-mobile-nav-dialog]');
+    if (!dialog || dialog.hasAttribute('open')) return;
+    dialog.showModal();
+  }
+
+  function closeMobileNav() {
+    var dialog = document.querySelector('[data-mobile-nav-dialog]');
+    if (!dialog || !dialog.hasAttribute('open')) return;
+    dialog.close();
   }
 
   var writeState = { pendingRequests: 0 };
@@ -94,11 +111,37 @@
   });
 
   document.addEventListener('click', function (event) {
-    var closeButton = event.target.closest('[data-shortcut-help-close]');
+    var mobileNavOpen = closestElement(event.target, '[data-mobile-nav-open]');
+    if (mobileNavOpen) {
+      event.preventDefault();
+      openMobileNav();
+      return;
+    }
+
+    var mobileNavClose = closestElement(event.target, '[data-mobile-nav-close]');
+    if (mobileNavClose) {
+      event.preventDefault();
+      closeMobileNav();
+      return;
+    }
+
+    var mobileNavLink = closestElement(event.target, '[data-mobile-nav-dialog] a');
+    if (mobileNavLink) {
+      closeMobileNav();
+      return;
+    }
+
+    var closeButton = closestElement(event.target, '[data-shortcut-help-close]');
     if (!closeButton) return;
     var dialog = closeButton.closest('dialog');
     if (dialog) {
       dialog.close();
+    }
+  });
+
+  window.addEventListener('resize', function () {
+    if (window.innerWidth >= 768) {
+      closeMobileNav();
     }
   });
 

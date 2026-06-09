@@ -89,17 +89,35 @@
 	}
 
 	.caldo-page {
-		@apply max-w-4xl space-y-4;
+		@apply w-full max-w-4xl space-y-4;
 	}
 
 	.caldo-app-shell {
-		@apply flex min-h-screen;
+		@apply min-h-screen;
+	}
+
+	@media (min-width: 768px) {
+		.caldo-app-shell {
+			@apply flex;
+		}
 	}
 
 	.caldo-sidebar {
-		@apply sticky top-0 flex h-screen w-72 shrink-0 flex-col overflow-hidden border-r p-4;
+		@apply sticky top-0 hidden h-screen w-60 shrink-0 flex-col overflow-hidden border-r p-3;
 		background: var(--caldo-surface-muted);
 		border-color: var(--caldo-border);
+	}
+
+	@media (min-width: 768px) {
+		.caldo-sidebar {
+			@apply flex;
+		}
+	}
+
+	@media (min-width: 1024px) {
+		.caldo-sidebar {
+			@apply w-72 p-4;
+		}
 	}
 
 	.caldo-sidebar-header {
@@ -124,18 +142,40 @@
 	}
 
 	.caldo-workspace {
-		@apply flex min-w-0 flex-1 flex-col;
+		@apply flex min-h-screen min-w-0 flex-1 flex-col;
 		background: var(--caldo-bg);
 	}
 
 	.caldo-topbar {
-		@apply sticky top-0 z-20 flex min-h-16 items-center justify-between gap-4 border-b px-6 py-3;
+		@apply sticky top-0 z-20 flex min-h-16 flex-col items-stretch gap-2 border-b px-3 py-2;
 		background: var(--caldo-bg);
 		border-color: var(--caldo-border);
 	}
 
+	@media (min-width: 640px) {
+		.caldo-topbar {
+			@apply px-4 py-3;
+		}
+	}
+
+	@media (min-width: 768px) {
+		.caldo-topbar {
+			@apply flex-row items-center justify-between gap-4 px-5;
+		}
+	}
+
+	@media (min-width: 1024px) {
+		.caldo-topbar {
+			@apply px-6;
+		}
+	}
+
+	.caldo-topbar-primary {
+		@apply flex min-w-0 items-center gap-2;
+	}
+
 	.caldo-topbar-title {
-		@apply min-w-0;
+		@apply min-w-0 flex-1;
 	}
 
 	.caldo-topbar-kicker {
@@ -149,15 +189,57 @@
 	}
 
 	.caldo-topbar-actions {
-		@apply flex shrink-0 flex-wrap items-center justify-end gap-2;
+		@apply grid w-full min-w-0 grid-cols-2 gap-2;
+	}
+
+	.caldo-topbar-actions > .caldo-button {
+		@apply min-w-0;
+	}
+
+	.caldo-topbar-actions > .caldo-sync-status {
+		@apply col-span-2;
+	}
+
+	@media (min-width: 640px) {
+		.caldo-topbar-actions {
+			@apply flex shrink-0 flex-wrap items-center justify-end gap-2;
+		}
+
+		.caldo-topbar-actions > .caldo-sync-status {
+			@apply col-auto;
+		}
 	}
 
 	.caldo-main {
-		@apply min-w-0 flex-1 overflow-x-hidden px-6 py-6;
+		@apply min-w-0 flex-1 overflow-x-hidden px-3 py-4;
+	}
+
+	@media (min-width: 640px) {
+		.caldo-main {
+			@apply px-5 py-5;
+		}
+	}
+
+	@media (min-width: 1024px) {
+		.caldo-main {
+			@apply px-6 py-6;
+		}
 	}
 
 	.caldo-content {
-		@apply min-w-0 max-w-4xl;
+		@apply min-w-0 max-w-full;
+	}
+
+	@media (min-width: 768px) {
+		.caldo-content {
+			@apply max-w-3xl;
+		}
+	}
+
+	@media (min-width: 1280px) {
+		.caldo-content {
+			@apply max-w-4xl;
+		}
 	}
 
 	.caldo-page-title {
@@ -181,10 +263,49 @@
 	}
 
 	.caldo-button {
-		@apply inline-flex min-h-8 max-w-full items-center justify-center gap-1.5 truncate rounded-md border px-3 py-1.5 text-sm font-medium leading-5 transition;
+		@apply inline-flex min-h-8 min-w-0 max-w-full items-center justify-center gap-1.5 truncate rounded-md border px-3 py-1.5 text-sm font-medium leading-5 transition;
 		background: var(--caldo-surface);
 		border-color: var(--caldo-border-strong);
 		color: var(--caldo-text);
+	}
+
+	.caldo-icon-button {
+		@apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border-strong);
+		color: var(--caldo-text);
+	}
+
+	.caldo-icon-button:hover {
+		background: var(--caldo-surface-muted);
+	}
+
+	.caldo-icon-button:focus-visible {
+		outline: 2px solid var(--caldo-focus);
+		outline-offset: 2px;
+	}
+
+	.caldo-mobile-nav-trigger {
+		@apply flex;
+	}
+
+	@media (min-width: 768px) {
+		.caldo-mobile-nav-trigger {
+			@apply hidden;
+		}
+	}
+
+	.caldo-menu-icon {
+		@apply relative block h-3.5 w-4;
+		border-top: 2px solid currentColor;
+		border-bottom: 2px solid currentColor;
+	}
+
+	.caldo-menu-icon::before {
+		@apply absolute left-0 top-1/2 block w-full;
+		content: "";
+		border-top: 2px solid currentColor;
+		transform: translateY(-50%);
 	}
 
 	.caldo-button:hover {
@@ -285,6 +406,7 @@
 		@apply rounded-md border p-4;
 		background: var(--caldo-surface);
 		border-color: var(--caldo-border);
+		overflow-wrap: anywhere;
 	}
 
 	.caldo-list {
@@ -324,7 +446,7 @@
 	}
 
 	.caldo-badge {
-		@apply inline-flex min-h-5 max-w-full items-center truncate rounded-full border px-2 text-xs font-medium;
+		@apply inline-flex min-h-5 min-w-0 max-w-full items-center truncate rounded-full border px-2 text-xs font-medium;
 		background: var(--caldo-surface-muted);
 		border-color: var(--caldo-border);
 		color: var(--caldo-text-muted);
@@ -353,10 +475,23 @@
 	}
 
 	.caldo-dialog {
-		@apply w-full max-w-xl rounded-md border p-0;
+		@apply w-full max-w-xl overflow-auto rounded-md border p-0;
 		background: var(--caldo-surface);
 		border-color: var(--caldo-border-strong);
 		color: var(--caldo-text);
+		max-height: calc(100dvh - 2rem);
+		width: calc(100vw - 1rem);
+	}
+
+	@media (min-width: 640px) {
+		.caldo-dialog {
+			width: calc(100vw - 2rem);
+		}
+	}
+
+	.caldo-dialog::backdrop,
+	.caldo-mobile-nav-dialog::backdrop {
+		background: rgb(0 0 0 / 0.35);
 	}
 
 	.caldo-kbd {
@@ -382,14 +517,20 @@
 	}
 
 	.caldo-toast {
-		@apply fixed bottom-4 right-4 rounded-md border px-3 py-2 text-sm shadow-sm;
+		@apply fixed bottom-3 left-3 right-3 rounded-md border px-3 py-2 text-sm shadow-sm;
 		background: var(--caldo-surface);
 		border-color: var(--caldo-border-strong);
 		color: var(--caldo-text);
 	}
 
+	@media (min-width: 640px) {
+		.caldo-toast {
+			@apply bottom-4 left-auto right-4 max-w-sm;
+		}
+	}
+
 	.caldo-menu {
-		@apply min-w-44 rounded-md border p-1 shadow-sm;
+		@apply max-w-full rounded-md border p-1 shadow-sm;
 		background: var(--caldo-surface);
 		border-color: var(--caldo-border);
 		color: var(--caldo-text);
@@ -406,7 +547,7 @@
 	}
 
 	.caldo-sync-status {
-		@apply flex min-w-0 items-center gap-2;
+		@apply flex min-w-0 flex-wrap items-center gap-2;
 	}
 
 	.caldo-sync-copy {
@@ -416,5 +557,42 @@
 	.caldo-sync-last {
 		@apply max-w-48 truncate text-xs;
 		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-mobile-nav-dialog {
+		@apply m-0 h-full max-h-none w-full max-w-none border-0 p-0;
+		background: transparent;
+		color: var(--caldo-text);
+	}
+
+	.caldo-mobile-nav-dialog[open] {
+		@apply flex;
+	}
+
+	.caldo-mobile-nav-panel {
+		@apply flex h-full w-full flex-col gap-4 overflow-hidden border-r p-4 shadow-sm;
+		background: var(--caldo-surface-muted);
+		border-color: var(--caldo-border);
+	}
+
+	@media (min-width: 480px) {
+		.caldo-mobile-nav-panel {
+			@apply max-w-sm;
+		}
+	}
+
+	.caldo-mobile-nav-header {
+		@apply flex min-w-0 items-start justify-between gap-3;
+	}
+
+	.caldo-mobile-nav {
+		@apply min-h-0 flex-1 overflow-y-auto pr-1;
+	}
+
+	@media (max-width: 639px) {
+		.caldo-input.w-32,
+		.caldo-select.w-48 {
+			@apply w-full;
+		}
 	}
 }

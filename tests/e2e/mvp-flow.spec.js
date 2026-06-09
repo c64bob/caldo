@@ -56,8 +56,14 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(page.locator('[data-search-results]').filter({ hasText: 'Stage Seed Task' })).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByRole('navigation', { name: 'Hauptnavigation' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Navigation öffnen' })).toBeVisible();
+  await page.getByRole('button', { name: 'Navigation öffnen' }).click();
+  await expect(page.getByRole('navigation', { name: 'Mobile Hauptnavigation' })).toBeVisible();
+  await expect(page.locator('[data-mobile-nav-dialog] nav[aria-label="Mobile Hauptnavigation"] a[href="/today"]')).toBeVisible();
   await page.screenshot({ path: 'test-results/e2e/search-mobile.png', fullPage: true });
+  await page.getByRole('button', { name: 'Schließen' }).click();
+  await expect(page.locator('.caldo-topbar a[href="/search"]')).toBeVisible();
+  await expect(page.locator('.caldo-topbar a[href="/quick-add"]')).toBeVisible();
   await page.setViewportSize({ width: 1440, height: 1000 });
 
   const beforeCreate = await stageState();

@@ -20,15 +20,23 @@ const (
 
 var errInvalidCSRF = errors.New("invalid csrf token")
 
+// CSRFTokenMiddleware exposes a signed CSRF token to rendered pages without validating requests.
+func CSRFTokenMiddleware(secret []byte) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if shouldExposeCSRFToken(r) {
+				r = exposeCSRFToken(w, r, secret)
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // SetupCSRFMiddleware enforces double-submit-cookie CSRF protection for mutating setup routes.
 func SetupCSRFMiddleware(secret []byte) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			token := ensureCSRFToken(w, r, secret)
-			if token != "" {
-				w.Header().Set(csrfHeaderName, token)
-				r = r.WithContext(view.WithCSRFToken(r.Context(), token))
-			}
+			r = exposeCSRFToken(w, r, secret)
 			if isMutatingMethod(r.Method) {
 				if err := validateCSRFToken(r, secret); err != nil {
 					http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
@@ -39,6 +47,23 @@ func SetupCSRFMiddleware(secret []byte) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func exposeCSRFToken(w http.ResponseWriter, r *http.Request, secret []byte) *http.Request {
+	token := ensureCSRFToken(w, r, secret)
+	if token == "" {
+		return r
+	}
+	w.Header().Set(csrfHeaderName, token)
+	return r.WithContext(view.WithCSRFToken(r.Context(), token))
+}
+
+func shouldExposeCSRFToken(r *http.Request) bool {
+	path := r.URL.Path
+	if path == "/health" || strings.HasPrefix(path, "/static/") || path == "/events" || path == "/setup/import/events" {
+		return false
+	}
+	return true
 }
 
 func ensureCSRFToken(w http.ResponseWriter, r *http.Request, secret []byte) string {

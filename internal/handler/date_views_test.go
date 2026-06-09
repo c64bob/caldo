@@ -49,6 +49,10 @@ func TestTodayRouteShowsTodayAndOverdueTasks(t *testing.T) {
 		"urgent",
 		"P1",
 		"Speichert",
+		`data-inline-task-create`,
+		`Aufgabe für heute hinzufügen`,
+		`name="due_date" value="2026-04-28"`,
+		`hx-post="/tasks/"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("response body missing task row detail %q: %q", want, body)
@@ -135,6 +139,7 @@ func TestAdditionalSystemFilters(t *testing.T) {
 
 	checkContains("/favorites", Favorites(dateViewDependencies{database: database, now: fixedNow}), "Favorisierte Aufgabe")
 	checkContains("/no-date", NoDate(dateViewDependencies{database: database, now: fixedNow}), "Ohne Fälligkeit")
+	checkContains("/no-date", NoDate(dateViewDependencies{database: database, now: fixedNow}), "Aufgabe ohne Datum hinzufügen")
 
 	req := httptest.NewRequest(http.MethodGet, "/completed", nil)
 	rr := httptest.NewRecorder()

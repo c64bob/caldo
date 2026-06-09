@@ -1,6 +1,6 @@
 package view
 
-templ DateScopedTasksPage(heading string, emptyMessage string, tasks []TaskRowView) {
+templ DateScopedTasksPage(heading string, emptyMessage string, tasks []TaskRowView, create InlineTaskCreateView) {
 	<section class="caldo-page">
 		<h2 class="caldo-page-title">{ heading }</h2>
 		if len(tasks) == 0 {
@@ -12,5 +12,6 @@ templ DateScopedTasksPage(heading string, emptyMessage string, tasks []TaskRowVi
 				}
 			</ul>
 		}
+		@InlineTaskCreate(create)
 	</section>
 }

@@ -49,7 +49,7 @@ func TestTaskCreateSuccessPersistsSyncedTask(t *testing.T) {
 	stub := &stubTaskCreateTodoClient{etag: `"etag-1"`}
 	h := TaskCreate(taskCreateDependencies{database: database, encryptionKey: key, todos: stub})
 
-	form := url.Values{"title": {"Buy milk"}, "labels": {"finance,home"}, "priority": {"high"}, "recurrence": {"FREQ=WEEKLY;BYDAY=MO"}}
+	form := url.Values{"title": {"Buy milk"}, "labels": {"finance,home"}, "priority": {"high"}, "recurrence": {"FREQ=WEEKLY;BYDAY=MO"}, "due_date": {"2026-06-09"}}
 	req := httptest.NewRequest(http.MethodPost, "/tasks", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr := httptest.NewRecorder()
@@ -67,6 +67,9 @@ func TestTaskCreateSuccessPersistsSyncedTask(t *testing.T) {
 	if !strings.Contains(stub.raw, "PRIORITY:1") {
 		t.Fatalf("expected priority in raw payload: %q", stub.raw)
 	}
+	if !strings.Contains(stub.raw, "DUE;VALUE=DATE:20260609") {
+		t.Fatalf("expected due date in raw payload: %q", stub.raw)
+	}
 	if !strings.Contains(stub.raw, "RRULE:FREQ=WEEKLY;BYDAY=MO") {
 		t.Fatalf("expected recurrence in raw payload: %q", stub.raw)
 	}
@@ -77,11 +80,17 @@ func TestTaskCreateSuccessPersistsSyncedTask(t *testing.T) {
 	var syncStatus string
 	var etag string
 	var serverVersion int
-	if err := database.Conn.QueryRowContext(context.Background(), `SELECT sync_status, etag, server_version FROM tasks LIMIT 1;`).Scan(&syncStatus, &etag, &serverVersion); err != nil {
+	var dueDate string
+	var priority int
+	var labelNames string
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT sync_status, etag, server_version, date(due_date), priority, label_names FROM tasks LIMIT 1;`).Scan(&syncStatus, &etag, &serverVersion, &dueDate, &priority, &labelNames); err != nil {
 		t.Fatalf("query task: %v", err)
 	}
 	if syncStatus != "synced" || etag != `"etag-1"` || serverVersion != 2 {
 		t.Fatalf("unexpected task state: status=%q etag=%q version=%d", syncStatus, etag, serverVersion)
+	}
+	if dueDate != "2026-06-09" || priority != 1 || labelNames != "finance,home" {
+		t.Fatalf("unexpected denormalized task fields: due=%q priority=%d labels=%q", dueDate, priority, labelNames)
 	}
 }
 

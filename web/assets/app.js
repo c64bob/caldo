@@ -49,6 +49,58 @@
     dialog.close();
   }
 
+  function inlineCreateError(root) {
+    return root ? root.querySelector('[data-inline-task-create-error]') : null;
+  }
+
+  function setInlineCreateError(root, message) {
+    var error = inlineCreateError(root);
+    if (!error) return;
+    if (!message) {
+      error.textContent = '';
+      error.hidden = true;
+      return;
+    }
+    error.textContent = message;
+    error.hidden = false;
+  }
+
+  function openInlineCreate(root) {
+    if (!root) return;
+    var trigger = root.querySelector('[data-inline-task-create-trigger]');
+    var form = root.querySelector('[data-inline-task-create-form]');
+    if (!form) return;
+    root.dataset.inlineTaskCreateOpen = 'true';
+    if (trigger) {
+      trigger.hidden = true;
+      trigger.setAttribute('aria-expanded', 'true');
+    }
+    form.hidden = false;
+    setInlineCreateError(root, '');
+    var input = form.querySelector('[data-inline-task-create-title]');
+    if (input) {
+      window.setTimeout(function () {
+        input.focus();
+      }, 0);
+    }
+  }
+
+  function closeInlineCreate(root) {
+    if (!root) return;
+    var trigger = root.querySelector('[data-inline-task-create-trigger]');
+    var form = root.querySelector('[data-inline-task-create-form]');
+    if (!form) return;
+    form.reset();
+    form.hidden = true;
+    root.dataset.inlineTaskCreateOpen = 'false';
+    setInlineCreateError(root, '');
+    if (trigger) {
+      trigger.hidden = false;
+      trigger.setAttribute('aria-expanded', 'false');
+      trigger.focus();
+    }
+  }
+
   var writeState = { pendingRequests: 0 };
 
   function setWriteStatus(kind, message) {
@@ -105,6 +157,10 @@
     if (!method || method === 'GET') return;
     writeState.pendingRequests += 1;
     setWriteStatus('pending', 'Speichern ...');
+    var inlineCreate = closestElement(event.detail && event.detail.elt, '[data-inline-task-create]');
+    if (inlineCreate) {
+      setInlineCreateError(inlineCreate, '');
+    }
   });
 
   document.body.addEventListener('htmx:afterRequest', function (event) {
@@ -117,6 +173,10 @@
     var successful = !!(event.detail && event.detail.successful);
     if (!successful) {
       setWriteStatus('error', 'Speichern fehlgeschlagen. Änderungen prüfen.');
+      var failedInlineCreate = closestElement(event.detail && event.detail.elt, '[data-inline-task-create]');
+      if (failedInlineCreate) {
+        setInlineCreateError(failedInlineCreate, 'Aufgabe konnte nicht gespeichert werden.');
+      }
       return;
     }
 
@@ -137,6 +197,20 @@
   });
 
   document.addEventListener('click', function (event) {
+    var inlineCreateTrigger = closestElement(event.target, '[data-inline-task-create-trigger]');
+    if (inlineCreateTrigger) {
+      event.preventDefault();
+      openInlineCreate(inlineCreateTrigger.closest('[data-inline-task-create]'));
+      return;
+    }
+
+    var inlineCreateCancel = closestElement(event.target, '[data-inline-task-create-cancel]');
+    if (inlineCreateCancel) {
+      event.preventDefault();
+      closeInlineCreate(inlineCreateCancel.closest('[data-inline-task-create]'));
+      return;
+    }
+
     var mobileNavOpen = closestElement(event.target, '[data-mobile-nav-open]');
     if (mobileNavOpen) {
       event.preventDefault();
@@ -172,6 +246,13 @@
   });
 
   document.addEventListener('keydown', function (event) {
+    var inlineCreate = closestElement(event.target, '[data-inline-task-create]');
+    if (inlineCreate && event.key === 'Escape') {
+      event.preventDefault();
+      closeInlineCreate(inlineCreate);
+      return;
+    }
+
     if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey) return;
     if (isTypingTarget(event.target)) {
       navState.pendingView = null;

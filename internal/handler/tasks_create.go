@@ -101,16 +101,24 @@ func createTask(w http.ResponseWriter, r *http.Request, deps taskCreateDependenc
 	}
 	rawVTODO = model.PatchVTODO(rawVTODO, model.VTODOPatch{
 		Priority:   parseQuickAddPriority(r.FormValue("priority")),
+		DueDate:    parseOptionalDate(r.FormValue("due_date")),
 		Categories: parseQuickAddLabels(r.FormValue("labels")),
 		RRule:      parseQuickAddRecurrence(r.FormValue("recurrence")),
 	})
+	parsed := model.ParseVTODOFields(rawVTODO)
 
 	taskID, err := deps.database.InsertPendingTask(r.Context(), db.NewTaskInput{
 		ProjectID:   project.ID,
 		ProjectName: project.DisplayName,
 		UID:         todoUID,
 		Href:        todoHref,
-		Title:       title,
+		Title:       parsed.Title,
+		Description: parsed.Description,
+		DueDate:     nullableDate(parsed.DueDate),
+		DueAt:       nullableTime(parsed.DueAt),
+		Priority:    nullableInt(parsed.Priority),
+		RRule:       parsed.RRule,
+		LabelNames:  nullableCSV(parsed.Categories),
 		RawVTODO:    rawVTODO,
 		ParentID:    firstNonEmpty(strings.TrimSpace(chi.URLParam(r, "taskID")), ""),
 	})

@@ -375,6 +375,31 @@ func TestSetupCSRFMiddlewareRejectsMutatingRequestWithoutToken(t *testing.T) {
 	}
 }
 
+func TestCSRFTokenMiddlewareExposesTokenWithoutValidation(t *testing.T) {
+	t.Parallel()
+
+	var tokenFromContext string
+	h := CSRFTokenMiddleware([]byte("12345678901234567890123456789012"))(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenFromContext = view.CSRFToken(r.Context())
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/quick-add/preview", nil)
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("unexpected status code: got %d want %d", rr.Code, http.StatusNoContent)
+	}
+	headerToken := rr.Header().Get(csrfHeaderName)
+	if headerToken == "" {
+		t.Fatal("expected csrf token in response header")
+	}
+	if tokenFromContext != headerToken {
+		t.Fatalf("csrf token mismatch between context and header: got context %q header %q", tokenFromContext, headerToken)
+	}
+}
+
 func TestSetupCSRFMiddlewareExposesTokenOnSetupPageResponses(t *testing.T) {
 	t.Parallel()
 

@@ -72,6 +72,45 @@ func TestSearchRouteReturnsActiveTasksOnly(t *testing.T) {
 	}
 }
 
+func TestSearchRouteRendersInlineCreateForProjectContext(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := database.Close(); err != nil {
+			t.Fatalf("close sqlite: %v", err)
+		}
+	})
+
+	seedSearchRouteProjectAndTasks(t, database)
+
+	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
+	request := httptest.NewRequest(http.MethodGet, "/search?q=%23Finanzen", nil)
+	request.Header.Set("X-Forwarded-User", "alice")
+	responseRecorder := httptest.NewRecorder()
+
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil).ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+
+	body := responseRecorder.Body.String()
+	for _, want := range []string{
+		`data-inline-task-create`,
+		`Aufgabe in Finanzen hinzufügen`,
+		`name="project_id" value="project-1"`,
+		`hx-post="/tasks/"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("response body missing project inline create detail %q: %q", want, body)
+		}
+	}
+}
+
 func seedSearchRouteProjectAndTasks(t *testing.T, database *db.Database) {
 	t.Helper()
 
@@ -79,7 +118,7 @@ func seedSearchRouteProjectAndTasks(t *testing.T, database *db.Database) {
 INSERT INTO projects (
     id, calendar_href, display_name, sync_strategy, server_version, created_at, updated_at
 ) VALUES (
-    'project-1', '/calendars/work', 'Work', 'fullscan', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+    'project-1', '/calendars/work', 'Finanzen', 'fullscan', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 );
 
 INSERT INTO tasks (

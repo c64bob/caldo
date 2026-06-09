@@ -26,6 +26,15 @@ type TaskRowView struct {
 	Attachments   []model.Attachment
 }
 
+// InlineTaskCreateView contains context hints for the inline task creator.
+type InlineTaskCreateView struct {
+	Enabled     bool
+	ProjectID   string
+	ProjectName string
+	DueDate     string
+	Placeholder string
+}
+
 type taskRowChip struct {
 	Label string
 	Class string
@@ -75,6 +84,25 @@ func taskCSRFHeaders(ctx context.Context) string {
 		return "{}"
 	}
 	return string(encoded)
+}
+
+func inlineTaskCreatePlaceholder(create InlineTaskCreateView) string {
+	placeholder := strings.TrimSpace(create.Placeholder)
+	if placeholder != "" {
+		return placeholder
+	}
+	return "Aufgabe hinzufügen"
+}
+
+func inlineTaskCreateContextChips(create InlineTaskCreateView) []taskRowChip {
+	chips := make([]taskRowChip, 0, 2)
+	if project := strings.TrimSpace(create.ProjectName); project != "" {
+		chips = append(chips, taskRowChip{Label: project, Class: "caldo-task-chip"})
+	}
+	if due := strings.TrimSpace(create.DueDate); due != "" {
+		chips = append(chips, taskRowChip{Label: "Fällig " + due, Class: "caldo-task-chip caldo-task-chip-due"})
+	}
+	return chips
 }
 
 func taskCanToggleCompletion(task TaskRowView) bool {

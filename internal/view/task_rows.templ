@@ -74,3 +74,61 @@ templ TaskRow(task TaskRowView) {
 		</div>
 	</li>
 }
+
+templ InlineTaskCreate(create InlineTaskCreateView) {
+	if create.Enabled {
+		<div class="caldo-inline-create" data-inline-task-create>
+			<button
+				type="button"
+				class="caldo-inline-create-trigger"
+				data-inline-task-create-trigger
+				aria-expanded="false"
+			>
+				<span class="caldo-inline-create-plus" aria-hidden="true">+</span>
+				<span>{ inlineTaskCreatePlaceholder(create) }</span>
+			</button>
+			<form
+				method="post"
+				action="/tasks/"
+				hx-post="/tasks/"
+				hx-swap="none"
+				hx-disabled-elt="find button"
+				hx-headers={ taskCSRFHeaders(ctx) }
+				data-refresh-after-write="true"
+				data-inline-task-create-form
+				class="caldo-inline-create-form"
+				hidden
+			>
+				if create.ProjectID != "" {
+					<input type="hidden" name="project_id" value={ create.ProjectID }/>
+				}
+				if create.DueDate != "" {
+					<input type="hidden" name="due_date" value={ create.DueDate }/>
+				}
+				<input
+					type="text"
+					name="title"
+					required
+					autocomplete="off"
+					class="caldo-input caldo-inline-create-input"
+					placeholder={ inlineTaskCreatePlaceholder(create) }
+					aria-label="Aufgabentitel"
+					data-inline-task-create-title
+				/>
+				if len(inlineTaskCreateContextChips(create)) > 0 {
+					<div class="caldo-inline-create-meta" aria-label="Kontext">
+						for _, chip := range inlineTaskCreateContextChips(create) {
+							<span class={ chip.Class }>{ chip.Label }</span>
+						}
+					</div>
+				}
+				<p class="caldo-alert caldo-alert-error caldo-inline-create-error" data-inline-task-create-error aria-live="polite" hidden>Aufgabe konnte nicht gespeichert werden.</p>
+				<div class="caldo-inline-create-actions">
+					<button type="submit" class="caldo-button caldo-button-primary">Speichern</button>
+					<button type="button" class="caldo-button caldo-button-ghost" data-inline-task-create-cancel>Abbrechen</button>
+					<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
+				</div>
+			</form>
+		</div>
+	}
+}

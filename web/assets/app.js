@@ -244,6 +244,176 @@
     return 'Aufgabe konnte nicht gespeichert werden.';
   }
 
+  function taskActionError(row) {
+    return row ? row.querySelector('[data-task-action-error]') : null;
+  }
+
+  function setTaskActionError(row, message) {
+    var error = taskActionError(row);
+    if (!error) return;
+    if (!message) {
+      error.textContent = '';
+      error.hidden = true;
+      return;
+    }
+    error.textContent = message;
+    error.hidden = false;
+  }
+
+  function taskDeleteError(dialog) {
+    return dialog ? dialog.querySelector('[data-task-delete-error]') : null;
+  }
+
+  function setTaskDeleteError(dialog, message) {
+    var error = taskDeleteError(dialog);
+    if (!error) return;
+    if (!message) {
+      error.textContent = '';
+      error.hidden = true;
+      return;
+    }
+    error.textContent = message;
+    error.hidden = false;
+  }
+
+  function bindTaskDelete(dialog) {
+    if (!dialog || dialog.dataset.taskDeleteBound === 'true') return;
+    dialog.dataset.taskDeleteBound = 'true';
+    dialog.addEventListener('close', function () {
+      var form = dialog.querySelector('[data-task-delete-form]');
+      if (form) form.reset();
+      setTaskDeleteError(dialog, '');
+      var trigger = dialog.__caldoReturnFocus;
+      dialog.__caldoReturnFocus = null;
+      if (trigger && document.contains(trigger)) {
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.focus();
+      }
+    });
+    dialog.addEventListener('click', function (event) {
+      if (event.target === dialog) {
+        closeTaskDelete(dialog);
+      }
+    });
+  }
+
+  function openTaskDelete(trigger) {
+    if (!trigger) return;
+    var task = trigger.closest('[data-task-id]');
+    var dialog = task ? task.querySelector('[data-task-delete-dialog]') : null;
+    if (!dialog) return;
+    bindTaskDelete(dialog);
+    dialog.__caldoReturnFocus = trigger;
+    trigger.setAttribute('aria-expanded', 'true');
+    setTaskDeleteError(dialog, '');
+    setTaskActionError(task, '');
+    if (typeof dialog.showModal === 'function') {
+      if (!dialog.open) {
+        dialog.showModal();
+      }
+    } else {
+      dialog.setAttribute('open', '');
+    }
+    var cancel = dialog.querySelector('[data-task-delete-cancel]');
+    window.setTimeout(function () {
+      if (cancel) cancel.focus();
+    }, 0);
+  }
+
+  function closeTaskDelete(dialog) {
+    if (!dialog) return;
+    if (typeof dialog.close === 'function' && dialog.open) {
+      dialog.close();
+      return;
+    }
+    dialog.removeAttribute('open');
+    var form = dialog.querySelector('[data-task-delete-form]');
+    if (form) form.reset();
+    setTaskDeleteError(dialog, '');
+    var trigger = dialog.__caldoReturnFocus;
+    dialog.__caldoReturnFocus = null;
+    if (trigger && document.contains(trigger)) {
+      trigger.setAttribute('aria-expanded', 'false');
+      trigger.focus();
+    }
+  }
+
+  function taskActionFailureMessage(status) {
+    if (status === 409) {
+      return 'Aktion konnte nicht ausgeführt werden. Aufgabe prüfen.';
+    }
+    return 'Aktion konnte nicht ausgeführt werden.';
+  }
+
+  function taskDeleteFailureMessage(status) {
+    if (status === 409) {
+      return 'Aufgabe konnte nicht gelöscht werden. Aufgabe prüfen.';
+    }
+    if (status === 502) {
+      return 'Aufgabe konnte nicht auf dem CalDAV-Server gelöscht werden.';
+    }
+    return 'Aufgabe konnte nicht gelöscht werden.';
+  }
+
+  function showUndoNotification(message) {
+    var root = document.getElementById('notifications');
+    if (!root) return;
+    root.textContent = '';
+
+    var toast = document.createElement('div');
+    toast.className = 'caldo-toast caldo-undo-toast';
+    toast.setAttribute('role', 'status');
+
+    var text = document.createElement('span');
+    text.setAttribute('data-undo-status', '');
+    text.textContent = message;
+
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'caldo-button caldo-button-secondary caldo-undo-button';
+    button.setAttribute('data-undo-action', '');
+    button.textContent = 'Rückgängig';
+
+    toast.appendChild(text);
+    toast.appendChild(button);
+    root.appendChild(toast);
+  }
+
+  function setUndoNotificationError(button, message) {
+    var toast = button ? button.closest('.caldo-undo-toast') : null;
+    var status = toast ? toast.querySelector('[data-undo-status]') : null;
+    if (status) {
+      status.textContent = message;
+    }
+    if (toast) {
+      toast.classList.add('caldo-undo-toast-error');
+    }
+  }
+
+  function executeUndo(button) {
+    if (!button || button.disabled) return;
+    button.disabled = true;
+    setWriteStatus('pending', 'Speichern ...');
+    window.fetch('/tasks/undo', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'X-CSRF-Token': csrfToken(),
+        'X-Tab-ID': tabID
+      }
+    }).then(function (response) {
+      if (!response.ok) {
+        throw response;
+      }
+      setWriteStatus('saved', 'Gespeichert');
+      window.location.reload();
+    }).catch(function () {
+      button.disabled = false;
+      setWriteStatus('error', 'Rückgängig fehlgeschlagen. Änderungen prüfen.');
+      setUndoNotificationError(button, 'Rückgängig fehlgeschlagen.');
+    });
+  }
+
   var writeState = { pendingRequests: 0 };
 
   function setWriteStatus(kind, message) {
@@ -312,6 +482,16 @@
     if (taskDetail) {
       setTaskDetailError(taskDetail.closest('[data-task-detail-dialog]'), '');
     }
+    var taskAction = closestElement(event.detail && event.detail.elt, '[data-task-action-form]');
+    if (taskAction) {
+      setTaskActionError(taskAction.closest('[data-task-id]'), '');
+    }
+    var taskDelete = closestElement(event.detail && event.detail.elt, '[data-task-delete-form]');
+    if (taskDelete) {
+      var deleteDialog = taskDelete.closest('[data-task-delete-dialog]');
+      setTaskDeleteError(deleteDialog, '');
+      setTaskActionError(taskDelete.closest('[data-task-id]'), '');
+    }
   });
 
   document.body.addEventListener('htmx:afterRequest', function (event) {
@@ -334,6 +514,20 @@
         setTaskDetailError(failedTaskDetail.closest('[data-task-detail-dialog]'), taskDetailFailureMessage(detailStatus));
         return;
       }
+      var failedTaskDelete = closestElement(event.detail && event.detail.elt, '[data-task-delete-form]');
+      if (failedTaskDelete) {
+        var deleteStatus = event.detail && event.detail.xhr ? event.detail.xhr.status : 0;
+        var deleteMessage = taskDeleteFailureMessage(deleteStatus);
+        setTaskDeleteError(failedTaskDelete.closest('[data-task-delete-dialog]'), deleteMessage);
+        setTaskActionError(failedTaskDelete.closest('[data-task-id]'), deleteMessage);
+        return;
+      }
+      var failedTaskAction = closestElement(event.detail && event.detail.elt, '[data-task-action-form]');
+      if (failedTaskAction) {
+        var actionStatus = event.detail && event.detail.xhr ? event.detail.xhr.status : 0;
+        setTaskActionError(failedTaskAction.closest('[data-task-id]'), taskActionFailureMessage(actionStatus));
+        return;
+      }
       var failedInlineEdit = closestElement(event.detail && event.detail.elt, '[data-task-id]');
       if (failedInlineEdit && failedInlineEdit.querySelector('[data-inline-task-edit-form]')) {
         setInlineEditError(failedInlineEdit, 'Aufgabe konnte nicht gespeichert werden.');
@@ -348,6 +542,18 @@
     if (writeState.pendingRequests === 0) {
       setWriteStatus('saved', 'Gespeichert');
       clearSavedStatusSoon();
+    }
+
+    var successfulTaskDelete = closestElement(event.detail && event.detail.elt, '[data-task-delete-form]');
+    if (successfulTaskDelete) {
+      var deleteRow = successfulTaskDelete.closest('[data-task-id]');
+      closeTaskDelete(successfulTaskDelete.closest('[data-task-delete-dialog]'));
+      if (deleteRow) {
+        deleteRow.remove();
+      }
+      setWriteStatus(null, '');
+      showUndoNotification('Aufgabe gelöscht.');
+      return;
     }
 
     if (closestElement(event.detail && event.detail.elt, '[data-refresh-after-write]')) {
@@ -404,6 +610,27 @@
       return;
     }
 
+    var taskDeleteClose = closestElement(event.target, '[data-task-delete-close]');
+    if (taskDeleteClose) {
+      event.preventDefault();
+      closeTaskDelete(taskDeleteClose.closest('[data-task-delete-dialog]'));
+      return;
+    }
+
+    var taskDeleteOpen = closestElement(event.target, '[data-task-delete-open]');
+    if (taskDeleteOpen) {
+      event.preventDefault();
+      openTaskDelete(taskDeleteOpen);
+      return;
+    }
+
+    var undoAction = closestElement(event.target, '[data-undo-action]');
+    if (undoAction) {
+      event.preventDefault();
+      executeUndo(undoAction);
+      return;
+    }
+
     var mobileNavOpen = closestElement(event.target, '[data-mobile-nav-open]');
     if (mobileNavOpen) {
       event.preventDefault();
@@ -457,6 +684,13 @@
     if (taskDetailDialog && taskDetailDialog.open && event.key === 'Escape' && typeof taskDetailDialog.close !== 'function') {
       event.preventDefault();
       closeTaskDetail(taskDetailDialog);
+      return;
+    }
+
+    var taskDeleteDialog = closestElement(event.target, '[data-task-delete-dialog]');
+    if (taskDeleteDialog && taskDeleteDialog.open && event.key === 'Escape' && typeof taskDeleteDialog.close !== 'function') {
+      event.preventDefault();
+      closeTaskDelete(taskDeleteDialog);
       return;
     }
 

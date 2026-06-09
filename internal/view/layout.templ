@@ -11,6 +11,41 @@ func navLinkClass(title string, activeTitles ...string) string {
 	return base
 }
 
+templ shellNavSections(title string) {
+	<section class="caldo-sidebar-section">
+		<h2 class="caldo-section-title mb-2">Systemfilter</h2>
+		<ul class="space-y-1" data-nav-system-filters>
+			<li><a class={ navLinkClass(title, "Heute") } href="/today">Heute</a></li>
+			<li><a class={ navLinkClass(title, "Demnächst") } href="/upcoming">Demnächst</a></li>
+			<li><a class={ navLinkClass(title, "Favoriten") } href="/favorites">Favoriten</a></li>
+			<li><a class={ navLinkClass(title, "Überfällig") } href="/overdue">Überfällig</a></li>
+			<li><a class={ navLinkClass(title, "Ohne Datum") } href="/no-date">Ohne Datum</a></li>
+			<li><a class={ navLinkClass(title, "Abgeschlossen") } href="/completed">Abgeschlossen</a></li>
+			<li><a class={ navLinkClass(title, "Suche") } href="/search">Suche</a></li>
+			<li><a class={ navLinkClass(title, "Konflikte") } href="/conflicts">Konflikte</a></li>
+			<li><a class={ navLinkClass(title, "Einstellungen") } href="/settings">Einstellungen</a></li>
+		</ul>
+	</section>
+	<section class="caldo-sidebar-section">
+		<h2 class="caldo-section-title mb-2">Filter</h2>
+		<ul data-nav-user-filters>
+			<li><a class={ navLinkClass(title, "Filter") } href="/filters">Filter</a></li>
+		</ul>
+	</section>
+	<section class="caldo-sidebar-section">
+		<h2 class="caldo-section-title mb-2">Labels</h2>
+		<ul>
+			<li><a class={ navLinkClass(title, "Labels") } href="/labels">Labels</a></li>
+		</ul>
+	</section>
+	<section class="caldo-sidebar-section">
+		<h2 class="caldo-section-title mb-2">Projekte</h2>
+		<ul data-nav-projects>
+			<li><a class={ navLinkClass(title, "Projekte") } href="/projects">Projekte</a></li>
+		</ul>
+	</section>
+}
+
 templ BaseLayout(title string, content templ.Component) {
 	<!DOCTYPE html>
 	<html lang="de" data-theme-root>
@@ -31,45 +66,19 @@ templ BaseLayout(title string, content templ.Component) {
 					</div>
 					<a href="/quick-add" class="caldo-button caldo-button-primary w-full">Neue Aufgabe</a>
 					<nav class="caldo-sidebar-nav" aria-label="Hauptnavigation">
-						<section class="caldo-sidebar-section">
-							<h2 class="caldo-section-title mb-2">Systemfilter</h2>
-							<ul class="space-y-1" data-nav-system-filters>
-								<li><a class={ navLinkClass(title, "Heute") } href="/today">Heute</a></li>
-								<li><a class={ navLinkClass(title, "Demnächst") } href="/upcoming">Demnächst</a></li>
-								<li><a class={ navLinkClass(title, "Favoriten") } href="/favorites">Favoriten</a></li>
-								<li><a class={ navLinkClass(title, "Überfällig") } href="/overdue">Überfällig</a></li>
-								<li><a class={ navLinkClass(title, "Ohne Datum") } href="/no-date">Ohne Datum</a></li>
-								<li><a class={ navLinkClass(title, "Abgeschlossen") } href="/completed">Abgeschlossen</a></li>
-								<li><a class={ navLinkClass(title, "Suche") } href="/search">Suche</a></li>
-								<li><a class={ navLinkClass(title, "Konflikte") } href="/conflicts">Konflikte</a></li>
-								<li><a class={ navLinkClass(title, "Einstellungen") } href="/settings">Einstellungen</a></li>
-							</ul>
-						</section>
-						<section class="caldo-sidebar-section">
-							<h2 class="caldo-section-title mb-2">Filter</h2>
-							<ul data-nav-user-filters>
-								<li><a class={ navLinkClass(title, "Filter") } href="/filters">Filter</a></li>
-							</ul>
-						</section>
-						<section class="caldo-sidebar-section">
-							<h2 class="caldo-section-title mb-2">Labels</h2>
-							<ul>
-								<li><a class={ navLinkClass(title, "Labels") } href="/labels">Labels</a></li>
-							</ul>
-						</section>
-						<section class="caldo-sidebar-section">
-							<h2 class="caldo-section-title mb-2">Projekte</h2>
-							<ul data-nav-projects>
-								<li><a class={ navLinkClass(title, "Projekte") } href="/projects">Projekte</a></li>
-							</ul>
-						</section>
+						@shellNavSections(title)
 					</nav>
 				</aside>
 				<div class="caldo-workspace">
 					<header class="caldo-topbar">
-						<div class="caldo-topbar-title">
-							<p class="caldo-topbar-kicker">Aktuelle Ansicht</p>
-							<p class="caldo-topbar-heading">{ title }</p>
+						<div class="caldo-topbar-primary">
+							<button type="button" class="caldo-icon-button caldo-mobile-nav-trigger" data-mobile-nav-open aria-controls="mobile-navigation" aria-haspopup="dialog" aria-label="Navigation öffnen">
+								<span class="caldo-menu-icon" aria-hidden="true"></span>
+							</button>
+							<div class="caldo-topbar-title">
+								<p class="caldo-topbar-kicker">Aktuelle Ansicht</p>
+								<p class="caldo-topbar-heading">{ title }</p>
+							</div>
 						</div>
 						<div class="caldo-topbar-actions">
 							<a href="/search" class="caldo-button caldo-button-secondary">Suche</a>
@@ -85,6 +94,21 @@ templ BaseLayout(title string, content templ.Component) {
 					</main>
 				</div>
 			</div>
+			<dialog id="mobile-navigation" data-mobile-nav-dialog class="caldo-mobile-nav-dialog" aria-label="Navigation">
+				<div class="caldo-mobile-nav-panel">
+					<div class="caldo-mobile-nav-header">
+						<div class="min-w-0">
+							<a href="/today" class="caldo-brand">Caldo</a>
+							<p class="caldo-meta mt-1">CalDAV-Aufgaben</p>
+						</div>
+						<button type="button" data-mobile-nav-close class="caldo-button caldo-button-ghost">Schließen</button>
+					</div>
+					<a href="/quick-add" class="caldo-button caldo-button-primary w-full">Neue Aufgabe</a>
+					<nav class="caldo-mobile-nav" aria-label="Mobile Hauptnavigation">
+						@shellNavSections(title)
+					</nav>
+				</div>
+			</dialog>
 			<div id="write-status" class="hidden caldo-toast" aria-live="polite"></div>
 			<div id="notifications" aria-live="polite"></div>
 			<dialog data-shortcut-help-dialog class="caldo-dialog">

@@ -123,6 +123,18 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 		`data-inline-task-display`,
 		`data-inline-task-edit-open`,
 		`data-inline-task-edit-form`,
+		`data-task-actions`,
+		`data-task-action-form`,
+		`>Aufgabe erledigen<`,
+		`data-task-action-error`,
+		`data-task-delete-open`,
+		`aria-controls="task-delete-task-1"`,
+		`data-task-delete-dialog`,
+		`data-task-delete-form`,
+		`hx-delete="/tasks/task-1"`,
+		`data-task-delete-error`,
+		`Endgültig löschen`,
+		`data-task-delete-cancel`,
 		`hidden`,
 		`hx-patch="/tasks/task-1"`,
 		`name="expected_version" value="3"`,
@@ -147,6 +159,37 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 	}
 	if strings.Contains(output, `name="labels" value="Büro, urgent, STARRED"`) {
 		t.Fatalf("reserved favorite category must not render in the label editor: %s", output)
+	}
+}
+
+func TestTaskRowRendersVisibleReopenActionForCompletedSyncedTask(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	component := TaskRow(TaskRowView{
+		ID:            "task-done",
+		Title:         "Fertig",
+		Status:        "completed",
+		SyncStatus:    "synced",
+		ServerVersion: 7,
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render task row: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`hx-post="/tasks/task-done/reopen"`,
+		`>Aufgabe wieder öffnen<`,
+		`Speichern ...`,
+		`data-task-action-error`,
+		`data-task-delete-open`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected completed synced task row to include %q in %s", want, output)
+		}
 	}
 }
 
@@ -255,6 +298,9 @@ func TestTaskRowRendersConflictDetailPanelReadOnly(t *testing.T) {
 	}
 	if strings.Contains(output, `data-inline-task-edit-form`) {
 		t.Fatalf("conflict task must not render inline edit form: %s", output)
+	}
+	if strings.Contains(output, `data-task-delete-form`) {
+		t.Fatalf("conflict task must not render delete form: %s", output)
 	}
 }
 

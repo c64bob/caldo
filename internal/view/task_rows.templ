@@ -28,6 +28,7 @@ templ TaskRow(task TaskRowView) {
 				hx-disabled-elt="find button"
 				hx-headers={ taskCSRFHeaders(ctx) }
 				data-refresh-after-write="true"
+				data-task-action-form
 				class="caldo-task-check-form"
 			>
 				<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
@@ -90,6 +91,39 @@ templ TaskRow(task TaskRowView) {
 							}
 						}
 					</div>
+				}
+				if taskCanToggleCompletion(task) || taskCanDelete(task) {
+					<div class="caldo-task-actions" data-task-actions>
+						if taskCanToggleCompletion(task) {
+							<form
+								method="post"
+								action={ taskCompletionPath(task) }
+								hx-post={ taskCompletionPath(task) }
+								hx-swap="none"
+								hx-disabled-elt="find button"
+								hx-headers={ taskCSRFHeaders(ctx) }
+								data-refresh-after-write="true"
+								data-task-action-form
+								class="caldo-task-action-form"
+							>
+								<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
+								<button type="submit" class="caldo-button caldo-button-secondary">{ taskCompletionLabel(task) }</button>
+								<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
+							</form>
+						}
+						if taskCanDelete(task) {
+							<button
+								type="button"
+								class="caldo-button caldo-button-ghost caldo-button-danger"
+								data-task-delete-open
+								aria-haspopup="dialog"
+								aria-controls={ taskDOMID("task-delete", task) }
+							>
+								Löschen
+							</button>
+						}
+					</div>
+					<p class="caldo-alert caldo-alert-error caldo-task-action-error" data-task-action-error aria-live="polite" hidden>Aktion konnte nicht ausgeführt werden.</p>
 				}
 			</div>
 			if taskCanInlineEdit(task) {
@@ -166,6 +200,9 @@ templ TaskRow(task TaskRowView) {
 		</div>
 		if taskCanOpenDetail(task) {
 			@TaskDetailPanel(task)
+		}
+		if taskCanDelete(task) {
+			@TaskDeleteDialog(task)
 		}
 	</li>
 }
@@ -334,6 +371,46 @@ templ TaskDetailPanel(task TaskRowView) {
 					<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
 				</div>
 			</form>
+		</div>
+	</dialog>
+}
+
+templ TaskDeleteDialog(task TaskRowView) {
+	<dialog
+		id={ taskDOMID("task-delete", task) }
+		class="caldo-task-delete-dialog"
+		data-task-delete-dialog
+		aria-labelledby={ taskDOMID("task-delete-title", task) }
+	>
+		<div class="caldo-task-delete-shell">
+			<header class="caldo-task-delete-header">
+				<div class="caldo-task-delete-heading">
+					<p class="caldo-meta">Aufgabe</p>
+					<h2 id={ taskDOMID("task-delete-title", task) } class="caldo-task-delete-title">Aufgabe löschen</h2>
+				</div>
+				<button type="button" class="caldo-icon-button caldo-task-delete-close" data-task-delete-close aria-label="Löschen abbrechen">×</button>
+			</header>
+			<div class="caldo-task-delete-body">
+				<p class="caldo-task-delete-copy">"{ taskRowTitle(task) }" wirklich löschen?</p>
+				<p class="caldo-alert caldo-alert-error caldo-task-delete-error" data-task-delete-error aria-live="polite" hidden>Aufgabe konnte nicht gelöscht werden.</p>
+				<form
+					method="post"
+					action={ taskDeletePath(task) }
+					hx-delete={ taskDeletePath(task) }
+					hx-swap="none"
+					hx-disabled-elt="find button"
+					hx-headers={ taskCSRFHeaders(ctx) }
+					data-task-delete-form
+					class="caldo-task-delete-form"
+				>
+					<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
+					<div class="caldo-task-delete-actions">
+						<button type="submit" class="caldo-button caldo-button-primary caldo-button-danger-solid">Endgültig löschen</button>
+						<button type="button" class="caldo-button caldo-button-ghost" data-task-delete-close data-task-delete-cancel>Abbrechen</button>
+						<span class="htmx-indicator caldo-meta" aria-live="polite">Löscht ...</span>
+					</div>
+				</form>
+			</div>
 		</div>
 	</dialog>
 }

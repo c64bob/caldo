@@ -102,7 +102,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await inlineTitle.fill('E2E Inline Created');
   await inlineTitle.press('Enter');
   await expect.poll(async () => page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Created' }).count()).toBe(1);
-  await waitForSearchResult(page, 'E2E Inline Created');
+  await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Created' }).first()).toBeVisible();
 
   await gotoApp(page, '/search?q=%23Work');
   let inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Created' }).first();
@@ -127,7 +127,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await inlineEditForm.locator('[name="labels"]').fill('browser, inline');
   await inlineEditForm.getByRole('button', { name: 'Speichern' }).focus();
   await page.keyboard.press('Enter');
-  await waitForSearchResult(page, 'E2E Inline Edited');
+  await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first()).toBeVisible();
   inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
   await expect(inlineEditRow).toContainText('edited inline through browser');
   await expect(inlineEditRow).toContainText('Fällig 2026-06-10');
@@ -153,7 +153,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await detailDialog.locator('[name="repeat_freq"]').selectOption('DAILY');
   await detailDialog.getByRole('button', { name: 'Speichern' }).focus();
   await page.keyboard.press('Enter');
-  await waitForSearchResult(page, 'E2E Panel Edited');
+  await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Panel Edited' }).first()).toBeVisible();
   let detailRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Panel Edited' }).first();
   await expect(detailRow).toContainText('edited through task detail panel');
   await expect(detailRow).toContainText('Fällig 2026-06-11');
@@ -206,11 +206,32 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   }, { tabID: 'e2e-reopen' });
   expect(response.status()).toBe(200);
 
-  version = await taskVersion(page, createdID);
-  response = await appFormRequest(page, 'DELETE', `/tasks/${createdID}`, {
-    expected_version: String(version)
-  }, { tabID: 'e2e-delete' });
-  expect(response.status()).toBe(200);
+  await gotoApp(page, '/search?q=E2E%20Local%20Edited');
+  await ensureBrowserCSRFCookie(page);
+  let deleteRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Local Edited' }).first();
+  let deleteDialog = deleteRow.locator('[data-task-delete-dialog]');
+  await expect(deleteDialog).toBeHidden();
+  await deleteRow.locator('[data-task-delete-open]').click();
+  await expect(deleteDialog).toBeVisible();
+  await expect(deleteDialog.locator('[data-task-delete-cancel]')).toBeFocused();
+  await deleteDialog.locator('[data-task-delete-cancel]').click();
+  await expect(deleteDialog).toBeHidden();
+  await expect(deleteRow).toBeVisible();
+
+  await deleteRow.locator('[data-task-delete-open]').click();
+  await expect(deleteDialog).toBeVisible();
+  await deleteDialog.getByRole('button', { name: 'Endgültig löschen' }).click();
+  await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Local Edited' })).toHaveCount(0);
+  await expect(page.locator('#notifications').getByRole('button', { name: 'Rückgängig' })).toBeVisible();
+  await page.locator('#notifications').getByRole('button', { name: 'Rückgängig' }).click();
+  await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Local Edited' }).first()).toBeVisible();
+
+  deleteRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Local Edited' }).first();
+  deleteDialog = deleteRow.locator('[data-task-delete-dialog]');
+  await deleteRow.locator('[data-task-delete-open]').click();
+  await expect(deleteDialog).toBeVisible();
+  await deleteDialog.getByRole('button', { name: 'Endgültig löschen' }).click();
+  await waitForNoSearchResult(page, 'E2E Local Edited');
   const afterDelete = await stageState();
   expect(afterDelete.tasks.some((task) => task.href === createdRemote.href)).toBe(false);
 

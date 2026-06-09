@@ -110,6 +110,10 @@ func taskEditPath(task TaskRowView) string {
 	return "/tasks/" + url.PathEscape(strings.TrimSpace(task.ID))
 }
 
+func taskDeletePath(task TaskRowView) string {
+	return taskEditPath(task)
+}
+
 func taskDOMID(prefix string, task TaskRowView) string {
 	id := strings.TrimSpace(task.ID)
 	if id == "" {
@@ -173,6 +177,10 @@ func taskCanOpenDetail(task TaskRowView) bool {
 
 func taskCanDetailEdit(task TaskRowView) bool {
 	return taskCanInlineEdit(task)
+}
+
+func taskCanDelete(task TaskRowView) bool {
+	return taskCanToggleCompletion(task)
 }
 
 func taskDetailStatusMessage(task TaskRowView) string {

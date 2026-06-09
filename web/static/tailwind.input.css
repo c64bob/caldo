@@ -381,6 +381,26 @@
 		color: var(--caldo-text);
 	}
 
+	.caldo-button-danger {
+		color: var(--caldo-danger);
+	}
+
+	.caldo-button-danger:hover {
+		background: var(--caldo-danger-muted);
+		color: var(--caldo-danger);
+	}
+
+	.caldo-button-danger-solid {
+		background: var(--caldo-danger);
+		border-color: var(--caldo-danger);
+		color: #ffffff;
+	}
+
+	.caldo-button-danger-solid:hover {
+		background: #b91c1c;
+		border-color: #b91c1c;
+	}
+
 	.caldo-label {
 		@apply block text-sm font-medium;
 		color: var(--caldo-text);
@@ -607,6 +627,18 @@
 		text-decoration-color: var(--caldo-accent);
 	}
 
+	.caldo-task-actions {
+		@apply mt-2 flex min-w-0 flex-wrap items-center gap-2;
+	}
+
+	.caldo-task-action-form {
+		@apply flex min-w-0 flex-wrap items-center gap-2;
+	}
+
+	.caldo-task-action-error {
+		@apply mt-2 py-2;
+	}
+
 	.caldo-task-edit-open,
 	.caldo-task-detail-open {
 		@apply shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium transition;
@@ -824,6 +856,68 @@
 		border-color: var(--caldo-border);
 	}
 
+	.caldo-task-delete-dialog {
+		@apply w-full max-w-md overflow-hidden rounded-md border p-0;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border-strong);
+		color: var(--caldo-text);
+		width: calc(100vw - 1rem);
+	}
+
+	@media (min-width: 640px) {
+		.caldo-task-delete-dialog {
+			width: min(28rem, calc(100vw - 2rem));
+		}
+	}
+
+	.caldo-task-delete-dialog::backdrop {
+		background: rgb(0 0 0 / 0.35);
+	}
+
+	.caldo-task-delete-shell {
+		@apply min-w-0;
+	}
+
+	.caldo-task-delete-header {
+		@apply flex min-w-0 items-start gap-3 border-b px-4 py-3;
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-task-delete-heading {
+		@apply min-w-0 flex-1 space-y-1;
+	}
+
+	.caldo-task-delete-title {
+		@apply text-base font-semibold leading-6 tracking-normal;
+		color: var(--caldo-text);
+	}
+
+	.caldo-task-delete-close {
+		@apply shrink-0 text-lg leading-none;
+	}
+
+	.caldo-task-delete-body {
+		@apply min-w-0 space-y-3 px-4 py-4;
+	}
+
+	.caldo-task-delete-copy {
+		@apply text-sm leading-5;
+		color: var(--caldo-text);
+		overflow-wrap: anywhere;
+	}
+
+	.caldo-task-delete-error {
+		@apply py-2;
+	}
+
+	.caldo-task-delete-form {
+		@apply min-w-0;
+	}
+
+	.caldo-task-delete-actions {
+		@apply flex min-w-0 flex-wrap items-center gap-2;
+	}
+
 	.caldo-inline-create {
 		@apply border-b py-2;
 		border-color: var(--caldo-border);
@@ -983,6 +1077,20 @@
 		.caldo-toast {
 			@apply bottom-4 left-auto right-4 max-w-sm;
 		}
+	}
+
+	.caldo-undo-toast {
+		@apply z-50 flex min-w-0 items-center justify-between gap-3;
+	}
+
+	.caldo-undo-toast-error {
+		background: var(--caldo-danger-muted);
+		border-color: var(--caldo-danger);
+		color: var(--caldo-danger);
+	}
+
+	.caldo-undo-button {
+		@apply shrink-0;
 	}
 
 	.caldo-menu {

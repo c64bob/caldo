@@ -1,13 +1,13 @@
 # Implementation Status Audit
 
-Stand: 2026-06-08
+Stand: 2026-06-09
 
 Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Story-Dateien selbst enthalten nur den knappen Status, damit sie Planungsdokumente bleiben.
 
 ## Zusammenfassung
 
 - Bestehende Stories: 54 `Umgesetzt`, 32 `Teilweise umgesetzt`, 3 `Offen`.
-- Neue Planungsstories: 3 `Umgesetzt`, 36 `Offen`.
+- Neue Planungsstories: 9 `Umgesetzt`, 30 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
 ## Legende
@@ -32,7 +32,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 2.2 | Umgesetzt | Reverse-Proxy-Auth-Middleware liest den konfigurierten Header und laesst `/health` frei. |
 | 2.3 | Teilweise umgesetzt | CSRF- und Mutationsschutz existieren; Tab-/Session-Verhalten ist noch nicht durchgaengig in der sichtbaren UI integriert. |
 | 2.4 | Umgesetzt | Lokale Asset-Auslieferung, Manifest und CSP sind in Router/Layout/Asset-Tests abgedeckt. |
-| 2.5 | Teilweise umgesetzt | Templ-Layout und lokale Assets existieren; CSRF-/Tab-Metadaten und Layout-Inhalte sind nicht durchgaengig fuer alle Normalrouten abgeschlossen. |
+| 2.5 | Teilweise umgesetzt | Templ-Layout, lokale Assets und aktuelles CSRF-Meta existieren; Dark-Mode-Verhalten und Systempraeferenz sind noch nicht vollstaendig verdrahtet. |
 | 3.1 | Umgesetzt | `internal/db/settings.go` und Migrationen verwalten das Settings-Singleton. |
 | 3.2 | Umgesetzt | Projekt-/Kalender-Tabellen und DB-Funktionen sind vorhanden und getestet. |
 | 3.3 | Umgesetzt | Task-Tabelle und Repository-Funktionen decken lokale Aufgabenpersistenz ab. |
@@ -119,3 +119,39 @@ Die neuen Epics 23 bis 28 brechen die verbleibende UI- und QA-Arbeit in kleinere
 | 23.1 | Umgesetzt | `docs/backlog/ui-design-principles.md` dokumentiert die visuelle Todoist-nahe Richtung, Desktop-First-Scope, Dichte, Akzentfarbe und Prioritaeten fuer Aufgabenzeilen, Sidebar, Dialoge und Statusmeldungen. |
 | 23.2 | Umgesetzt | `web/static/tailwind.input.css` definiert Caldo-Farb-, Oberflaechen-, Border-, Fokus- und Status-Tokens sowie Basisklassen fuer Buttons, Eingaben, Dialoge, Listenzeilen, Badges und Menues; bestehende Views verwenden diese Klassen. |
 | 23.3 | Umgesetzt | `internal/view/layout.templ` und `web/static/tailwind.input.css` definieren eine Desktop-App-Shell mit stabiler Sidebar, sticky Topbar, globalen Quick-Add-/Such-/Sync-Aktionen, begrenztem Inhaltsbereich und nicht ueberlappender Write-Status-Anzeige. |
+| 23.4 | Umgesetzt | `internal/view/layout.templ`, `web/static/tailwind.input.css` und `web/assets/app.js` liefern responsive Topbar, Mobile-Navigation per Dialog und kleine Viewports; `tests/e2e/mvp-flow.spec.js` prueft den mobilen Navigationspfad. |
+| 23.5 | Umgesetzt | `internal/db/navigation.go`, `internal/handler/navigation.go`, `internal/view/layout.templ` und `internal/view/navigation_pages.templ` laden Zaehler, aktive Navigationszustaende und knappe Empty-Zustaende fuer Systemlisten, Projekte, Labels und Filter. |
+| 23.6 | Umgesetzt | `internal/view/states.templ`, `internal/handler/navigation_pages.go`, `internal/view/date_views.templ`, `internal/view/search.templ` und die CSS-State-Klassen rendern leere, fehlerhafte und ladende Grundzustaende ohne sensible Fehlerdetails. |
+| 23.7 | Umgesetzt | `tests/e2e/mvp-flow.spec.js` erzeugt reproduzierbare Desktop- und Mobile-Baselines fuer Setup, Projekte, Heute, Suche, Quick Add, Einstellungen und Konflikte; `docs/qa/playwright.md` dokumentiert den lokalen QA-Artefaktpfad. |
+| 24.1 | Umgesetzt | `internal/view/task_rows.templ`, `internal/view/task_rows.go` und `web/static/tailwind.input.css` rendern scanbare Aufgabenzeilen mit Checkbox, Titel, Beschreibung, Metadaten, Labels, Anhaengen und Sync-/Konflikt-/Fehlerzustaenden; Handler- und View-Tests decken die Zeilen ab. |
+| 24.2 | Umgesetzt | `internal/view/task_rows.templ`, `internal/handler/date_views.go`, `internal/handler/search.go`, `internal/handler/tasks_create.go` und `web/assets/app.js` implementieren Inline-Erstellung mit Projekt-/Datumskontext, Cancel ohne Entwurf, lokaler Fehlermeldung und Tastaturfluss; `tests/e2e/mvp-flow.spec.js` prueft Cancel und Enter-Speichern im Browser. |
+| 24.3 | Offen | Keine Inline-Bearbeitung fuer Titel, Beschreibung, Faelligkeit, Prioritaet, Projekt oder Labels in der Aufgabenliste umgesetzt. |
+| 24.4 | Offen | Kein produktives Aufgaben-Detailpanel fuer alle relevanten Felder vorhanden. |
+| 24.5 | Offen | Sichtbare Aktionen fuer Reopen, Delete, Pending-Zustaende und Undo-Fuehrung sind noch nicht als vollstaendiger Listenfluss umgesetzt. |
+| 24.6 | Offen | Prioritaet, Labels, Favorit und Faelligkeit sind teilweise sichtbar, aber nicht direkt in der Zeile vollstaendig bearbeitbar. |
+| 24.7 | Offen | Unteraufgaben werden noch nicht als produktiver visueller Gruppenfluss mit Erstellung an passender Stelle umgesetzt. |
+| 24.8 | Offen | Undo-Snapshots und Route existieren, aber keine konsistente sichtbare Undo- und Wiederherstellungs-UI. |
+| 25.1 | Offen | Kein globales Quick-Add-Overlay umgesetzt. |
+| 25.2 | Offen | Keine Live-Parsing-Chips mit Korrekturinteraktion umgesetzt. |
+| 25.3 | Offen | Projekt- und Labelvorschlaege fuer Quick Add sind nicht produktiv umgesetzt. |
+| 25.4 | Offen | Datumsauswahl und natuerliche Eingabevorschau sind nur teilweise ueber bestehende Quick-Add-Preview abgedeckt. |
+| 25.5 | Offen | Wiederholungs- und Prioritaetsvorschau ist nicht als produktive Vorschlags-UI umgesetzt. |
+| 25.6 | Offen | Kein vollstaendiger tastaturbasierter Quick-Add-Overlay-Fluss umgesetzt. |
+| 26.1 | Offen | Projektliste erscheint in der Sidebar, aber die Story ist als eigene Sidebar-Projektlistenarbeit noch nicht gezielt umgesetzt. |
+| 26.2 | Offen | Projektverwaltung ist backendseitig vorhanden, aber keine vollstaendige produktive UI. |
+| 26.3 | Offen | Label-Seite existiert nur als Navigationsuebersicht; Label-Bearbeitung ist offen. |
+| 26.4 | Offen | Gespeicherte Filter koennen nicht produktiv in der UI verwaltet werden. |
+| 26.5 | Offen | Suche kann noch nicht als gespeicherter Filter gesichert werden. |
+| 26.6 | Offen | Kein Drag-and-Drop zwischen Projekten umgesetzt. |
+| 27.1 | Offen | Konfliktliste existiert, aber nicht als ausgearbeitete Arbeitsansicht. |
+| 27.2 | Offen | Konfliktdetail zeigt Basisinformationen, aber keinen produktiven Feldvergleich. |
+| 27.3 | Offen | Feldweise Konfliktloesung ist nicht als sichtbarer UI-Fluss umgesetzt. |
+| 27.4 | Offen | Split-Konflikt ist backendseitig vorbereitet, aber nicht sichtbar produktiv ausfuehrbar. |
+| 27.5 | Offen | CalDAV-Einstellungen sind nicht vollstaendig verwaltbar. |
+| 27.6 | Offen | Kalenderauswahl und Default-Projekt nach Setup sind nicht als produktive Settings-UI umgesetzt. |
+| 28.1 | Offen | Tablet-Layout ist nicht systematisch fuer alle Kernansichten abgesichert. |
+| 28.2 | Offen | Mobile Navigation ist grundlegend vorhanden, aber die eigene Story fuer kleine Breiten ist noch nicht vollstaendig umgesetzt. |
+| 28.3 | Offen | Safari-/WebKit-QA ist nicht fest im Prozess verankert. |
+| 28.4 | Offen | Tastatur-, Fokus- und Accessibility-Abdeckung ist nicht vollstaendig umgesetzt. |
+| 28.5 | Offen | Performance-Szenarien und Messwerte sind nicht dokumentiert oder automatisiert. |
+| 28.6 | Offen | Visuelle Regression wird ueber Baseline-Screenshots vorbereitet, aber kein vollstaendiger Review-/Regression-Prozess ist umgesetzt. |

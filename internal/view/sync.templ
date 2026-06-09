@@ -1,8 +1,8 @@
 package view
 
 templ SyncStatusBadge(state string, lastSuccess string) {
-	<section class="flex items-center gap-2" id="sync-status" sse-connect="/events" sse-swap="sync-status">
+	<section class="caldo-sync-status" id="sync-status" sse-connect="/events" sse-swap="sync-status">
 		<button type="button" class="caldo-button caldo-button-secondary" hx-post="/sync/manual" hx-target="#sync-status" hx-swap="outerHTML" hx-headers={ "{\"X-CSRF-Token\":\"" + CSRFToken(ctx) + "\"}" }>Jetzt synchronisieren</button>
-		<p class="caldo-muted"><span class="caldo-badge caldo-badge-accent">Status: { state }</span> Letzter erfolgreicher Sync: { lastSuccess }</p>
+		<p class="caldo-sync-copy"><span class="caldo-badge caldo-badge-accent">Status: { state }</span><span class="caldo-sync-last">Letzter Sync: { lastSuccess }</span></p>
 	</section>
 }

@@ -135,6 +135,45 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(inlineEditRow).toContainText('browser');
   await expect(inlineEditRow).toContainText('inline');
 
+  let detailDialog = inlineEditRow.locator('[data-task-detail-dialog]');
+  await expect(detailDialog).toBeHidden();
+  await inlineEditRow.getByRole('button', { name: 'Details' }).click();
+  await expect(detailDialog).toBeVisible();
+  await expect(detailDialog.locator('[name="title"]')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(detailDialog).toBeHidden();
+
+  await inlineEditRow.getByRole('button', { name: 'Details' }).click();
+  detailDialog = inlineEditRow.locator('[data-task-detail-dialog]');
+  await detailDialog.locator('[name="title"]').fill('E2E Panel Edited');
+  await detailDialog.locator('[name="description"]').fill('edited through task detail panel');
+  await detailDialog.locator('[name="due_date"]').fill('2026-06-11');
+  await detailDialog.locator('[name="priority"]').selectOption('1');
+  await detailDialog.locator('[name="labels"]').fill('panel, browser');
+  await detailDialog.locator('[name="repeat_freq"]').selectOption('DAILY');
+  await detailDialog.getByRole('button', { name: 'Speichern' }).focus();
+  await page.keyboard.press('Enter');
+  await waitForSearchResult(page, 'E2E Panel Edited');
+  let detailRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Panel Edited' }).first();
+  await expect(detailRow).toContainText('edited through task detail panel');
+  await expect(detailRow).toContainText('Fällig 2026-06-11');
+  await expect(detailRow).toContainText('P1');
+  await expect(detailRow).toContainText('panel');
+  await expect(detailRow).toContainText('browser');
+
+  await page.setViewportSize(mobileViewport);
+  await detailRow.getByRole('button', { name: 'Details' }).click();
+  detailDialog = detailRow.locator('[data-task-detail-dialog]');
+  await expect(detailDialog).toBeVisible();
+  const panelBox = await detailDialog.boundingBox();
+  expect(panelBox.x).toBeGreaterThanOrEqual(0);
+  expect(panelBox.y).toBeGreaterThanOrEqual(0);
+  expect(panelBox.x + panelBox.width).toBeLessThanOrEqual(mobileViewport.width);
+  expect(panelBox.y + panelBox.height).toBeLessThanOrEqual(mobileViewport.height);
+  await detailDialog.getByRole('button', { name: 'Details schließen' }).click();
+  await expect(detailDialog).toBeHidden();
+  await page.setViewportSize(desktopViewport);
+
   const beforeCreate = await stageState();
   response = await appFormRequest(page, 'POST', '/tasks/', {
     title: 'E2E Local Created'

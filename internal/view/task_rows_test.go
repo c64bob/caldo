@@ -5,6 +5,8 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"caldo/internal/model"
 )
 
 func TestTaskRowRendersTodoistLikeMetadataAndCompletionControl(t *testing.T) {
@@ -145,6 +147,114 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 	}
 	if strings.Contains(output, `name="labels" value="Büro, urgent, STARRED"`) {
 		t.Fatalf("reserved favorite category must not render in the label editor: %s", output)
+	}
+}
+
+func TestTaskRowRendersDetailPanelForSyncedTask(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	component := TaskRow(TaskRowView{
+		ID:            "task-1",
+		ProjectID:     "project-1",
+		Title:         "Detail Aufgabe",
+		Description:   "Langer Detailtext",
+		ProjectName:   "Inbox",
+		LabelNames:    "Büro,urgent,STARRED",
+		DueISODate:    "2026-06-09",
+		Status:        "needs-action",
+		SyncStatus:    "synced",
+		Priority:      4,
+		HasPriority:   true,
+		ServerVersion: 3,
+		RRule:         "FREQ=WEEKLY;INTERVAL=2;COUNT=5",
+		Attachments: []model.Attachment{
+			{Value: "https://example.com/file.pdf", IsExternalURL: true},
+			{Value: "AAAA", IsExternalURL: false},
+		},
+		ProjectOptions: []TaskProjectOption{
+			{ID: "project-1", Name: "Inbox"},
+			{ID: "project-2", Name: "Work"},
+		},
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render task row: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`data-task-detail-open`,
+		`aria-haspopup="dialog"`,
+		`data-task-detail-dialog`,
+		`data-task-detail-form`,
+		`hx-patch="/tasks/task-1"`,
+		`name="expected_version" value="3"`,
+		`name="title"`,
+		`value="Detail Aufgabe"`,
+		`Langer Detailtext`,
+		`name="project_id"`,
+		`value="project-1" selected`,
+		`name="due_date" value="2026-06-09"`,
+		`name="priority"`,
+		`value="4" selected`,
+		`name="labels" value="Büro, urgent"`,
+		`name="repeat_update" value="1"`,
+		`name="repeat_freq"`,
+		`value="WEEKLY" selected`,
+		`name="repeat_interval" value="2"`,
+		`name="repeat_end"`,
+		`value="count" selected`,
+		`name="repeat_count" value="5"`,
+		`https://example.com/file.pdf`,
+		`rel="noopener noreferrer"`,
+		`Anhang vorhanden (inline/binary)`,
+		`data-task-detail-error`,
+		`X-CSRF-Token`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected detail panel to include %q in %s", want, output)
+		}
+	}
+	if strings.Contains(output, `name="labels" value="Büro, urgent, STARRED"`) {
+		t.Fatalf("reserved favorite category must not render in the label editor: %s", output)
+	}
+}
+
+func TestTaskRowRendersConflictDetailPanelReadOnly(t *testing.T) {
+	t.Parallel()
+
+	component := TaskRow(TaskRowView{
+		ID:            "task-conflict",
+		Title:         "Konflikt Aufgabe",
+		Status:        "needs-action",
+		SyncStatus:    "conflict",
+		ServerVersion: 5,
+		RRule:         "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=1",
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(context.Background(), &rendered); err != nil {
+		t.Fatalf("render task row: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`data-task-detail-open`,
+		`data-task-detail-dialog`,
+		`Konflikt`,
+		`Konfliktlösung`,
+		`RRULE: FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=1`,
+		`Komplexe Wiederholung wird unverändert erhalten.`,
+		`disabled`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected conflict detail panel to include %q in %s", want, output)
+		}
+	}
+	if strings.Contains(output, `data-inline-task-edit-form`) {
+		t.Fatalf("conflict task must not render inline edit form: %s", output)
 	}
 }
 

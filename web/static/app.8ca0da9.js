@@ -157,6 +157,93 @@
     }
   }
 
+  function taskDetailError(dialog) {
+    return dialog ? dialog.querySelector('[data-task-detail-error]') : null;
+  }
+
+  function setTaskDetailError(dialog, message) {
+    var error = taskDetailError(dialog);
+    if (!error) return;
+    if (!message) {
+      error.textContent = '';
+      error.hidden = true;
+      return;
+    }
+    error.textContent = message;
+    error.hidden = false;
+  }
+
+  function bindTaskDetail(dialog) {
+    if (!dialog || dialog.dataset.taskDetailBound === 'true') return;
+    dialog.dataset.taskDetailBound = 'true';
+    dialog.addEventListener('close', function () {
+      var form = dialog.querySelector('[data-task-detail-form]');
+      if (form) form.reset();
+      var trigger = dialog.__caldoReturnFocus;
+      dialog.__caldoReturnFocus = null;
+      if (trigger && document.contains(trigger)) {
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.focus();
+      }
+    });
+    dialog.addEventListener('click', function (event) {
+      if (event.target === dialog) {
+        closeTaskDetail(dialog);
+      }
+    });
+  }
+
+  function openTaskDetail(trigger) {
+    if (!trigger) return;
+    var task = trigger.closest('[data-task-id]');
+    var dialog = task ? task.querySelector('[data-task-detail-dialog]') : null;
+    if (!dialog) return;
+    bindTaskDetail(dialog);
+    dialog.__caldoReturnFocus = trigger;
+    trigger.setAttribute('aria-expanded', 'true');
+    if (typeof dialog.showModal === 'function') {
+      if (!dialog.open) {
+        dialog.showModal();
+      }
+    } else {
+      dialog.setAttribute('open', '');
+    }
+    var input = dialog.querySelector('[data-task-detail-title]');
+    var close = dialog.querySelector('[data-task-detail-close]');
+    window.setTimeout(function () {
+      if (input && !input.disabled) {
+        input.focus();
+        input.select();
+        return;
+      }
+      if (close) close.focus();
+    }, 0);
+  }
+
+  function closeTaskDetail(dialog) {
+    if (!dialog) return;
+    if (typeof dialog.close === 'function' && dialog.open) {
+      dialog.close();
+      return;
+    }
+    dialog.removeAttribute('open');
+    var form = dialog.querySelector('[data-task-detail-form]');
+    if (form) form.reset();
+    var trigger = dialog.__caldoReturnFocus;
+    dialog.__caldoReturnFocus = null;
+    if (trigger && document.contains(trigger)) {
+      trigger.setAttribute('aria-expanded', 'false');
+      trigger.focus();
+    }
+  }
+
+  function taskDetailFailureMessage(status) {
+    if (status === 409) {
+      return 'Aufgabe hat einen Konflikt. Änderungen wurden nicht als gespeichert markiert.';
+    }
+    return 'Aufgabe konnte nicht gespeichert werden.';
+  }
+
   var writeState = { pendingRequests: 0 };
 
   function setWriteStatus(kind, message) {
@@ -221,6 +308,10 @@
     if (inlineEdit && inlineEdit.querySelector('[data-inline-task-edit-form]')) {
       setInlineEditError(inlineEdit, '');
     }
+    var taskDetail = closestElement(event.detail && event.detail.elt, '[data-task-detail-form]');
+    if (taskDetail) {
+      setTaskDetailError(taskDetail.closest('[data-task-detail-dialog]'), '');
+    }
   });
 
   document.body.addEventListener('htmx:afterRequest', function (event) {
@@ -236,6 +327,12 @@
       var failedInlineCreate = closestElement(event.detail && event.detail.elt, '[data-inline-task-create]');
       if (failedInlineCreate) {
         setInlineCreateError(failedInlineCreate, 'Aufgabe konnte nicht gespeichert werden.');
+      }
+      var failedTaskDetail = closestElement(event.detail && event.detail.elt, '[data-task-detail-form]');
+      if (failedTaskDetail) {
+        var detailStatus = event.detail && event.detail.xhr ? event.detail.xhr.status : 0;
+        setTaskDetailError(failedTaskDetail.closest('[data-task-detail-dialog]'), taskDetailFailureMessage(detailStatus));
+        return;
       }
       var failedInlineEdit = closestElement(event.detail && event.detail.elt, '[data-task-id]');
       if (failedInlineEdit && failedInlineEdit.querySelector('[data-inline-task-edit-form]')) {
@@ -293,6 +390,20 @@
       return;
     }
 
+    var taskDetailClose = closestElement(event.target, '[data-task-detail-close]');
+    if (taskDetailClose) {
+      event.preventDefault();
+      closeTaskDetail(taskDetailClose.closest('[data-task-detail-dialog]'));
+      return;
+    }
+
+    var taskDetailOpen = closestElement(event.target, '[data-task-detail-open]');
+    if (taskDetailOpen) {
+      event.preventDefault();
+      openTaskDetail(taskDetailOpen);
+      return;
+    }
+
     var mobileNavOpen = closestElement(event.target, '[data-mobile-nav-open]');
     if (mobileNavOpen) {
       event.preventDefault();
@@ -339,6 +450,13 @@
     if (inlineEdit && inlineEdit.dataset.inlineTaskEditOpen === 'true' && event.key === 'Escape') {
       event.preventDefault();
       closeInlineEdit(inlineEdit);
+      return;
+    }
+
+    var taskDetailDialog = closestElement(event.target, '[data-task-detail-dialog]');
+    if (taskDetailDialog && taskDetailDialog.open && event.key === 'Escape' && typeof taskDetailDialog.close !== 'function') {
+      event.preventDefault();
+      closeTaskDetail(taskDetailDialog);
       return;
     }
 

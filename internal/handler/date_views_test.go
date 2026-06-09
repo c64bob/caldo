@@ -56,6 +56,9 @@ func TestTodayRouteShowsTodayAndOverdueTasks(t *testing.T) {
 		`data-inline-task-edit-form`,
 		`hx-patch="/tasks/task-overdue-active"`,
 		`name="project_id"`,
+		`data-task-detail-open`,
+		`data-task-detail-dialog`,
+		`Änderung wird noch gespeichert.`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("response body missing task row detail %q: %q", want, body)

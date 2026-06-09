@@ -1,0 +1,76 @@
+package view
+
+import (
+	"fmt"
+	"strings"
+)
+
+templ TaskRow(task TaskRowView) {
+	<li
+		data-task-id={ task.ID }
+		data-sync-status={ task.SyncStatus }
+		data-task-status={ task.Status }
+		class={
+			"caldo-task-row",
+			templ.KV("caldo-task-row-subtask", task.IsSubtask),
+			templ.KV("caldo-task-row-completed", taskIsCompleted(task)),
+			templ.KV("caldo-task-row-conflict", strings.EqualFold(task.SyncStatus, "conflict")),
+			templ.KV("caldo-task-row-error", strings.EqualFold(task.SyncStatus, "error")),
+		}
+		tabindex="0"
+	>
+		<div class="caldo-task-row-grid">
+			<form
+				method="post"
+				action={ taskCompletionPath(task) }
+				hx-post={ taskCompletionPath(task) }
+				hx-swap="none"
+				hx-disabled-elt="find button"
+				hx-headers={ taskCSRFHeaders(ctx) }
+				data-refresh-after-write="true"
+				class="caldo-task-check-form"
+			>
+				<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
+				<button
+					type="submit"
+					class="caldo-task-checkbox"
+					aria-label={ taskCompletionLabel(task) }
+					aria-pressed={ taskCompletionPressed(task) }
+					disabled?={ !taskCanToggleCompletion(task) }
+				>
+					<span aria-hidden="true" class="caldo-task-checkbox-mark"></span>
+				</button>
+			</form>
+			<div class="caldo-task-content">
+				<div class="caldo-task-title-line">
+					<p class="caldo-task-title">{ taskRowTitle(task) }</p>
+					for _, state := range taskStateChips(task) {
+						<span class={ state.Class }>{ state.Label }</span>
+					}
+				</div>
+				if taskRowDescription(task) != "" {
+					<p class="caldo-task-description">{ taskRowDescription(task) }</p>
+				}
+				<div class="caldo-task-meta-line">
+					for _, chip := range taskMetaChips(task) {
+						<span class={ chip.Class }>{ chip.Label }</span>
+					}
+					for _, chip := range taskLabelChips(task) {
+						<span class={ chip.Class }>{ chip.Label }</span>
+					}
+				</div>
+				if len(task.Attachments) > 0 {
+					<div class="caldo-task-attachments" aria-label="Anhänge">
+						for _, attachment := range task.Attachments {
+							if attachment.IsExternalURL {
+								<a href={ templ.SafeURL(attachment.Value) } target="_blank" rel="noopener noreferrer" class="caldo-task-attachment-link">{ attachment.Value }</a>
+							} else {
+								<span class="caldo-task-chip">Anhang vorhanden (inline/binary)</span>
+							}
+						}
+					</div>
+				}
+			</div>
+		</div>
+	</li>
+}

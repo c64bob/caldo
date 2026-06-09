@@ -8,12 +8,18 @@ import (
 
 // DatedTaskViewRow contains fields rendered in date-based system views.
 type DatedTaskViewRow struct {
-	ID          string
-	Title       string
-	Status      string
-	ProjectName string
-	DueISODate  string
-	IsSubtask   bool
+	ID            string
+	Title         string
+	Description   string
+	Status        string
+	ProjectName   string
+	DueISODate    string
+	Priority      int
+	HasPriority   bool
+	LabelNames    string
+	SyncStatus    string
+	ServerVersion int
+	IsSubtask     bool
 }
 
 // ListTodayTasks returns tasks due today plus overdue tasks.
@@ -71,6 +77,7 @@ scoped_tasks AS (
 	SELECT
 		t.id,
 		t.title,
+		COALESCE(t.description, '') AS description,
 		t.status,
 		COALESCE(t.project_name, '') AS project_name,
 		COALESCE(
@@ -79,12 +86,27 @@ scoped_tasks AS (
 			date(substr(t.due_at, 1, 10)),
 			date(t.due_date)
 		) AS due_iso_date,
+		t.priority,
 		t.updated_at,
 		t.label_names,
+		t.sync_status,
+		t.server_version,
 		t.parent_id
 	FROM tasks t
 )
-SELECT t.id, t.title, t.status, t.project_name, COALESCE(t.due_iso_date, ''), t.parent_id IS NOT NULL
+SELECT
+	t.id,
+	t.title,
+	t.description,
+	t.status,
+	t.project_name,
+	COALESCE(t.due_iso_date, ''),
+	COALESCE(t.priority, 0),
+	t.priority IS NOT NULL,
+	COALESCE(t.label_names, ''),
+	t.sync_status,
+	t.server_version,
+	t.parent_id IS NOT NULL
 FROM scoped_tasks t
 CROSS JOIN cfg
 WHERE 1=1
@@ -99,7 +121,7 @@ LIMIT ?;`, limit)
 	results := make([]DatedTaskViewRow, 0, limit)
 	for rows.Next() {
 		var row DatedTaskViewRow
-		if err := rows.Scan(&row.ID, &row.Title, &row.Status, &row.ProjectName, &row.DueISODate, &row.IsSubtask); err != nil {
+		if err := rows.Scan(&row.ID, &row.Title, &row.Description, &row.Status, &row.ProjectName, &row.DueISODate, &row.Priority, &row.HasPriority, &row.LabelNames, &row.SyncStatus, &row.ServerVersion, &row.IsSubtask); err != nil {
 			return nil, fmt.Errorf("list simple system tasks: scan row: %w", err)
 		}
 		results = append(results, row)
@@ -133,6 +155,7 @@ scoped_tasks AS (
 	SELECT
 		t.id,
 		t.title,
+		COALESCE(t.description, '') AS description,
 		t.status,
 		COALESCE(t.project_name, '') AS project_name,
 		COALESCE(
@@ -141,16 +164,26 @@ scoped_tasks AS (
 			date(substr(t.due_at, 1, 10)),
 			date(t.due_date)
 		) AS due_iso_date,
+		t.priority,
 		t.updated_at,
+		t.label_names,
+		t.sync_status,
+		t.server_version,
 		t.parent_id
 	FROM tasks t
 )
 SELECT
 	t.id,
 	t.title,
+	t.description,
 	t.status,
 	t.project_name,
-	t.due_iso_date,
+	COALESCE(t.due_iso_date, ''),
+	COALESCE(t.priority, 0),
+	t.priority IS NOT NULL,
+	COALESCE(t.label_names, ''),
+	t.sync_status,
+	t.server_version,
 	t.parent_id IS NOT NULL
 FROM scoped_tasks t
 CROSS JOIN cfg
@@ -169,7 +202,7 @@ LIMIT ?;
 	results := make([]DatedTaskViewRow, 0, limit)
 	for rows.Next() {
 		var row DatedTaskViewRow
-		if err := rows.Scan(&row.ID, &row.Title, &row.Status, &row.ProjectName, &row.DueISODate, &row.IsSubtask); err != nil {
+		if err := rows.Scan(&row.ID, &row.Title, &row.Description, &row.Status, &row.ProjectName, &row.DueISODate, &row.Priority, &row.HasPriority, &row.LabelNames, &row.SyncStatus, &row.ServerVersion, &row.IsSubtask); err != nil {
 			return nil, fmt.Errorf("list date scoped tasks: scan row: %w", err)
 		}
 		results = append(results, row)

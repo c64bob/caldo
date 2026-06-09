@@ -2,7 +2,7 @@ package view
 
 import "strings"
 
-templ SearchPage(query string, results []SearchResultView) {
+templ SearchPage(query string, results []TaskRowView) {
 	<section class="caldo-page">
 		<h2 class="caldo-page-title">Globale Suche</h2>
 		<form method="get" action="/search" class="space-y-2" role="search" aria-label="Globale Suche">
@@ -24,36 +24,9 @@ templ SearchPage(query string, results []SearchResultView) {
 		} else if len(results) == 0 {
 			@EmptyState("Keine aktiven Aufgaben gefunden", "Passe den Suchbegriff oder Projekt- und Labeltokens an.")
 		} else {
-			<ul class="caldo-list" data-search-results>
+			<ul class="caldo-list caldo-task-list" data-search-results>
 				for _, result := range results {
-					<li data-task-id={ result.ID } class="caldo-task-row">
-						<p class="font-medium">{ result.Title }</p>
-						if result.Description != "" {
-							<p class="caldo-muted">{ result.Description }</p>
-						}
-						<p class="caldo-meta mt-1">
-							Projekt: { result.ProjectName }
-							if result.LabelNames != "" {
-								 · Labels: { result.LabelNames }
-							}
-						</p>
-						if len(result.Attachments) > 0 {
-							<div class="caldo-meta mt-2">
-								<p>Anhänge:</p>
-								<ul class="ml-4 list-disc space-y-1">
-									for _, attachment := range result.Attachments {
-										<li>
-											if attachment.IsExternalURL {
-												<a href={ templ.SafeURL(attachment.Value) } target="_blank" rel="noopener noreferrer" class="caldo-list-link">{ attachment.Value }</a>
-											} else {
-												Anhang vorhanden (inline/binary)
-											}
-										</li>
-									}
-								</ul>
-							</div>
-						}
-					</li>
+					@TaskRow(result)
 				}
 			</ul>
 		}

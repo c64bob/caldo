@@ -1,19 +1,14 @@
 package view
 
-import "caldo/internal/db"
-
-templ DateScopedTasksPage(heading string, emptyMessage string, tasks []db.DatedTaskViewRow) {
+templ DateScopedTasksPage(heading string, emptyMessage string, tasks []TaskRowView) {
 	<section class="caldo-page">
 		<h2 class="caldo-page-title">{ heading }</h2>
 		if len(tasks) == 0 {
 			@EmptyState(emptyMessage, "Es gibt in dieser Ansicht gerade nichts zu bearbeiten.")
 		} else {
-			<ul class="caldo-list" data-date-view-results>
+			<ul class="caldo-list caldo-task-list" data-date-view-results>
 				for _, task := range tasks {
-					<li data-task-id={ task.ID } class={ "caldo-task-row", templ.KV("ml-6", task.IsSubtask) }>
-						<p class="font-medium">{ task.Title }</p>
-						<p class="caldo-meta mt-1">Fällig: { task.DueISODate } · Projekt: { task.ProjectName }</p>
-					</li>
+					@TaskRow(task)
 				}
 			</ul>
 		}

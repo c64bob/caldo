@@ -49,6 +49,21 @@ func TestSearchRouteReturnsActiveTasksOnly(t *testing.T) {
 	if !strings.Contains(body, "Globale Suche") {
 		t.Fatalf("response body missing search heading")
 	}
+	for _, want := range []string{
+		`hx-post="/tasks/task-active/complete"`,
+		`name="expected_version" value="5"`,
+		"Prüfen",
+		"Fällig 2026-06-09",
+		"Finanzen",
+		"Büro",
+		"dringend",
+		"P1",
+		"Fehler",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("response body missing task row detail %q: %q", want, body)
+		}
+	}
 	if !strings.Contains(body, `rel="noopener noreferrer"`) {
 		t.Fatalf("response body missing secure external attachment rel attribute: %q", body)
 	}
@@ -69,10 +84,10 @@ INSERT INTO projects (
 
 INSERT INTO tasks (
     id, project_id, uid, href, etag, server_version, title, description, status, raw_vtodo, base_vtodo,
-    label_names, project_name, sync_status, created_at, updated_at
+    label_names, project_name, sync_status, due_date, priority, created_at, updated_at
 ) VALUES
 (
-    'task-active', 'project-1', 'uid-active', '/calendars/work/task-active.ics', '"etag-active"', 1,
+    'task-active', 'project-1', 'uid-active', '/calendars/work/task-active.ics', '"etag-active"', 5,
     'Überweisung Rechnung', 'Prüfen', 'needs-action', 'BEGIN:VTODO
 UID:uid-active
 ATTACH:https://example.com/rechnung.pdf
@@ -82,12 +97,12 @@ END:VTODO',
 UID:uid-active
 ATTACH:https://example.com/rechnung.pdf
 ATTACH;ENCODING=BASE64;VALUE=BINARY:AAAA
-END:VTODO', 'Büro dringend', 'Finanzen', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+END:VTODO', 'Büro,dringend', 'Finanzen', 'error', '2026-06-09', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 ),
 (
     'task-completed', 'project-1', 'uid-completed', '/calendars/work/task-completed.ics', '"etag-completed"', 1,
     'Überfällige Rechnung', 'Archiv', 'completed', 'BEGIN:VTODO\nUID:uid-completed\nEND:VTODO',
-    'BEGIN:VTODO\nUID:uid-completed\nEND:VTODO', 'Büro erledigt', 'Finanzen', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+    'BEGIN:VTODO\nUID:uid-completed\nEND:VTODO', 'Büro,erledigt', 'Finanzen', 'synced', '2026-06-08', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 );
 `); err != nil {
 		t.Fatalf("seed search route data: %v", err)

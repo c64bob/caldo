@@ -95,6 +95,26 @@ func TestPrepareTaskUndoDeletedTaskReusesPendingRowOnRetry(t *testing.T) {
 	assertSingleIntResult(t, db, `SELECT COUNT(*) FROM tasks WHERE project_id='project-1' AND uid='uid-del';`, 1)
 	assertSingleTextResult(t, db, `SELECT sync_status FROM tasks WHERE id='`+second.TaskID+`';`, "pending")
 }
+
+func TestLoadUndoSnapshotStatusReturnsOnlyNonExpiredSnapshot(t *testing.T) {
+	t.Parallel()
+	db := openTaskUndoTestDB(t)
+	seedTaskUndoData(t, db)
+
+	status, err := db.LoadUndoSnapshotStatus(context.Background(), "session-1", "tab-1")
+	if err != nil {
+		t.Fatalf("load undo status: %v", err)
+	}
+	if status.ActionType != "task_updated" || status.ExpiresAtISO == "" {
+		t.Fatalf("unexpected undo status: %#v", status)
+	}
+
+	_, err = db.LoadUndoSnapshotStatus(context.Background(), "session-exp", "tab-exp")
+	if err != ErrUndoSnapshotNotFound {
+		t.Fatalf("expected expired snapshot to be hidden, got %v", err)
+	}
+}
+
 func openTaskUndoTestDB(t *testing.T) *Database {
 	t.Helper()
 	database, err := OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))

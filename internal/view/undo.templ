@@ -1,0 +1,24 @@
+package view
+
+templ UndoNotification(snapshot UndoSnapshotView) {
+	<div
+		class="caldo-toast caldo-undo-toast"
+		role="status"
+		data-undo-toast
+		data-undo-expires-at={ snapshot.ExpiresAtISO }
+	>
+		<div class="caldo-undo-toast-copy">
+			<span class="caldo-undo-status" data-undo-status>{ undoSnapshotTitle(snapshot) }</span>
+			<span class="caldo-undo-expiry" data-undo-countdown>{ undoSnapshotDescription(snapshot) }</span>
+		</div>
+		<button type="button" class="caldo-button caldo-button-secondary caldo-undo-button" data-undo-action>Rückgängig</button>
+	</div>
+}
+
+templ UndoResultNotification(message string) {
+	<div class="caldo-toast caldo-undo-toast caldo-undo-toast-result" role="status" data-undo-toast>
+		<div class="caldo-undo-toast-copy">
+			<span class="caldo-undo-status" data-undo-status>{ message }</span>
+		</div>
+	</div>
+}

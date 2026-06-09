@@ -9,9 +9,37 @@ import (
 
 	"caldo/internal/caldav"
 	"caldo/internal/db"
+	"caldo/internal/view"
 )
 
 const taskUndoPersistTimeout = 5 * time.Second
+
+// TaskUndoStatus renders the current tab's available undo action.
+func TaskUndoStatus(database *db.Database) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tabID := strings.TrimSpace(r.Header.Get("X-Tab-ID"))
+		if tabID == "" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		sessionID := undoSessionID(r)
+
+		status, err := database.LoadUndoSnapshotStatus(r.Context(), sessionID, tabID)
+		if err != nil {
+			if errors.Is(err, db.ErrUndoSnapshotNotFound) {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			http.Error(w, "failed to load undo status", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := view.UndoNotification(view.UndoSnapshotView{ActionType: status.ActionType, ExpiresAtISO: status.ExpiresAtISO}).Render(r.Context(), w); err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+	}
+}
 
 // TaskUndo executes undo for the latest session/tab snapshot via synchronous CalDAV write.
 func TaskUndo(deps taskUpdateDependencies) http.HandlerFunc {
@@ -21,10 +49,7 @@ func TaskUndo(deps taskUpdateDependencies) http.HandlerFunc {
 			http.Error(w, "X-Tab-ID header is required", http.StatusBadRequest)
 			return
 		}
-		sessionID := strings.TrimSpace(r.Header.Get("X-Forwarded-User"))
-		if sessionID == "" {
-			sessionID = "single-user-session"
-		}
+		sessionID := undoSessionID(r)
 
 		prepared, err := deps.database.PrepareTaskUndo(r.Context(), sessionID, tabID)
 		if err != nil {
@@ -102,7 +127,17 @@ func TaskUndo(deps taskUpdateDependencies) http.HandlerFunc {
 			return
 		}
 
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("undo executed"))
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := view.UndoResultNotification("Rückgängig ausgeführt.").Render(r.Context(), w); err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
 	}
+}
+
+func undoSessionID(r *http.Request) string {
+	sessionID := strings.TrimSpace(r.Header.Get("X-Forwarded-User"))
+	if sessionID == "" {
+		sessionID = "single-user-session"
+	}
+	return sessionID
 }

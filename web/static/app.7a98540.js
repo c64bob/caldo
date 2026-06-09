@@ -2,13 +2,44 @@
   'use strict';
 
   var navState = { pendingView: null };
-  var tabID = newTabID();
+  var tabStateKey = '__caldoTabState';
+  var tabState = loadTabState();
+  var tabID = ensureTabID(tabState);
+  var undoExpiryTimer = 0;
 
-  function newTabID() {
+  function generateTabID() {
     if (window.crypto && typeof window.crypto.randomUUID === 'function') {
       return window.crypto.randomUUID();
     }
     return 'tab-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+  }
+
+  function loadTabState() {
+    var historyState = window.history ? window.history.state : null;
+    if (!historyState || typeof historyState !== 'object') {
+      return {};
+    }
+    var state = historyState[tabStateKey];
+    return state && typeof state === 'object' ? state : {};
+  }
+
+  function saveTabState(state) {
+    if (!window.history || typeof window.history.replaceState !== 'function') return;
+    try {
+      var nextHistoryState = window.history.state && typeof window.history.state === 'object' ? Object.assign({}, window.history.state) : {};
+      nextHistoryState[tabStateKey] = state || {};
+      window.history.replaceState(nextHistoryState, document.title, window.location.href);
+    } catch (_) {
+      // If history state is unavailable, the in-memory tab ID still works until reload.
+    }
+  }
+
+  function ensureTabID(state) {
+    if (!state.tabID) {
+      state.tabID = generateTabID();
+      saveTabState(state);
+    }
+    return state.tabID;
   }
 
   function isTypingTarget(target) {
@@ -355,28 +386,121 @@
     return 'Aufgabe konnte nicht gelöscht werden.';
   }
 
-  function showUndoNotification(message) {
+  function notificationsRoot() {
+    return document.getElementById('notifications');
+  }
+
+  function clearUndoExpiryTimer() {
+    if (undoExpiryTimer) {
+      window.clearTimeout(undoExpiryTimer);
+      undoExpiryTimer = 0;
+    }
+  }
+
+  function setNotificationHTML(html) {
+    var root = notificationsRoot();
+    if (!root) return;
+    clearUndoExpiryTimer();
+    root.innerHTML = html || '';
+    bindUndoCountdown(root.querySelector('[data-undo-toast]'));
+  }
+
+  function clearNotifications() {
+    setNotificationHTML('');
+  }
+
+  function showUndoResult(message) {
     var root = document.getElementById('notifications');
     if (!root) return;
+    clearUndoExpiryTimer();
     root.textContent = '';
 
     var toast = document.createElement('div');
-    toast.className = 'caldo-toast caldo-undo-toast';
+    toast.className = 'caldo-toast caldo-undo-toast caldo-undo-toast-result';
     toast.setAttribute('role', 'status');
+    toast.setAttribute('data-undo-toast', '');
+
+    var copy = document.createElement('div');
+    copy.className = 'caldo-undo-toast-copy';
 
     var text = document.createElement('span');
+    text.className = 'caldo-undo-status';
     text.setAttribute('data-undo-status', '');
     text.textContent = message;
 
-    var button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'caldo-button caldo-button-secondary caldo-undo-button';
-    button.setAttribute('data-undo-action', '');
-    button.textContent = 'Rückgängig';
-
-    toast.appendChild(text);
-    toast.appendChild(button);
+    copy.appendChild(text);
+    toast.appendChild(copy);
     root.appendChild(toast);
+  }
+
+  function refreshUndoNotification() {
+    if (!undoStatusEnabled()) {
+      return Promise.resolve();
+    }
+    return window.fetch('/tasks/undo/status', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: {
+        'X-Tab-ID': tabID
+      }
+    }).then(function (response) {
+      if (response.status === 204) {
+        clearNotifications();
+        return '';
+      }
+      if (!response.ok) {
+        throw response;
+      }
+      return response.text();
+    }).then(function (html) {
+      if (html) {
+        setNotificationHTML(html);
+      }
+    }).catch(function () {
+      // Undo status is informational; write operations surface their own errors.
+    });
+  }
+
+  function bindUndoCountdown(toast) {
+    if (!toast) return;
+    var expiresAt = toast.getAttribute('data-undo-expires-at');
+    if (!expiresAt) return;
+
+    function tick() {
+      if (!document.contains(toast)) return;
+      var remaining = Date.parse(expiresAt) - Date.now();
+      if (!Number.isFinite(remaining) || remaining <= 0) {
+        markUndoExpired(toast);
+        return;
+      }
+      var seconds = Math.ceil(remaining / 1000);
+      var minutes = Math.floor(seconds / 60);
+      var rest = seconds % 60;
+      var countdown = toast.querySelector('[data-undo-countdown]');
+      if (countdown) {
+        countdown.textContent = 'Noch ' + minutes + ':' + String(rest).padStart(2, '0') + ' verfügbar.';
+      }
+      undoExpiryTimer = window.setTimeout(tick, Math.min(1000, remaining));
+    }
+
+    tick();
+  }
+
+  function markUndoExpired(toast) {
+    var status = toast.querySelector('[data-undo-status]');
+    var countdown = toast.querySelector('[data-undo-countdown]');
+    var button = toast.querySelector('[data-undo-action]');
+    if (status) {
+      status.textContent = 'Rückgängig abgelaufen.';
+    }
+    if (countdown) {
+      countdown.textContent = 'Der Snapshot ist nicht mehr gültig.';
+    }
+    if (button) {
+      button.disabled = true;
+      button.hidden = true;
+    }
+    toast.classList.add('caldo-undo-toast-expired');
   }
 
   function setUndoNotificationError(button, message) {
@@ -390,6 +514,19 @@
     }
   }
 
+  function undoFailureMessage(status) {
+    if (status === 404) {
+      return 'Rückgängig ist nicht mehr verfügbar.';
+    }
+    if (status === 409) {
+      return 'Rückgängig nicht möglich. Aufgabe prüfen.';
+    }
+    if (status === 502 || status === 424) {
+      return 'Rückgängig konnte nicht auf dem CalDAV-Server gespeichert werden.';
+    }
+    return 'Rückgängig fehlgeschlagen.';
+  }
+
   function executeUndo(button) {
     if (!button || button.disabled) return;
     button.disabled = true;
@@ -399,18 +536,29 @@
       credentials: 'same-origin',
       headers: {
         'X-CSRF-Token': csrfToken(),
-        'X-Tab-ID': tabID
+        'X-Tab-ID': tabID,
+        'Accept': 'text/html'
       }
     }).then(function (response) {
       if (!response.ok) {
         throw response;
       }
-      setWriteStatus('saved', 'Gespeichert');
-      window.location.reload();
-    }).catch(function () {
+      return response.text();
+    }).then(function (html) {
+      if (html) {
+        setNotificationHTML(html);
+      } else {
+        showUndoResult('Rückgängig ausgeführt.');
+      }
+      setWriteStatus('saved', 'Rückgängig ausgeführt.');
+      window.setTimeout(function () {
+        window.location.reload();
+      }, 1200);
+    }).catch(function (response) {
+      var status = response && response.status ? response.status : 0;
       button.disabled = false;
       setWriteStatus('error', 'Rückgängig fehlgeschlagen. Änderungen prüfen.');
-      setUndoNotificationError(button, 'Rückgängig fehlgeschlagen.');
+      setUndoNotificationError(button, undoFailureMessage(status));
     });
   }
 
@@ -454,6 +602,17 @@
   function csrfToken() {
     var meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.getAttribute('content') || '' : '';
+  }
+
+  function undoStatusEnabled() {
+    return window.location.pathname.indexOf('/setup') !== 0;
+  }
+
+  function initializeUndoSurface() {
+    if (!undoStatusEnabled()) {
+      return;
+    }
+    refreshUndoNotification();
   }
 
   document.body.addEventListener('htmx:configRequest', function (event) {
@@ -552,7 +711,7 @@
         deleteRow.remove();
       }
       setWriteStatus(null, '');
-      showUndoNotification('Aufgabe gelöscht.');
+      refreshUndoNotification();
       return;
     }
 
@@ -735,4 +894,6 @@
       toggleHelpDialog();
     }
   });
+
+  initializeUndoSurface();
 })();

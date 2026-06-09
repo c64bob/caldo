@@ -28,7 +28,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
 
   await gotoApp(page, '/');
   await expect(page).toHaveURL(/\/setup$/);
-  await expect(page.getByRole('heading', { name: 'CalDAV einrichten' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'CalDAV einrichten' }).first()).toBeVisible();
   await captureBaselineSet(page, 'setup');
   await page.setViewportSize(desktopViewport);
 
@@ -41,7 +41,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   expect(response.headers().location).toBe('/setup/calendars');
 
   await gotoApp(page, '/setup/calendars');
-  await expect(page.getByRole('heading', { name: 'Kalender auswählen' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Kalender auswählen' }).first()).toBeVisible();
   await expect(page.getByText('Work')).toBeVisible();
 
   response = await appFormRequest(page, 'POST', '/setup/calendars', {
@@ -253,8 +253,19 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(deleteDialog).toBeVisible();
   await deleteDialog.getByRole('button', { name: 'Endgültig löschen' }).click();
   await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Local Edited' })).toHaveCount(0);
-  await expect(page.locator('#notifications').getByRole('button', { name: 'Rückgängig' })).toBeVisible();
-  await page.locator('#notifications').getByRole('button', { name: 'Rückgängig' }).click();
+  const undoNotifications = page.locator('#notifications');
+  await expect(undoNotifications.getByRole('button', { name: 'Rückgängig' })).toBeVisible();
+  await expect(undoNotifications).toContainText('Noch');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(undoNotifications.getByRole('button', { name: 'Rückgängig' })).toBeVisible();
+  await expect(undoNotifications).toContainText('Noch');
+  await page.screenshot({ path: 'test-results/e2e/undo-available.png', fullPage: true });
+  const secondPage = await page.context().newPage();
+  await gotoApp(secondPage, '/search?q=E2E%20Local%20Edited');
+  await expect(secondPage.locator('#notifications').getByRole('button', { name: 'Rückgängig' })).toHaveCount(0);
+  await secondPage.close();
+  await undoNotifications.getByRole('button', { name: 'Rückgängig' }).click();
+  await expect(undoNotifications).toContainText('Rückgängig ausgeführt.');
   await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Local Edited' }).first()).toBeVisible();
 
   deleteRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Local Edited' }).first();

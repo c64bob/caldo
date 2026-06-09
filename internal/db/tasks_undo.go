@@ -33,6 +33,30 @@ type PreparedTaskUndo struct {
 	PendingVersion int
 }
 
+// UndoSnapshotStatus describes the currently available undo action for one session tab.
+type UndoSnapshotStatus struct {
+	ActionType   string
+	ExpiresAtISO string
+}
+
+// LoadUndoSnapshotStatus returns the non-expired undo snapshot status for one session tab.
+func (d *Database) LoadUndoSnapshotStatus(ctx context.Context, sessionID, tabID string) (UndoSnapshotStatus, error) {
+	var status UndoSnapshotStatus
+	if err := d.Conn.QueryRowContext(ctx, `
+SELECT action_type, strftime('%Y-%m-%dT%H:%M:%SZ', expires_at)
+FROM undo_snapshots
+WHERE session_id = ?
+  AND tab_id = ?
+  AND datetime(expires_at) > CURRENT_TIMESTAMP;
+`, sessionID, tabID).Scan(&status.ActionType, &status.ExpiresAtISO); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return UndoSnapshotStatus{}, ErrUndoSnapshotNotFound
+		}
+		return UndoSnapshotStatus{}, fmt.Errorf("load undo snapshot status: %w", err)
+	}
+	return status, nil
+}
+
 // PrepareTaskUndo loads and validates the latest undo snapshot for a session/tab and marks task as pending.
 func (d *Database) PrepareTaskUndo(ctx context.Context, sessionID, tabID string) (PreparedTaskUndo, error) {
 	d.WriteMu.Lock()

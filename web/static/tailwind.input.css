@@ -1189,10 +1189,32 @@
 		@apply z-50 flex min-w-0 items-center justify-between gap-3;
 	}
 
+	.caldo-undo-toast-copy {
+		@apply flex min-w-0 flex-col gap-0.5;
+	}
+
+	.caldo-undo-status {
+		@apply font-medium;
+	}
+
+	.caldo-undo-expiry {
+		@apply text-xs;
+		color: var(--caldo-text-subtle);
+	}
+
 	.caldo-undo-toast-error {
 		background: var(--caldo-danger-muted);
 		border-color: var(--caldo-danger);
 		color: var(--caldo-danger);
+	}
+
+	.caldo-undo-toast-error .caldo-undo-expiry {
+		color: var(--caldo-danger);
+	}
+
+	.caldo-undo-toast-expired,
+	.caldo-undo-toast-result {
+		background: var(--caldo-surface-muted);
 	}
 
 	.caldo-undo-button {

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"caldo/internal/caldav"
@@ -27,6 +28,9 @@ func TestTaskUndoSuccessDeletesSnapshot(t *testing.T) {
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%q", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "Rückgängig ausgeführt.") {
+		t.Fatalf("response missing undo result fragment: %q", rr.Body.String())
 	}
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE session_id='session-1' AND tab_id='tab-1';`, 0)
 }
@@ -69,6 +73,71 @@ func TestTaskUndoDeletedTaskRecreatesResourceAndTaskRow(t *testing.T) {
 	}
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE session_id='session-del' AND tab_id='tab-del';`, 0)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM tasks WHERE uid='uid-del' AND sync_status='synced' AND etag='"etag-del"';`, 1)
+}
+
+func TestTaskUndoStatusRendersValidSnapshot(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskUndoHandlerTest(t)
+	seedTaskUndoHandlerData(t, database)
+
+	h := TaskUndoStatus(database)
+	req := httptest.NewRequest(http.MethodGet, "/tasks/undo/status", nil)
+	req.Header.Set("X-Tab-ID", "tab-1")
+	req.Header.Set("X-Forwarded-User", "session-1")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%q", rr.Code, rr.Body.String())
+	}
+	for _, want := range []string{
+		`data-undo-toast`,
+		`data-undo-expires-at=`,
+		`Letzte Änderung gespeichert.`,
+		`Rückgängig ist kurz verfügbar.`,
+		`data-undo-action`,
+		`Rückgängig`,
+	} {
+		if !strings.Contains(rr.Body.String(), want) {
+			t.Fatalf("response missing %q: %q", want, rr.Body.String())
+		}
+	}
+}
+
+func TestTaskUndoStatusHidesMissingExpiredAndHeaderlessSnapshots(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskUndoHandlerTest(t)
+	seedTaskUndoHandlerData(t, database)
+
+	if _, err := database.Conn.ExecContext(context.Background(), `
+INSERT INTO undo_snapshots (id, session_id, tab_id, task_id, action_type, snapshot_vtodo, snapshot_fields, etag_at_snapshot, created_at, expires_at)
+VALUES ('undo-exp','session-exp','tab-exp','task-1','task_updated','BEGIN:VTODO\nUID:uid-1\nEND:VTODO',json_object('title','before'),'"etag-1"',CURRENT_TIMESTAMP,DATETIME(CURRENT_TIMESTAMP,'-1 minutes'));
+`); err != nil {
+		t.Fatalf("seed expired undo snapshot: %v", err)
+	}
+
+	h := TaskUndoStatus(database)
+	for _, tt := range []struct {
+		name      string
+		sessionID string
+		tabID     string
+	}{
+		{name: "missing", sessionID: "session-1", tabID: "missing-tab"},
+		{name: "expired", sessionID: "session-exp", tabID: "tab-exp"},
+		{name: "no tab", sessionID: "session-1"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/tasks/undo/status", nil)
+			req.Header.Set("X-Forwarded-User", tt.sessionID)
+			if tt.tabID != "" {
+				req.Header.Set("X-Tab-ID", tt.tabID)
+			}
+			rr := httptest.NewRecorder()
+			h.ServeHTTP(rr, req)
+			if rr.Code != http.StatusNoContent {
+				t.Fatalf("status=%d body=%q", rr.Code, rr.Body.String())
+			}
+		})
+	}
 }
 
 func openSQLiteForTaskUndoHandlerTest(t *testing.T) *db.Database {

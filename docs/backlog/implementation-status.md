@@ -87,7 +87,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 16.1 | Teilweise umgesetzt | Task-Labels sind im Modell/Update-Pfad vorhanden; eigene Label-Bearbeitungs-UI ist offen. |
 | 16.2 | Umgesetzt | `STARRED`-Mapping, Favorit-Route und Favoriten-View sind umgesetzt. |
 | 17.1 | Umgesetzt | `RELATED-TO;RELTYPE=PARENT` und Nextcloud-kompatibles `RELATED-TO` werden importiert, genau eine Ebene wird ueber `parent_id` dargestellt, tiefere Ebenen bleiben Root-Aufgaben mit unveraendertem Raw-VTODO und Unteraufgaben erscheinen eingerueckt mit Parent-Metadaten. |
-| 17.2 | Teilweise umgesetzt | Subtask-Routen existieren; sichtbare Erstellung ist noch auszubauen. |
+| 17.2 | Umgesetzt | Direkte Unteraufgaben werden ausschliesslich ueber `Unteraufgabe hinzufuegen` erstellt, Quick Add lehnt Parent-Felder ab, Subtasks schreiben `RELATED-TO;RELTYPE=PARENT` sofort zu CalDAV, verschachtelte Subtasks sind blockiert und Handler-/Router-E2E-Tests decken die Fake-CalDAV-Sichtbarkeit ab. |
 | 17.3 | Umgesetzt | `internal/view/task_rows.templ`, `web/assets/app.js`, `internal/handler/tasks_delete.go` und `internal/handler/tasks_delete_test.go` zeigen die Anzahl direkter Unteraufgaben im Loeschdialog, senden die explizite `delete_all`-Aktion und loeschen Elternaufgabe sowie direkte Unteraufgaben einzeln mit Undo-Snapshot fuer die bestaetigte Loeschaktion. |
 | 18.1 | Teilweise umgesetzt | RRULE-Preservation und Update-Pfade existieren; dedicated Recurrence-Editor fehlt. |
 | 18.2 | Umgesetzt | Komplexe RRULEs werden beim Patchen erhalten. |

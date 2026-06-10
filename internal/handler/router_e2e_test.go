@@ -105,6 +105,21 @@ func TestRouterMVPFlowAgainstFakeCalDAVServer(t *testing.T) {
 	createdID, createdHref, createdVersion := e2eTaskByTitle(t, database, "Local Created")
 	fake.assertRawContains(t, createdHref, "SUMMARY:Local Created")
 
+	rr = e2eRequest(t, router, secret, http.MethodPost, "/tasks/", url.Values{"title": {"Local Subtask Parent"}}, "tab-subtask-parent")
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("subtask parent create: got status=%d body=%q", rr.Code, rr.Body.String())
+	}
+	subtaskParentID, _, _ := e2eTaskByTitle(t, database, "Local Subtask Parent")
+	subtaskParentUID := e2eTaskUID(t, database, subtaskParentID)
+	rr = e2eRequest(t, router, secret, http.MethodPost, "/tasks/"+subtaskParentID+"/subtasks", url.Values{"title": {"Local Subtask Child"}}, "tab-subtask-create")
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("subtask create: got status=%d body=%q", rr.Code, rr.Body.String())
+	}
+	subtaskID, subtaskHref, _ := e2eTaskByTitle(t, database, "Local Subtask Child")
+	e2eAssertTaskParent(t, database, subtaskID, subtaskParentID)
+	fake.assertRawContains(t, subtaskHref, "SUMMARY:Local Subtask Child")
+	fake.assertRawContains(t, subtaskHref, "RELATED-TO;RELTYPE=PARENT:"+subtaskParentUID)
+
 	rr = e2eRequest(t, router, secret, http.MethodPatch, "/tasks/"+createdID, url.Values{
 		"expected_version": {fmt.Sprint(createdVersion)},
 		"title":            {"Local Edited"},
@@ -562,6 +577,28 @@ func e2eTaskVersion(t *testing.T, database *db.Database, taskID string) int {
 		t.Fatalf("query task version: %v", err)
 	}
 	return version
+}
+
+func e2eTaskUID(t *testing.T, database *db.Database, taskID string) string {
+	t.Helper()
+
+	var uid string
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT uid FROM tasks WHERE id = ?;`, taskID).Scan(&uid); err != nil {
+		t.Fatalf("query task uid: %v", err)
+	}
+	return uid
+}
+
+func e2eAssertTaskParent(t *testing.T, database *db.Database, taskID string, wantParentID string) {
+	t.Helper()
+
+	var parentID sql.NullString
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT parent_id FROM tasks WHERE id = ?;`, taskID).Scan(&parentID); err != nil {
+		t.Fatalf("query task parent: %v", err)
+	}
+	if !parentID.Valid || parentID.String != wantParentID {
+		t.Fatalf("task parent: got %#v want %q", parentID, wantParentID)
+	}
 }
 
 func e2eAssertTaskStatus(t *testing.T, database *db.Database, taskID string, want string) {

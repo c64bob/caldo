@@ -140,6 +140,16 @@ func TestTaskCreateRejectsParentFieldOnRootCreate(t *testing.T) {
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("unexpected status: %d", rr.Code)
 	}
+	if stub.raw != "" || stub.href != "" {
+		t.Fatalf("root create with parent field must not call caldav: href=%q raw=%q", stub.href, stub.raw)
+	}
+	var count int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM tasks;`).Scan(&count); err != nil {
+		t.Fatalf("count tasks: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected no local task rows, got %d", count)
+	}
 }
 
 func TestTaskCreateSubtaskSetsParentLinkAndParentID(t *testing.T) {
@@ -166,13 +176,65 @@ func TestTaskCreateSubtaskSetsParentLinkAndParentID(t *testing.T) {
 		t.Fatalf("expected parent uid link in payload: %q", stub.raw)
 	}
 	var parentID sql.NullString
-	if err := database.Conn.QueryRowContext(context.Background(), `SELECT parent_id FROM tasks WHERE title='Child task'`).Scan(&parentID); err != nil {
+	var href string
+	var etag string
+	var syncStatus string
+	var serverVersion int
+	var rawVTODO string
+	if err := database.Conn.QueryRowContext(context.Background(), `
+SELECT parent_id, href, etag, sync_status, server_version, raw_vtodo
+FROM tasks
+WHERE title = 'Child task';
+`).Scan(&parentID, &href, &etag, &syncStatus, &serverVersion, &rawVTODO); err != nil {
 		t.Fatalf("query subtask parent: %v", err)
 	}
 	if !parentID.Valid || parentID.String != "task-parent" {
 		t.Fatalf("unexpected parent id: %#v", parentID)
 	}
+	if href != stub.href || !strings.HasPrefix(href, "/cal/inbox/") || !strings.HasSuffix(href, ".ics") {
+		t.Fatalf("unexpected subtask href: db=%q caldav=%q", href, stub.href)
+	}
+	if etag != `"etag-sub"` || syncStatus != "synced" || serverVersion != 2 {
+		t.Fatalf("unexpected subtask sync state: etag=%q status=%q version=%d", etag, syncStatus, serverVersion)
+	}
+	if rawVTODO != stub.raw {
+		t.Fatalf("local subtask raw must match caldav payload:\nlocal=%q\nremote=%q", rawVTODO, stub.raw)
+	}
 }
+
+func TestTaskCreateSubtaskRejectsNestedSubtask(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskCreateHandlerTest(t)
+	seedTaskCreateHandlerProject(t, database)
+	seedTaskCreateParentTask(t, database, "task-parent", "", "uid-parent")
+	seedTaskCreateParentTask(t, database, "task-child", "task-parent", "uid-child")
+	key := bytes.Repeat([]byte{0x62}, 32)
+	_ = database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"})
+	stub := &stubTaskCreateTodoClient{etag: `"etag-grandchild"`}
+	h := TaskCreateSubtask(taskCreateDependencies{database: database, encryptionKey: key, todos: stub})
+	form := url.Values{"title": {"Grandchild task"}}
+	req := httptest.NewRequest(http.MethodPost, "/tasks/task-child/subtasks", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("taskID", "task-child")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+	if stub.raw != "" || stub.href != "" {
+		t.Fatalf("nested subtask create must not call caldav: href=%q raw=%q", stub.href, stub.raw)
+	}
+	var count int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM tasks WHERE title = 'Grandchild task';`).Scan(&count); err != nil {
+		t.Fatalf("count nested subtasks: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected no nested subtask row, got %d", count)
+	}
+}
+
 func TestTaskCreateCalDAVFailureMarksTaskError(t *testing.T) {
 	t.Parallel()
 	database := openSQLiteForTaskCreateHandlerTest(t)

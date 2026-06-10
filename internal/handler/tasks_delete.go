@@ -67,9 +67,13 @@ func TaskDelete(deps taskUpdateDependencies) http.HandlerFunc {
 			sessionID = "single-user-session"
 		}
 
-		creds, err := deps.database.LoadCalDAVCredentials(r.Context(), deps.encryptionKey)
+		parentBase, err := deps.database.LoadTaskUpdateBase(r.Context(), taskID, "")
 		if err != nil {
-			http.Error(w, "caldav credentials unavailable", http.StatusFailedDependency)
+			http.Error(w, "task version conflict", http.StatusConflict)
+			return
+		}
+		if parentBase.ExpectedVersion != expectedVersion {
+			http.Error(w, "task version conflict", http.StatusConflict)
 			return
 		}
 
@@ -93,13 +97,10 @@ func TaskDelete(deps taskUpdateDependencies) http.HandlerFunc {
 				return
 			}
 		}
-		parentBase, err := deps.database.LoadTaskUpdateBase(r.Context(), taskID, "")
+
+		creds, err := deps.database.LoadCalDAVCredentials(r.Context(), deps.encryptionKey)
 		if err != nil {
-			http.Error(w, "task version conflict", http.StatusConflict)
-			return
-		}
-		if parentBase.ExpectedVersion != expectedVersion {
-			http.Error(w, "task version conflict", http.StatusConflict)
+			http.Error(w, "caldav credentials unavailable", http.StatusFailedDependency)
 			return
 		}
 

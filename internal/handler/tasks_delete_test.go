@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"caldo/internal/caldav"
 	"caldo/internal/db"
@@ -23,7 +24,58 @@ func TestTaskDeleteSuccess(t *testing.T) {
 		t.Fatalf("save credentials: %v", err)
 	}
 
-	h := TaskDelete(taskUpdateDependencies{database: database, encryptionKey: key, todos: &stubTaskUpdateTodoClient{}})
+	stub := &stubTaskUpdateTodoClient{}
+	h := TaskDelete(taskUpdateDependencies{database: database, encryptionKey: key, todos: stub})
+	form := url.Values{"expected_version": {"2"}}
+	req := httptest.NewRequest(http.MethodDelete, "/tasks/task-1", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Tab-ID", "tab-1")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("taskID", "task-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+	if stub.deleteCalls != 1 || stub.lastDeleteHref != "/cal/inbox/uid-1.ics" || stub.lastDeleteETag != `"etag-1"` {
+		t.Fatalf("unexpected caldav delete call: calls=%d href=%q etag=%q", stub.deleteCalls, stub.lastDeleteHref, stub.lastDeleteETag)
+	}
+
+	var count int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM tasks WHERE id = 'task-1';`).Scan(&count); err != nil {
+		t.Fatalf("count tasks: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected task to be deleted, got %d rows", count)
+	}
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE session_id = 'single-user-session' AND tab_id = 'tab-1' AND task_id = 'task-1' AND action_type = 'task_deleted';`, 1)
+}
+
+func TestTaskDeleteCalDAVNotFoundRemovesLocalTask(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskUpdateHandlerTest(t)
+	seedTaskUpdateHandlerData(t, database)
+
+	type deleteRequest struct {
+		method  string
+		path    string
+		ifMatch string
+	}
+	requests := make(chan deleteRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests <- deleteRequest{method: r.Method, path: r.URL.Path, ifMatch: r.Header.Get("If-Match")}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+
+	key := bytes.Repeat([]byte{0x78}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: server.URL, Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	h := TaskDelete(taskUpdateDependencies{database: database, encryptionKey: key, todos: caldav.NewTodoClient(server.Client())})
 	form := url.Values{"expected_version": {"2"}}
 	req := httptest.NewRequest(http.MethodDelete, "/tasks/task-1", bytes.NewBufferString(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -38,13 +90,16 @@ func TestTaskDeleteSuccess(t *testing.T) {
 		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
 	}
 
-	var count int
-	if err := database.Conn.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM tasks WHERE id = 'task-1';`).Scan(&count); err != nil {
-		t.Fatalf("count tasks: %v", err)
+	var remoteRequest deleteRequest
+	select {
+	case remoteRequest = <-requests:
+	case <-time.After(time.Second):
+		t.Fatal("expected remote delete request")
 	}
-	if count != 0 {
-		t.Fatalf("expected task to be deleted, got %d rows", count)
+	if remoteRequest.method != http.MethodDelete || remoteRequest.path != "/cal/inbox/uid-1.ics" || remoteRequest.ifMatch != `"etag-1"` {
+		t.Fatalf("unexpected remote delete request: %#v", remoteRequest)
 	}
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM tasks WHERE id = 'task-1';`, 0)
 }
 
 func TestTaskDeletePreconditionFailedMarksConflict(t *testing.T) {
@@ -138,6 +193,44 @@ func TestTaskDeleteCredentialsUnavailableDoesNotPersistPendingDelete(t *testing.
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusFailedDependency {
 		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+
+	var syncStatus string
+	var version int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT sync_status, server_version FROM tasks WHERE id = 'task-1';`).Scan(&syncStatus, &version); err != nil {
+		t.Fatalf("query task: %v", err)
+	}
+	if syncStatus != "synced" || version != 2 {
+		t.Fatalf("unexpected task state: sync_status=%q version=%d", syncStatus, version)
+	}
+}
+
+func TestTaskDeleteVersionConflictCheckedBeforeCredentials(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskUpdateHandlerTest(t)
+	seedTaskUpdateHandlerData(t, database)
+
+	stub := &stubTaskUpdateTodoClient{}
+	h := TaskDelete(taskUpdateDependencies{
+		database:      database,
+		encryptionKey: bytes.Repeat([]byte{0x79}, 32),
+		todos:         stub,
+	})
+	form := url.Values{"expected_version": {"9"}}
+	req := httptest.NewRequest(http.MethodDelete, "/tasks/task-1", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Tab-ID", "tab-1")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("taskID", "task-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+	if stub.deleteCalls != 0 {
+		t.Fatalf("expected no CalDAV delete calls, got %d", stub.deleteCalls)
 	}
 
 	var syncStatus string

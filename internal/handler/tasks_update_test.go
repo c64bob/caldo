@@ -25,6 +25,8 @@ type stubTaskUpdateTodoClient struct {
 	deleteCalls    int
 	createCalls    int
 	lastHref       string
+	lastDeleteHref string
+	lastDeleteETag string
 	lastRawVTODO   string
 	lastUpdateETag string
 }
@@ -50,8 +52,10 @@ func (s *stubTaskUpdateTodoClient) PutVTODOCreate(_ context.Context, _ caldav.Cr
 	return s.createETag, nil
 }
 
-func (s *stubTaskUpdateTodoClient) DeleteVTODO(_ context.Context, _ caldav.Credentials, _ string, _ string) error {
+func (s *stubTaskUpdateTodoClient) DeleteVTODO(_ context.Context, _ caldav.Credentials, href string, etag string) error {
 	s.deleteCalls++
+	s.lastDeleteHref = href
+	s.lastDeleteETag = etag
 	return s.deleteErr
 }
 

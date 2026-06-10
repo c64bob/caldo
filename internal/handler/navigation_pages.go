@@ -12,20 +12,29 @@ import (
 // ProjectsPage renders the projects navigation page.
 func ProjectsPage(database *db.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if database == nil {
-			renderPageError(w, r, "Projekte", "Projekte laden", http.StatusInternalServerError)
-			return
-		}
+		renderProjectsPage(w, r, database, "", "", http.StatusOK)
+	}
+}
 
-		snapshot, err := database.LoadNavigationSnapshot(r.Context(), time.Now())
-		if err != nil {
-			renderPageError(w, r, "Projekte", "Projekte laden", http.StatusInternalServerError)
-			return
-		}
+func renderProjectsPage(w http.ResponseWriter, r *http.Request, database *db.Database, createError string, createValue string, status int) {
+	if database == nil {
+		renderPageError(w, r, "Projekte", "Projekte laden", http.StatusInternalServerError)
+		return
+	}
 
-		if err := view.BaseLayout("Projekte", view.NavigationOverviewPage("Projekte", "Keine Projekte", navigationProjectsView(snapshot.Projects))).Render(r.Context(), w); err != nil {
-			http.Error(w, "render page", http.StatusInternalServerError)
-		}
+	snapshot, err := database.LoadNavigationSnapshot(r.Context(), time.Now())
+	if err != nil {
+		renderPageError(w, r, "Projekte", "Projekte laden", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if status != http.StatusOK {
+		w.WriteHeader(status)
+	}
+	ctx := view.WithNavigation(r.Context(), navigationSnapshotView(snapshot))
+	if err := view.BaseLayout("Projekte", view.ProjectsOverviewPage(navigationProjectsView(snapshot.Projects), createError, createValue)).Render(ctx, w); err != nil {
+		http.Error(w, "render page", http.StatusInternalServerError)
 	}
 }
 

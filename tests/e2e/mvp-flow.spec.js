@@ -66,6 +66,16 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
 
   await gotoApp(page, '/projects');
   await captureBaselineSet(page, 'inbox-equivalent-default-project');
+  const projectCreateForm = page.locator('[data-project-create-form]');
+  await expect(projectCreateForm).toBeVisible();
+  await ensureBrowserCSRFCookie(page);
+  await projectCreateForm.locator('[name="display_name"]').fill('E2E Empty Project');
+  await projectCreateForm.getByRole('button', { name: 'Projekt anlegen' }).click();
+  await expect(page.locator('[data-navigation-overview]').filter({ hasText: 'E2E Empty Project' })).toBeVisible();
+  await expect.poll(async () => {
+    const remoteState = await stageState();
+    return remoteState.calendars.some((calendar) => calendar.display_name === 'E2E Empty Project');
+  }).toBe(true);
   await gotoApp(page, '/today');
   await captureBaselineSet(page, 'today');
   await gotoApp(page, '/search?q=Stage');

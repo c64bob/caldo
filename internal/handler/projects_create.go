@@ -28,19 +28,19 @@ func ProjectCreate(deps projectCreateDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		projectName := strings.TrimSpace(r.FormValue("display_name"))
 		if projectName == "" {
-			renderProjectsPage(w, r, deps.database, "projektname ist erforderlich", r.FormValue("display_name"), http.StatusOK)
+			renderProjectsPage(w, r, deps.database, projectsPageState{CreateError: "projektname ist erforderlich", CreateValue: r.FormValue("display_name")}, http.StatusOK)
 			return
 		}
 
 		credentials, err := deps.database.LoadCalDAVCredentials(r.Context(), deps.encryptionKey)
 		if err != nil {
-			renderProjectsPage(w, r, deps.database, "caldav-zugangsdaten sind nicht verfügbar", projectName, http.StatusOK)
+			renderProjectsPage(w, r, deps.database, projectsPageState{CreateError: "caldav-zugangsdaten sind nicht verfügbar", CreateValue: projectName}, http.StatusOK)
 			return
 		}
 
 		capabilities, err := deps.database.LoadCalDAVServerCapabilities(r.Context())
 		if err != nil {
-			renderProjectsPage(w, r, deps.database, "caldav-fähigkeiten konnten nicht geladen werden", projectName, http.StatusOK)
+			renderProjectsPage(w, r, deps.database, projectsPageState{CreateError: "caldav-fähigkeiten konnten nicht geladen werden", CreateValue: projectName}, http.StatusOK)
 			return
 		}
 
@@ -50,7 +50,7 @@ func ProjectCreate(deps projectCreateDependencies) http.HandlerFunc {
 			Password: credentials.Password,
 		}, projectName)
 		if err != nil {
-			renderProjectsPage(w, r, deps.database, "projekt konnte nicht auf dem caldav-server angelegt werden", projectName, http.StatusOK)
+			renderProjectsPage(w, r, deps.database, projectsPageState{CreateError: "projekt konnte nicht auf dem caldav-server angelegt werden", CreateValue: projectName}, http.StatusOK)
 			return
 		}
 
@@ -63,7 +63,7 @@ func ProjectCreate(deps projectCreateDependencies) http.HandlerFunc {
 			SyncStrategy: initialSyncStrategy(capabilities),
 		})
 		if err != nil {
-			renderProjectsPage(w, r, deps.database, "projekt konnte nicht gespeichert werden", projectName, http.StatusOK)
+			renderProjectsPage(w, r, deps.database, projectsPageState{CreateError: "projekt konnte nicht gespeichert werden", CreateValue: projectName}, http.StatusOK)
 			return
 		}
 
@@ -71,6 +71,6 @@ func ProjectCreate(deps projectCreateDependencies) http.HandlerFunc {
 			deps.broker.publish(appEvent{Type: "project", Resource: project.ID, Version: 1, OriginConnection: strings.TrimSpace(r.Header.Get("X-Tab-ID"))})
 		}
 
-		renderProjectsPage(w, r, deps.database, "", "", http.StatusCreated)
+		renderProjectsPage(w, r, deps.database, projectsPageState{}, http.StatusCreated)
 	}
 }

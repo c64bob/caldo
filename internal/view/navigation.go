@@ -25,11 +25,15 @@ type NavigationItem struct {
 
 // NavigationOverviewItem contains one row on a navigation overview page.
 type NavigationOverviewItem struct {
-	Name     string
-	Href     string
-	Count    int
-	HasCount bool
-	Meta     string
+	ID            string
+	Name          string
+	Href          string
+	Count         int
+	HasCount      bool
+	Meta          string
+	ServerVersion int
+	RenameError   string
+	RenameValue   string
 }
 
 // WithNavigation stores app-shell navigation data in request context.
@@ -103,4 +107,23 @@ func navCountText(count int) string {
 		return "99+"
 	}
 	return strconv.Itoa(count)
+}
+
+func projectCanRename(item NavigationOverviewItem) bool {
+	return item.ID != "" && item.ServerVersion > 0
+}
+
+func projectRenamePath(item NavigationOverviewItem) string {
+	return "/projects/" + url.PathEscape(item.ID)
+}
+
+func projectExpectedVersion(item NavigationOverviewItem) string {
+	return strconv.Itoa(item.ServerVersion)
+}
+
+func projectRenameValue(item NavigationOverviewItem) string {
+	if item.RenameValue != "" {
+		return item.RenameValue
+	}
+	return item.Name
 }

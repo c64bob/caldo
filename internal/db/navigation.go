@@ -25,6 +25,7 @@ type NavigationListItem struct {
 	ID            string
 	Name          string
 	OpenTaskCount int
+	ServerVersion int
 }
 
 // LoadNavigationSnapshot returns factual navigation counts for the app shell.
@@ -107,10 +108,10 @@ func (d *Database) countUnresolvedConflicts(ctx context.Context) (int, error) {
 
 func (d *Database) listNavigationProjects(ctx context.Context) ([]NavigationListItem, error) {
 	rows, err := d.Conn.QueryContext(ctx, `
-SELECT p.id, p.display_name, COUNT(t.id)
+SELECT p.id, p.display_name, COUNT(t.id), p.server_version
 FROM projects p
 LEFT JOIN tasks t ON t.project_id = p.id AND t.status != 'completed'
-GROUP BY p.id, p.display_name, p.is_default
+GROUP BY p.id, p.display_name, p.is_default, p.server_version
 ORDER BY p.is_default DESC, p.display_name COLLATE NOCASE ASC;
 `)
 	if err != nil {
@@ -121,7 +122,7 @@ ORDER BY p.is_default DESC, p.display_name COLLATE NOCASE ASC;
 	items := make([]NavigationListItem, 0)
 	for rows.Next() {
 		var item NavigationListItem
-		if err := rows.Scan(&item.ID, &item.Name, &item.OpenTaskCount); err != nil {
+		if err := rows.Scan(&item.ID, &item.Name, &item.OpenTaskCount, &item.ServerVersion); err != nil {
 			return nil, fmt.Errorf("load navigation snapshot: scan project: %w", err)
 		}
 		items = append(items, item)

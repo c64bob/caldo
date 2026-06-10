@@ -263,6 +263,61 @@ func TestProjectCreateRouteAgainstFakeCalDAVServer(t *testing.T) {
 	}
 }
 
+func TestProjectRenameRouteAgainstFakeCalDAVServer(t *testing.T) {
+	const calendarHref = "/cal/work/"
+	secret := []byte("12345678901234567890123456789012")
+	ctx := context.Background()
+
+	fake := newFakeRouterCalDAV(calendarHref, "Work")
+	server := httptest.NewServer(fake)
+	t.Cleanup(server.Close)
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if err := database.SaveCalDAVCredentials(ctx, secret, db.CalDAVCredentials{URL: server.URL, Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+	if _, err := database.Conn.ExecContext(ctx, `
+INSERT INTO projects (id, calendar_href, display_name, sync_strategy, server_version, created_at, updated_at)
+VALUES ('project-1', '/cal/work/', 'Work', 'fullscan', 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT INTO tasks (
+	id, project_id, uid, href, server_version, title, status, raw_vtodo, base_vtodo, project_name, sync_status, created_at, updated_at
+) VALUES (
+	'task-1', 'project-1', 'uid-1', '/cal/work/uid-1.ics', 1, 'Task', 'needs-action',
+	'BEGIN:VTODO\nUID:uid-1\nEND:VTODO',
+	'BEGIN:VTODO\nUID:uid-1\nEND:VTODO',
+	'Work', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+);
+`); err != nil {
+		t.Fatalf("seed project: %v", err)
+	}
+
+	router := NewRouter(slog.New(slog.NewTextHandler(io.Discard, nil)), "X-Forwarded-User", testManifest(t), true, secret, database, ctx, nil)
+	rr := e2eRequest(t, router, secret, http.MethodPatch, "/projects/project-1", url.Values{
+		"expected_version": {"2"},
+		"display_name":     {"Renamed Work"},
+	}, "tab-project-rename")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("project rename: got status=%d body=%q", rr.Code, rr.Body.String())
+	}
+	e2eAssertProjectExists(t, database, "Renamed Work", "/cal/work/")
+	fake.assertCalendar(t, "/cal/work/", "Renamed Work")
+	e2eAssertTaskProjectName(t, database, "task-1", "Renamed Work")
+	if !strings.Contains(rr.Body.String(), "Renamed Work") || !strings.Contains(rr.Body.String(), `data-project-rename-form`) {
+		t.Fatalf("project rename response missing refreshed project page: %q", rr.Body.String())
+	}
+	results, err := database.SearchActiveTasks(ctx, "#Renamed", 10)
+	if err != nil {
+		t.Fatalf("search renamed project: %v", err)
+	}
+	if len(results) != 1 || results[0].ID != "task-1" {
+		t.Fatalf("expected renamed project in search, got %#v", results)
+	}
+}
+
 type fakeRouterCalDAV struct {
 	mu                sync.Mutex
 	calendars         map[string]string
@@ -299,6 +354,8 @@ func (f *fakeRouterCalDAV) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		f.writeVTODOReport(w, r.URL.Path)
 	case "MKCALENDAR":
 		f.handleMKCalendar(w, r)
+	case "PROPPATCH":
+		f.handlePropPatch(w, r)
 	case http.MethodPut:
 		f.handlePut(w, r)
 	case http.MethodDelete:
@@ -482,6 +539,33 @@ func (f *fakeRouterCalDAV) handleMKCalendar(w http.ResponseWriter, r *http.Reque
 	}
 	f.calendars[href] = displayName
 	w.WriteHeader(http.StatusCreated)
+}
+
+func (f *fakeRouterCalDAV) handlePropPatch(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(io.LimitReader(r.Body, 2<<20))
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	displayName := e2eDisplayNameFromMKCalendar(body)
+	if displayName == "" {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	href := r.URL.Path
+	if !strings.HasSuffix(href, "/") {
+		href += "/"
+	}
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if _, exists := f.calendars[href]; !exists {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+	f.calendars[href] = displayName
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (f *fakeRouterCalDAV) handlePut(w http.ResponseWriter, r *http.Request) {
@@ -701,6 +785,18 @@ func e2eAssertProjectExists(t *testing.T, database *db.Database, displayName str
 	}
 	if count != 1 {
 		t.Fatalf("project %q with href %q: got %d rows want 1", displayName, calendarHref, count)
+	}
+}
+
+func e2eAssertTaskProjectName(t *testing.T, database *db.Database, taskID string, want string) {
+	t.Helper()
+
+	var projectName string
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT project_name FROM tasks WHERE id = ?;`, taskID).Scan(&projectName); err != nil {
+		t.Fatalf("query task project name: %v", err)
+	}
+	if projectName != want {
+		t.Fatalf("task project_name: got %q want %q", projectName, want)
 	}
 }
 

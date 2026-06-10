@@ -71,12 +71,12 @@ INSERT INTO tasks (
 		t.Fatalf("seed task: %v", err)
 	}
 
-	base, err := database.LoadProjectRenameBase(context.Background(), "project-1", 4, "Renamed Work")
+	base, err := database.LoadProjectRenameBase(context.Background(), "project-1", 4, "Renamed Calendar")
 	if err != nil {
 		t.Fatalf("load project rename base: %v", err)
 	}
 
-	if err := database.RenameProject(context.Background(), "project-1", base.ReservedVersion, "Renamed Work"); err != nil {
+	if err := database.RenameProject(context.Background(), "project-1", base.ReservedVersion, "Renamed Calendar"); err != nil {
 		t.Fatalf("rename project: %v", err)
 	}
 
@@ -85,7 +85,7 @@ INSERT INTO tasks (
 	if err := database.Conn.QueryRowContext(context.Background(), `SELECT display_name, server_version FROM projects WHERE id = 'project-1';`).Scan(&displayName, &version); err != nil {
 		t.Fatalf("load project: %v", err)
 	}
-	if displayName != "Renamed Work" || version != 5 {
+	if displayName != "Renamed Calendar" || version != 5 {
 		t.Fatalf("unexpected project row: name=%q version=%d", displayName, version)
 	}
 
@@ -93,8 +93,23 @@ INSERT INTO tasks (
 	if err := database.Conn.QueryRowContext(context.Background(), `SELECT project_name FROM tasks WHERE id = 'task-1';`).Scan(&projectName); err != nil {
 		t.Fatalf("load task: %v", err)
 	}
-	if projectName != "Renamed Work" {
-		t.Fatalf("unexpected task project_name: got %q want %q", projectName, "Renamed Work")
+	if projectName != "Renamed Calendar" {
+		t.Fatalf("unexpected task project_name: got %q want %q", projectName, "Renamed Calendar")
+	}
+
+	oldResults, err := database.SearchActiveTasks(context.Background(), "#Work", 10)
+	if err != nil {
+		t.Fatalf("search old project name: %v", err)
+	}
+	if len(oldResults) != 0 {
+		t.Fatalf("expected old project name to leave search index, got %#v", oldResults)
+	}
+	newResults, err := database.SearchActiveTasks(context.Background(), "#Renamed", 10)
+	if err != nil {
+		t.Fatalf("search new project name: %v", err)
+	}
+	if len(newResults) != 1 || newResults[0].ID != "task-1" {
+		t.Fatalf("expected renamed project task in search index, got %#v", newResults)
 	}
 }
 
@@ -123,7 +138,7 @@ INSERT INTO tasks (
 		t.Fatalf("seed task: %v", err)
 	}
 
-	err = database.RenameProject(context.Background(), "project-1", 1, "Renamed Work")
+	err = database.RenameProject(context.Background(), "project-1", 1, "Renamed Calendar")
 	if !errors.Is(err, ErrProjectVersionMismatch) {
 		t.Fatalf("expected version mismatch, got %v", err)
 	}
@@ -161,7 +176,7 @@ VALUES ('project-1', '/cal/work/', 'Work', 'fullscan', 2, CURRENT_TIMESTAMP, CUR
 		t.Fatalf("seed project: %v", err)
 	}
 
-	base, err := database.LoadProjectRenameBase(context.Background(), "project-1", 2, "Renamed Work")
+	base, err := database.LoadProjectRenameBase(context.Background(), "project-1", 2, "Renamed Calendar")
 	if err != nil {
 		t.Fatalf("load project rename base: %v", err)
 	}

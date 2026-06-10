@@ -192,7 +192,7 @@ INSERT INTO tasks (
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM conflicts WHERE task_id='task-dirty' AND conflict_type='edit_delete' AND remote_vtodo IS NULL;`, 1)
 }
 
-func TestApplyFullScanProjectUpdatesParentLinksForRemoteSubtasks(t *testing.T) {
+func TestApplyFullScanProjectLinksOneSubtaskLevelAndPreservesDeeperRawVTODO(t *testing.T) {
 	t.Parallel()
 
 	database, err := OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
@@ -208,6 +208,7 @@ VALUES ('project-1', '/cal/work/', 'Work', 'fullscan', CURRENT_TIMESTAMP, CURREN
 		t.Fatalf("seed project: %v", err)
 	}
 
+	grandchildRaw := "BEGIN:VTODO\nUID:uid-grandchild\nSUMMARY:Grandchild\nRELATED-TO;RELTYPE=PARENT:uid-child\nX-NEXTCLOUD-KEEP:yes\nEND:VTODO"
 	_, err = database.ApplyFullScanProject(context.Background(), "project-1", []ImportedTask{
 		importedTask("uid-parent", "/cal/work/uid-parent.ics", `"etag-parent"`, "Parent"),
 		{
@@ -217,8 +218,19 @@ VALUES ('project-1', '/cal/work/', 'Work', 'fullscan', CURRENT_TIMESTAMP, CURREN
 			Title:       "Child",
 			Status:      "needs-action",
 			ParentUID:   "uid-parent",
-			RawVTODO:    "BEGIN:VTODO\nUID:uid-child\nSUMMARY:Child\nRELATED-TO;RELTYPE=PARENT:uid-parent\nEND:VTODO",
-			BaseVTODO:   "BEGIN:VTODO\nUID:uid-child\nSUMMARY:Child\nRELATED-TO;RELTYPE=PARENT:uid-parent\nEND:VTODO",
+			RawVTODO:    "BEGIN:VTODO\nUID:uid-child\nSUMMARY:Child\nRELATED-TO:uid-parent\nEND:VTODO",
+			BaseVTODO:   "BEGIN:VTODO\nUID:uid-child\nSUMMARY:Child\nRELATED-TO:uid-parent\nEND:VTODO",
+			ProjectName: "Work",
+		},
+		{
+			UID:         "uid-grandchild",
+			Href:        "/cal/work/uid-grandchild.ics",
+			ETag:        `"etag-grandchild"`,
+			Title:       "Grandchild",
+			Status:      "needs-action",
+			ParentUID:   "uid-child",
+			RawVTODO:    grandchildRaw,
+			BaseVTODO:   grandchildRaw,
 			ProjectName: "Work",
 		},
 	})
@@ -226,12 +238,38 @@ VALUES ('project-1', '/cal/work/', 'Work', 'fullscan', CURRENT_TIMESTAMP, CURREN
 		t.Fatalf("apply fullscan: %v", err)
 	}
 
-	var parentID sql.NullString
-	if err := database.Conn.QueryRowContext(context.Background(), `SELECT parent_id FROM tasks WHERE uid='uid-child';`).Scan(&parentID); err != nil {
-		t.Fatalf("query child parent: %v", err)
+	rows, err := database.Conn.QueryContext(context.Background(), `SELECT uid, parent_id, raw_vtodo FROM tasks WHERE project_id='project-1';`)
+	if err != nil {
+		t.Fatalf("query parent links: %v", err)
 	}
-	if !parentID.Valid {
+	defer rows.Close()
+
+	parentIDs := map[string]string{}
+	rawByUID := map[string]string{}
+	for rows.Next() {
+		var uid string
+		var parentID sql.NullString
+		var rawVTODO string
+		if err := rows.Scan(&uid, &parentID, &rawVTODO); err != nil {
+			t.Fatalf("scan parent link: %v", err)
+		}
+		if parentID.Valid {
+			parentIDs[uid] = parentID.String
+		}
+		rawByUID[uid] = rawVTODO
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate parent links: %v", err)
+	}
+
+	if _, ok := parentIDs["uid-child"]; !ok {
 		t.Fatal("expected child parent_id to be set")
+	}
+	if _, ok := parentIDs["uid-grandchild"]; ok {
+		t.Fatalf("expected grandchild to be imported as root")
+	}
+	if rawByUID["uid-grandchild"] != grandchildRaw {
+		t.Fatalf("expected grandchild raw vtodo preserved, got %q", rawByUID["uid-grandchild"])
 	}
 }
 

@@ -1,24 +1,66 @@
 package view
 
+templ ProjectsOverviewPage(items []NavigationOverviewItem, createError string, createValue string) {
+	<section class="caldo-page">
+		<h2 class="caldo-page-title">Projekte</h2>
+		@ProjectCreateForm(createError, createValue)
+		if len(items) == 0 {
+			@EmptyState("Keine Projekte", "Die Gruppe ist eingerichtet, enthält aber noch keine Einträge.")
+		} else {
+			@NavigationOverviewList(items)
+		}
+	</section>
+}
+
+templ ProjectCreateForm(errorMessage string, displayName string) {
+	<form
+		class="caldo-card space-y-3"
+		method="post"
+		action="/projects"
+		hx-post="/projects"
+		hx-target="body"
+		hx-swap="outerHTML"
+		hx-push-url="false"
+		hx-disabled-elt="find button"
+		hx-headers={ "{\"X-CSRF-Token\":\"" + CSRFToken(ctx) + "\"}" }
+		data-project-create-form
+	>
+		<h3 class="font-medium">Neues Projekt</h3>
+		if errorMessage != "" {
+			<p class="caldo-alert caldo-alert-error" data-project-create-error aria-live="polite">{ errorMessage }</p>
+		}
+		<label class="caldo-label" for="project-create-display-name">Projektname</label>
+		<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+			<input id="project-create-display-name" class="caldo-input sm:max-w-sm" type="text" name="display_name" value={ displayName } autocomplete="off" required data-project-create-name/>
+			<button type="submit" class="caldo-button caldo-button-primary">Projekt anlegen</button>
+			<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
+		</div>
+	</form>
+}
+
 templ NavigationOverviewPage(heading string, emptyTitle string, items []NavigationOverviewItem) {
 	<section class="caldo-page">
 		<h2 class="caldo-page-title">{ heading }</h2>
 		if len(items) == 0 {
 			@EmptyState(emptyTitle, "Die Gruppe ist eingerichtet, enthält aber noch keine Einträge.")
 		} else {
-			<ul class="caldo-list" data-navigation-overview>
-				for _, item := range items {
-					<li class="caldo-list-row">
-						<a class="caldo-list-link" href={ templ.URL(item.Href) }>{ item.Name }</a>
-						<p class="caldo-meta mt-1">
-							{ item.Meta }
-							if item.HasCount {
-								 · { navCountText(item.Count) } offen
-							}
-						</p>
-					</li>
-				}
-			</ul>
+			@NavigationOverviewList(items)
 		}
 	</section>
+}
+
+templ NavigationOverviewList(items []NavigationOverviewItem) {
+	<ul class="caldo-list" data-navigation-overview>
+		for _, item := range items {
+			<li class="caldo-list-row">
+				<a class="caldo-list-link" href={ templ.URL(item.Href) }>{ item.Name }</a>
+				<p class="caldo-meta mt-1">
+					{ item.Meta }
+					if item.HasCount {
+						 · { navCountText(item.Count) } offen
+					}
+				</p>
+			</li>
+		}
+	</ul>
 }

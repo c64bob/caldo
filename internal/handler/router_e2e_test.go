@@ -98,6 +98,16 @@ func TestRouterMVPFlowAgainstFakeCalDAVServer(t *testing.T) {
 		t.Fatalf("root after setup: got status=%d body=%q", rr.Code, rr.Body.String())
 	}
 
+	rr = e2eRequest(t, router, secret, http.MethodPost, "/projects", url.Values{"display_name": {"Local Empty Project"}}, "tab-project-create")
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("project create: got status=%d body=%q", rr.Code, rr.Body.String())
+	}
+	e2eAssertProjectExists(t, database, "Local Empty Project", "/local-empty-project/")
+	fake.assertCalendar(t, "/local-empty-project/", "Local Empty Project")
+	if !strings.Contains(rr.Body.String(), "Local Empty Project") || !strings.Contains(rr.Body.String(), `data-project-create-form`) {
+		t.Fatalf("project create response missing refreshed project page: %q", rr.Body.String())
+	}
+
 	rr = e2eRequest(t, router, secret, http.MethodPost, "/tasks/", url.Values{"title": {"Local Created"}}, "tab-create")
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("task create: got status=%d body=%q", rr.Code, rr.Body.String())
@@ -264,6 +274,8 @@ func (f *fakeRouterCalDAV) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		f.writeCalendarList(w)
 	case "REPORT":
 		f.writeVTODOReport(w, r.URL.Path)
+	case "MKCALENDAR":
+		f.handleMKCalendar(w, r)
 	case http.MethodPut:
 		f.handlePut(w, r)
 	case http.MethodDelete:
@@ -317,6 +329,21 @@ func (f *fakeRouterCalDAV) hasObject(href string) bool {
 
 	_, ok := f.objects[href]
 	return ok
+}
+
+func (f *fakeRouterCalDAV) assertCalendar(t *testing.T, href string, displayName string) {
+	t.Helper()
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	got, ok := f.calendars[href]
+	if !ok {
+		t.Fatalf("fake caldav calendar %q not found", href)
+	}
+	if got != displayName {
+		t.Fatalf("fake caldav calendar %q display name: got %q want %q", href, got, displayName)
+	}
 }
 
 func (f *fakeRouterCalDAV) assertRawContains(t *testing.T, href string, want string) {
@@ -405,6 +432,33 @@ func (f *fakeRouterCalDAV) writeVTODOReport(w http.ResponseWriter, calendarHref 
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 	w.WriteHeader(http.StatusMultiStatus)
 	_, _ = w.Write([]byte(body.String()))
+}
+
+func (f *fakeRouterCalDAV) handleMKCalendar(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(io.LimitReader(r.Body, 2<<20))
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	displayName := e2eDisplayNameFromMKCalendar(body)
+	if displayName == "" {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	href := r.URL.Path
+	if !strings.HasSuffix(href, "/") {
+		href += "/"
+	}
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if _, exists := f.calendars[href]; exists {
+		http.Error(w, http.StatusText(http.StatusConflict), http.StatusConflict)
+		return
+	}
+	f.calendars[href] = displayName
+	w.WriteHeader(http.StatusCreated)
 }
 
 func (f *fakeRouterCalDAV) handlePut(w http.ResponseWriter, r *http.Request) {
@@ -529,6 +583,20 @@ func e2eUIDFromVTODO(raw string) string {
 	return ""
 }
 
+func e2eDisplayNameFromMKCalendar(raw []byte) string {
+	var request struct {
+		Set struct {
+			Prop struct {
+				DisplayName string `xml:"DAV: displayname"`
+			} `xml:"DAV: prop"`
+		} `xml:"DAV: set"`
+	}
+	if err := xml.Unmarshal(raw, &request); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(request.Set.Prop.DisplayName)
+}
+
 func xmlEscapeText(value string) string {
 	var b bytes.Buffer
 	_ = xml.EscapeText(&b, []byte(value))
@@ -598,6 +666,18 @@ func e2eAssertTaskParent(t *testing.T, database *db.Database, taskID string, wan
 	}
 	if !parentID.Valid || parentID.String != wantParentID {
 		t.Fatalf("task parent: got %#v want %q", parentID, wantParentID)
+	}
+}
+
+func e2eAssertProjectExists(t *testing.T, database *db.Database, displayName string, calendarHref string) {
+	t.Helper()
+
+	var count int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM projects WHERE display_name = ? AND calendar_href = ?;`, displayName, calendarHref).Scan(&count); err != nil {
+		t.Fatalf("query project %q: %v", displayName, err)
+	}
+	if count != 1 {
+		t.Fatalf("project %q with href %q: got %d rows want 1", displayName, calendarHref, count)
 	}
 }
 

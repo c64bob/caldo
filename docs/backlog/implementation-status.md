@@ -6,7 +6,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Zusammenfassung
 
-- Bestehende Stories: 56 `Umgesetzt`, 30 `Teilweise umgesetzt`, 3 `Offen`.
+- Bestehende Stories: 62 `Umgesetzt`, 24 `Teilweise umgesetzt`, 3 `Offen`.
 - Neue Planungsstories: 15 `Umgesetzt`, 24 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
@@ -53,7 +53,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 7.3 | Umgesetzt | Complete/Reopen schreiben VTODO-Status, `completed_at`, Undo-Snapshot, ETag und Sync-Status ueber den Write-through-Pfad; sichtbare Aktionen, Fehleranzeige, Standard-Ausblendung erledigter Aufgaben und RRULE-Erhalt sind getestet. |
 | 7.4 | Umgesetzt | Delete-Write-through prueft `expected_version` vor Bestaetigungs-/CalDAV-Schritten, nutzt den sichtbaren Bestaetigungsdialog, erstellt Undo-Snapshots, entfernt lokale Zeilen erst nach erfolgreichem DELETE und behandelt CalDAV-404 als Erfolg. |
 | 7.5 | Umgesetzt | `internal/view/task_rows.templ`, `internal/view/task_rows.go`, `web/assets/app.js` und `internal/handler/tasks_complete.go` zeigen beim Erledigen von Elternaufgaben mit offenen direkten Unteraufgaben einen Entscheidungsdialog fuer Elternaufgabe, offene Unteraufgaben oder Abbruch; die bestehenden Handler pruefen Versionen und schreiben jede betroffene Task zu CalDAV. |
-| 8.1 | Teilweise umgesetzt | Projektanlage ist backendseitig vorhanden; produktive UI-Verwaltung bleibt offen. |
+| 8.1 | Umgesetzt | `internal/view/navigation_pages.templ` und `internal/handler/projects_create.go` stellen auf der Projektseite eine produktive Anlage bereit; der Handler legt zuerst per CalDAV `MKCALENDAR` an, speichert danach lokal, rendert Fehler sichtbar ohne optimistischen Listeneintrag und Router-E2E prueft die Fake-CalDAV-Kalendersichtbarkeit. |
 | 8.2 | Teilweise umgesetzt | Projektumbenennung ist backendseitig vorhanden; produktive UI-Verwaltung bleibt offen. |
 | 8.3 | Teilweise umgesetzt | Projektloeschung ist backendseitig vorhanden; produktive UI-Verwaltung bleibt offen. |
 | 8.4 | Umgesetzt | `internal/db/projects_remote_cleanup.go` und Full-Scan-Sync bereinigen remote geloeschte Kalender. |

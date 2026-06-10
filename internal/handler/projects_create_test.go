@@ -18,10 +18,12 @@ type fakeProjectCreateCalendarClient struct {
 	created     caldav.Calendar
 	createErr   error
 	createCalls int
+	displayName string
 }
 
-func (f *fakeProjectCreateCalendarClient) CreateCalendar(_ context.Context, _ caldav.Credentials, _ string) (caldav.Calendar, error) {
+func (f *fakeProjectCreateCalendarClient) CreateCalendar(_ context.Context, _ caldav.Credentials, displayName string) (caldav.Calendar, error) {
 	f.createCalls++
+	f.displayName = displayName
 	if f.createErr != nil {
 		return caldav.Calendar{}, f.createErr
 	}
@@ -62,6 +64,12 @@ func TestProjectCreatePersistsAfterRemoteSuccess(t *testing.T) {
 	if calendar.createCalls != 1 {
 		t.Fatalf("unexpected create calls: got %d want %d", calendar.createCalls, 1)
 	}
+	if calendar.displayName != "New Project" {
+		t.Fatalf("unexpected remote calendar display name: %q", calendar.displayName)
+	}
+	if body := responseRecorder.Body.String(); !strings.Contains(body, `data-project-create-form`) || !strings.Contains(body, `New Project`) || !strings.Contains(body, `0 offen`) {
+		t.Fatalf("expected refreshed projects page with empty project, got %q", body)
+	}
 
 	var count int
 	if err := database.Conn.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM projects WHERE calendar_href = '/calendars/new-project/' AND display_name = 'New Project' AND sync_strategy = 'ctag';`).Scan(&count); err != nil {
@@ -97,8 +105,15 @@ func TestProjectCreateDoesNotPersistWhenRemoteCreateFails(t *testing.T) {
 
 	h(responseRecorder, request)
 
-	if responseRecorder.Code != http.StatusBadGateway {
-		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusBadGateway)
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	body := responseRecorder.Body.String()
+	if !strings.Contains(body, `data-project-create-error`) || !strings.Contains(body, "projekt konnte nicht auf dem caldav-server angelegt werden") {
+		t.Fatalf("expected visible create error, got %q", body)
+	}
+	if strings.Contains(body, `<a class="caldo-list-link" href="/search?q=%23New&#43;Project">New Project</a>`) {
+		t.Fatalf("failed project must not be rendered as a list row: %q", body)
 	}
 
 	var count int
@@ -138,11 +153,14 @@ func TestProjectCreateReturnsErrorBeforeRemoteCreateWhenCapabilitiesUnreadable(t
 
 	h(responseRecorder, request)
 
-	if responseRecorder.Code != http.StatusInternalServerError {
-		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusInternalServerError)
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
 	}
 	if calendar.createCalls != 0 {
 		t.Fatalf("expected no remote calendar creation attempt, got %d", calendar.createCalls)
+	}
+	if body := responseRecorder.Body.String(); !strings.Contains(body, "caldav-fähigkeiten konnten nicht geladen werden") {
+		t.Fatalf("expected visible capabilities error, got %q", body)
 	}
 
 	var count int
@@ -157,7 +175,14 @@ func TestProjectCreateReturnsErrorBeforeRemoteCreateWhenCapabilitiesUnreadable(t
 func TestProjectCreateRejectsEmptyName(t *testing.T) {
 	t.Parallel()
 
-	h := ProjectCreate(projectCreateDependencies{})
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	calendar := &fakeProjectCreateCalendarClient{}
+	h := ProjectCreate(projectCreateDependencies{database: database, calendar: calendar})
 	form := url.Values{"display_name": {"   "}}
 	request := httptest.NewRequest(http.MethodPost, "/projects", strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -165,10 +190,13 @@ func TestProjectCreateRejectsEmptyName(t *testing.T) {
 
 	h(responseRecorder, request)
 
-	if responseRecorder.Code != http.StatusBadRequest {
-		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusBadRequest)
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
 	}
-	if !strings.Contains(responseRecorder.Body.String(), "display_name is required") {
+	if calendar.createCalls != 0 {
+		t.Fatalf("expected no remote calendar creation attempt, got %d", calendar.createCalls)
+	}
+	if !strings.Contains(responseRecorder.Body.String(), "projektname ist erforderlich") {
 		t.Fatalf("expected validation error body, got %q", responseRecorder.Body.String())
 	}
 }

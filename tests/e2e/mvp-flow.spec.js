@@ -123,7 +123,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   inlineEditForm = inlineEditRow.locator('[data-inline-task-edit-form]');
   await inlineEditForm.locator('[name="title"]').fill('E2E Inline Edited');
   await inlineEditForm.locator('[name="description"]').fill('edited inline through browser');
-  await inlineEditForm.locator('[name="due_date"]').fill('2026-06-10');
+  await inlineEditForm.locator('[name="due_date"]').fill('2026-06-12');
   await inlineEditForm.locator('[name="priority"]').selectOption('5');
   await inlineEditForm.locator('[name="labels"]').fill('browser, inline');
   await inlineEditForm.getByRole('button', { name: 'Speichern' }).focus();
@@ -131,7 +131,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first()).toBeVisible();
   inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
   await expect(inlineEditRow).toContainText('edited inline through browser');
-  await expect(inlineEditRow).toContainText('Fällig 2026-06-10');
+  await expect(inlineEditRow).toContainText('Fällig 2026-06-12');
   await expect(inlineEditRow).toContainText('P2');
   await expect(inlineEditRow).toContainText('browser');
   await expect(inlineEditRow).toContainText('inline');
@@ -191,6 +191,15 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(subtaskRow.getByRole('button', { name: 'Unteraufgabe hinzufügen' })).toHaveCount(0);
   detailRow = page.locator(`[data-task-id="${panelTaskID}"]`);
   await expect(detailRow).toContainText('1 Unteraufgabe');
+  let completeDialog = detailRow.locator('[data-task-complete-dialog]');
+  await expect(completeDialog).toBeHidden();
+  await detailRow.locator('[data-task-complete-open]').first().click();
+  await expect(completeDialog).toBeVisible();
+  await expect(completeDialog).toContainText('1 offene Unteraufgabe');
+  await expect(completeDialog.getByRole('button', { name: 'Nur Elternaufgabe erledigen' })).toBeVisible();
+  await expect(completeDialog.getByRole('button', { name: 'Aufgabe und 1 offene Unteraufgabe erledigen' })).toBeVisible();
+  await completeDialog.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+  await expect(completeDialog).toBeHidden();
 
   await page.setViewportSize(mobileViewport);
   await detailRow.getByRole('button', { name: 'Details' }).click();
@@ -204,6 +213,17 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await detailDialog.getByRole('button', { name: 'Details schließen' }).click();
   await expect(detailDialog).toBeHidden();
   await page.setViewportSize(desktopViewport);
+
+  await gotoApp(page, '/search?q=E2E%20Panel%20Edited');
+  detailRow = page.locator(`[data-task-id="${panelTaskID}"]`);
+  const parentDeleteDialog = detailRow.locator('[data-task-delete-dialog]');
+  await detailRow.locator('[data-task-delete-open]').click();
+  await expect(parentDeleteDialog).toBeVisible();
+  await expect(parentDeleteDialog).toContainText('1 Unteraufgabe');
+  await parentDeleteDialog.getByRole('button', { name: 'Aufgabe und Unteraufgaben löschen' }).click();
+  await waitForNoSearchResult(page, 'E2E Panel Edited');
+  await gotoApp(page, '/search?q=E2E%20Browser%20Subtask');
+  await expectNoSearchResult(page, 'E2E Browser Subtask');
 
   const beforeCreate = await stageState();
   response = await appFormRequest(page, 'POST', '/tasks/', {

@@ -9,23 +9,24 @@ import (
 
 // SearchResult contains one task row returned by global search.
 type SearchResult struct {
-	ID            string
-	ProjectID     string
-	Title         string
-	Description   string
-	Status        string
-	ProjectName   string
-	LabelNames    string
-	DueISODate    string
-	Priority      int
-	HasPriority   bool
-	SyncStatus    string
-	ServerVersion int
-	ParentID      string
-	ParentTitle   string
-	IsSubtask     bool
-	SubtaskCount  int
-	RawVTODO      string
+	ID               string
+	ProjectID        string
+	Title            string
+	Description      string
+	Status           string
+	ProjectName      string
+	LabelNames       string
+	DueISODate       string
+	Priority         int
+	HasPriority      bool
+	SyncStatus       string
+	ServerVersion    int
+	ParentID         string
+	ParentTitle      string
+	IsSubtask        bool
+	SubtaskCount     int
+	OpenSubtaskCount int
+	RawVTODO         string
 }
 
 // SearchActiveTasks returns active tasks matching text tokens plus optional #project and @label filters.
@@ -63,6 +64,7 @@ SELECT
 	COALESCE(parent.title, ''),
 	t.parent_id IS NOT NULL,
 	(SELECT COUNT(1) FROM tasks child WHERE child.parent_id = t.id),
+	(SELECT COUNT(1) FROM tasks child WHERE child.parent_id = t.id AND child.status != 'completed'),
 	COALESCE(t.raw_vtodo, '')
 FROM tasks_fts f
 JOIN tasks t ON t.rowid = f.rowid
@@ -80,7 +82,7 @@ LIMIT ?;
 	results := make([]SearchResult, 0, limit)
 	for rows.Next() {
 		var item SearchResult
-		if err := rows.Scan(&item.ID, &item.ProjectID, &item.Title, &item.Description, &item.Status, &item.ProjectName, &item.LabelNames, &item.DueISODate, &item.Priority, &item.HasPriority, &item.SyncStatus, &item.ServerVersion, &item.ParentID, &item.ParentTitle, &item.IsSubtask, &item.SubtaskCount, &item.RawVTODO); err != nil {
+		if err := rows.Scan(&item.ID, &item.ProjectID, &item.Title, &item.Description, &item.Status, &item.ProjectName, &item.LabelNames, &item.DueISODate, &item.Priority, &item.HasPriority, &item.SyncStatus, &item.ServerVersion, &item.ParentID, &item.ParentTitle, &item.IsSubtask, &item.SubtaskCount, &item.OpenSubtaskCount, &item.RawVTODO); err != nil {
 			return nil, fmt.Errorf("search active tasks: scan row: %w", err)
 		}
 		results = append(results, item)

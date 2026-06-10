@@ -8,6 +8,7 @@ import (
 templ TaskRow(task TaskRowView) {
 	<li
 		data-task-id={ task.ID }
+		data-parent-task-id={ task.ParentID }
 		data-sync-status={ task.SyncStatus }
 		data-task-status={ task.Status }
 		class={
@@ -32,15 +33,30 @@ templ TaskRow(task TaskRowView) {
 				class="caldo-task-check-form"
 			>
 				<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
-				<button
-					type="submit"
-					class="caldo-task-checkbox"
-					aria-label={ taskCompletionLabel(task) }
-					aria-pressed={ taskCompletionPressed(task) }
-					disabled?={ !taskCanToggleCompletion(task) }
-				>
-					<span aria-hidden="true" class="caldo-task-checkbox-mark"></span>
-				</button>
+				if taskNeedsCompletionDecision(task) {
+					<button
+						type="button"
+						class="caldo-task-checkbox"
+						aria-label={ taskCompletionLabel(task) }
+						aria-pressed={ taskCompletionPressed(task) }
+						aria-haspopup="dialog"
+						aria-controls={ taskDOMID("task-complete", task) }
+						aria-expanded="false"
+						data-task-complete-open
+					>
+						<span aria-hidden="true" class="caldo-task-checkbox-mark"></span>
+					</button>
+				} else {
+					<button
+						type="submit"
+						class="caldo-task-checkbox"
+						aria-label={ taskCompletionLabel(task) }
+						aria-pressed={ taskCompletionPressed(task) }
+						disabled?={ !taskCanToggleCompletion(task) }
+					>
+						<span aria-hidden="true" class="caldo-task-checkbox-mark"></span>
+					</button>
+				}
 			</form>
 			<div class="caldo-task-content" data-inline-task-display>
 				<div class="caldo-task-title-line">
@@ -132,21 +148,34 @@ templ TaskRow(task TaskRowView) {
 				if taskCanToggleCompletion(task) || taskCanDelete(task) {
 					<div class="caldo-task-actions" data-task-actions>
 						if taskCanToggleCompletion(task) {
-							<form
-								method="post"
-								action={ taskCompletionPath(task) }
-								hx-post={ taskCompletionPath(task) }
-								hx-swap="none"
-								hx-disabled-elt="find button"
-								hx-headers={ taskCSRFHeaders(ctx) }
-								data-refresh-after-write="true"
-								data-task-action-form
-								class="caldo-task-action-form"
-							>
-								<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
-								<button type="submit" class="caldo-button caldo-button-secondary">{ taskCompletionLabel(task) }</button>
-								<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
-							</form>
+							if taskNeedsCompletionDecision(task) {
+								<button
+									type="button"
+									class="caldo-button caldo-button-secondary"
+									aria-haspopup="dialog"
+									aria-controls={ taskDOMID("task-complete", task) }
+									aria-expanded="false"
+									data-task-complete-open
+								>
+									{ taskCompletionLabel(task) }
+								</button>
+							} else {
+								<form
+									method="post"
+									action={ taskCompletionPath(task) }
+									hx-post={ taskCompletionPath(task) }
+									hx-swap="none"
+									hx-disabled-elt="find button"
+									hx-headers={ taskCSRFHeaders(ctx) }
+									data-refresh-after-write="true"
+									data-task-action-form
+									class="caldo-task-action-form"
+								>
+									<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
+									<button type="submit" class="caldo-button caldo-button-secondary">{ taskCompletionLabel(task) }</button>
+									<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
+								</form>
+							}
 						}
 						if taskCanDelete(task) {
 							<button
@@ -238,6 +267,9 @@ templ TaskRow(task TaskRowView) {
 				@SubtaskCreate(task)
 			}
 		</div>
+		if taskNeedsCompletionDecision(task) {
+			@TaskCompleteDialog(task)
+		}
 		if taskCanOpenDetail(task) {
 			@TaskDetailPanel(task)
 		}
@@ -462,6 +494,65 @@ templ TaskDetailPanel(task TaskRowView) {
 	</dialog>
 }
 
+templ TaskCompleteDialog(task TaskRowView) {
+	<dialog
+		id={ taskDOMID("task-complete", task) }
+		class="caldo-task-complete-dialog"
+		data-task-complete-dialog
+		aria-labelledby={ taskDOMID("task-complete-title", task) }
+	>
+		<div class="caldo-task-complete-shell">
+			<header class="caldo-task-complete-header">
+				<div class="caldo-task-complete-heading">
+					<p class="caldo-meta">Unteraufgaben</p>
+					<h2 id={ taskDOMID("task-complete-title", task) } class="caldo-task-complete-title">Aufgabe erledigen</h2>
+				</div>
+				<button type="button" class="caldo-icon-button caldo-task-complete-close" data-task-complete-close aria-label="Erledigen abbrechen">×</button>
+			</header>
+			<div class="caldo-task-complete-body">
+				<p class="caldo-task-complete-copy">"{ taskRowTitle(task) }" hat { taskOpenSubtaskCountLabel(task.OpenSubtaskCount) }.</p>
+				<p class="caldo-task-complete-copy">Wähle, ob nur die Elternaufgabe oder auch die offenen direkten Unteraufgaben erledigt werden.</p>
+				<p class="caldo-alert caldo-alert-error caldo-task-complete-error" data-task-complete-error aria-live="polite" hidden>Aufgabe konnte nicht erledigt werden.</p>
+				<div class="caldo-task-complete-actions">
+					<form
+						method="post"
+						action={ taskCompletionPath(task) }
+						hx-post={ taskCompletionPath(task) }
+						hx-swap="none"
+						hx-disabled-elt="find button"
+						hx-headers={ taskCSRFHeaders(ctx) }
+						data-refresh-after-write="true"
+						data-task-complete-form
+						class="caldo-task-complete-form"
+					>
+						<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
+						<input type="hidden" name="subtasks_action" value="parent_only"/>
+						<button type="submit" class="caldo-button caldo-button-secondary">Nur Elternaufgabe erledigen</button>
+						<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
+					</form>
+					<form
+						method="post"
+						action={ taskCompletionPath(task) }
+						hx-post={ taskCompletionPath(task) }
+						hx-swap="none"
+						hx-disabled-elt="find button"
+						hx-headers={ taskCSRFHeaders(ctx) }
+						data-refresh-after-write="true"
+						data-task-complete-form
+						class="caldo-task-complete-form"
+					>
+						<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
+						<input type="hidden" name="subtasks_action" value="complete_open"/>
+						<button type="submit" class="caldo-button caldo-button-primary">{ taskCompleteWithSubtasksLabel(task) }</button>
+						<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
+					</form>
+					<button type="button" class="caldo-button caldo-button-ghost" data-task-complete-close data-task-complete-cancel>Abbrechen</button>
+				</div>
+			</div>
+		</div>
+	</dialog>
+}
+
 templ TaskDeleteDialog(task TaskRowView) {
 	<dialog
 		id={ taskDOMID("task-delete", task) }
@@ -479,6 +570,9 @@ templ TaskDeleteDialog(task TaskRowView) {
 			</header>
 			<div class="caldo-task-delete-body">
 				<p class="caldo-task-delete-copy">"{ taskRowTitle(task) }" wirklich löschen?</p>
+				if taskHasDirectSubtasks(task) {
+					<p class="caldo-task-delete-copy">{ taskDeleteSubtaskWarning(task) }</p>
+				}
 				<p class="caldo-alert caldo-alert-error caldo-task-delete-error" data-task-delete-error aria-live="polite" hidden>Aufgabe konnte nicht gelöscht werden.</p>
 				<form
 					method="post"
@@ -491,8 +585,11 @@ templ TaskDeleteDialog(task TaskRowView) {
 					class="caldo-task-delete-form"
 				>
 					<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
+					if taskHasDirectSubtasks(task) {
+						<input type="hidden" name="subtasks_action" value="delete_all"/>
+					}
 					<div class="caldo-task-delete-actions">
-						<button type="submit" class="caldo-button caldo-button-primary caldo-button-danger-solid">Endgültig löschen</button>
+						<button type="submit" class="caldo-button caldo-button-primary caldo-button-danger-solid">{ taskDeleteSubmitLabel(task) }</button>
 						<button type="button" class="caldo-button caldo-button-ghost" data-task-delete-close data-task-delete-cancel>Abbrechen</button>
 						<span class="htmx-indicator caldo-meta" aria-live="polite">Löscht ...</span>
 					</div>

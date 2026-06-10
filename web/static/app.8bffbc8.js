@@ -291,6 +291,86 @@
     error.hidden = false;
   }
 
+  function taskCompleteError(dialog) {
+    return dialog ? dialog.querySelector('[data-task-complete-error]') : null;
+  }
+
+  function setTaskCompleteError(dialog, message) {
+    var error = taskCompleteError(dialog);
+    if (!error) return;
+    if (!message) {
+      error.textContent = '';
+      error.hidden = true;
+      return;
+    }
+    error.textContent = message;
+    error.hidden = false;
+  }
+
+  function bindTaskComplete(dialog) {
+    if (!dialog || dialog.dataset.taskCompleteBound === 'true') return;
+    dialog.dataset.taskCompleteBound = 'true';
+    dialog.addEventListener('close', function () {
+      dialog.querySelectorAll('[data-task-complete-form]').forEach(function (form) {
+        form.reset();
+      });
+      setTaskCompleteError(dialog, '');
+      var trigger = dialog.__caldoReturnFocus;
+      dialog.__caldoReturnFocus = null;
+      if (trigger && document.contains(trigger)) {
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.focus();
+      }
+    });
+    dialog.addEventListener('click', function (event) {
+      if (event.target === dialog) {
+        closeTaskComplete(dialog);
+      }
+    });
+  }
+
+  function openTaskComplete(trigger) {
+    if (!trigger) return;
+    var task = trigger.closest('[data-task-id]');
+    var dialog = task ? task.querySelector('[data-task-complete-dialog]') : null;
+    if (!dialog) return;
+    bindTaskComplete(dialog);
+    dialog.__caldoReturnFocus = trigger;
+    trigger.setAttribute('aria-expanded', 'true');
+    setTaskCompleteError(dialog, '');
+    setTaskActionError(task, '');
+    if (typeof dialog.showModal === 'function') {
+      if (!dialog.open) {
+        dialog.showModal();
+      }
+    } else {
+      dialog.setAttribute('open', '');
+    }
+    var cancel = dialog.querySelector('[data-task-complete-cancel]');
+    window.setTimeout(function () {
+      if (cancel) cancel.focus();
+    }, 0);
+  }
+
+  function closeTaskComplete(dialog) {
+    if (!dialog) return;
+    if (typeof dialog.close === 'function' && dialog.open) {
+      dialog.close();
+      return;
+    }
+    dialog.removeAttribute('open');
+    dialog.querySelectorAll('[data-task-complete-form]').forEach(function (form) {
+      form.reset();
+    });
+    setTaskCompleteError(dialog, '');
+    var trigger = dialog.__caldoReturnFocus;
+    dialog.__caldoReturnFocus = null;
+    if (trigger && document.contains(trigger)) {
+      trigger.setAttribute('aria-expanded', 'false');
+      trigger.focus();
+    }
+  }
+
   function taskDeleteError(dialog) {
     return dialog ? dialog.querySelector('[data-task-delete-error]') : null;
   }
@@ -376,6 +456,16 @@
     return 'Aktion konnte nicht ausgeführt werden.';
   }
 
+  function taskCompleteFailureMessage(status) {
+    if (status === 409) {
+      return 'Aufgabe konnte nicht erledigt werden. Aufgabe prüfen.';
+    }
+    if (status === 502) {
+      return 'Aufgabe konnte nicht auf dem CalDAV-Server erledigt werden.';
+    }
+    return 'Aufgabe konnte nicht erledigt werden.';
+  }
+
   function taskDeleteFailureMessage(status) {
     if (status === 409) {
       return 'Aufgabe konnte nicht gelöscht werden. Aufgabe prüfen.';
@@ -384,6 +474,25 @@
       return 'Aufgabe konnte nicht auf dem CalDAV-Server gelöscht werden.';
     }
     return 'Aufgabe konnte nicht gelöscht werden.';
+  }
+
+  function visibleDirectSubtaskRows(parentID) {
+    if (!parentID) return [];
+    if (window.CSS && typeof window.CSS.escape === 'function') {
+      return Array.prototype.slice.call(document.querySelectorAll('[data-parent-task-id="' + window.CSS.escape(parentID) + '"]'));
+    }
+    return Array.prototype.filter.call(document.querySelectorAll('[data-parent-task-id]'), function (row) {
+      return row.getAttribute('data-parent-task-id') === parentID;
+    });
+  }
+
+  function removeDeletedTaskRows(row) {
+    if (!row) return;
+    var taskID = row.getAttribute('data-task-id') || '';
+    visibleDirectSubtaskRows(taskID).forEach(function (childRow) {
+      childRow.remove();
+    });
+    row.remove();
   }
 
   function notificationsRoot() {
@@ -645,6 +754,12 @@
     if (taskAction) {
       setTaskActionError(taskAction.closest('[data-task-id]'), '');
     }
+    var taskComplete = closestElement(event.detail && event.detail.elt, '[data-task-complete-form]');
+    if (taskComplete) {
+      var completeDialog = taskComplete.closest('[data-task-complete-dialog]');
+      setTaskCompleteError(completeDialog, '');
+      setTaskActionError(taskComplete.closest('[data-task-id]'), '');
+    }
     var taskDelete = closestElement(event.detail && event.detail.elt, '[data-task-delete-form]');
     if (taskDelete) {
       var deleteDialog = taskDelete.closest('[data-task-delete-dialog]');
@@ -671,6 +786,14 @@
       if (failedTaskDetail) {
         var detailStatus = event.detail && event.detail.xhr ? event.detail.xhr.status : 0;
         setTaskDetailError(failedTaskDetail.closest('[data-task-detail-dialog]'), taskDetailFailureMessage(detailStatus));
+        return;
+      }
+      var failedTaskComplete = closestElement(event.detail && event.detail.elt, '[data-task-complete-form]');
+      if (failedTaskComplete) {
+        var completeStatus = event.detail && event.detail.xhr ? event.detail.xhr.status : 0;
+        var completeMessage = taskCompleteFailureMessage(completeStatus);
+        setTaskCompleteError(failedTaskComplete.closest('[data-task-complete-dialog]'), completeMessage);
+        setTaskActionError(failedTaskComplete.closest('[data-task-id]'), completeMessage);
         return;
       }
       var failedTaskDelete = closestElement(event.detail && event.detail.elt, '[data-task-delete-form]');
@@ -703,13 +826,16 @@
       clearSavedStatusSoon();
     }
 
+    var successfulTaskComplete = closestElement(event.detail && event.detail.elt, '[data-task-complete-form]');
+    if (successfulTaskComplete) {
+      closeTaskComplete(successfulTaskComplete.closest('[data-task-complete-dialog]'));
+    }
+
     var successfulTaskDelete = closestElement(event.detail && event.detail.elt, '[data-task-delete-form]');
     if (successfulTaskDelete) {
       var deleteRow = successfulTaskDelete.closest('[data-task-id]');
       closeTaskDelete(successfulTaskDelete.closest('[data-task-delete-dialog]'));
-      if (deleteRow) {
-        deleteRow.remove();
-      }
+      removeDeletedTaskRows(deleteRow);
       setWriteStatus(null, '');
       refreshUndoNotification();
       return;
@@ -766,6 +892,20 @@
     if (taskDetailOpen) {
       event.preventDefault();
       openTaskDetail(taskDetailOpen);
+      return;
+    }
+
+    var taskCompleteClose = closestElement(event.target, '[data-task-complete-close]');
+    if (taskCompleteClose) {
+      event.preventDefault();
+      closeTaskComplete(taskCompleteClose.closest('[data-task-complete-dialog]'));
+      return;
+    }
+
+    var taskCompleteOpen = closestElement(event.target, '[data-task-complete-open]');
+    if (taskCompleteOpen) {
+      event.preventDefault();
+      openTaskComplete(taskCompleteOpen);
       return;
     }
 
@@ -843,6 +983,13 @@
     if (taskDetailDialog && taskDetailDialog.open && event.key === 'Escape' && typeof taskDetailDialog.close !== 'function') {
       event.preventDefault();
       closeTaskDetail(taskDetailDialog);
+      return;
+    }
+
+    var taskCompleteDialog = closestElement(event.target, '[data-task-complete-dialog]');
+    if (taskCompleteDialog && taskCompleteDialog.open && event.key === 'Escape' && typeof taskCompleteDialog.close !== 'function') {
+      event.preventDefault();
+      closeTaskComplete(taskCompleteDialog);
       return;
     }
 

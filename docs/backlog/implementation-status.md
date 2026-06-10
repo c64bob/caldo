@@ -1,13 +1,13 @@
 # Implementation Status Audit
 
-Stand: 2026-06-09
+Stand: 2026-06-10
 
 Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Story-Dateien selbst enthalten nur den knappen Status, damit sie Planungsdokumente bleiben.
 
 ## Zusammenfassung
 
-- Bestehende Stories: 54 `Umgesetzt`, 32 `Teilweise umgesetzt`, 3 `Offen`.
-- Neue Planungsstories: 9 `Umgesetzt`, 30 `Offen`.
+- Bestehende Stories: 56 `Umgesetzt`, 30 `Teilweise umgesetzt`, 3 `Offen`.
+- Neue Planungsstories: 15 `Umgesetzt`, 24 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
 ## Legende
@@ -52,7 +52,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 7.2 | Teilweise umgesetzt | Write-through-Edit-Route existiert; sichtbare, vollstaendige Bearbeitungs-UI bleibt UI-Restarbeit. |
 | 7.3 | Teilweise umgesetzt | Complete/Reopen-Routen existieren; sichtbare UI-Aktionen und Fehlerzustaende sind noch auszubauen. |
 | 7.4 | Teilweise umgesetzt | Delete-Write-through und 404-Erfolg sind umgesetzt; Loesch-UI/Undo-Fuehrung bleibt Restarbeit. |
-| 7.5 | Teilweise umgesetzt | Backend behandelt offene Unteraufgaben mit expliziter Aktion; sichtbarer Entscheidungsdialog fehlt. |
+| 7.5 | Umgesetzt | `internal/view/task_rows.templ`, `internal/view/task_rows.go`, `web/assets/app.js` und `internal/handler/tasks_complete.go` zeigen beim Erledigen von Elternaufgaben mit offenen direkten Unteraufgaben einen Entscheidungsdialog fuer Elternaufgabe, offene Unteraufgaben oder Abbruch; die bestehenden Handler pruefen Versionen und schreiben jede betroffene Task zu CalDAV. |
 | 8.1 | Teilweise umgesetzt | Projektanlage ist backendseitig vorhanden; produktive UI-Verwaltung bleibt offen. |
 | 8.2 | Teilweise umgesetzt | Projektumbenennung ist backendseitig vorhanden; produktive UI-Verwaltung bleibt offen. |
 | 8.3 | Teilweise umgesetzt | Projektloeschung ist backendseitig vorhanden; produktive UI-Verwaltung bleibt offen. |
@@ -88,7 +88,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 16.2 | Umgesetzt | `STARRED`-Mapping, Favorit-Route und Favoriten-View sind umgesetzt. |
 | 17.1 | Teilweise umgesetzt | RELATED-TO/Parent-Child-Import ist implementiert; produktive hierarchische UI bleibt offen. |
 | 17.2 | Teilweise umgesetzt | Subtask-Routen existieren; sichtbare Erstellung ist noch auszubauen. |
-| 17.3 | Teilweise umgesetzt | Backend loescht direkte Unteraufgaben mit expliziter Aktion; sichtbarer Loeschdialog fehlt. |
+| 17.3 | Umgesetzt | `internal/view/task_rows.templ`, `web/assets/app.js`, `internal/handler/tasks_delete.go` und `internal/handler/tasks_delete_test.go` zeigen die Anzahl direkter Unteraufgaben im Loeschdialog, senden die explizite `delete_all`-Aktion und loeschen Elternaufgabe sowie direkte Unteraufgaben einzeln mit Undo-Snapshot fuer die bestaetigte Loeschaktion. |
 | 18.1 | Teilweise umgesetzt | RRULE-Preservation und Update-Pfade existieren; dedicated Recurrence-Editor fehlt. |
 | 18.2 | Umgesetzt | Komplexe RRULEs werden beim Patchen erhalten. |
 | 18.3 | Teilweise umgesetzt | ATTACH und unbekannte Felder werden erhalten und teilweise angezeigt; vollstaendige Anzeige/Klickbarkeit bleibt offen. |
@@ -125,12 +125,12 @@ Die neuen Epics 23 bis 28 brechen die verbleibende UI- und QA-Arbeit in kleinere
 | 23.7 | Umgesetzt | `tests/e2e/mvp-flow.spec.js` erzeugt reproduzierbare Desktop- und Mobile-Baselines fuer Setup, Projekte, Heute, Suche, Quick Add, Einstellungen und Konflikte; `docs/qa/playwright.md` dokumentiert den lokalen QA-Artefaktpfad. |
 | 24.1 | Umgesetzt | `internal/view/task_rows.templ`, `internal/view/task_rows.go` und `web/static/tailwind.input.css` rendern scanbare Aufgabenzeilen mit Checkbox, Titel, Beschreibung, Metadaten, Labels, Anhaengen und Sync-/Konflikt-/Fehlerzustaenden; Handler- und View-Tests decken die Zeilen ab. |
 | 24.2 | Umgesetzt | `internal/view/task_rows.templ`, `internal/handler/date_views.go`, `internal/handler/search.go`, `internal/handler/tasks_create.go` und `web/assets/app.js` implementieren Inline-Erstellung mit Projekt-/Datumskontext, Cancel ohne Entwurf, lokaler Fehlermeldung und Tastaturfluss; `tests/e2e/mvp-flow.spec.js` prueft Cancel und Enter-Speichern im Browser. |
-| 24.3 | Offen | Keine Inline-Bearbeitung fuer Titel, Beschreibung, Faelligkeit, Prioritaet, Projekt oder Labels in der Aufgabenliste umgesetzt. |
-| 24.4 | Offen | Kein produktives Aufgaben-Detailpanel fuer alle relevanten Felder vorhanden. |
-| 24.5 | Offen | Sichtbare Aktionen fuer Reopen, Delete, Pending-Zustaende und Undo-Fuehrung sind noch nicht als vollstaendiger Listenfluss umgesetzt. |
-| 24.6 | Offen | Prioritaet, Labels, Favorit und Faelligkeit sind teilweise sichtbar, aber nicht direkt in der Zeile vollstaendig bearbeitbar. |
-| 24.7 | Offen | Unteraufgaben werden noch nicht als produktiver visueller Gruppenfluss mit Erstellung an passender Stelle umgesetzt. |
-| 24.8 | Offen | Undo-Snapshots und Route existieren, aber keine konsistente sichtbare Undo- und Wiederherstellungs-UI. |
+| 24.3 | Umgesetzt | `internal/view/task_rows.templ`, `internal/handler/tasks_update.go` und `web/assets/app.js` implementieren Inline-Bearbeitung fuer Titel, Beschreibung, Faelligkeit, Prioritaet, Projekt und Labels mit Fehleranzeige und Tastaturfluss. |
+| 24.4 | Umgesetzt | `internal/view/task_rows.templ`, `internal/handler/tasks_update.go`, `web/assets/app.js` und die Task-Zeilenaktionen stellen ein produktives Detailpanel fuer relevante Aufgabenfelder bereit. |
+| 24.5 | Umgesetzt | `internal/view/task_rows.templ`, `internal/handler/tasks_complete.go`, `internal/handler/tasks_delete.go` und `web/assets/app.js` zeigen Complete/Reopen/Delete-Aktionen, Pending-/Fehlerzustaende und Undo-Fuehrung im Listenfluss. |
+| 24.6 | Umgesetzt | `internal/view/task_rows.templ`, `internal/handler/tasks_update.go`, `internal/handler/tasks_favorite.go` und zugehoerige Tests machen Prioritaet, Labels, Favorit und Faelligkeit in der Aufgabenzeile sichtbar und direkt bearbeitbar. |
+| 24.7 | Umgesetzt | `internal/view/task_rows.templ`, `internal/view/task_rows.go`, `internal/handler/tasks_create.go` und Browser-Tests gruppieren Unteraufgaben visuell und ermoeglichen Erstellung direkt an der passenden Elternaufgabe. |
+| 24.8 | Umgesetzt | `internal/view/undo.templ`, `internal/handler/tasks_undo.go`, `internal/db/tasks_undo.go` und `web/assets/app.js` liefern tabbezogene Undo-Statusanzeige mit Wiederherstellung, Fehler- und Ablaufzustaenden. |
 | 25.1 | Offen | Kein globales Quick-Add-Overlay umgesetzt. |
 | 25.2 | Offen | Keine Live-Parsing-Chips mit Korrekturinteraktion umgesetzt. |
 | 25.3 | Offen | Projekt- und Labelvorschlaege fuer Quick Add sind nicht produktiv umgesetzt. |

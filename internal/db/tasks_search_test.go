@@ -108,6 +108,11 @@ INSERT INTO tasks (
     'task-child', 'project-1', 'uid-child', '/calendars/work/task-child.ics', '"etag-child"', 1,
     'Rechnung Unteraufgabe', 'Kind', 'needs-action', 'task-active', 'BEGIN:VTODO\nUID:uid-child\nRELATED-TO;RELTYPE=PARENT:uid-active\nEND:VTODO',
     'BEGIN:VTODO\nUID:uid-child\nRELATED-TO;RELTYPE=PARENT:uid-active\nEND:VTODO', 'Büro', 'Finanzen', 'synced', '2026-06-09', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+),
+(
+    'task-child-done', 'project-1', 'uid-child-done', '/calendars/work/task-child-done.ics', '"etag-child-done"', 1,
+    'Erledigte Rechnung Unteraufgabe', 'Kind erledigt', 'completed', 'task-active', 'BEGIN:VTODO\nUID:uid-child-done\nRELATED-TO;RELTYPE=PARENT:uid-active\nEND:VTODO',
+    'BEGIN:VTODO\nUID:uid-child-done\nRELATED-TO;RELTYPE=PARENT:uid-active\nEND:VTODO', 'Büro', 'Finanzen', 'synced', '2026-06-09', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 );
 `); err != nil {
 		t.Fatalf("insert child task: %v", err)
@@ -131,13 +136,14 @@ INSERT INTO tasks (
 	if parent.ID == "" || child.ID == "" {
 		t.Fatalf("expected parent and child in search results: %#v", results)
 	}
-	if parent.SubtaskCount != 1 || parent.IsSubtask {
+	if parent.SubtaskCount != 2 || parent.OpenSubtaskCount != 1 || parent.IsSubtask {
 		t.Fatalf("parent missing subtask count metadata: %#v", parent)
 	}
 	if child.ParentID != "task-active" ||
 		child.ParentTitle != "Überweisung Rechnung" ||
 		!child.IsSubtask ||
-		child.SubtaskCount != 0 {
+		child.SubtaskCount != 0 ||
+		child.OpenSubtaskCount != 0 {
 		t.Fatalf("child missing relationship metadata: %#v", child)
 	}
 }

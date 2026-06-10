@@ -211,6 +211,7 @@ func TestTaskDeleteWithDirectSubtasksDeleteAllDeletesParentAndSubtasks(t *testin
 	if stub.deleteCalls != 3 {
 		t.Fatalf("expected three CalDAV delete calls, got %d", stub.deleteCalls)
 	}
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE session_id = 'single-user-session' AND tab_id = 'tab-1' AND task_id = 'task-1' AND action_type = 'task_deleted';`, 1)
 
 	for _, taskID := range []string{"task-1", "task-child-1", "task-child-2"} {
 		var count int

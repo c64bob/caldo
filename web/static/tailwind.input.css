@@ -962,6 +962,7 @@
 		border-color: var(--caldo-border);
 	}
 
+	.caldo-task-complete-dialog,
 	.caldo-task-delete-dialog {
 		@apply w-full max-w-md overflow-hidden rounded-md border p-0;
 		background: var(--caldo-surface);
@@ -971,56 +972,72 @@
 	}
 
 	@media (min-width: 640px) {
+		.caldo-task-complete-dialog,
 		.caldo-task-delete-dialog {
 			width: min(28rem, calc(100vw - 2rem));
 		}
 	}
 
+	.caldo-task-complete-dialog::backdrop,
 	.caldo-task-delete-dialog::backdrop {
 		background: rgb(0 0 0 / 0.35);
 	}
 
+	.caldo-task-complete-shell,
 	.caldo-task-delete-shell {
 		@apply min-w-0;
 	}
 
+	.caldo-task-complete-header,
 	.caldo-task-delete-header {
 		@apply flex min-w-0 items-start gap-3 border-b px-4 py-3;
 		border-color: var(--caldo-border);
 	}
 
+	.caldo-task-complete-heading,
 	.caldo-task-delete-heading {
 		@apply min-w-0 flex-1 space-y-1;
 	}
 
+	.caldo-task-complete-title,
 	.caldo-task-delete-title {
 		@apply text-base font-semibold leading-6 tracking-normal;
 		color: var(--caldo-text);
 	}
 
+	.caldo-task-complete-close,
 	.caldo-task-delete-close {
 		@apply shrink-0 text-lg leading-none;
 	}
 
+	.caldo-task-complete-body,
 	.caldo-task-delete-body {
 		@apply min-w-0 space-y-3 px-4 py-4;
 	}
 
+	.caldo-task-complete-copy,
 	.caldo-task-delete-copy {
 		@apply text-sm leading-5;
 		color: var(--caldo-text);
 		overflow-wrap: anywhere;
 	}
 
+	.caldo-task-complete-error,
 	.caldo-task-delete-error {
 		@apply py-2;
 	}
 
+	.caldo-task-complete-form,
 	.caldo-task-delete-form {
 		@apply min-w-0;
 	}
 
+	.caldo-task-complete-actions,
 	.caldo-task-delete-actions {
+		@apply flex min-w-0 flex-wrap items-center gap-2;
+	}
+
+	.caldo-task-complete-form {
 		@apply flex min-w-0 flex-wrap items-center gap-2;
 	}
 

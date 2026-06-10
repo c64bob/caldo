@@ -177,6 +177,81 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 	}
 }
 
+func TestTaskRowRendersParentCompletionDecisionDialog(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	component := TaskRow(TaskRowView{
+		ID:               "task-parent",
+		Title:            "Elternaufgabe",
+		Status:           "needs-action",
+		SyncStatus:       "synced",
+		ServerVersion:    5,
+		SubtaskCount:     3,
+		OpenSubtaskCount: 2,
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render task row: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`data-task-complete-open`,
+		`aria-haspopup="dialog"`,
+		`aria-controls="task-complete-task-parent"`,
+		`data-task-complete-dialog`,
+		`id="task-complete-task-parent"`,
+		`data-task-complete-form`,
+		`hx-post="/tasks/task-parent/complete"`,
+		`name="expected_version" value="5"`,
+		`name="subtasks_action" value="parent_only"`,
+		`name="subtasks_action" value="complete_open"`,
+		`Nur Elternaufgabe erledigen`,
+		`Aufgabe und 2 offene Unteraufgaben erledigen`,
+		`data-task-complete-error`,
+		`data-task-complete-cancel`,
+		`X-CSRF-Token`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected parent completion dialog to include %q in %s", want, output)
+		}
+	}
+}
+
+func TestTaskRowRendersParentDeleteDialogWithSubtaskCount(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	component := TaskRow(TaskRowView{
+		ID:            "task-parent",
+		Title:         "Elternaufgabe",
+		Status:        "needs-action",
+		SyncStatus:    "synced",
+		ServerVersion: 5,
+		SubtaskCount:  2,
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render task row: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`data-task-delete-dialog`,
+		`Diese Aufgabe hat 2 Unteraufgaben.`,
+		`name="subtasks_action" value="delete_all"`,
+		`Aufgabe und Unteraufgaben löschen`,
+		`hx-delete="/tasks/task-parent"`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected parent delete dialog to include %q in %s", want, output)
+		}
+	}
+}
+
 func TestTaskRowRendersSubtaskRelationshipWithoutCreateAction(t *testing.T) {
 	t.Parallel()
 
@@ -200,6 +275,7 @@ func TestTaskRowRendersSubtaskRelationshipWithoutCreateAction(t *testing.T) {
 	output := rendered.String()
 	for _, want := range []string{
 		`data-task-id="child-1"`,
+		`data-parent-task-id="parent-1"`,
 		`caldo-task-row-subtask`,
 		`caldo-task-chip-subtask`,
 		`Unteraufgabe von Hauptaufgabe`,

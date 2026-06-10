@@ -29,8 +29,10 @@ type stubTaskUpdateTodoClient struct {
 	lastUpdateETag string
 }
 
-func (s *stubTaskUpdateTodoClient) PutVTODOUpdate(_ context.Context, _ caldav.Credentials, _ string, _ string, etag string) (string, error) {
+func (s *stubTaskUpdateTodoClient) PutVTODOUpdate(_ context.Context, _ caldav.Credentials, href string, rawVTODO string, etag string) (string, error) {
 	s.updateCalls++
+	s.lastHref = href
+	s.lastRawVTODO = rawVTODO
 	s.lastUpdateETag = etag
 	if s.updateErr != nil {
 		return "", s.updateErr
@@ -63,12 +65,13 @@ func TestTaskUpdateSuccess(t *testing.T) {
 		t.Fatalf("save credentials: %v", err)
 	}
 
-	h := TaskUpdate(taskUpdateDependencies{database: database, encryptionKey: key, todos: &stubTaskUpdateTodoClient{updateETag: `"etag-2"`}})
+	stub := &stubTaskUpdateTodoClient{updateETag: `"etag-2"`}
+	h := TaskUpdate(taskUpdateDependencies{database: database, encryptionKey: key, todos: stub})
 	form := url.Values{
 		"expected_version": {"2"},
 		"title":            {"new title"},
 		"description":      {"updated"},
-		"status":           {"needs-action"},
+		"status":           {"completed"},
 		"priority":         {"4"},
 		"due_date":         {"2026-07-10"},
 		"labels":           {"home,urgent"},
@@ -86,14 +89,31 @@ func TestTaskUpdateSuccess(t *testing.T) {
 		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
 	}
 
-	var syncStatus, etag string
+	var title, description, status, dueDate, labelNames, rawVTODO, syncStatus, etag string
+	var priority int
 	var version int
-	if err := database.Conn.QueryRowContext(context.Background(), `SELECT sync_status, etag, server_version FROM tasks WHERE id = 'task-1';`).Scan(&syncStatus, &etag, &version); err != nil {
+	if err := database.Conn.QueryRowContext(context.Background(), `
+SELECT title, description, status, date(due_date), priority, label_names, raw_vtodo, sync_status, etag, server_version
+FROM tasks
+WHERE id = 'task-1';
+`).Scan(&title, &description, &status, &dueDate, &priority, &labelNames, &rawVTODO, &syncStatus, &etag, &version); err != nil {
 		t.Fatalf("query task: %v", err)
 	}
-	if syncStatus != "synced" || etag != `"etag-2"` || version != 4 {
-		t.Fatalf("unexpected row: status=%q etag=%q version=%d", syncStatus, etag, version)
+	if title != "new title" || description != "updated" || status != "completed" || dueDate != "2026-07-10" || priority != 4 || labelNames != "home,urgent" {
+		t.Fatalf("unexpected edited fields: title=%q description=%q status=%q due=%q priority=%d labels=%q", title, description, status, dueDate, priority, labelNames)
 	}
+	if syncStatus != "synced" || etag != `"etag-2"` || version != 4 {
+		t.Fatalf("unexpected sync row: status=%q etag=%q version=%d", syncStatus, etag, version)
+	}
+	for _, want := range []string{"SUMMARY:new title", "DESCRIPTION:updated", "STATUS:COMPLETED", "DUE;VALUE=DATE:20260710", "PRIORITY:4", "CATEGORIES:home,urgent", "COMPLETED:"} {
+		if !bytes.Contains([]byte(rawVTODO), []byte(want)) {
+			t.Fatalf("expected raw vtodo to contain %q in %q", want, rawVTODO)
+		}
+	}
+	if stub.updateCalls != 1 || stub.lastHref != "/cal/inbox/uid-1.ics" || stub.lastUpdateETag != `"etag-1"` || stub.lastRawVTODO != rawVTODO {
+		t.Fatalf("unexpected caldav update call: calls=%d href=%q etag=%q raw=%q", stub.updateCalls, stub.lastHref, stub.lastUpdateETag, stub.lastRawVTODO)
+	}
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE session_id = 'single-user-session' AND tab_id = 'tab-1' AND task_id = 'task-1' AND action_type = 'task_updated';`, 1)
 }
 
 func TestTaskUpdateVersionConflict(t *testing.T) {
@@ -271,6 +291,97 @@ func TestTaskUpdatePreconditionFailedMarksConflict(t *testing.T) {
 	}
 	if syncStatus != "conflict" || version != 3 {
 		t.Fatalf("unexpected row: status=%q version=%d", syncStatus, version)
+	}
+}
+
+func TestTaskUpdateCredentialsUnavailableMarksError(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskUpdateHandlerTest(t)
+	seedTaskUpdateHandlerData(t, database)
+
+	key := bytes.Repeat([]byte{0x73}, 32)
+	stub := &stubTaskUpdateTodoClient{updateETag: `"etag-2"`}
+	h := TaskUpdate(taskUpdateDependencies{database: database, encryptionKey: key, todos: stub})
+	form := url.Values{"expected_version": {"2"}, "title": {"new title"}}
+	req := httptest.NewRequest(http.MethodPatch, "/tasks/task-1", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Tab-ID", "tab-1")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("taskID", "task-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusFailedDependency {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+	if stub.updateCalls != 0 || stub.createCalls != 0 || stub.deleteCalls != 0 {
+		t.Fatalf("expected no caldav writes, got update=%d create=%d delete=%d", stub.updateCalls, stub.createCalls, stub.deleteCalls)
+	}
+
+	var syncStatus, title string
+	var version int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT sync_status, title, server_version FROM tasks WHERE id = 'task-1';`).Scan(&syncStatus, &title, &version); err != nil {
+		t.Fatalf("query task: %v", err)
+	}
+	if syncStatus != "error" || title != "new title" || version != 3 {
+		t.Fatalf("unexpected row: status=%q title=%q version=%d", syncStatus, title, version)
+	}
+}
+
+func TestTaskUpdateMoveSuccessCreatesTargetResourceAndDeletesPrevious(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskUpdateHandlerTest(t)
+	seedTaskUpdateHandlerData(t, database)
+
+	if _, err := database.Conn.ExecContext(context.Background(), `
+INSERT INTO projects (id, calendar_href, display_name, sync_strategy, is_default, created_at, updated_at)
+VALUES ('project-2', '/cal/work/', 'Work', 'fullscan', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+`); err != nil {
+		t.Fatalf("seed second project: %v", err)
+	}
+
+	key := bytes.Repeat([]byte{0x74}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	stub := &stubTaskUpdateTodoClient{createETag: `"etag-moved"`}
+	h := TaskUpdate(taskUpdateDependencies{database: database, encryptionKey: key, todos: stub})
+	form := url.Values{"expected_version": {"2"}, "project_id": {"project-2"}, "title": {"moved title"}}
+	req := httptest.NewRequest(http.MethodPatch, "/tasks/task-1", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Tab-ID", "tab-1")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("taskID", "task-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+	if stub.createCalls != 1 || stub.deleteCalls != 1 || stub.updateCalls != 0 {
+		t.Fatalf("unexpected caldav calls: update=%d create=%d delete=%d", stub.updateCalls, stub.createCalls, stub.deleteCalls)
+	}
+	if stub.lastHref != "/cal/work/uid-1.ics" {
+		t.Fatalf("unexpected created href: %q", stub.lastHref)
+	}
+	if !bytes.Contains([]byte(stub.lastRawVTODO), []byte("SUMMARY:moved title")) {
+		t.Fatalf("expected created raw vtodo to contain moved title, raw=%q", stub.lastRawVTODO)
+	}
+
+	var projectID, projectName, href, syncStatus, etag string
+	var version int
+	if err := database.Conn.QueryRowContext(context.Background(), `
+SELECT project_id, project_name, href, sync_status, etag, server_version
+FROM tasks
+WHERE id = 'task-1';
+`).Scan(&projectID, &projectName, &href, &syncStatus, &etag, &version); err != nil {
+		t.Fatalf("query task: %v", err)
+	}
+	if projectID != "project-2" || projectName != "Work" || href != "/cal/work/uid-1.ics" || syncStatus != "synced" || etag != `"etag-moved"` || version != 4 {
+		t.Fatalf("unexpected moved row: project=%q name=%q href=%q status=%q etag=%q version=%d", projectID, projectName, href, syncStatus, etag, version)
 	}
 }
 
@@ -566,8 +677,22 @@ INSERT INTO tasks (
     label_names, project_name, sync_status, created_at, updated_at
 ) VALUES (
     'task-1', 'project-1', 'uid-1', '/cal/inbox/uid-1.ics', '"etag-1"', 2, 'old', 'old-desc', 'needs-action',
-    'BEGIN:VCALENDAR\nBEGIN:VTODO\nUID:uid-1\nSUMMARY:old\nDESCRIPTION:old-desc\nSTATUS:NEEDS-ACTION\nEND:VTODO\nEND:VCALENDAR',
-    'BEGIN:VCALENDAR\nBEGIN:VTODO\nUID:uid-1\nSUMMARY:old\nDESCRIPTION:old-desc\nSTATUS:NEEDS-ACTION\nEND:VTODO\nEND:VCALENDAR',
+    'BEGIN:VCALENDAR
+BEGIN:VTODO
+UID:uid-1
+SUMMARY:old
+DESCRIPTION:old-desc
+STATUS:NEEDS-ACTION
+END:VTODO
+END:VCALENDAR',
+    'BEGIN:VCALENDAR
+BEGIN:VTODO
+UID:uid-1
+SUMMARY:old
+DESCRIPTION:old-desc
+STATUS:NEEDS-ACTION
+END:VTODO
+END:VCALENDAR',
     'home', 'Inbox', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 );
 `); err != nil {

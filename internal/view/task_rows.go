@@ -15,26 +15,27 @@ import (
 
 // TaskRowView contains all fields rendered by the shared task-list row.
 type TaskRowView struct {
-	ID             string
-	ProjectID      string
-	Title          string
-	Description    string
-	ProjectName    string
-	LabelNames     string
-	DueISODate     string
-	TodayISODate   string
-	ParentID       string
-	ParentTitle    string
-	Status         string
-	SyncStatus     string
-	Priority       int
-	HasPriority    bool
-	ServerVersion  int
-	IsSubtask      bool
-	SubtaskCount   int
-	RRule          string
-	Attachments    []model.Attachment
-	ProjectOptions []TaskProjectOption
+	ID               string
+	ProjectID        string
+	Title            string
+	Description      string
+	ProjectName      string
+	LabelNames       string
+	DueISODate       string
+	TodayISODate     string
+	ParentID         string
+	ParentTitle      string
+	Status           string
+	SyncStatus       string
+	Priority         int
+	HasPriority      bool
+	ServerVersion    int
+	IsSubtask        bool
+	SubtaskCount     int
+	OpenSubtaskCount int
+	RRule            string
+	Attachments      []model.Attachment
+	ProjectOptions   []TaskProjectOption
 }
 
 // TaskProjectOption contains one project selectable from inline task editing.
@@ -205,6 +206,10 @@ func taskCanCreateSubtask(task TaskRowView) bool {
 	return !task.IsSubtask && taskCanToggleCompletion(task)
 }
 
+func taskNeedsCompletionDecision(task TaskRowView) bool {
+	return !taskIsCompleted(task) && !task.IsSubtask && taskCanToggleCompletion(task) && task.OpenSubtaskCount > 0
+}
+
 func taskCanShowFavorite(task TaskRowView) bool {
 	return strings.TrimSpace(task.ID) != "" && task.ServerVersion > 0
 }
@@ -286,6 +291,32 @@ func taskSubtaskCountLabel(count int) string {
 		return "1 Unteraufgabe"
 	}
 	return strconv.Itoa(count) + " Unteraufgaben"
+}
+
+func taskOpenSubtaskCountLabel(count int) string {
+	if count == 1 {
+		return "1 offene Unteraufgabe"
+	}
+	return strconv.Itoa(count) + " offene Unteraufgaben"
+}
+
+func taskCompleteWithSubtasksLabel(task TaskRowView) string {
+	return "Aufgabe und " + taskOpenSubtaskCountLabel(task.OpenSubtaskCount) + " erledigen"
+}
+
+func taskHasDirectSubtasks(task TaskRowView) bool {
+	return !task.IsSubtask && task.SubtaskCount > 0
+}
+
+func taskDeleteSubtaskWarning(task TaskRowView) string {
+	return "Diese Aufgabe hat " + taskSubtaskCountLabel(task.SubtaskCount) + ". Die Elternaufgabe und alle direkten Unteraufgaben werden einzeln gelöscht."
+}
+
+func taskDeleteSubmitLabel(task TaskRowView) string {
+	if taskHasDirectSubtasks(task) {
+		return "Aufgabe und Unteraufgaben löschen"
+	}
+	return "Endgültig löschen"
 }
 
 func taskDueStateChip(task TaskRowView) taskDueChip {

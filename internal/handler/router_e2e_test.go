@@ -98,16 +98,6 @@ func TestRouterMVPFlowAgainstFakeCalDAVServer(t *testing.T) {
 		t.Fatalf("root after setup: got status=%d body=%q", rr.Code, rr.Body.String())
 	}
 
-	rr = e2eRequest(t, router, secret, http.MethodPost, "/projects", url.Values{"display_name": {"Local Empty Project"}}, "tab-project-create")
-	if rr.Code != http.StatusCreated {
-		t.Fatalf("project create: got status=%d body=%q", rr.Code, rr.Body.String())
-	}
-	e2eAssertProjectExists(t, database, "Local Empty Project", "/local-empty-project/")
-	fake.assertCalendar(t, "/local-empty-project/", "Local Empty Project")
-	if !strings.Contains(rr.Body.String(), "Local Empty Project") || !strings.Contains(rr.Body.String(), `data-project-create-form`) {
-		t.Fatalf("project create response missing refreshed project page: %q", rr.Body.String())
-	}
-
 	rr = e2eRequest(t, router, secret, http.MethodPost, "/tasks/", url.Values{"title": {"Local Created"}}, "tab-create")
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("task create: got status=%d body=%q", rr.Code, rr.Body.String())
@@ -237,6 +227,39 @@ WHERE uid = 'uid-conflict';
 	e2eAssertTaskSyncStatusByUID(t, database, "uid-conflict", "synced")
 	if got := e2eTaskTitleByUID(t, database, "uid-conflict"); got != "Remote Conflict" {
 		t.Fatalf("resolved task title: got %q", got)
+	}
+}
+
+func TestProjectCreateRouteAgainstFakeCalDAVServer(t *testing.T) {
+	const calendarHref = "/cal/work/"
+	secret := []byte("12345678901234567890123456789012")
+	ctx := context.Background()
+
+	fake := newFakeRouterCalDAV(calendarHref, "Work")
+	server := httptest.NewServer(fake)
+	t.Cleanup(server.Close)
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if err := database.SaveCalDAVCredentials(ctx, secret, db.CalDAVCredentials{URL: server.URL, Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+	if err := database.SaveCalDAVServerCapabilities(ctx, db.CalDAVServerCapabilities{CTag: true, FullScan: true}); err != nil {
+		t.Fatalf("save capabilities: %v", err)
+	}
+
+	router := NewRouter(slog.New(slog.NewTextHandler(io.Discard, nil)), "X-Forwarded-User", testManifest(t), true, secret, database, ctx, nil)
+	rr := e2eRequest(t, router, secret, http.MethodPost, "/projects", url.Values{"display_name": {"Local Empty Project"}}, "tab-project-create")
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("project create: got status=%d body=%q", rr.Code, rr.Body.String())
+	}
+	e2eAssertProjectExists(t, database, "Local Empty Project", "/local-empty-project/")
+	fake.assertCalendar(t, "/local-empty-project/", "Local Empty Project")
+	if !strings.Contains(rr.Body.String(), "Local Empty Project") || !strings.Contains(rr.Body.String(), `data-project-create-form`) {
+		t.Fatalf("project create response missing refreshed project page: %q", rr.Body.String())
 	}
 }
 

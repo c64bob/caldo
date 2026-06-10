@@ -24,6 +24,7 @@ func TestPrepareTaskUndoLoadsSnapshotMarksPending(t *testing.T) {
 	assertSingleTextResult(t, db, `SELECT title FROM tasks WHERE id='task-1';`, "before")
 	assertSingleTextResult(t, db, `SELECT COALESCE(description, '') FROM tasks WHERE id='task-1';`, "before description")
 	assertSingleTextResult(t, db, `SELECT status FROM tasks WHERE id='task-1';`, "completed")
+	assertSingleTextResult(t, db, `SELECT COALESCE(completed_at, '') FROM tasks WHERE id='task-1';`, "2026-05-01T08:00:00Z")
 	assertSingleTextResult(t, db, `SELECT COALESCE(due_date, '') FROM tasks WHERE id='task-1';`, "2026-05-01")
 	assertSingleTextResult(t, db, `SELECT COALESCE(due_at, '') FROM tasks WHERE id='task-1';`, "2026-05-01T09:00:00Z")
 	assertSingleIntResult(t, db, `SELECT COALESCE(priority, 0) FROM tasks WHERE id='task-1';`, 3)
@@ -140,9 +141,9 @@ INSERT INTO tasks (
 );
 INSERT INTO undo_snapshots (id, session_id, tab_id, task_id, action_type, snapshot_vtodo, snapshot_fields, etag_at_snapshot, created_at, expires_at)
 VALUES
-('undo-1','session-1','tab-1','task-1','task_updated','BEGIN:VTODO\nUID:uid-1\nSUMMARY:before\nEND:VTODO',json_object('title','before','description','before description','status','completed','due_date','2026-05-01','due_at','2026-05-01T09:00:00Z','priority',3,'label_names','alpha,beta'),'"etag-1"',CURRENT_TIMESTAMP,DATETIME(CURRENT_TIMESTAMP,'+5 minutes')),
-('undo-exp','session-exp','tab-exp','task-1','task_updated','BEGIN:VTODO\nUID:uid-1\nSUMMARY:before\nEND:VTODO',json_object('title','before','description','before description','status','completed','due_date','2026-05-01','due_at','2026-05-01T09:00:00Z','priority',3,'label_names','alpha,beta'),'"etag-1"',CURRENT_TIMESTAMP,DATETIME(CURRENT_TIMESTAMP,'-1 minutes')),
-('undo-mm','session-mm','tab-mm','task-1','task_updated','BEGIN:VTODO\nUID:uid-1\nSUMMARY:before\nEND:VTODO',json_object('title','before','description','before description','status','completed','due_date','2026-05-01','due_at','2026-05-01T09:00:00Z','priority',3,'label_names','alpha,beta'),'"etag-old"',CURRENT_TIMESTAMP,DATETIME(CURRENT_TIMESTAMP,'+5 minutes')),
+('undo-1','session-1','tab-1','task-1','task_updated','BEGIN:VTODO\nUID:uid-1\nSUMMARY:before\nSTATUS:COMPLETED\nCOMPLETED:20260501T080000Z\nEND:VTODO',json_object('title','before','description','before description','status','completed','completed_at','2026-05-01T08:00:00Z','due_date','2026-05-01','due_at','2026-05-01T09:00:00Z','priority',3,'label_names','alpha,beta'),'"etag-1"',CURRENT_TIMESTAMP,DATETIME(CURRENT_TIMESTAMP,'+5 minutes')),
+('undo-exp','session-exp','tab-exp','task-1','task_updated','BEGIN:VTODO\nUID:uid-1\nSUMMARY:before\nSTATUS:COMPLETED\nCOMPLETED:20260501T080000Z\nEND:VTODO',json_object('title','before','description','before description','status','completed','completed_at','2026-05-01T08:00:00Z','due_date','2026-05-01','due_at','2026-05-01T09:00:00Z','priority',3,'label_names','alpha,beta'),'"etag-1"',CURRENT_TIMESTAMP,DATETIME(CURRENT_TIMESTAMP,'-1 minutes')),
+('undo-mm','session-mm','tab-mm','task-1','task_updated','BEGIN:VTODO\nUID:uid-1\nSUMMARY:before\nSTATUS:COMPLETED\nCOMPLETED:20260501T080000Z\nEND:VTODO',json_object('title','before','description','before description','status','completed','completed_at','2026-05-01T08:00:00Z','due_date','2026-05-01','due_at','2026-05-01T09:00:00Z','priority',3,'label_names','alpha,beta'),'"etag-old"',CURRENT_TIMESTAMP,DATETIME(CURRENT_TIMESTAMP,'+5 minutes')),
 ('undo-del','session-del','tab-del','task-gone','task_deleted','BEGIN:VTODO\nUID:uid-del\nSUMMARY:deleted\nEND:VTODO',json_object('project_id','project-1','title','deleted','description','deleted desc','status','needs-action','label_names','home'),'"etag-del"',CURRENT_TIMESTAMP,DATETIME(CURRENT_TIMESTAMP,'+5 minutes'));
 `); err != nil {
 		t.Fatalf("seed undo data: %v", err)

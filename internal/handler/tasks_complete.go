@@ -152,6 +152,7 @@ func performTaskCompletionUpdate(
 		Title:           parsed.Title,
 		Description:     parsed.Description,
 		Status:          parsed.Status,
+		CompletedAt:     nullableTime(parsed.CompletedAt),
 		DueDate:         nullableDate(parsed.DueDate),
 		DueAt:           nullableTime(parsed.DueAt),
 		Priority:        nullableInt(parsed.Priority),

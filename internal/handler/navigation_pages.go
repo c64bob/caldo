@@ -12,11 +12,19 @@ import (
 // ProjectsPage renders the projects navigation page.
 func ProjectsPage(database *db.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		renderProjectsPage(w, r, database, "", "", http.StatusOK)
+		renderProjectsPage(w, r, database, projectsPageState{}, http.StatusOK)
 	}
 }
 
-func renderProjectsPage(w http.ResponseWriter, r *http.Request, database *db.Database, createError string, createValue string, status int) {
+type projectsPageState struct {
+	CreateError     string
+	CreateValue     string
+	RenameProjectID string
+	RenameError     string
+	RenameValue     string
+}
+
+func renderProjectsPage(w http.ResponseWriter, r *http.Request, database *db.Database, pageState projectsPageState, status int) {
 	if database == nil {
 		renderPageError(w, r, "Projekte", "Projekte laden", http.StatusInternalServerError)
 		return
@@ -33,7 +41,14 @@ func renderProjectsPage(w http.ResponseWriter, r *http.Request, database *db.Dat
 		w.WriteHeader(status)
 	}
 	ctx := view.WithNavigation(r.Context(), navigationSnapshotView(snapshot))
-	if err := view.BaseLayout("Projekte", view.ProjectsOverviewPage(navigationProjectsView(snapshot.Projects), createError, createValue)).Render(ctx, w); err != nil {
+	projects := navigationProjectsView(snapshot.Projects)
+	for index := range projects {
+		if projects[index].ID == pageState.RenameProjectID {
+			projects[index].RenameError = pageState.RenameError
+			projects[index].RenameValue = pageState.RenameValue
+		}
+	}
+	if err := view.BaseLayout("Projekte", view.ProjectsOverviewPage(projects, pageState.CreateError, pageState.CreateValue)).Render(ctx, w); err != nil {
 		http.Error(w, "render page", http.StatusInternalServerError)
 	}
 }

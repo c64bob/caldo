@@ -21,10 +21,14 @@ type fakeProjectRenameCalendarClient struct {
 	renamed     caldav.Calendar
 	renameErr   error
 	renameCalls int
+	href        string
+	displayName string
 }
 
-func (f *fakeProjectRenameCalendarClient) RenameCalendar(_ context.Context, _ caldav.Credentials, _ string, _ string) (caldav.Calendar, error) {
+func (f *fakeProjectRenameCalendarClient) RenameCalendar(_ context.Context, _ caldav.Credentials, href string, displayName string) (caldav.Calendar, error) {
 	f.renameCalls++
+	f.href = href
+	f.displayName = displayName
 	if f.renameErr != nil {
 		return caldav.Calendar{}, f.renameErr
 	}
@@ -77,6 +81,12 @@ INSERT INTO tasks (
 	if calendar.renameCalls != 1 {
 		t.Fatalf("unexpected rename calls: got %d want %d", calendar.renameCalls, 1)
 	}
+	if calendar.href != "/cal/work/" || calendar.displayName != "Renamed Work" {
+		t.Fatalf("unexpected remote rename request: href=%q displayName=%q", calendar.href, calendar.displayName)
+	}
+	if body := responseRecorder.Body.String(); !strings.Contains(body, `data-project-rename-form`) || !strings.Contains(body, "Renamed Work") {
+		t.Fatalf("expected refreshed projects page with renamed project, got %q", body)
+	}
 
 	var displayName string
 	if err := database.Conn.QueryRowContext(context.Background(), `SELECT display_name FROM projects WHERE id = 'project-1';`).Scan(&displayName); err != nil {
@@ -103,6 +113,12 @@ func TestProjectRenameRequiresExpectedVersion(t *testing.T) {
 		t.Fatalf("open sqlite: %v", err)
 	}
 	t.Cleanup(func() { _ = database.Close() })
+	if _, err := database.Conn.ExecContext(context.Background(), `
+INSERT INTO projects (id, calendar_href, display_name, sync_strategy, server_version, created_at, updated_at)
+VALUES ('project-1', '/cal/work/', 'Work', 'fullscan', 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+`); err != nil {
+		t.Fatalf("seed project: %v", err)
+	}
 
 	calendar := &fakeProjectRenameCalendarClient{}
 	h := ProjectRename(projectRenameDependencies{database: database, encryptionKey: []byte("12345678901234567890123456789012"), calendar: calendar})
@@ -114,11 +130,14 @@ func TestProjectRenameRequiresExpectedVersion(t *testing.T) {
 
 	h(responseRecorder, request.WithContext(withProjectID(request.Context(), "project-1")))
 
-	if responseRecorder.Code != http.StatusBadRequest {
-		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusBadRequest)
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
 	}
 	if calendar.renameCalls != 0 {
 		t.Fatalf("expected no remote rename call, got %d", calendar.renameCalls)
+	}
+	if body := responseRecorder.Body.String(); !strings.Contains(body, `data-project-rename-error`) || !strings.Contains(body, "projektversion fehlt") {
+		t.Fatalf("expected visible version error, got %q", body)
 	}
 }
 
@@ -153,8 +172,15 @@ VALUES ('project-1', '/cal/work/', 'Work', 'fullscan', 2, CURRENT_TIMESTAMP, CUR
 
 	h(responseRecorder, request.WithContext(withProjectID(request.Context(), "project-1")))
 
-	if responseRecorder.Code != http.StatusBadGateway {
-		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusBadGateway)
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	body := responseRecorder.Body.String()
+	if !strings.Contains(body, `data-project-rename-error`) || !strings.Contains(body, "projekt konnte nicht auf dem caldav-server umbenannt werden") {
+		t.Fatalf("expected visible remote rename error, got %q", body)
+	}
+	if !strings.Contains(body, `value="Renamed Work"`) {
+		t.Fatalf("expected requested name to remain in form, got %q", body)
 	}
 
 	var displayName string
@@ -251,8 +277,11 @@ VALUES ('project-1', '/cal/work/', 'Work', 'fullscan', 2, CURRENT_TIMESTAMP, CUR
 	rr2 := httptest.NewRecorder()
 	h(rr2, req2.WithContext(withProjectID(req2.Context(), "project-1")))
 
-	if rr2.Code != http.StatusConflict {
-		t.Fatalf("unexpected status code for concurrent rename: got %d want %d", rr2.Code, http.StatusConflict)
+	if rr2.Code != http.StatusOK {
+		t.Fatalf("unexpected status code for concurrent rename: got %d want %d", rr2.Code, http.StatusOK)
+	}
+	if body := rr2.Body.String(); !strings.Contains(body, `data-project-rename-error`) || !strings.Contains(body, "projekt wurde zwischenzeitlich geändert") {
+		t.Fatalf("expected visible concurrent rename error, got %q", body)
 	}
 
 	close(calendar.release)

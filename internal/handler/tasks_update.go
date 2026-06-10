@@ -148,6 +148,12 @@ func TaskUpdate(deps taskUpdateDependencies) http.HandlerFunc {
 
 		creds, err := deps.database.LoadCalDAVCredentials(r.Context(), deps.encryptionKey)
 		if err != nil {
+			persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUpdatePersistTimeout)
+			defer cancel()
+			if markErr := deps.database.MarkTaskUpdateError(persistCtx, taskID, prepared.PendingVersion); markErr != nil {
+				http.Error(w, "failed to persist task update error state", http.StatusInternalServerError)
+				return
+			}
 			http.Error(w, "caldav credentials unavailable", http.StatusFailedDependency)
 			return
 		}

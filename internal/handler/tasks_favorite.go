@@ -91,7 +91,7 @@ func performTaskFavoriteUpdate(ctx context.Context, deps taskUpdateDependencies,
 	if err != nil {
 		return errTaskCompletionCredentialsUnavailable
 	}
-	input := db.TaskUpdateInput{TaskID: taskID, ExpectedVersion: expectedVersion, SessionID: sessionID, TabID: tabID, ProjectID: base.ProjectID, ProjectName: base.ProjectName, Href: base.Href, ETag: base.ETag, RawVTODO: rawVTODO, Title: parsed.Title, Description: parsed.Description, Status: parsed.Status, DueDate: nullableDate(parsed.DueDate), DueAt: nullableTime(parsed.DueAt), Priority: nullableInt(parsed.Priority), LabelNames: nullableCSV(parsed.Categories)}
+	input := db.TaskUpdateInput{TaskID: taskID, ExpectedVersion: expectedVersion, SessionID: sessionID, TabID: tabID, ProjectID: base.ProjectID, ProjectName: base.ProjectName, Href: base.Href, ETag: base.ETag, RawVTODO: rawVTODO, Title: parsed.Title, Description: parsed.Description, Status: parsed.Status, CompletedAt: nullableTime(parsed.CompletedAt), DueDate: nullableDate(parsed.DueDate), DueAt: nullableTime(parsed.DueAt), Priority: nullableInt(parsed.Priority), LabelNames: nullableCSV(parsed.Categories)}
 	prepared, err := deps.database.PrepareTaskUpdate(ctx, input)
 	if err != nil {
 		if errors.Is(err, db.ErrTaskVersionMismatch) {

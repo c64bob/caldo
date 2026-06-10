@@ -135,6 +135,7 @@ SET raw_vtodo = ?,
     title = json_extract(?, '$.title'),
     description = json_extract(?, '$.description'),
     status = json_extract(?, '$.status'),
+    completed_at = json_extract(?, '$.completed_at'),
     due_date = json_extract(?, '$.due_date'),
     due_at = json_extract(?, '$.due_at'),
     priority = json_extract(?, '$.priority'),
@@ -143,7 +144,7 @@ SET raw_vtodo = ?,
     server_version = server_version + 1,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ? AND server_version = ?;
-`, snapshotVTODO, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, taskID, version)
+`, snapshotVTODO, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, snapshotFields, taskID, version)
 	if err != nil {
 		return PreparedTaskUndo{}, fmt.Errorf("prepare task undo: update pending task: %w", err)
 	}

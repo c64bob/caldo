@@ -60,7 +60,8 @@ END:VCALENDAR`)
 		t.Fatalf("save credentials: %v", err)
 	}
 
-	h := TaskComplete(taskUpdateDependencies{database: database, encryptionKey: key, todos: &stubTaskUpdateTodoClient{updateETag: `"etag-2"`}})
+	stub := &stubTaskUpdateTodoClient{updateETag: `"etag-2"`}
+	h := TaskComplete(taskUpdateDependencies{database: database, encryptionKey: key, todos: stub})
 	form := url.Values{"expected_version": {"2"}}
 	req := httptest.NewRequest(http.MethodPost, "/tasks/task-1/complete", bytes.NewBufferString(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -75,16 +76,24 @@ END:VCALENDAR`)
 		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
 	}
 
-	var status, rawVTODO string
-	if err := database.Conn.QueryRowContext(context.Background(), `SELECT status, raw_vtodo FROM tasks WHERE id = 'task-1';`).Scan(&status, &rawVTODO); err != nil {
+	var status, rawVTODO, syncStatus, etag string
+	var completedAtPresent, version int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT status, raw_vtodo, completed_at IS NOT NULL, sync_status, etag, server_version FROM tasks WHERE id = 'task-1';`).Scan(&status, &rawVTODO, &completedAtPresent, &syncStatus, &etag, &version); err != nil {
 		t.Fatalf("query task: %v", err)
 	}
 	if status != "completed" {
 		t.Fatalf("unexpected status: %q", status)
 	}
+	if completedAtPresent != 1 || syncStatus != "synced" || etag != `"etag-2"` || version != 4 {
+		t.Fatalf("unexpected completed sync state: completed_at_present=%d sync_status=%q etag=%q version=%d", completedAtPresent, syncStatus, etag, version)
+	}
 	if !strings.Contains(rawVTODO, "STATUS:COMPLETED") || !strings.Contains(rawVTODO, "COMPLETED:") {
 		t.Fatalf("expected completed fields in vtodo, got %q", rawVTODO)
 	}
+	if stub.updateCalls != 1 || stub.lastUpdateETag != `"etag-1"` || stub.lastRawVTODO != rawVTODO {
+		t.Fatalf("unexpected caldav update call: calls=%d etag=%q raw=%q", stub.updateCalls, stub.lastUpdateETag, stub.lastRawVTODO)
+	}
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE session_id = 'single-user-session' AND tab_id = 'tab-1' AND task_id = 'task-1' AND action_type = 'task_updated';`, 1)
 }
 
 func TestTaskReopenClearsCompletedAndPreservesRRule(t *testing.T) {
@@ -94,7 +103,8 @@ func TestTaskReopenClearsCompletedAndPreservesRRule(t *testing.T) {
 
 	if _, err := database.Conn.ExecContext(context.Background(), `
 UPDATE tasks
-SET status = 'completed'
+SET status = 'completed',
+    completed_at = '2026-01-01T12:00:00Z'
 WHERE id = 'task-1';
 `); err != nil {
 		t.Fatalf("seed completed task status: %v", err)
@@ -130,17 +140,67 @@ END:VCALENDAR`)
 	}
 
 	var status, rawVTODO string
-	if err := database.Conn.QueryRowContext(context.Background(), `SELECT status, raw_vtodo FROM tasks WHERE id = 'task-1';`).Scan(&status, &rawVTODO); err != nil {
+	var completedAtPresent int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT status, raw_vtodo, completed_at IS NOT NULL FROM tasks WHERE id = 'task-1';`).Scan(&status, &rawVTODO, &completedAtPresent); err != nil {
 		t.Fatalf("query task: %v", err)
 	}
 	if status != "needs-action" {
 		t.Fatalf("unexpected status: %q", status)
+	}
+	if completedAtPresent != 0 {
+		t.Fatalf("expected completed_at to be cleared")
 	}
 	if strings.Contains(rawVTODO, "COMPLETED:") {
 		t.Fatalf("expected completed to be removed from vtodo, got %q", rawVTODO)
 	}
 	if !strings.Contains(rawVTODO, "RRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=1") {
 		t.Fatalf("expected rrule to remain unchanged, got %q", rawVTODO)
+	}
+}
+
+func TestTaskCompleteVersionConflictDoesNotMutate(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskUpdateHandlerTest(t)
+	seedTaskUpdateHandlerData(t, database)
+	setTaskRawVTODO(t, database, `BEGIN:VCALENDAR
+BEGIN:VTODO
+UID:uid-1
+SUMMARY:old
+STATUS:NEEDS-ACTION
+END:VTODO
+END:VCALENDAR`)
+
+	key := bytes.Repeat([]byte{0x5b}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	stub := &stubTaskUpdateTodoClient{updateETag: `"etag-2"`}
+	h := TaskComplete(taskUpdateDependencies{database: database, encryptionKey: key, todos: stub})
+	form := url.Values{"expected_version": {"9"}}
+	req := httptest.NewRequest(http.MethodPost, "/tasks/task-1/complete", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Tab-ID", "tab-1")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("taskID", "task-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+	if stub.updateCalls != 0 {
+		t.Fatalf("expected no CalDAV write for stale version, got %d", stub.updateCalls)
+	}
+
+	var status, syncStatus string
+	var version int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT status, sync_status, server_version FROM tasks WHERE id = 'task-1';`).Scan(&status, &syncStatus, &version); err != nil {
+		t.Fatalf("query task: %v", err)
+	}
+	if status != "needs-action" || syncStatus != "synced" || version != 2 {
+		t.Fatalf("unexpected task state: status=%q sync_status=%q version=%d", status, syncStatus, version)
 	}
 }
 

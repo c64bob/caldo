@@ -35,6 +35,7 @@ type TaskUpdateInput struct {
 	Title       string
 	Description string
 	Status      string
+	CompletedAt sql.NullTime
 	DueDate     sql.NullString
 	DueAt       sql.NullTime
 	Priority    sql.NullInt64
@@ -127,15 +128,16 @@ func (d *Database) PrepareTaskUpdate(ctx context.Context, input TaskUpdateInput)
 	var snapshotTitle string
 	var snapshotDescription sql.NullString
 	var snapshotStatus string
+	var snapshotCompletedAt sql.NullTime
 	var snapshotDueDate sql.NullString
 	var snapshotDueAt sql.NullTime
 	var snapshotPriority sql.NullInt64
 	var snapshotLabelNames sql.NullString
 	if err := tx.QueryRowContext(ctx, `
-SELECT raw_vtodo, etag, href, title, description, status, due_date, due_at, priority, label_names
+SELECT raw_vtodo, etag, href, title, description, status, completed_at, due_date, due_at, priority, label_names
 FROM tasks
 WHERE id = ? AND server_version = ?;
-`, input.TaskID, input.ExpectedVersion).Scan(&snapshotRaw, &snapshotETag, &snapshotHref, &snapshotTitle, &snapshotDescription, &snapshotStatus, &snapshotDueDate, &snapshotDueAt, &snapshotPriority, &snapshotLabelNames); err != nil {
+`, input.TaskID, input.ExpectedVersion).Scan(&snapshotRaw, &snapshotETag, &snapshotHref, &snapshotTitle, &snapshotDescription, &snapshotStatus, &snapshotCompletedAt, &snapshotDueDate, &snapshotDueAt, &snapshotPriority, &snapshotLabelNames); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return PreparedTaskUpdate{}, ErrTaskVersionMismatch
 		}
@@ -146,7 +148,7 @@ WHERE id = ? AND server_version = ?;
 	if _, err := tx.ExecContext(ctx, `
 INSERT INTO undo_snapshots (
     id, session_id, tab_id, task_id, action_type, snapshot_vtodo, snapshot_fields, etag_at_snapshot, created_at, expires_at
-) VALUES (?, ?, ?, ?, 'task_updated', ?, json_object('title', ?, 'description', ?, 'status', ?, 'due_date', ?, 'due_at', ?, 'priority', ?, 'label_names', ?), ?, CURRENT_TIMESTAMP, ?)
+) VALUES (?, ?, ?, ?, 'task_updated', ?, json_object('title', ?, 'description', ?, 'status', ?, 'completed_at', ?, 'due_date', ?, 'due_at', ?, 'priority', ?, 'label_names', ?), ?, CURRENT_TIMESTAMP, ?)
 ON CONFLICT(session_id, tab_id) DO UPDATE SET
     id = excluded.id,
     task_id = excluded.task_id,
@@ -156,7 +158,7 @@ ON CONFLICT(session_id, tab_id) DO UPDATE SET
     etag_at_snapshot = excluded.etag_at_snapshot,
     created_at = CURRENT_TIMESTAMP,
     expires_at = excluded.expires_at;
-`, uuid.NewString(), input.SessionID, input.TabID, input.TaskID, snapshotRaw, snapshotTitle, nullableString(snapshotDescription.String), snapshotStatus, nullableString(snapshotDueDate.String), nullableTimeToRFC3339(snapshotDueAt), nullableInt64(snapshotPriority), nullableString(snapshotLabelNames.String), nullableString(snapshotETag.String), expiresAt.Format("2006-01-02T15:04:05Z")); err != nil {
+`, uuid.NewString(), input.SessionID, input.TabID, input.TaskID, snapshotRaw, snapshotTitle, nullableString(snapshotDescription.String), snapshotStatus, nullableTimeToRFC3339(snapshotCompletedAt), nullableString(snapshotDueDate.String), nullableTimeToRFC3339(snapshotDueAt), nullableInt64(snapshotPriority), nullableString(snapshotLabelNames.String), nullableString(snapshotETag.String), expiresAt.Format("2006-01-02T15:04:05Z")); err != nil {
 		return PreparedTaskUpdate{}, fmt.Errorf("prepare task update: upsert undo snapshot: %w", err)
 	}
 
@@ -166,6 +168,7 @@ SET project_id = ?,
     title = ?,
     description = ?,
     status = ?,
+    completed_at = ?,
     due_date = ?,
     due_at = ?,
     priority = ?,
@@ -177,7 +180,7 @@ SET project_id = ?,
     sync_status = 'pending',
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ? AND server_version = ?;
-`, input.ProjectID, input.Title, nullableString(input.Description), input.Status, nullValue(input.DueDate), nullValue(input.DueAt), nullValue(input.Priority), nullValue(input.LabelNames), nullableString(input.ProjectName), input.Href, input.RawVTODO, input.TaskID, input.ExpectedVersion)
+`, input.ProjectID, input.Title, nullableString(input.Description), input.Status, nullValue(input.CompletedAt), nullValue(input.DueDate), nullValue(input.DueAt), nullValue(input.Priority), nullValue(input.LabelNames), nullableString(input.ProjectName), input.Href, input.RawVTODO, input.TaskID, input.ExpectedVersion)
 	if err != nil {
 		return PreparedTaskUpdate{}, fmt.Errorf("prepare task update: update task: %w", err)
 	}

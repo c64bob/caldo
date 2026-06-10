@@ -50,7 +50,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 6.3 | Umgesetzt | `internal/caldav/todos.go` und Retry-Tests behandeln PUT/DELETE, 412 und 404 gemaess Architektur. |
 | 7.1 | Umgesetzt | Task-Create schreibt CalDAV vor lokaler Persistenz; Router-E2E deckt den Flow ab. |
 | 7.2 | Umgesetzt | Write-through-Edit fuer Kernfelder ist ueber Inline-/Detailformulare und Completion/Reopen-Aktionen abgedeckt; Handler-Tests pruefen Version, Undo, Pending, CalDAV-Erfolg, Projektwechsel und Fehlerstatus. |
-| 7.3 | Teilweise umgesetzt | Complete/Reopen-Routen existieren; sichtbare UI-Aktionen und Fehlerzustaende sind noch auszubauen. |
+| 7.3 | Umgesetzt | Complete/Reopen schreiben VTODO-Status, `completed_at`, Undo-Snapshot, ETag und Sync-Status ueber den Write-through-Pfad; sichtbare Aktionen, Fehleranzeige, Standard-Ausblendung erledigter Aufgaben und RRULE-Erhalt sind getestet. |
 | 7.4 | Teilweise umgesetzt | Delete-Write-through und 404-Erfolg sind umgesetzt; Loesch-UI/Undo-Fuehrung bleibt Restarbeit. |
 | 7.5 | Umgesetzt | `internal/view/task_rows.templ`, `internal/view/task_rows.go`, `web/assets/app.js` und `internal/handler/tasks_complete.go` zeigen beim Erledigen von Elternaufgaben mit offenen direkten Unteraufgaben einen Entscheidungsdialog fuer Elternaufgabe, offene Unteraufgaben oder Abbruch; die bestehenden Handler pruefen Versionen und schreiben jede betroffene Task zu CalDAV. |
 | 8.1 | Teilweise umgesetzt | Projektanlage ist backendseitig vorhanden; produktive UI-Verwaltung bleibt offen. |

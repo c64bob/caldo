@@ -6,7 +6,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Zusammenfassung
 
-- Bestehende Stories: 71 `Umgesetzt`, 15 `Teilweise umgesetzt`, 3 `Offen`.
+- Bestehende Stories: 72 `Umgesetzt`, 14 `Teilweise umgesetzt`, 3 `Offen`.
 - Neue Planungsstories: 15 `Umgesetzt`, 24 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
@@ -89,7 +89,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 17.1 | Umgesetzt | `RELATED-TO;RELTYPE=PARENT` und Nextcloud-kompatibles `RELATED-TO` werden importiert, genau eine Ebene wird ueber `parent_id` dargestellt, tiefere Ebenen bleiben Root-Aufgaben mit unveraendertem Raw-VTODO und Unteraufgaben erscheinen eingerueckt mit Parent-Metadaten. |
 | 17.2 | Umgesetzt | Direkte Unteraufgaben werden ausschliesslich ueber `Unteraufgabe hinzufuegen` erstellt, Quick Add lehnt Parent-Felder ab, Subtasks schreiben `RELATED-TO;RELTYPE=PARENT` sofort zu CalDAV, verschachtelte Subtasks sind blockiert und Handler-/Router-E2E-Tests decken die Fake-CalDAV-Sichtbarkeit ab. |
 | 17.3 | Umgesetzt | `internal/view/task_rows.templ`, `web/assets/app.js`, `internal/handler/tasks_delete.go` und `internal/handler/tasks_delete_test.go` zeigen die Anzahl direkter Unteraufgaben im Loeschdialog, senden die explizite `delete_all`-Aktion und loeschen Elternaufgabe sowie direkte Unteraufgaben einzeln mit Undo-Snapshot fuer die bestaetigte Loeschaktion. |
-| 18.1 | Teilweise umgesetzt | RRULE-Preservation und Update-Pfade existieren; dedicated Recurrence-Editor fehlt. |
+| 18.1 | Umgesetzt | Das Detailpanel rendert einen RRULE-Editor fuer MVP-Muster mit taeglich, woechentlich, monatlich, jaehrlich, werktags, Wochentag, Intervall sowie Ende nie/bis Datum/nach Anzahl; `internal/handler/tasks_update.go` ersetzt RRULEs nur bei expliziter Wiederholungsbearbeitung, waehrend andere Feldspeicherungen RRULEs unveraendert lassen. |
 | 18.2 | Umgesetzt | Komplexe RRULEs werden beim Patchen erhalten. |
 | 18.3 | Teilweise umgesetzt | ATTACH und unbekannte Felder werden erhalten und teilweise angezeigt; vollstaendige Anzeige/Klickbarkeit bleibt offen. |
 | 19.1 | Teilweise umgesetzt | Hauptnavigation existiert; Todoist-nahe UI-Qualitaet und vollstaendige Zielseiten fehlen. |

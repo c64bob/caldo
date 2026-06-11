@@ -123,7 +123,9 @@ func handleTaskUpdate(w http.ResponseWriter, r *http.Request, deps taskUpdateDep
 	applyLabelPatch(r.PostForm, baseFields.Categories, &patch)
 	if !model.IsComplexRRule(existingRRule) {
 		if recurrence := buildExplicitRRuleUpdate(r.PostForm); recurrence != nil {
-			patch.RRule = recurrence
+			if *recurrence != strings.TrimSpace(existingRRule) {
+				patch.RRule = recurrence
+			}
 		}
 	}
 	if statusProvided && status == "completed" {

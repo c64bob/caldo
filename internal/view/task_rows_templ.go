@@ -1752,7 +1752,7 @@ func TaskDetailPanel(task TaskRowView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if taskRecurrence(task).Editable {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 173, "<input type=\"hidden\" name=\"repeat_update\" value=\"1\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 173, "<input type=\"hidden\" name=\"repeat_update\" value=\"1\" disabled data-task-recurrence-update><div class=\"caldo-task-detail-grid\"><label class=\"caldo-task-detail-field\"><span>Rhythmus</span> <select name=\"repeat_freq\" class=\"caldo-select\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1762,22 +1762,12 @@ func TaskDetailPanel(task TaskRowView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 175, "><div class=\"caldo-task-detail-grid\"><label class=\"caldo-task-detail-field\"><span>Rhythmus</span> <select name=\"repeat_freq\" class=\"caldo-select\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if !taskCanDetailEdit(task) {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 176, " disabled")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 177, ">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 175, " data-task-recurrence-control>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, option := range taskRecurrenceFrequencyOptions() {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 178, "<option value=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 176, "<option value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1790,17 +1780,17 @@ func TaskDetailPanel(task TaskRowView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 179, "\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 177, "\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if option.Value == taskRecurrence(task).Frequency {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 180, " selected")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 178, " selected")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 181, ">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 179, ">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1813,12 +1803,12 @@ func TaskDetailPanel(task TaskRowView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 182, "</option>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 180, "</option>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 183, "</select></label> <label class=\"caldo-task-detail-field\"><span>Intervall</span> <input type=\"number\" min=\"1\" step=\"1\" name=\"repeat_interval\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 181, "</select></label> <label class=\"caldo-task-detail-field\"><span>Intervall</span> <input type=\"number\" min=\"1\" step=\"1\" name=\"repeat_interval\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1831,7 +1821,17 @@ func TaskDetailPanel(task TaskRowView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 184, "\" class=\"caldo-input\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 182, "\" class=\"caldo-input\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			if !taskCanDetailEdit(task) {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 183, " disabled")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 184, " data-task-recurrence-control></label> <label class=\"caldo-task-detail-field\"><span>Wochentag</span> <select name=\"repeat_byday\" class=\"caldo-select\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1841,22 +1841,12 @@ func TaskDetailPanel(task TaskRowView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 186, "></label> <label class=\"caldo-task-detail-field\"><span>Wochentag</span> <select name=\"repeat_byday\" class=\"caldo-select\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if !taskCanDetailEdit(task) {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 187, " disabled")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 188, ">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 186, " data-task-recurrence-control>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, option := range taskByDayOptions() {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 189, "<option value=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 187, "<option value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1869,17 +1859,17 @@ func TaskDetailPanel(task TaskRowView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 190, "\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 188, "\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if option.Value == taskRecurrence(task).ByDay {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 191, " selected")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 189, " selected")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 192, ">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 190, ">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1892,27 +1882,27 @@ func TaskDetailPanel(task TaskRowView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 193, "</option>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 191, "</option>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 194, "</select></label> <label class=\"caldo-task-detail-field\"><span>Ende</span> <select name=\"repeat_end\" class=\"caldo-select\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 192, "</select></label> <label class=\"caldo-task-detail-field\"><span>Ende</span> <select name=\"repeat_end\" class=\"caldo-select\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if !taskCanDetailEdit(task) {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 195, " disabled")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 193, " disabled")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 196, ">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 194, " data-task-recurrence-control>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, option := range taskRecurrenceEndOptions() {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 197, "<option value=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 195, "<option value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1925,17 +1915,17 @@ func TaskDetailPanel(task TaskRowView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 198, "\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 196, "\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if option.Value == taskRecurrence(task).End {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 199, " selected")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 197, " selected")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 200, ">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 198, ">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1948,12 +1938,12 @@ func TaskDetailPanel(task TaskRowView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 201, "</option>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 199, "</option>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 202, "</select></label> <label class=\"caldo-task-detail-field\"><span>Bis</span> <input type=\"date\" name=\"repeat_until\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 200, "</select></label> <label class=\"caldo-task-detail-field\"><span>Bis</span> <input type=\"date\" name=\"repeat_until\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1966,17 +1956,17 @@ func TaskDetailPanel(task TaskRowView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 203, "\" class=\"caldo-input\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 201, "\" class=\"caldo-input\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if !taskCanDetailEdit(task) {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 204, " disabled")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 202, " disabled")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 205, "></label> <label class=\"caldo-task-detail-field\"><span>Anzahl</span> <input type=\"number\" min=\"1\" step=\"1\" name=\"repeat_count\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 203, " data-task-recurrence-control></label> <label class=\"caldo-task-detail-field\"><span>Anzahl</span> <input type=\"number\" min=\"1\" step=\"1\" name=\"repeat_count\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1989,22 +1979,22 @@ func TaskDetailPanel(task TaskRowView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 206, "\" class=\"caldo-input\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 204, "\" class=\"caldo-input\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if !taskCanDetailEdit(task) {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 207, " disabled")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 205, " disabled")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 208, "></label></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 206, " data-task-recurrence-control></label></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 209, "<p class=\"caldo-task-detail-static\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 207, "<p class=\"caldo-task-detail-static\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2017,27 +2007,27 @@ func TaskDetailPanel(task TaskRowView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 210, "</p><p class=\"caldo-meta\">Komplexe Wiederholung wird unverändert erhalten.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 208, "</p><p class=\"caldo-meta\">Komplexe Wiederholung wird unverändert erhalten.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 211, "</section><section class=\"caldo-task-detail-section\" aria-label=\"Anhänge\"><div class=\"caldo-task-detail-section-heading\"><h3>Anhänge</h3></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 209, "</section><section class=\"caldo-task-detail-section\" aria-label=\"Anhänge\"><div class=\"caldo-task-detail-section-heading\"><h3>Anhänge</h3></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if len(task.Attachments) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 212, "<ul class=\"caldo-task-detail-attachments\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 210, "<ul class=\"caldo-task-detail-attachments\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, attachment := range task.Attachments {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 213, "<li>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 211, "<li>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				if attachment.IsExternalURL {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 214, "<a href=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 212, "<a href=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -2050,7 +2040,7 @@ func TaskDetailPanel(task TaskRowView) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 215, "\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"caldo-task-detail-attachment-link\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 213, "\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"caldo-task-detail-attachment-link\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -2063,42 +2053,42 @@ func TaskDetailPanel(task TaskRowView) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 216, "</a>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 214, "</a>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				} else {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 217, "<span class=\"caldo-task-detail-static\">Anhang vorhanden (inline/binary)</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 215, "<span class=\"caldo-task-detail-static\">Anhang vorhanden (inline/binary)</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 218, "</li>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 216, "</li>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 219, "</ul>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 217, "</ul>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 220, "<p class=\"caldo-muted\">Keine Anhänge</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 218, "<p class=\"caldo-muted\">Keine Anhänge</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 221, "</section><div class=\"caldo-task-detail-actions\"><button type=\"submit\" class=\"caldo-button caldo-button-primary\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 219, "</section><div class=\"caldo-task-detail-actions\"><button type=\"submit\" class=\"caldo-button caldo-button-primary\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if !taskCanDetailEdit(task) {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 222, " disabled")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 220, " disabled")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 223, ">Speichern</button> <button type=\"button\" class=\"caldo-button caldo-button-ghost\" data-task-detail-close>Schließen</button> <span class=\"htmx-indicator caldo-meta\" aria-live=\"polite\">Speichern ...</span></div></form></div></dialog>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 221, ">Speichern</button> <button type=\"button\" class=\"caldo-button caldo-button-ghost\" data-task-detail-close>Schließen</button> <span class=\"htmx-indicator caldo-meta\" aria-live=\"polite\">Speichern ...</span></div></form></div></dialog>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2127,7 +2117,7 @@ func TaskCompleteDialog(task TaskRowView) templ.Component {
 			templ_7745c5c3_Var115 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 224, "<dialog id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 222, "<dialog id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2140,7 +2130,7 @@ func TaskCompleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 225, "\" class=\"caldo-task-complete-dialog\" data-task-complete-dialog aria-labelledby=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 223, "\" class=\"caldo-task-complete-dialog\" data-task-complete-dialog aria-labelledby=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2153,7 +2143,7 @@ func TaskCompleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 226, "\"><div class=\"caldo-task-complete-shell\"><header class=\"caldo-task-complete-header\"><div class=\"caldo-task-complete-heading\"><p class=\"caldo-meta\">Unteraufgaben</p><h2 id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 224, "\"><div class=\"caldo-task-complete-shell\"><header class=\"caldo-task-complete-header\"><div class=\"caldo-task-complete-heading\"><p class=\"caldo-meta\">Unteraufgaben</p><h2 id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2166,7 +2156,7 @@ func TaskCompleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 227, "\" class=\"caldo-task-complete-title\">Aufgabe erledigen</h2></div><button type=\"button\" class=\"caldo-icon-button caldo-task-complete-close\" data-task-complete-close aria-label=\"Erledigen abbrechen\">×</button></header><div class=\"caldo-task-complete-body\"><p class=\"caldo-task-complete-copy\">\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 225, "\" class=\"caldo-task-complete-title\">Aufgabe erledigen</h2></div><button type=\"button\" class=\"caldo-icon-button caldo-task-complete-close\" data-task-complete-close aria-label=\"Erledigen abbrechen\">×</button></header><div class=\"caldo-task-complete-body\"><p class=\"caldo-task-complete-copy\">\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2179,7 +2169,7 @@ func TaskCompleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 228, "\" hat ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 226, "\" hat ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2192,7 +2182,7 @@ func TaskCompleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 229, ".</p><p class=\"caldo-task-complete-copy\">Wähle, ob nur die Elternaufgabe oder auch die offenen direkten Unteraufgaben erledigt werden.</p><p class=\"caldo-alert caldo-alert-error caldo-task-complete-error\" data-task-complete-error aria-live=\"polite\" hidden>Aufgabe konnte nicht erledigt werden.</p><div class=\"caldo-task-complete-actions\"><form method=\"post\" action=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 227, ".</p><p class=\"caldo-task-complete-copy\">Wähle, ob nur die Elternaufgabe oder auch die offenen direkten Unteraufgaben erledigt werden.</p><p class=\"caldo-alert caldo-alert-error caldo-task-complete-error\" data-task-complete-error aria-live=\"polite\" hidden>Aufgabe konnte nicht erledigt werden.</p><div class=\"caldo-task-complete-actions\"><form method=\"post\" action=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2205,7 +2195,7 @@ func TaskCompleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 230, "\" hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 228, "\" hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2218,7 +2208,7 @@ func TaskCompleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 231, "\" hx-swap=\"none\" hx-disabled-elt=\"find button\" hx-headers=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 229, "\" hx-swap=\"none\" hx-disabled-elt=\"find button\" hx-headers=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2231,7 +2221,7 @@ func TaskCompleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 232, "\" data-refresh-after-write=\"true\" data-task-complete-form class=\"caldo-task-complete-form\"><input type=\"hidden\" name=\"expected_version\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 230, "\" data-refresh-after-write=\"true\" data-task-complete-form class=\"caldo-task-complete-form\"><input type=\"hidden\" name=\"expected_version\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2244,7 +2234,7 @@ func TaskCompleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 233, "\"> <input type=\"hidden\" name=\"subtasks_action\" value=\"parent_only\"> <button type=\"submit\" class=\"caldo-button caldo-button-secondary\">Nur Elternaufgabe erledigen</button> <span class=\"htmx-indicator caldo-meta\" aria-live=\"polite\">Speichern ...</span></form><form method=\"post\" action=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 231, "\"> <input type=\"hidden\" name=\"subtasks_action\" value=\"parent_only\"> <button type=\"submit\" class=\"caldo-button caldo-button-secondary\">Nur Elternaufgabe erledigen</button> <span class=\"htmx-indicator caldo-meta\" aria-live=\"polite\">Speichern ...</span></form><form method=\"post\" action=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2257,7 +2247,7 @@ func TaskCompleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 234, "\" hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 232, "\" hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2270,7 +2260,7 @@ func TaskCompleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 235, "\" hx-swap=\"none\" hx-disabled-elt=\"find button\" hx-headers=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 233, "\" hx-swap=\"none\" hx-disabled-elt=\"find button\" hx-headers=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2283,7 +2273,7 @@ func TaskCompleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 236, "\" data-refresh-after-write=\"true\" data-task-complete-form class=\"caldo-task-complete-form\"><input type=\"hidden\" name=\"expected_version\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 234, "\" data-refresh-after-write=\"true\" data-task-complete-form class=\"caldo-task-complete-form\"><input type=\"hidden\" name=\"expected_version\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2296,7 +2286,7 @@ func TaskCompleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 237, "\"> <input type=\"hidden\" name=\"subtasks_action\" value=\"complete_open\"> <button type=\"submit\" class=\"caldo-button caldo-button-primary\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 235, "\"> <input type=\"hidden\" name=\"subtasks_action\" value=\"complete_open\"> <button type=\"submit\" class=\"caldo-button caldo-button-primary\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2309,7 +2299,7 @@ func TaskCompleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 238, "</button> <span class=\"htmx-indicator caldo-meta\" aria-live=\"polite\">Speichern ...</span></form><button type=\"button\" class=\"caldo-button caldo-button-ghost\" data-task-complete-close data-task-complete-cancel>Abbrechen</button></div></div></div></dialog>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 236, "</button> <span class=\"htmx-indicator caldo-meta\" aria-live=\"polite\">Speichern ...</span></form><button type=\"button\" class=\"caldo-button caldo-button-ghost\" data-task-complete-close data-task-complete-cancel>Abbrechen</button></div></div></div></dialog>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2338,7 +2328,7 @@ func TaskDeleteDialog(task TaskRowView) templ.Component {
 			templ_7745c5c3_Var130 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 239, "<dialog id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 237, "<dialog id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2351,7 +2341,7 @@ func TaskDeleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 240, "\" class=\"caldo-task-delete-dialog\" data-task-delete-dialog aria-labelledby=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 238, "\" class=\"caldo-task-delete-dialog\" data-task-delete-dialog aria-labelledby=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2364,7 +2354,7 @@ func TaskDeleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 241, "\"><div class=\"caldo-task-delete-shell\"><header class=\"caldo-task-delete-header\"><div class=\"caldo-task-delete-heading\"><p class=\"caldo-meta\">Aufgabe</p><h2 id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 239, "\"><div class=\"caldo-task-delete-shell\"><header class=\"caldo-task-delete-header\"><div class=\"caldo-task-delete-heading\"><p class=\"caldo-meta\">Aufgabe</p><h2 id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2377,7 +2367,7 @@ func TaskDeleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 242, "\" class=\"caldo-task-delete-title\">Aufgabe löschen</h2></div><button type=\"button\" class=\"caldo-icon-button caldo-task-delete-close\" data-task-delete-close aria-label=\"Löschen abbrechen\">×</button></header><div class=\"caldo-task-delete-body\"><p class=\"caldo-task-delete-copy\">\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 240, "\" class=\"caldo-task-delete-title\">Aufgabe löschen</h2></div><button type=\"button\" class=\"caldo-icon-button caldo-task-delete-close\" data-task-delete-close aria-label=\"Löschen abbrechen\">×</button></header><div class=\"caldo-task-delete-body\"><p class=\"caldo-task-delete-copy\">\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2390,12 +2380,12 @@ func TaskDeleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 243, "\" wirklich löschen?</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 241, "\" wirklich löschen?</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if taskHasDirectSubtasks(task) {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 244, "<p class=\"caldo-task-delete-copy\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 242, "<p class=\"caldo-task-delete-copy\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2408,12 +2398,12 @@ func TaskDeleteDialog(task TaskRowView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 245, "</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 243, "</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 246, "<p class=\"caldo-alert caldo-alert-error caldo-task-delete-error\" data-task-delete-error aria-live=\"polite\" hidden>Aufgabe konnte nicht gelöscht werden.</p><form method=\"post\" action=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 244, "<p class=\"caldo-alert caldo-alert-error caldo-task-delete-error\" data-task-delete-error aria-live=\"polite\" hidden>Aufgabe konnte nicht gelöscht werden.</p><form method=\"post\" action=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2426,7 +2416,7 @@ func TaskDeleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 247, "\" hx-delete=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 245, "\" hx-delete=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2439,7 +2429,7 @@ func TaskDeleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 248, "\" hx-swap=\"none\" hx-disabled-elt=\"find button\" hx-headers=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 246, "\" hx-swap=\"none\" hx-disabled-elt=\"find button\" hx-headers=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2452,7 +2442,7 @@ func TaskDeleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 249, "\" data-task-delete-form class=\"caldo-task-delete-form\"><input type=\"hidden\" name=\"expected_version\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 247, "\" data-task-delete-form class=\"caldo-task-delete-form\"><input type=\"hidden\" name=\"expected_version\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2465,17 +2455,17 @@ func TaskDeleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 250, "\"> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 248, "\"> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if taskHasDirectSubtasks(task) {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 251, "<input type=\"hidden\" name=\"subtasks_action\" value=\"delete_all\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 249, "<input type=\"hidden\" name=\"subtasks_action\" value=\"delete_all\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 252, "<div class=\"caldo-task-delete-actions\"><button type=\"submit\" class=\"caldo-button caldo-button-primary caldo-button-danger-solid\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 250, "<div class=\"caldo-task-delete-actions\"><button type=\"submit\" class=\"caldo-button caldo-button-primary caldo-button-danger-solid\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2488,7 +2478,7 @@ func TaskDeleteDialog(task TaskRowView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 253, "</button> <button type=\"button\" class=\"caldo-button caldo-button-ghost\" data-task-delete-close data-task-delete-cancel>Abbrechen</button> <span class=\"htmx-indicator caldo-meta\" aria-live=\"polite\">Löscht ...</span></div></form></div></div></dialog>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 251, "</button> <button type=\"button\" class=\"caldo-button caldo-button-ghost\" data-task-delete-close data-task-delete-cancel>Abbrechen</button> <span class=\"htmx-indicator caldo-meta\" aria-live=\"polite\">Löscht ...</span></div></form></div></div></dialog>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2518,7 +2508,7 @@ func InlineTaskCreate(create InlineTaskCreateView) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if create.Enabled {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 254, "<div class=\"caldo-inline-create\" data-inline-task-create><button type=\"button\" class=\"caldo-inline-create-trigger\" data-inline-task-create-trigger aria-expanded=\"false\"><span class=\"caldo-inline-create-plus\" aria-hidden=\"true\">+</span> <span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 252, "<div class=\"caldo-inline-create\" data-inline-task-create><button type=\"button\" class=\"caldo-inline-create-trigger\" data-inline-task-create-trigger aria-expanded=\"false\"><span class=\"caldo-inline-create-plus\" aria-hidden=\"true\">+</span> <span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2531,7 +2521,7 @@ func InlineTaskCreate(create InlineTaskCreateView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 255, "</span></button><form method=\"post\" action=\"/tasks/\" hx-post=\"/tasks/\" hx-swap=\"none\" hx-disabled-elt=\"find button\" hx-headers=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 253, "</span></button><form method=\"post\" action=\"/tasks/\" hx-post=\"/tasks/\" hx-swap=\"none\" hx-disabled-elt=\"find button\" hx-headers=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2544,12 +2534,12 @@ func InlineTaskCreate(create InlineTaskCreateView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 256, "\" data-refresh-after-write=\"true\" data-inline-task-create-form class=\"caldo-inline-create-form\" hidden>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 254, "\" data-refresh-after-write=\"true\" data-inline-task-create-form class=\"caldo-inline-create-form\" hidden>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if create.ProjectID != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 257, "<input type=\"hidden\" name=\"project_id\" value=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 255, "<input type=\"hidden\" name=\"project_id\" value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2562,13 +2552,13 @@ func InlineTaskCreate(create InlineTaskCreateView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 258, "\"> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 256, "\"> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 			if create.DueDate != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 259, "<input type=\"hidden\" name=\"due_date\" value=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 257, "<input type=\"hidden\" name=\"due_date\" value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2581,12 +2571,12 @@ func InlineTaskCreate(create InlineTaskCreateView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 260, "\"> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 258, "\"> ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 261, "<input type=\"text\" name=\"title\" required autocomplete=\"off\" class=\"caldo-input caldo-inline-create-input\" placeholder=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 259, "<input type=\"text\" name=\"title\" required autocomplete=\"off\" class=\"caldo-input caldo-inline-create-input\" placeholder=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2599,12 +2589,12 @@ func InlineTaskCreate(create InlineTaskCreateView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 262, "\" aria-label=\"Aufgabentitel\" data-inline-task-create-title> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 260, "\" aria-label=\"Aufgabentitel\" data-inline-task-create-title> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if len(inlineTaskCreateContextChips(create)) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 263, "<div class=\"caldo-inline-create-meta\" aria-label=\"Kontext\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 261, "<div class=\"caldo-inline-create-meta\" aria-label=\"Kontext\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2614,7 +2604,7 @@ func InlineTaskCreate(create InlineTaskCreateView) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 264, "<span class=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 262, "<span class=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -2627,7 +2617,7 @@ func InlineTaskCreate(create InlineTaskCreateView) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 265, "\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 263, "\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -2640,17 +2630,17 @@ func InlineTaskCreate(create InlineTaskCreateView) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 266, "</span>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 264, "</span>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 267, "</div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 265, "</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 268, "<p class=\"caldo-alert caldo-alert-error caldo-inline-create-error\" data-inline-task-create-error aria-live=\"polite\" hidden>Aufgabe konnte nicht gespeichert werden.</p><div class=\"caldo-inline-create-actions\"><button type=\"submit\" class=\"caldo-button caldo-button-primary\">Speichern</button> <button type=\"button\" class=\"caldo-button caldo-button-ghost\" data-inline-task-create-cancel>Abbrechen</button> <span class=\"htmx-indicator caldo-meta\" aria-live=\"polite\">Speichern ...</span></div></form></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 266, "<p class=\"caldo-alert caldo-alert-error caldo-inline-create-error\" data-inline-task-create-error aria-live=\"polite\" hidden>Aufgabe konnte nicht gespeichert werden.</p><div class=\"caldo-inline-create-actions\"><button type=\"submit\" class=\"caldo-button caldo-button-primary\">Speichern</button> <button type=\"button\" class=\"caldo-button caldo-button-ghost\" data-inline-task-create-cancel>Abbrechen</button> <span class=\"htmx-indicator caldo-meta\" aria-live=\"polite\">Speichern ...</span></div></form></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

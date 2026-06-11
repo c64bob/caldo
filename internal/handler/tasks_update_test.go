@@ -552,6 +552,102 @@ func TestBuildExplicitRRuleUpdateUntilUsesEndOfDay(t *testing.T) {
 	}
 }
 
+func TestBuildExplicitRRuleUpdateMVPEditorPatterns(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		form map[string][]string
+		want string
+	}{
+		{
+			name: "daily interval",
+			form: map[string][]string{
+				"repeat_update":   {"1"},
+				"repeat_freq":     {"DAILY"},
+				"repeat_interval": {"3"},
+			},
+			want: "FREQ=DAILY;INTERVAL=3",
+		},
+		{
+			name: "weekly interval",
+			form: map[string][]string{
+				"repeat_update":   {"1"},
+				"repeat_freq":     {"WEEKLY"},
+				"repeat_interval": {"2"},
+			},
+			want: "FREQ=WEEKLY;INTERVAL=2",
+		},
+		{
+			name: "monthly interval",
+			form: map[string][]string{
+				"repeat_update":   {"1"},
+				"repeat_freq":     {"MONTHLY"},
+				"repeat_interval": {"4"},
+			},
+			want: "FREQ=MONTHLY;INTERVAL=4",
+		},
+		{
+			name: "yearly",
+			form: map[string][]string{
+				"repeat_update": {"1"},
+				"repeat_freq":   {"YEARLY"},
+			},
+			want: "FREQ=YEARLY",
+		},
+		{
+			name: "weekdays",
+			form: map[string][]string{
+				"repeat_update": {"1"},
+				"repeat_freq":   {"WEEKDAYS"},
+			},
+			want: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
+		},
+		{
+			name: "specific weekday",
+			form: map[string][]string{
+				"repeat_update": {"1"},
+				"repeat_freq":   {"BYDAY"},
+				"repeat_byday":  {"WE"},
+			},
+			want: "FREQ=WEEKLY;BYDAY=WE",
+		},
+		{
+			name: "count end",
+			form: map[string][]string{
+				"repeat_update": {"1"},
+				"repeat_freq":   {"MONTHLY"},
+				"repeat_end":    {"count"},
+				"repeat_count":  {"8"},
+			},
+			want: "FREQ=MONTHLY;COUNT=8",
+		},
+		{
+			name: "none clears recurrence",
+			form: map[string][]string{
+				"repeat_update": {"1"},
+				"repeat_freq":   {"NONE"},
+			},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			rule := buildExplicitRRuleUpdate(tt.form)
+			if rule == nil {
+				t.Fatal("expected explicit rrule update")
+			}
+			if *rule != tt.want {
+				t.Fatalf("unexpected rule: got %q want %q", *rule, tt.want)
+			}
+		})
+	}
+}
+
 func TestTaskUpdateExplicitRecurrenceReplace(t *testing.T) {
 	t.Parallel()
 	database := openSQLiteForTaskUpdateHandlerTest(t)

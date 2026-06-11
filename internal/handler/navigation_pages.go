@@ -1,10 +1,13 @@
 package handler
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
 
+	"caldo/internal/caldav"
 	"caldo/internal/db"
 	"caldo/internal/view"
 )
@@ -86,22 +89,79 @@ func FiltersPage(database *db.Database) http.HandlerFunc {
 }
 
 // SettingsPage renders the settings page for normal operation.
-func SettingsPage(database *db.Database, proxyUserHeader string) http.HandlerFunc {
+func SettingsPage(deps settingsDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		httpsConfigured := r.TLS != nil || strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")), "https")
-		if database == nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-		settings, err := database.LoadAppSettings(r.Context())
+		renderSettingsPage(w, r, deps, settingsPageState{}, http.StatusOK)
+	}
+}
+
+func renderSettingsPage(w http.ResponseWriter, r *http.Request, deps settingsDependencies, pageState settingsPageState, status int) {
+	if deps.database == nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	settings, err := deps.database.LoadAppSettings(r.Context())
+	if err != nil {
+		renderPageError(w, r, "Einstellungen", "Einstellungen laden", http.StatusInternalServerError)
+		return
+	}
+	if pageState.PreserveCalDAV {
+		settings.CalDAVURL = pageState.CalDAVURL
+		settings.CalDAVUsername = pageState.CalDAVUsername
+	}
+
+	available := pageState.Available
+	calendarLoadError := pageState.CalendarsError
+	if available == nil && deps.calendar != nil {
+		calendars, err := loadSettingsCalendars(r.Context(), deps)
 		if err != nil {
-			renderPageError(w, r, "Einstellungen", "Einstellungen laden", http.StatusInternalServerError)
-			return
-		}
-		if err := view.BaseLayout("Einstellungen", view.SettingsPageContent(settings, proxyUserHeader, httpsConfigured)).Render(r.Context(), w); err != nil {
-			http.Error(w, "render page", http.StatusInternalServerError)
+			if calendarLoadError == "" {
+				calendarLoadError = "kalender konnten nicht geladen werden"
+			}
+		} else {
+			available = calendars
 		}
 	}
+
+	httpsConfigured := r.TLS != nil || strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")), "https")
+	proxyUserPresent := strings.TrimSpace(r.Header.Get(deps.proxyUserHeader)) != ""
+	settingsView := view.SettingsPageView{
+		Settings:         settings,
+		Available:        available,
+		CalDAVError:      pageState.CalDAVError,
+		CalendarsError:   calendarLoadError,
+		SelectedHrefs:    pageState.SelectedHrefs,
+		DefaultHref:      pageState.DefaultHref,
+		ProxyUserHeader:  deps.proxyUserHeader,
+		ProxyUserPresent: proxyUserPresent,
+		HTTPSConfigured:  httpsConfigured,
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if status != http.StatusOK {
+		w.WriteHeader(status)
+	}
+	if err := view.BaseLayout("Einstellungen", view.SettingsPageContent(settingsView)).Render(r.Context(), w); err != nil {
+		http.Error(w, "render page", http.StatusInternalServerError)
+	}
+}
+
+func loadSettingsCalendars(ctx context.Context, deps settingsDependencies) ([]caldav.Calendar, error) {
+	if deps.database == nil || deps.calendar == nil {
+		return nil, errors.New("settings calendars dependencies missing")
+	}
+
+	credentials, err := deps.database.LoadCalDAVCredentials(ctx, deps.encryptionKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return deps.calendar.ListCalendars(ctx, caldav.Credentials{
+		URL:      credentials.URL,
+		Username: credentials.Username,
+		Password: credentials.Password,
+	})
 }
 
 func renderPageError(w http.ResponseWriter, r *http.Request, title string, action string, status int) {

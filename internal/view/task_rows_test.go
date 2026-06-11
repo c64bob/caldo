@@ -529,6 +529,38 @@ func TestTaskRowRendersConflictDetailPanelReadOnly(t *testing.T) {
 	}
 }
 
+func TestTaskRowRendersConflictLinkWhenConflictIDIsKnown(t *testing.T) {
+	t.Parallel()
+
+	component := TaskRow(TaskRowView{
+		ID:            "task-conflict",
+		Title:         "Konflikt Aufgabe",
+		Status:        "needs-action",
+		SyncStatus:    "conflict",
+		ServerVersion: 5,
+		ConflictID:    "conflict-1",
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(context.Background(), &rendered); err != nil {
+		t.Fatalf("render task row: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`data-task-conflict-link`,
+		`href="/conflicts/conflict-1"`,
+		`Konfliktlösung`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected conflict task link to include %q in %s", want, output)
+		}
+	}
+	if strings.Contains(output, `data-task-detail-open`) || strings.Contains(output, `data-task-detail-dialog`) {
+		t.Fatalf("conflict task with conflict id must link directly instead of opening detail: %s", output)
+	}
+}
+
 func TestInlineTaskCreateRendersContextAndControls(t *testing.T) {
 	t.Parallel()
 

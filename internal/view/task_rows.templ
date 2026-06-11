@@ -109,7 +109,15 @@ templ TaskRow(task TaskRowView) {
 							Bearbeiten
 						</button>
 					}
-					if taskCanOpenDetail(task) {
+					if taskUsesConflictLink(task) {
+						<a
+							class="caldo-task-detail-open"
+							href={ templ.URL(taskConflictPath(task)) }
+							data-task-conflict-link
+						>
+							Konfliktlösung
+						</a>
+					} else if taskCanOpenDetail(task) {
 						<button
 							type="button"
 							class="caldo-task-detail-open"
@@ -271,7 +279,7 @@ templ TaskRow(task TaskRowView) {
 		if taskNeedsCompletionDecision(task) {
 			@TaskCompleteDialog(task)
 		}
-		if taskCanOpenDetail(task) {
+		if taskCanOpenDetail(task) && !taskUsesConflictLink(task) {
 			@TaskDetailPanel(task)
 		}
 		if taskCanDelete(task) {

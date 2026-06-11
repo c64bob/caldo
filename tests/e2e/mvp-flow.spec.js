@@ -392,7 +392,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
 
   await gotoApp(page, conflictHref);
   await expect(page.getByRole('heading', { name: 'Konfliktdetail' })).toBeVisible();
-  await expect(page.getByText('E2E Remote Conflict Edit')).toBeVisible();
+  await expect(page.getByText('E2E Remote Conflict Edit', { exact: true })).toBeVisible();
 
   response = await appFormRequest(page, 'POST', `${conflictHref}/resolve`, {
     resolution: 'remote'

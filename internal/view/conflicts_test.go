@@ -1,0 +1,81 @@
+package view
+
+import (
+	"bytes"
+	"context"
+	"database/sql"
+	"strings"
+	"testing"
+	"time"
+
+	"caldo/internal/db"
+)
+
+func TestConflictDetailPageRendersReadableComparison(t *testing.T) {
+	t.Parallel()
+
+	component := ConflictDetailPage(db.ConflictDetail{
+		ID:           "conflict-1",
+		ProjectName:  "Work",
+		ConflictType: "field_conflict",
+		CreatedAt:    time.Date(2026, 6, 11, 8, 30, 0, 0, time.UTC),
+		BaseVTODO:    sql.NullString{Valid: true, String: "BEGIN:VTODO\r\nSUMMARY:Base title\r\nDESCRIPTION:Base desc\r\nSTATUS:NEEDS-ACTION\r\nDUE;VALUE=DATE:20260610\r\nPRIORITY:5\r\nCATEGORIES:shared,STARRED\r\nEND:VTODO\r\n"},
+		LocalVTODO:   sql.NullString{Valid: true, String: "BEGIN:VTODO\r\nSUMMARY:Local title\r\nDESCRIPTION:Local desc\r\nSTATUS:NEEDS-ACTION\r\nDUE;VALUE=DATE:20260611\r\nPRIORITY:1\r\nCATEGORIES:shared,local,STARRED\r\nRRULE:FREQ=WEEKLY\r\nEND:VTODO\r\n"},
+		RemoteVTODO:  sql.NullString{Valid: true, String: "BEGIN:VTODO\r\nSUMMARY:Remote title\r\nDESCRIPTION:Remote desc\r\nSTATUS:COMPLETED\r\nDUE;VALUE=DATE:20260612\r\nPRIORITY:9\r\nCATEGORIES:shared,remote\r\nATTACH:https://example.com/spec.pdf\r\nEND:VTODO\r\n"},
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(context.Background(), &rendered); err != nil {
+		t.Fatalf("render conflict detail: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`data-conflict-comparison`,
+		`Feldkonflikt`,
+		`Base title`,
+		`Local title`,
+		`Remote title`,
+		`2026-06-11`,
+		`2026-06-12`,
+		`P1 Hoch (1)`,
+		`P3 Niedrig (9)`,
+		`shared, local`,
+		`shared, remote`,
+		`Ja`,
+		`Nein`,
+		`Wöchentlich`,
+		`https://example.com/spec.pdf`,
+		`data-conflict-value="local-title"`,
+		`caldo-conflict-value-changed`,
+		`Technische VTODO-Daten`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected readable conflict detail to include %q in %s", want, output)
+		}
+	}
+}
+
+func TestConflictDetailPageRendersDeletedSideAsMissing(t *testing.T) {
+	t.Parallel()
+
+	component := ConflictDetailPage(db.ConflictDetail{
+		ID:           "conflict-1",
+		ProjectName:  "Work",
+		ConflictType: "edit_delete",
+		CreatedAt:    time.Date(2026, 6, 11, 8, 30, 0, 0, time.UTC),
+		BaseVTODO:    sql.NullString{Valid: true, String: "BEGIN:VTODO\r\nSUMMARY:Base title\r\nEND:VTODO\r\n"},
+		LocalVTODO:   sql.NullString{Valid: true, String: "BEGIN:VTODO\r\nSUMMARY:Local title\r\nEND:VTODO\r\n"},
+		RemoteVTODO:  sql.NullString{},
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(context.Background(), &rendered); err != nil {
+		t.Fatalf("render conflict detail: %v", err)
+	}
+
+	output := rendered.String()
+	if !strings.Contains(output, "Lokal geändert, remote gelöscht") || !strings.Contains(output, "Nicht vorhanden (gelöscht)") {
+		t.Fatalf("expected deletion conflict labels in %s", output)
+	}
+}

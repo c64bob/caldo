@@ -55,6 +55,7 @@ func Search(deps searchDependencies) http.HandlerFunc {
 				IsSubtask:        result.IsSubtask,
 				SubtaskCount:     result.SubtaskCount,
 				OpenSubtaskCount: result.OpenSubtaskCount,
+				ConflictID:       result.UnresolvedConflictID,
 				RRule:            fields.RRule,
 				Attachments:      fields.Attachments,
 				ProjectOptions:   projectOptions,

@@ -63,6 +63,29 @@ func TestLoadTaskViewReturnsSingleTaskMetadata(t *testing.T) {
 	}
 }
 
+func TestLoadTaskViewIncludesUnresolvedConflictID(t *testing.T) {
+	t.Parallel()
+
+	database := openViewTestDB(t)
+	seedViewTasks(t, database)
+	if _, err := database.Conn.ExecContext(context.Background(), `
+INSERT INTO conflicts (id, task_id, project_id, conflict_type, created_at, base_vtodo, local_vtodo, remote_vtodo)
+VALUES ('conflict-open','task-today-active','project-1','field_conflict',CURRENT_TIMESTAMP,'base','local','remote');
+INSERT INTO conflicts (id, task_id, project_id, conflict_type, created_at, resolved_at, resolution)
+VALUES ('conflict-resolved','task-today-active','project-1','field_conflict',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'local');
+`); err != nil {
+		t.Fatalf("insert conflict: %v", err)
+	}
+
+	row, err := database.LoadTaskView(context.Background(), "task-today-active")
+	if err != nil {
+		t.Fatalf("load task view: %v", err)
+	}
+	if row.UnresolvedConflictID != "conflict-open" {
+		t.Fatalf("unexpected unresolved conflict id: got %q", row.UnresolvedConflictID)
+	}
+}
+
 func TestListTodayTasksIncludesDueAtStoredAsDriverTimestamp(t *testing.T) {
 	t.Parallel()
 

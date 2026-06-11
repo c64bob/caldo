@@ -1098,6 +1098,101 @@
 		text-decoration-color: var(--caldo-accent);
 	}
 
+	.caldo-conflict-header {
+		@apply flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between;
+	}
+
+	.caldo-conflict-summary {
+		@apply grid gap-3 rounded-md border p-4 sm:grid-cols-3;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-conflict-summary-value {
+		@apply mt-1 text-sm font-medium;
+		color: var(--caldo-text);
+		overflow-wrap: anywhere;
+	}
+
+	.caldo-conflict-comparison {
+		@apply overflow-x-auto rounded-md border;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-conflict-table {
+		@apply w-full min-w-[44rem] border-collapse text-sm;
+		color: var(--caldo-text);
+	}
+
+	.caldo-conflict-table th,
+	.caldo-conflict-table td {
+		@apply border-b px-3 py-2 text-left align-top;
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-conflict-table thead th {
+		@apply text-xs font-semibold uppercase tracking-normal;
+		background: var(--caldo-surface-muted);
+		color: var(--caldo-text-muted);
+	}
+
+	.caldo-conflict-table tbody th {
+		@apply w-36 font-medium;
+		color: var(--caldo-text-muted);
+	}
+
+	.caldo-conflict-table tbody tr:last-child th,
+	.caldo-conflict-table tbody tr:last-child td {
+		@apply border-b-0;
+	}
+
+	.caldo-conflict-value {
+		@apply min-w-0;
+		overflow-wrap: anywhere;
+		white-space: pre-wrap;
+	}
+
+	.caldo-conflict-value-missing {
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-conflict-value-changed {
+		background: var(--caldo-warning-muted);
+	}
+
+	.caldo-conflict-change-marker {
+		@apply mt-1 block text-xs font-medium;
+		color: var(--caldo-warning);
+	}
+
+	.caldo-conflict-raw {
+		@apply rounded-md border p-4 text-sm;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-conflict-raw summary {
+		@apply cursor-pointer font-medium;
+		color: var(--caldo-text);
+	}
+
+	.caldo-conflict-raw div {
+		@apply mt-3;
+	}
+
+	.caldo-conflict-raw h3 {
+		@apply text-xs font-semibold uppercase tracking-normal;
+		color: var(--caldo-text-muted);
+	}
+
+	.caldo-conflict-raw pre {
+		@apply mt-1 max-w-full overflow-x-auto rounded-md border p-3 text-xs;
+		background: var(--caldo-surface-muted);
+		border-color: var(--caldo-border);
+		color: var(--caldo-text);
+	}
+
 	.caldo-badge {
 		@apply inline-flex min-h-5 min-w-0 max-w-full items-center truncate rounded-full border px-2 text-xs font-medium;
 		background: var(--caldo-surface-muted);

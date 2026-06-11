@@ -6,7 +6,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Zusammenfassung
 
-- Bestehende Stories: 82 `Umgesetzt`, 4 `Teilweise umgesetzt`, 3 `Offen`.
+- Bestehende Stories: 83 `Umgesetzt`, 3 `Teilweise umgesetzt`, 3 `Offen`.
 - Neue Planungsstories: 15 `Umgesetzt`, 24 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
@@ -105,7 +105,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 21.3 | Offen | Keine produktive Drag-and-Drop-Verschiebung oder QA-Abdeckung gefunden. |
 | 21.4 | Offen | Suche-zu-gespeichertem-Filter-Flow ist noch nicht umgesetzt. |
 | 21.5 | Offen | Beschreibungstext-Linkifizierung ist nicht als fertiger UI-Flow vorhanden. |
-| 21.6 | Teilweise umgesetzt | QA-Dokumentation und Browser-CI existieren; Performance-Messungen bleiben offen. |
+| 21.6 | Umgesetzt | `docs/qa/performance.md` dokumentiert wiederholbare QA-Messpunkte mit PRD-Zielwerten fuer Startzeit ohne Migrationen, erste UI-Ansicht mit 10.000 lokalen Tasks, Initialimport mit 400 Remote-Tasks und inkrementellen Sync mit 400 Tasks; `docs/qa/playwright.md` verweist auf den separaten Performance-QA-Prozess. |
 | 22.1 | Teilweise umgesetzt | Konflikt-Resolve-Backend existiert; feldweise Konflikt-UI bleibt offen. |
 | 22.2 | Teilweise umgesetzt | Settings-Grundlage existiert; vollstaendige CalDAV-Management-UI bleibt offen. |
 | 22.3 | Teilweise umgesetzt | Quick Add erkennt unbekannte Projekte; Vorschlags-/Anlagefluss ist noch nicht fertig. |

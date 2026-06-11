@@ -106,6 +106,8 @@ Der Smoke ist für Chromium und Playwright WebKit identisch. Er nutzt ausschlie�
 
 Bei Fehlschlägen liegen Artefakte unter `test-results/` und der HTML-Report unter `playwright-report/`. Browser-spezifische Review-Screenshots liegen unter `test-results/e2e/chromium/` oder `test-results/e2e/webkit/`. Temporäre Serverlogs liegen während des Laufs unter `.playwright/caldo-e2e/`; mit `CALDO_E2E_KEEP_ARTIFACTS=1` bleibt auch das temporäre Datenverzeichnis erhalten.
 
+Performance-Zielwerte werden nicht im normalen Browser-Smoke bewertet. Die wiederholbaren Messpunkte fuer Startzeit, erste UI-Ansicht, Initialimport und inkrementellen Sync stehen in `docs/qa/performance.md`.
+
 ## UI-Review
 
 Die Todoist-nahe UI sollte in Browser-QA regelmäßig gegen diese Punkte geprüft werden:

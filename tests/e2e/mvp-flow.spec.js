@@ -16,6 +16,7 @@ const { appURL, readState } = require('./helpers/state');
 const { createRemoteTask, deleteRemoteTask, stageState, updateRemoteTask } = require('./helpers/stage');
 
 const desktopViewport = { width: 1440, height: 1000 };
+const tabletViewport = { width: 834, height: 1112 };
 const mobileViewport = { width: 390, height: 844 };
 
 test('MVP setup, sync, write-through, and conflict flow works in a browser session', async ({ page }, testInfo) => {
@@ -82,12 +83,15 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   }).toBe(true);
   await gotoApp(page, '/today');
   await captureBaselineSet(page, testInfo, 'today');
+  await gotoApp(page, '/upcoming');
+  await captureBaselineSet(page, testInfo, 'upcoming');
   await gotoApp(page, '/search?q=Stage');
   await captureBaselineSet(page, testInfo, 'search');
   await gotoApp(page, '/quick-add');
   await captureBaselineSet(page, testInfo, 'quick-add');
   await gotoApp(page, '/settings');
   await captureBaselineSet(page, testInfo, 'settings');
+  await exerciseTabletCoreViews(page);
   await gotoApp(page, '/search?q=Stage');
 
   await page.setViewportSize(mobileViewport);
@@ -208,6 +212,8 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(subtaskRow.getByRole('button', { name: 'Unteraufgabe hinzufügen' })).toHaveCount(0);
   detailRow = page.locator(`[data-task-id="${panelTaskID}"]`);
   await expect(detailRow).toContainText('1 Unteraufgabe');
+  await exerciseTabletTaskActions(page, panelTaskID);
+  detailRow = page.locator(`[data-task-id="${panelTaskID}"]`);
   let completeDialog = detailRow.locator('[data-task-complete-dialog]');
   await expect(completeDialog).toBeHidden();
   await detailRow.locator('[data-task-complete-open]').first().click();
@@ -411,6 +417,70 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expectSearchResult(page, 'E2E Remote Conflict Edit');
 });
 
+async function exerciseTabletCoreViews(page) {
+  await page.setViewportSize(tabletViewport);
+  const coreViews = [
+    { pathname: '/today', heading: 'Heute' },
+    { pathname: '/upcoming', heading: 'Demnächst' },
+    { pathname: '/projects', heading: 'Projekte' },
+    { pathname: '/search?q=Stage', heading: 'Globale Suche', content: 'Stage Seed Task' },
+    { pathname: '/settings', heading: 'Einstellungen' }
+  ];
+
+  for (const view of coreViews) {
+    await gotoApp(page, view.pathname);
+    await expect(page.locator('main').getByRole('heading', { name: view.heading })).toBeVisible();
+    if (view.content) {
+      await expect(page.locator('main').filter({ hasText: view.content })).toBeVisible();
+    }
+    await expect(page.getByRole('navigation', { name: 'Hauptnavigation' })).toBeVisible();
+    await expect(page.locator('.caldo-topbar a[href="/search"]')).toBeVisible();
+    await expect(page.locator('.caldo-topbar a[href="/quick-add"]')).toBeVisible();
+    await expect(page.locator('.caldo-topbar [data-theme-toggle]')).toBeVisible();
+    await expect(page.locator('.caldo-topbar #sync-status')).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  }
+}
+
+async function exerciseTabletTaskActions(page, panelTaskID) {
+  await page.setViewportSize(tabletViewport);
+  await gotoApp(page, '/search?q=E2E%20Panel%20Edited');
+  await expectNoHorizontalOverflow(page);
+  await ensureBrowserCSRFCookie(page);
+
+  let row = page.locator(`[data-task-id="${panelTaskID}"]`);
+  await expect(row).toBeVisible();
+  await row.getByRole('button', { name: 'Details' }).click();
+  let detailDialog = row.locator('[data-task-detail-dialog]');
+  await expect(detailDialog).toBeVisible();
+  await expectElementWithinViewport(detailDialog, tabletViewport);
+  await detailDialog.locator('[name="description"]').fill('edited through tablet detail panel');
+  await detailDialog.getByRole('button', { name: 'Speichern' }).click();
+  row = page.locator(`[data-task-id="${panelTaskID}"]`);
+  await expect(row).toContainText('edited through tablet detail panel');
+  await expectNoHorizontalOverflow(page);
+
+  row = page.locator(`[data-task-id="${panelTaskID}"]`);
+  const completeDialog = row.locator('[data-task-complete-dialog]');
+  await row.locator('[data-task-complete-open]').first().click();
+  await expect(completeDialog).toBeVisible();
+  await expectElementWithinViewport(completeDialog, tabletViewport);
+  await expect(completeDialog.getByRole('button', { name: 'Nur Elternaufgabe erledigen' })).toBeVisible();
+  await expect(completeDialog.getByRole('button', { name: 'Aufgabe und 1 offene Unteraufgabe erledigen' })).toBeVisible();
+  await completeDialog.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+  await expect(completeDialog).toBeHidden();
+
+  row = page.locator(`[data-task-id="${panelTaskID}"]`);
+  const deleteDialog = row.locator('[data-task-delete-dialog]');
+  await row.locator('[data-task-delete-open]').click();
+  await expect(deleteDialog).toBeVisible();
+  await expectElementWithinViewport(deleteDialog, tabletViewport);
+  await expect(deleteDialog.getByRole('button', { name: 'Aufgabe und Unteraufgaben löschen' })).toBeVisible();
+  await deleteDialog.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+  await expect(deleteDialog).toBeHidden();
+  await page.setViewportSize(desktopViewport);
+}
+
 async function exerciseKeyboardShortcuts(page) {
   await gotoApp(page, '/today');
   await page.keyboard.press('n');
@@ -578,10 +648,44 @@ function browserBaselineDir(testInfo) {
 
 async function captureBaselineSet(page, testInfo, name) {
   await captureBaseline(page, testInfo, `${name}-desktop`, desktopViewport);
+  await captureBaseline(page, testInfo, `${name}-tablet`, tabletViewport);
   await captureBaseline(page, testInfo, `${name}-mobile`, mobileViewport);
 }
 
 async function captureBaseline(page, testInfo, name, viewport) {
   await page.setViewportSize(viewport);
   await page.screenshot({ path: `${browserBaselineDir(testInfo)}/${name}.png`, fullPage: true });
+}
+
+async function expectNoHorizontalOverflow(page) {
+  const overflow = await page.evaluate(() => {
+    const root = document.documentElement;
+    const body = document.body;
+    const viewportWidth = root.clientWidth;
+    return {
+      viewportWidth,
+      documentScrollWidth: root.scrollWidth,
+      bodyScrollWidth: body ? body.scrollWidth : 0
+    };
+  });
+
+  expect(
+    overflow.documentScrollWidth,
+    `document scroll width ${overflow.documentScrollWidth} must fit tablet viewport ${overflow.viewportWidth}`
+  ).toBeLessThanOrEqual(overflow.viewportWidth + 1);
+  expect(
+    overflow.bodyScrollWidth,
+    `body scroll width ${overflow.bodyScrollWidth} must fit tablet viewport ${overflow.viewportWidth}`
+  ).toBeLessThanOrEqual(overflow.viewportWidth + 1);
+}
+
+async function expectElementWithinViewport(locator, viewport) {
+  const box = await locator.boundingBox();
+  if (!box) {
+    throw new Error('expected visible element to have a bounding box');
+  }
+  expect(box.x).toBeGreaterThanOrEqual(-1);
+  expect(box.y).toBeGreaterThanOrEqual(-1);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
 }

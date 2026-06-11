@@ -94,6 +94,8 @@ Der erste Browser-Smoke deckt ab:
 - tabbezogene Undo-Anzeige
 - lokale Task-Write-Through-Aktionen über HTTP-Routen
 - SSE-/Sync-Status-Pfade über die lokale Browser-Session
+- Tablet-Layout für Heute, Demnächst, Projekte, Suche und Einstellungen bei 834x1112 ohne horizontales Seiten-Overflow
+- Tablet-Erreichbarkeit von Navigation, Suche, Quick Add, Sync, Theme sowie Task-Detail-, Erledigen- und Löschdialogen
 - manueller Full-Scan-Sync
 - Remote Create/Update/Delete über Staging-CalDAV
 - Dirty-Local-vs-Remote-Changed-Konflikt
@@ -111,20 +113,23 @@ Die Todoist-nahe UI sollte in Browser-QA regelmäßig gegen diese Punkte geprüf
 - ruhige linke Navigation, dichte Task-Zeilen und klare Scanbarkeit
 - Quick-Add, Suche, Sync-Status und Konfliktansicht ohne Layoutsprünge
 - mobile Breiten ohne Textüberlauf oder unbedienbare Controls
+- Tablet-Breite 834x1112: Heute, Demnächst, Projekte, Suche und Einstellungen ohne horizontales Scrollen prüfen
+- Tablet-Breite 834x1112: Hauptnavigation, Suche, Quick Add, Sync, Theme und Task-Dialogaktionen bleiben sichtbar erreichbar
 - sichtbare Pending/Error/Saved-Zustände bei Writes
 - Tastaturpfade für Suche, Navigation und neue Aufgabe
 
-Playwright-Screenshots sind der Feedback-Loop: Ansicht öffnen, Desktop und Mobile prüfen, CSS/Templ anpassen, erneut ausführen.
+Playwright-Screenshots sind der Feedback-Loop: Ansicht öffnen, Desktop, Tablet und Mobile prüfen, CSS/Templ anpassen, erneut ausführen.
 
 ## Visuelle Baselines
 
 `npm run test:e2e` erzeugt Review-Screenshots unter `test-results/e2e/chromium/baselines/`. `npm run test:e2e:webkit` erzeugt die WebKit-Variante unter `test-results/e2e/webkit/baselines/`. Diese Verzeichnisse sind lokale QA-Artefakte und werden nicht committed.
 
-Die Baselines erfassen Desktop und Mobile für:
+Die Baselines erfassen Desktop, Tablet und Mobile für:
 
 - Setup
 - Inbox-Äquivalent über die Default-Projekt-Übersicht
 - Heute
+- Demnächst
 - Suche
 - Quick Add
 - Konflikte

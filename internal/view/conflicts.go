@@ -39,9 +39,12 @@ type conflictManualField struct {
 }
 
 type conflictManualOption struct {
-	Value    string
-	Label    string
-	Selected bool
+	Value        string
+	Label        string
+	DisplayValue string
+	Present      bool
+	Changed      bool
+	Selected     bool
 }
 
 type conflictSplitPreview struct {
@@ -170,6 +173,10 @@ func conflictManualFields(conflict db.ConflictDetail) []conflictManualField {
 	basePresent := conflictHasBase(conflict)
 	localPresent := conflictHasLocalVersion(conflict)
 	remotePresent := conflictHasRemoteVersion(conflict)
+	rowsByField := make(map[string]conflictComparisonRow)
+	for _, row := range conflictComparisonRows(conflict) {
+		rowsByField[row.Field] = row
+	}
 	fields := []conflictManualField{}
 	for _, field := range []struct {
 		name  string
@@ -183,7 +190,11 @@ func conflictManualFields(conflict db.ConflictDetail) []conflictManualField {
 		{name: "status", label: "Status"},
 		{name: "parent", label: "Unteraufgaben"},
 	} {
-		options := conflictManualOptions(basePresent, localPresent, remotePresent)
+		row, ok := rowsByField[field.name]
+		if !ok {
+			continue
+		}
+		options := conflictManualOptions(row, basePresent, localPresent, remotePresent)
 		if len(options) == 0 {
 			continue
 		}
@@ -192,7 +203,7 @@ func conflictManualFields(conflict db.ConflictDetail) []conflictManualField {
 	return fields
 }
 
-func conflictManualOptions(basePresent bool, localPresent bool, remotePresent bool) []conflictManualOption {
+func conflictManualOptions(row conflictComparisonRow, basePresent bool, localPresent bool, remotePresent bool) []conflictManualOption {
 	options := []conflictManualOption{}
 	defaultValue := "remote"
 	if !remotePresent && localPresent {
@@ -202,15 +213,26 @@ func conflictManualOptions(basePresent bool, localPresent bool, remotePresent bo
 		defaultValue = "base"
 	}
 	if basePresent {
-		options = append(options, conflictManualOption{Value: "base", Label: "Base", Selected: defaultValue == "base"})
+		options = append(options, conflictManualOptionFromCell("base", "Base", row.Base, defaultValue == "base"))
 	}
 	if localPresent {
-		options = append(options, conflictManualOption{Value: "local", Label: "Lokal", Selected: defaultValue == "local"})
+		options = append(options, conflictManualOptionFromCell("local", "Lokal", row.Local, defaultValue == "local"))
 	}
 	if remotePresent {
-		options = append(options, conflictManualOption{Value: "remote", Label: "Remote", Selected: defaultValue == "remote"})
+		options = append(options, conflictManualOptionFromCell("remote", "Remote", row.Remote, defaultValue == "remote"))
 	}
 	return options
+}
+
+func conflictManualOptionFromCell(value string, label string, cell conflictComparisonCell, selected bool) conflictManualOption {
+	return conflictManualOption{
+		Value:        value,
+		Label:        label,
+		DisplayValue: cell.Value,
+		Present:      cell.Present,
+		Changed:      cell.Changed,
+		Selected:     selected,
+	}
 }
 
 func conflictProjectSelected(conflict db.ConflictDetail, option TaskProjectOption) bool {
@@ -298,6 +320,17 @@ func conflictCellClass(cell conflictComparisonCell) string {
 	}
 	if cell.Changed {
 		classes = append(classes, "caldo-conflict-value-changed")
+	}
+	return strings.Join(classes, " ")
+}
+
+func conflictManualOptionClass(option conflictManualOption) string {
+	classes := []string{"caldo-conflict-manual-option"}
+	if !option.Present {
+		classes = append(classes, "caldo-conflict-manual-option-missing")
+	}
+	if option.Changed {
+		classes = append(classes, "caldo-conflict-manual-option-changed")
 	}
 	return strings.Join(classes, " ")
 }

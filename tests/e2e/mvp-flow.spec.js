@@ -405,7 +405,11 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
 
   await gotoApp(page, conflictHref);
   await expect(page.getByRole('heading', { name: 'Konfliktdetail' })).toBeVisible();
-  await expect(page.getByText('E2E Remote Conflict Edit', { exact: true })).toBeVisible();
+  await expect(page.locator('[data-conflict-comparison]').getByText('E2E Remote Conflict Edit', { exact: true })).toBeVisible();
+  const conflictManualForm = page.locator('[data-conflict-manual-form]');
+  await expect(conflictManualForm.locator('[data-conflict-field-source="title"] [data-conflict-source-option="local"]')).toContainText('E2E Local Conflict Edit');
+  await expect(conflictManualForm.locator('[data-conflict-field-source="title"] [data-conflict-source-option="remote"]')).toContainText('E2E Remote Conflict Edit');
+  await expect(conflictManualForm.locator('[name="title_source"][value="remote"]')).toBeChecked();
 
   response = await appFormRequest(page, 'POST', `${conflictHref}/resolve`, {
     resolution: 'remote'

@@ -102,14 +102,23 @@ templ ConflictDetailPage(conflict db.ConflictDetail, projectOptions []TaskProjec
 					<input type="hidden" name="resolution" value="manual"/>
 					<div class="caldo-conflict-manual-grid">
 						for _, field := range conflictManualFields(conflict) {
-							<label class="caldo-conflict-manual-field">
-								<span>{ field.Label }</span>
-								<select class="caldo-select" name={ field.Name + "_source" }>
+							<fieldset class="caldo-conflict-manual-field" data-conflict-field-source={ field.Name }>
+								<legend>{ field.Label }</legend>
+								<div class="caldo-conflict-manual-options">
 									for _, option := range field.Options {
-										<option value={ option.Value } selected?={ option.Selected }>{ option.Label }</option>
+										<label class={ conflictManualOptionClass(option) } data-conflict-source-option={ option.Value }>
+											<span class="caldo-conflict-manual-choice">
+												<input class="caldo-check" type="radio" name={ field.Name + "_source" } value={ option.Value } checked?={ option.Selected }/>
+												<span>{ option.Label }</span>
+												if option.Changed {
+													<span class="caldo-conflict-change-marker">Geändert</span>
+												}
+											</span>
+											<span class="caldo-conflict-manual-value">{ option.DisplayValue }</span>
+										</label>
 									}
-								</select>
-							</label>
+								</div>
+							</fieldset>
 						}
 						if len(projectOptions) > 0 {
 							<label class="caldo-conflict-manual-field">

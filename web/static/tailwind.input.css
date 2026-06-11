@@ -1348,16 +1348,60 @@
 	}
 
 	.caldo-conflict-manual-grid {
-		@apply grid gap-3 md:grid-cols-2 xl:grid-cols-4;
+		@apply grid gap-3 lg:grid-cols-2;
 	}
 
 	.caldo-conflict-manual-field {
-		@apply flex min-w-0 flex-col gap-1.5 text-sm font-medium;
+		@apply flex min-w-0 flex-col gap-2 text-sm font-medium;
 		color: var(--caldo-text-muted);
+	}
+
+	.caldo-conflict-manual-field legend {
+		@apply text-sm font-semibold;
+		color: var(--caldo-text);
 	}
 
 	.caldo-conflict-manual-field .caldo-select {
 		@apply w-full;
+	}
+
+	.caldo-conflict-manual-options {
+		@apply grid min-w-0 gap-2;
+	}
+
+	.caldo-conflict-manual-option {
+		@apply flex min-w-0 cursor-pointer flex-col gap-2 rounded-md border p-3 text-sm font-normal transition;
+		background: var(--caldo-surface-muted);
+		border-color: var(--caldo-border);
+		color: var(--caldo-text);
+	}
+
+	.caldo-conflict-manual-option:hover,
+	.caldo-conflict-manual-option:focus-within {
+		border-color: var(--caldo-accent-border);
+	}
+
+	.caldo-conflict-manual-option-changed {
+		background: var(--caldo-warning-muted);
+	}
+
+	.caldo-conflict-manual-option-missing {
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-conflict-manual-choice {
+		@apply flex min-w-0 flex-wrap items-center gap-2 font-medium;
+	}
+
+	.caldo-conflict-manual-choice .caldo-conflict-change-marker {
+		@apply mt-0;
+	}
+
+	.caldo-conflict-manual-value {
+		@apply block text-sm leading-5;
+		color: var(--caldo-text-muted);
+		overflow-wrap: anywhere;
+		white-space: pre-wrap;
 	}
 
 	.caldo-conflict-resolution-error {

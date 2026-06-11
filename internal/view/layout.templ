@@ -31,7 +31,7 @@ templ navLink(title string, item NavigationItem) {
 	<a class={ navLinkClass(title, item.ActiveTitles...) } href={ templ.URL(item.Href) } { navCurrentAttributes(title, item.ActiveTitles...)... }>
 		<span class="caldo-nav-label">{ item.Label }</span>
 		if item.HasCount {
-			<span class="caldo-nav-count" aria-label={ navCountText(item.Count) + " offene Einträge" }>{ navCountText(item.Count) }</span>
+			<span class="caldo-nav-count" aria-label={ navCountText(item.Count) + " " + Text(ctx).OpenItemsAria }>{ navCountText(item.Count) }</span>
 		}
 	</a>
 }
@@ -42,7 +42,7 @@ templ navEmpty(message string) {
 
 templ shellNavSections(title string, nav NavigationSnapshot) {
 	<section class="caldo-sidebar-section">
-		<h2 class="caldo-section-title mb-2">Systemfilter</h2>
+		<h2 class="caldo-section-title mb-2">{ Text(ctx).SystemFilters }</h2>
 		<ul class="space-y-1" data-nav-system-filters>
 			for _, item := range nav.System {
 				<li>@navLink(title, item)</li>
@@ -50,11 +50,11 @@ templ shellNavSections(title string, nav NavigationSnapshot) {
 		</ul>
 	</section>
 	<section class="caldo-sidebar-section">
-		<h2 class="caldo-section-title mb-2">Filter</h2>
+		<h2 class="caldo-section-title mb-2">{ Text(ctx).Filters }</h2>
 		<ul class="space-y-1" data-nav-user-filters>
-			<li>@navLink(title, NavigationItem{Label: "Alle Filter", Href: "/filters", ActiveTitles: []string{"Filter", "Filter"}})</li>
+			<li>@navLink(title, NavigationItem{Label: Text(ctx).AllFilters, Href: "/filters", ActiveTitles: []string{"Filter", Text(ctx).Filters}})</li>
 			if len(nav.SavedFilters) == 0 {
-				<li>@navEmpty("Keine gespeicherten Filter")</li>
+				<li>@navEmpty(Text(ctx).NoSavedFilters)</li>
 			} else {
 				for _, item := range nav.SavedFilters {
 					<li>@navLink(title, item)</li>
@@ -63,11 +63,11 @@ templ shellNavSections(title string, nav NavigationSnapshot) {
 		</ul>
 	</section>
 	<section class="caldo-sidebar-section">
-		<h2 class="caldo-section-title mb-2">Labels</h2>
+		<h2 class="caldo-section-title mb-2">{ Text(ctx).Labels }</h2>
 		<ul class="space-y-1" data-nav-labels>
-			<li>@navLink(title, NavigationItem{Label: "Alle Labels", Href: "/labels", ActiveTitles: []string{"Labels"}})</li>
+			<li>@navLink(title, NavigationItem{Label: Text(ctx).AllLabels, Href: "/labels", ActiveTitles: []string{"Labels", Text(ctx).Labels}})</li>
 			if len(nav.Labels) == 0 {
-				<li>@navEmpty("Keine Labels")</li>
+				<li>@navEmpty(Text(ctx).NoLabels)</li>
 			} else {
 				for _, item := range nav.Labels {
 					<li>@navLink(title, item)</li>
@@ -76,11 +76,11 @@ templ shellNavSections(title string, nav NavigationSnapshot) {
 		</ul>
 	</section>
 	<section class="caldo-sidebar-section">
-		<h2 class="caldo-section-title mb-2">Projekte</h2>
+		<h2 class="caldo-section-title mb-2">{ Text(ctx).Projects }</h2>
 		<ul class="space-y-1" data-nav-projects>
-			<li>@navLink(title, NavigationItem{Label: "Alle Projekte", Href: "/projects", ActiveTitles: []string{"Projekte"}})</li>
+			<li>@navLink(title, NavigationItem{Label: Text(ctx).AllProjects, Href: "/projects", ActiveTitles: []string{"Projekte", Text(ctx).Projects}})</li>
 			if len(nav.Projects) == 0 {
-				<li>@navEmpty("Keine Projekte")</li>
+				<li>@navEmpty(Text(ctx).NoProjects)</li>
 			} else {
 				for _, item := range nav.Projects {
 					<li>@navLink(title, item)</li>
@@ -92,11 +92,11 @@ templ shellNavSections(title string, nav NavigationSnapshot) {
 
 templ BaseLayout(title string, content templ.Component) {
 	<!DOCTYPE html>
-	<html lang="de" data-theme-root>
+	<html lang={ UILanguage(ctx) } data-theme-root data-theme-mode={ UIDarkMode(ctx) } class={ ThemeRootClass(ctx) }>
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
-			<title>{ title }</title>
+			<title>{ DisplayTitle(ctx, title) }</title>
 			<meta name="csrf-token" content={ CSRFToken(ctx) }/>
 			<meta name="htmx-config" content='{"includeIndicatorStyles":false}'/>
 			<link rel="stylesheet" href={ AssetPath(ctx, "app.css") }/>
@@ -106,29 +106,29 @@ templ BaseLayout(title string, content templ.Component) {
 				<aside class="caldo-sidebar">
 					<div class="caldo-sidebar-header">
 						<a href="/today" class="caldo-brand">Caldo</a>
-						<p class="caldo-meta mt-1">CalDAV-Aufgaben</p>
+						<p class="caldo-meta mt-1">{ Text(ctx).AppSubtitle }</p>
 					</div>
-					<a href="/quick-add" class="caldo-button caldo-button-primary w-full">Neue Aufgabe</a>
-					<nav class="caldo-sidebar-nav" aria-label="Hauptnavigation">
+					<a href="/quick-add" class="caldo-button caldo-button-primary w-full">{ Text(ctx).NewTask }</a>
+					<nav class="caldo-sidebar-nav" aria-label={ Text(ctx).MainNavigation }>
 						@shellNavSections(title, Navigation(ctx))
 					</nav>
 				</aside>
 				<div class="caldo-workspace">
 					<header class="caldo-topbar">
 						<div class="caldo-topbar-primary">
-							<button type="button" class="caldo-icon-button caldo-mobile-nav-trigger" data-mobile-nav-open aria-controls="mobile-navigation" aria-haspopup="dialog" aria-label="Navigation öffnen">
+							<button type="button" class="caldo-icon-button caldo-mobile-nav-trigger" data-mobile-nav-open aria-controls="mobile-navigation" aria-haspopup="dialog" aria-label={ Text(ctx).OpenNavigation }>
 								<span class="caldo-menu-icon" aria-hidden="true"></span>
 							</button>
 							<div class="caldo-topbar-title">
-								<p class="caldo-topbar-kicker">Aktuelle Ansicht</p>
-								<p class="caldo-topbar-heading">{ title }</p>
+								<p class="caldo-topbar-kicker">{ Text(ctx).CurrentView }</p>
+								<p class="caldo-topbar-heading">{ DisplayTitle(ctx, title) }</p>
 							</div>
 						</div>
 						<div class="caldo-topbar-actions">
-							<a href="/search" class="caldo-button caldo-button-secondary">Suche</a>
-							<a href="/quick-add" class="caldo-button caldo-button-primary">Neue Aufgabe</a>
+							<a href="/search" class="caldo-button caldo-button-secondary">{ Text(ctx).Search }</a>
+							<a href="/quick-add" class="caldo-button caldo-button-primary">{ Text(ctx).NewTask }</a>
 							@SyncStatusBadge("idle", "nie")
-							<button type="button" data-theme-toggle class="caldo-button caldo-button-ghost">Dark Mode</button>
+							<a href="/settings#ui-settings" data-theme-toggle class="caldo-button caldo-button-ghost">{ Text(ctx).ThemeSettings }: { ThemeModeLabel(ctx, UIDarkMode(ctx)) }</a>
 						</div>
 					</header>
 					<main class="caldo-main">
@@ -138,17 +138,17 @@ templ BaseLayout(title string, content templ.Component) {
 					</main>
 				</div>
 			</div>
-			<dialog id="mobile-navigation" data-mobile-nav-dialog class="caldo-mobile-nav-dialog" aria-label="Navigation">
+			<dialog id="mobile-navigation" data-mobile-nav-dialog class="caldo-mobile-nav-dialog" aria-label={ Text(ctx).OpenNavigation }>
 				<div class="caldo-mobile-nav-panel">
 					<div class="caldo-mobile-nav-header">
 						<div class="min-w-0">
 							<a href="/today" class="caldo-brand">Caldo</a>
-							<p class="caldo-meta mt-1">CalDAV-Aufgaben</p>
+							<p class="caldo-meta mt-1">{ Text(ctx).AppSubtitle }</p>
 						</div>
-						<button type="button" data-mobile-nav-close class="caldo-button caldo-button-ghost">Schließen</button>
+						<button type="button" data-mobile-nav-close class="caldo-button caldo-button-ghost">{ Text(ctx).Close }</button>
 					</div>
-					<a href="/quick-add" class="caldo-button caldo-button-primary w-full">Neue Aufgabe</a>
-					<nav class="caldo-mobile-nav" aria-label="Mobile Hauptnavigation">
+					<a href="/quick-add" class="caldo-button caldo-button-primary w-full">{ Text(ctx).NewTask }</a>
+					<nav class="caldo-mobile-nav" aria-label={ Text(ctx).MobileMainNavigation }>
 						@shellNavSections(title, Navigation(ctx))
 					</nav>
 				</div>
@@ -158,21 +158,21 @@ templ BaseLayout(title string, content templ.Component) {
 			<dialog data-shortcut-help-dialog class="caldo-dialog">
 				<div class="p-4 space-y-3">
 					<div class="flex items-center justify-between">
-						<h2 class="caldo-page-title">Tastaturkürzel</h2>
-						<button type="button" data-shortcut-help-close class="caldo-button caldo-button-ghost">Schließen</button>
+						<h2 class="caldo-page-title">{ Text(ctx).ShortcutHelp }</h2>
+						<button type="button" data-shortcut-help-close class="caldo-button caldo-button-ghost">{ Text(ctx).Close }</button>
 					</div>
 					<ul class="caldo-menu">
-						<li class="caldo-menu-item"><kbd class="caldo-kbd">N</kbd> Neue Aufgabe</li>
-						<li class="caldo-menu-item"><kbd class="caldo-kbd">S</kbd> oder <kbd class="caldo-kbd">/</kbd> Suche</li>
-						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> dann <kbd class="caldo-kbd">T</kbd> Heute</li>
-						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> dann <kbd class="caldo-kbd">U</kbd> Demnächst</li>
-						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> dann <kbd class="caldo-kbd">V</kbd> Favoriten</li>
-						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> dann <kbd class="caldo-kbd">P</kbd> Projekte</li>
-						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> dann <kbd class="caldo-kbd">L</kbd> Labels</li>
-						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> dann <kbd class="caldo-kbd">F</kbd> Filter</li>
-						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> dann <kbd class="caldo-kbd">C</kbd> Konflikte</li>
-						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> dann <kbd class="caldo-kbd">E</kbd> Einstellungen</li>
-						<li class="caldo-menu-item"><kbd class="caldo-kbd">?</kbd> Hilfe öffnen</li>
+						<li class="caldo-menu-item"><kbd class="caldo-kbd">N</kbd> { Text(ctx).ShortcutNewTask }</li>
+						<li class="caldo-menu-item"><kbd class="caldo-kbd">S</kbd> { Text(ctx).Or } <kbd class="caldo-kbd">/</kbd> { Text(ctx).ShortcutSearch }</li>
+						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> { Text(ctx).Then } <kbd class="caldo-kbd">T</kbd> { Text(ctx).ShortcutToday }</li>
+						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> { Text(ctx).Then } <kbd class="caldo-kbd">U</kbd> { Text(ctx).ShortcutUpcoming }</li>
+						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> { Text(ctx).Then } <kbd class="caldo-kbd">V</kbd> { Text(ctx).ShortcutFavorites }</li>
+						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> { Text(ctx).Then } <kbd class="caldo-kbd">P</kbd> { Text(ctx).ShortcutProjects }</li>
+						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> { Text(ctx).Then } <kbd class="caldo-kbd">L</kbd> { Text(ctx).ShortcutLabels }</li>
+						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> { Text(ctx).Then } <kbd class="caldo-kbd">F</kbd> { Text(ctx).ShortcutFilters }</li>
+						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> { Text(ctx).Then } <kbd class="caldo-kbd">C</kbd> { Text(ctx).ShortcutConflicts }</li>
+						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> { Text(ctx).Then } <kbd class="caldo-kbd">E</kbd> { Text(ctx).ShortcutSettings }</li>
+						<li class="caldo-menu-item"><kbd class="caldo-kbd">?</kbd> { Text(ctx).ShortcutOpenHelp }</li>
 					</ul>
 				</div>
 			</dialog>

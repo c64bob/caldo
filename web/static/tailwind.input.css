@@ -49,6 +49,28 @@
 		}
 	}
 
+	.light {
+		--caldo-accent: #dc4c3e;
+		--caldo-accent-hover: #c83f32;
+		--caldo-accent-muted: #fff1ef;
+		--caldo-accent-border: #f7b4ad;
+		--caldo-bg: #ffffff;
+		--caldo-surface: #ffffff;
+		--caldo-surface-muted: #f7f7f5;
+		--caldo-border: #e5e5e0;
+		--caldo-border-strong: #d7d7d0;
+		--caldo-text: #20201d;
+		--caldo-text-muted: #6f6c67;
+		--caldo-text-subtle: #8a8680;
+		--caldo-focus: #dc4c3e;
+		--caldo-danger: #dc2626;
+		--caldo-danger-muted: #fef2f2;
+		--caldo-warning: #b45309;
+		--caldo-warning-muted: #fffbeb;
+		--caldo-success: #047857;
+		--caldo-success-muted: #ecfdf5;
+	}
+
 	.dark {
 		--caldo-accent: #ff7a6f;
 		--caldo-accent-hover: #ff9188;

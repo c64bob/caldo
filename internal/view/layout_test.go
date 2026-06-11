@@ -84,6 +84,43 @@ func TestBaseLayoutUsesComponentFoundationClasses(t *testing.T) {
 	}
 }
 
+func TestBaseLayoutUsesUIPreferences(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	ctx = WithAssetManifest(ctx, assets.Manifest{
+		"app.css":       "app.hash.css",
+		"htmx.min.js":   "htmx.hash.js",
+		"htmx-sse.js":   "htmx-sse.hash.js",
+		"alpine.min.js": "alpine.hash.js",
+		"app.js":        "app.hash.js",
+	})
+	ctx = WithUIPreferences(ctx, "en", "dark")
+
+	component := BaseLayout("Heute", PlaceholderPage("Heute"))
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render layout: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`<html lang="en" data-theme-root data-theme-mode="dark" class="dark">`,
+		`<title>Today</title>`,
+		`Current view`,
+		`>Today<`,
+		`New task`,
+		`System filters`,
+		`Appearance: Dark`,
+		`Keyboard shortcuts`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected localized themed layout to include %q in %s", want, output)
+		}
+	}
+}
+
 func TestBaseLayoutRendersRequiredMainNavigation(t *testing.T) {
 	t.Parallel()
 

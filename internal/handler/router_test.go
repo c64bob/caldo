@@ -147,6 +147,44 @@ func TestNewRouterRendersBaseLayoutOnRoot(t *testing.T) {
 	}
 }
 
+func TestNewRouterAppliesPersistedUIPreferences(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if _, err := database.Conn.Exec(`UPDATE settings SET ui_language = 'en', dark_mode = 'dark' WHERE id = 'default';`); err != nil {
+		t.Fatalf("set ui preferences: %v", err)
+	}
+
+	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
+	responseRecorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/quick-add", nil)
+	request.Header.Set("X-Forwarded-User", "alice")
+
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil).ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+
+	body := responseRecorder.Body.String()
+	for _, want := range []string{
+		`<html lang="en" data-theme-root data-theme-mode="dark" class="dark">`,
+		`CalDAV tasks`,
+		`System filters`,
+		`New task`,
+		`Task`,
+		`Appearance: Dark`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("response body missing %q in %s", want, body)
+		}
+	}
+}
+
 func TestNavigationPagesRenderPersistedEntries(t *testing.T) {
 	t.Parallel()
 

@@ -6,7 +6,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Zusammenfassung
 
-- Bestehende Stories: 77 `Umgesetzt`, 9 `Teilweise umgesetzt`, 3 `Offen`.
+- Bestehende Stories: 78 `Umgesetzt`, 8 `Teilweise umgesetzt`, 3 `Offen`.
 - Neue Planungsstories: 15 `Umgesetzt`, 24 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
@@ -96,7 +96,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 19.2 | Umgesetzt | `web/assets/app.js` bietet lokale CSP-kompatible Shortcuts fuer neue Aufgabe, Suche, Hauptansichtenwechsel und Hilfe, ignoriert aktive Eingabefelder und der Hilfedialog dokumentiert die verfuegbaren Kuerzel; Browser-QA deckt die Shortcut-Pfade ab. |
 | 19.3 | Umgesetzt | Der globale HTMX-/Fetch-Write-Tracker zeigt Pending-, Erfolgs- und Fehlerstatus sichtbar an, nutzt `beforeunload` bei laufenden Writes, erhaelt fehlgeschlagene Formularwerte ohne Browser-Offline-Queue und Browser-QA deckt Pending, Fehler, Reload-Erfolg und Navigation mit laufendem Write ab. |
 | 19.4 | Umgesetzt | `/settings` rendert CalDAV-URL, Benutzername, Passwort-/App-Passwort-Aenderung mit Verbindungstest, Kalender-/Projektmapping, Default-Projekt, Sync-Intervall, manuellen Sync, erledigte Aufgaben, Demnaechst-Zeitraum, Sprache, Dark Mode sowie Reverse-Proxy-/HTTPS-Status; `/settings/caldav` und `/settings/calendars` speichern die Normalbetriebskonfiguration ohne Setup-Wizard. |
-| 19.5 | Teilweise umgesetzt | Theme-/Sprachpraeferenzen existieren teilweise; vollstaendige Lokalisierung/Politur fehlt. |
+| 19.5 | Umgesetzt | `internal/view/ui.go`, `internal/view/layout.templ`, `internal/view/quick_add.templ`, `internal/handler/navigation.go` und `internal/handler/quick_add.go` wenden gespeicherte UI-Sprache und Dark-Mode-Praeferenz auf Shell, Settings und Quick Add an; `light`/`dark` ueberschreiben die Systempraeferenz, `system` folgt `prefers-color-scheme`, und Quick Add nutzt die gespeicherte Sprache fuer natuerliche Eingabe. |
 | 20.1 | Umgesetzt | Go-Build ist ueber Makefile/CI vorhanden. |
 | 20.2 | Umgesetzt | Dockerfile und statische Dockerfile-Tests sind vorhanden; Build wird in CI-Kontext abgesichert. |
 | 20.3 | Umgesetzt | Compose-Referenzdateien sind vorhanden und statisch pruefbar. |

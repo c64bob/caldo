@@ -29,24 +29,25 @@ type SettingsPageView struct {
 func SettingsPageContent(model SettingsPageView) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		csrfToken := html.EscapeString(CSRFToken(ctx))
-		if _, err := fmt.Fprint(w, `<section class="caldo-page max-w-3xl">
-<h2 class="caldo-page-title">Einstellungen</h2>`); err != nil {
+		text := Text(ctx)
+		if _, err := fmt.Fprintf(w, `<section class="caldo-page max-w-3xl">
+<h2 class="caldo-page-title">%s</h2>`, html.EscapeString(text.SettingsPageTitle)); err != nil {
 			return err
 		}
 
-		if err := renderCalDAVSettings(w, csrfToken, model); err != nil {
+		if err := renderCalDAVSettings(w, csrfToken, model, text); err != nil {
 			return err
 		}
-		if err := renderCalendarSettings(w, csrfToken, model); err != nil {
+		if err := renderCalendarSettings(w, csrfToken, model, text); err != nil {
 			return err
 		}
-		if err := renderSyncSettings(w, csrfToken, model.Settings); err != nil {
+		if err := renderSyncSettings(w, csrfToken, model.Settings, text); err != nil {
 			return err
 		}
-		if err := renderUISettings(w, csrfToken, model.Settings); err != nil {
+		if err := renderUISettings(w, csrfToken, model.Settings, text); err != nil {
 			return err
 		}
-		if err := renderSecurityStatus(w, model); err != nil {
+		if err := renderSecurityStatus(w, model, text); err != nil {
 			return err
 		}
 
@@ -55,10 +56,10 @@ func SettingsPageContent(model SettingsPageView) templ.Component {
 	})
 }
 
-func renderCalDAVSettings(w io.Writer, csrfToken string, model SettingsPageView) error {
-	if _, err := fmt.Fprint(w, `<div class="caldo-card">
+func renderCalDAVSettings(w io.Writer, csrfToken string, model SettingsPageView, text Texts) error {
+	if _, err := fmt.Fprintf(w, `<div class="caldo-card">
 <h3 class="font-medium">CalDAV</h3>
-<p class="caldo-muted mt-1">Verbindung speichern nur nach erfolgreichem Test.</p>`); err != nil {
+<p class="caldo-muted mt-1">%s</p>`, html.EscapeString(text.SettingsCalDAVHelp)); err != nil {
 		return err
 	}
 	if model.CalDAVError != "" {
@@ -69,35 +70,40 @@ func renderCalDAVSettings(w io.Writer, csrfToken string, model SettingsPageView)
 
 	_, err := fmt.Fprintf(w, `<form class="mt-4 space-y-3" method="post" action="/settings/caldav" hx-post="/settings/caldav" hx-target="body" hx-swap="outerHTML" hx-push-url="false" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
 <div>
-<label for="settings_caldav_url" class="caldo-label">CalDAV-URL</label>
+<label for="settings_caldav_url" class="caldo-label">%s</label>
 <input id="settings_caldav_url" name="caldav_url" type="url" required class="caldo-input" value="%s"/>
 </div>
 <div>
-<label for="settings_caldav_username" class="caldo-label">Benutzername</label>
+<label for="settings_caldav_username" class="caldo-label">%s</label>
 <input id="settings_caldav_username" name="caldav_username" type="text" required class="caldo-input" value="%s"/>
 </div>
 <div>
-<label for="settings_caldav_password" class="caldo-label">Passwort / App-Passwort</label>
+<label for="settings_caldav_password" class="caldo-label">%s</label>
 <input id="settings_caldav_password" name="caldav_password" type="password" class="caldo-input" autocomplete="new-password" placeholder="%s"/>
 <p class="caldo-meta mt-1">%s</p>
 </div>
-<button type="submit" class="caldo-button caldo-button-primary">CalDAV speichern und testen</button>
-<span class="htmx-indicator caldo-meta ml-2" aria-live="polite">Verbindung wird getestet ...</span>
+<button type="submit" class="caldo-button caldo-button-primary">%s</button>
+<span class="htmx-indicator caldo-meta ml-2" aria-live="polite">%s</span>
 </form>
 </div>`,
 		csrfToken,
+		html.EscapeString(text.SettingsCalDAVURL),
 		html.EscapeString(model.Settings.CalDAVURL),
+		html.EscapeString(text.SettingsCalDAVUsername),
 		html.EscapeString(model.Settings.CalDAVUsername),
-		passwordPlaceholder(model.Settings.CalDAVConfigured),
-		passwordHelp(model.Settings.CalDAVConfigured),
+		html.EscapeString(text.SettingsCalDAVPassword),
+		passwordPlaceholder(model.Settings.CalDAVConfigured, text),
+		passwordHelp(model.Settings.CalDAVConfigured, text),
+		html.EscapeString(text.SettingsCalDAVSubmit),
+		html.EscapeString(text.SettingsCalDAVPending),
 	)
 	return err
 }
 
-func renderCalendarSettings(w io.Writer, csrfToken string, model SettingsPageView) error {
-	if _, err := fmt.Fprint(w, `<div class="caldo-card">
-<h3 class="font-medium">Kalender & Projektmapping</h3>
-<p class="caldo-muted mt-1">Ausgewählte CalDAV-Kalender werden als Projekte geführt. Bestehende Projekte mit Aufgaben bleiben erhalten.</p>`); err != nil {
+func renderCalendarSettings(w io.Writer, csrfToken string, model SettingsPageView, text Texts) error {
+	if _, err := fmt.Fprintf(w, `<div class="caldo-card">
+<h3 class="font-medium">%s</h3>
+<p class="caldo-muted mt-1">%s</p>`, html.EscapeString(text.SettingsCalendarsTitle), html.EscapeString(text.SettingsCalendarsHelp)); err != nil {
 		return err
 	}
 	if model.CalendarsError != "" {
@@ -111,7 +117,7 @@ func renderCalendarSettings(w io.Writer, csrfToken string, model SettingsPageVie
 	}
 
 	if len(model.Available) == 0 {
-		if _, err := fmt.Fprint(w, `<p class="caldo-alert caldo-alert-warning">Keine CalDAV-Kalender geladen. Prüfe die CalDAV-Verbindung.</p>`); err != nil {
+		if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-warning">%s</p>`, html.EscapeString(text.SettingsNoCalendars)); err != nil {
 			return err
 		}
 	} else {
@@ -131,9 +137,9 @@ func renderCalendarSettings(w io.Writer, csrfToken string, model SettingsPageVie
 			if calendar.Href == defaultHref {
 				defaultChecked = " checked"
 			}
-			mapping := "Noch nicht als Projekt hinzugefügt"
+			mapping := text.SettingsNotMapped
 			if project.ID != "" {
-				mapping = fmt.Sprintf("Projekt: %s · %d offene Aufgaben", project.DisplayName, project.OpenTaskCount)
+				mapping = fmt.Sprintf("%s: %s · %d %s", text.SettingsProjectPrefix, project.DisplayName, project.OpenTaskCount, text.SettingsOpenTasks)
 			}
 			if _, err := fmt.Fprintf(w, `<div class="caldo-list-row">
 <label class="flex items-center gap-2">
@@ -143,7 +149,7 @@ func renderCalendarSettings(w io.Writer, csrfToken string, model SettingsPageVie
 <p class="caldo-meta mt-1">%s</p>
 <label class="caldo-muted mt-2 flex items-center gap-2">
 <input class="caldo-check" type="radio" name="default_calendar_href" value="%s"%s/>
-<span>Als Default-Projekt verwenden</span>
+<span>%s</span>
 </label>
 </div>`,
 				html.EscapeString(calendar.Href),
@@ -152,6 +158,7 @@ func renderCalendarSettings(w io.Writer, csrfToken string, model SettingsPageVie
 				html.EscapeString(mapping),
 				html.EscapeString(calendar.Href),
 				defaultChecked,
+				html.EscapeString(text.SettingsUseAsDefault),
 			); err != nil {
 				return err
 			}
@@ -161,82 +168,82 @@ func renderCalendarSettings(w io.Writer, csrfToken string, model SettingsPageVie
 		}
 	}
 
-	if err := renderLocalOnlyProjects(w, model); err != nil {
+	if err := renderLocalOnlyProjects(w, model, text); err != nil {
 		return err
 	}
 
-	_, err := fmt.Fprint(w, `<button type="submit" class="caldo-button caldo-button-secondary">Kalenderauswahl speichern</button>
-<span class="htmx-indicator caldo-meta ml-2" aria-live="polite">Speichern ...</span>
+	_, err := fmt.Fprintf(w, `<button type="submit" class="caldo-button caldo-button-secondary">%s</button>
+<span class="htmx-indicator caldo-meta ml-2" aria-live="polite">%s</span>
 </form>
-</div>`)
+</div>`, html.EscapeString(text.SettingsSaveCalendars), html.EscapeString(text.SettingsCalendarsPending))
 	return err
 }
 
-func renderSyncSettings(w io.Writer, csrfToken string, settings db.AppSettings) error {
+func renderSyncSettings(w io.Writer, csrfToken string, settings db.AppSettings, text Texts) error {
 	_, err := fmt.Fprintf(w, `<div class="caldo-card">
-<h3 class="font-medium">Sync</h3>
+<h3 class="font-medium">%s</h3>
 <form class="mt-3 space-y-2" method="post" action="/settings/sync" hx-post="/settings/sync" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
-<label class="caldo-label">Intervall (Minuten)
+<label class="caldo-label">%s
 <input class="caldo-input w-32" type="number" min="5" name="sync_interval_minutes" value="%d">
 </label>
-<button type="submit" class="caldo-button caldo-button-secondary">Sync-Einstellungen speichern</button>
-<span class="htmx-indicator caldo-meta ml-2" aria-live="polite">Speichern ...</span>
+<button type="submit" class="caldo-button caldo-button-secondary">%s</button>
+<span class="htmx-indicator caldo-meta ml-2" aria-live="polite">%s</span>
 </form>
 <form class="mt-3" method="post" action="/sync/manual" hx-post="/sync/manual" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
-<button type="submit" class="caldo-button caldo-button-primary">Jetzt synchronisieren</button>
-<span class="htmx-indicator caldo-meta ml-2" aria-live="polite">Synchronisieren ...</span>
+<button type="submit" class="caldo-button caldo-button-primary">%s</button>
+<span class="htmx-indicator caldo-meta ml-2" aria-live="polite">%s</span>
 </form>
-</div>`, csrfToken, settings.SyncIntervalMinutes, csrfToken)
+</div>`, html.EscapeString(text.SettingsSyncTitle), csrfToken, html.EscapeString(text.SettingsIntervalMinutes), settings.SyncIntervalMinutes, html.EscapeString(text.SettingsSaveSync), html.EscapeString(text.SettingsSyncPending), csrfToken, html.EscapeString(text.SettingsManualSync), html.EscapeString(text.SettingsManualPending))
 	return err
 }
 
-func renderUISettings(w io.Writer, csrfToken string, settings db.AppSettings) error {
-	_, err := fmt.Fprintf(w, `<div class="caldo-card">
-<h3 class="font-medium">UI</h3>
+func renderUISettings(w io.Writer, csrfToken string, settings db.AppSettings, text Texts) error {
+	_, err := fmt.Fprintf(w, `<div id="ui-settings" class="caldo-card">
+<h3 class="font-medium">%s</h3>
 <form class="mt-3 space-y-3 text-sm" method="post" action="/settings/ui" hx-post="/settings/ui" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
-<label class="flex items-center gap-2"><input class="caldo-check" type="checkbox" name="show_completed" %s> Erledigte Aufgaben anzeigen</label>
-<label class="caldo-label">Demnächst-Zeitraum (Tage)
+<label class="flex items-center gap-2"><input class="caldo-check" type="checkbox" name="show_completed" %s> %s</label>
+<label class="caldo-label">%s
 <input class="caldo-input w-32" type="number" min="1" name="upcoming_days" value="%d">
 </label>
-<label class="caldo-label">Sprache
+<label class="caldo-label">%s
 <select class="caldo-select w-48" name="ui_language">
 <option value="de" %s>Deutsch</option>
 <option value="en" %s>English</option>
 </select>
 </label>
-<label class="caldo-label">Dark Mode
+<label class="caldo-label">%s
 <select class="caldo-select w-48" name="dark_mode">
-<option value="system" %s>System</option>
-<option value="light" %s>Hell</option>
-<option value="dark" %s>Dunkel</option>
+<option value="system" %s>%s</option>
+<option value="light" %s>%s</option>
+<option value="dark" %s>%s</option>
 </select>
 </label>
-<button type="submit" class="caldo-button caldo-button-secondary">UI-Einstellungen speichern</button>
-<span class="htmx-indicator caldo-meta ml-2" aria-live="polite">Speichern ...</span>
+<button type="submit" class="caldo-button caldo-button-secondary">%s</button>
+<span class="htmx-indicator caldo-meta ml-2" aria-live="polite">%s</span>
 </form>
-</div>`, csrfToken, checkedAttr(settings.ShowCompleted), settings.UpcomingDays, selectedAttr(settings.UILanguage, "de"), selectedAttr(settings.UILanguage, "en"), selectedAttr(settings.DarkMode, "system"), selectedAttr(settings.DarkMode, "light"), selectedAttr(settings.DarkMode, "dark"))
+</div>`, html.EscapeString(text.SettingsUITitle), csrfToken, checkedAttr(settings.ShowCompleted), html.EscapeString(text.SettingsShowCompleted), html.EscapeString(text.SettingsUpcomingDays), settings.UpcomingDays, html.EscapeString(text.SettingsLanguage), selectedAttr(settings.UILanguage, "de"), selectedAttr(settings.UILanguage, "en"), html.EscapeString(text.SettingsDarkMode), selectedAttr(settings.DarkMode, "system"), html.EscapeString(text.ThemeSystem), selectedAttr(settings.DarkMode, "light"), html.EscapeString(text.ThemeLight), selectedAttr(settings.DarkMode, "dark"), html.EscapeString(text.ThemeDark), html.EscapeString(text.SettingsSaveUI), html.EscapeString(text.SettingsSyncPending))
 	return err
 }
 
-func renderSecurityStatus(w io.Writer, model SettingsPageView) error {
-	proxyStatus := "nicht erkannt"
+func renderSecurityStatus(w io.Writer, model SettingsPageView, text Texts) error {
+	proxyStatus := text.SettingsNotDetected
 	if model.ProxyUserPresent {
-		proxyStatus = "erkannt"
+		proxyStatus = text.SettingsDetected
 	}
-	httpsStatus := "aktiv"
+	httpsStatus := text.SettingsActive
 	if !model.HTTPSConfigured {
-		httpsStatus = "inkonsistent"
+		httpsStatus = text.SettingsInconsistent
 	}
 
 	_, err := fmt.Fprintf(w, `<div class="caldo-card text-sm">
-<h3 class="font-medium">Sicherheitsstatus</h3>
-<p class="mt-2">Reverse-Proxy-Header: <code>%s</code> · %s</p>
-<p>HTTPS-Status: %s</p>
-</div>`, html.EscapeString(model.ProxyUserHeader), proxyStatus, httpsStatus)
+<h3 class="font-medium">%s</h3>
+<p class="mt-2">%s: <code>%s</code> · %s</p>
+<p>%s: %s</p>
+</div>`, html.EscapeString(text.SettingsSecurityTitle), html.EscapeString(text.SettingsProxyHeader), html.EscapeString(model.ProxyUserHeader), html.EscapeString(proxyStatus), html.EscapeString(text.SettingsHTTPSStatus), html.EscapeString(httpsStatus))
 	return err
 }
 
-func renderLocalOnlyProjects(w io.Writer, model SettingsPageView) error {
+func renderLocalOnlyProjects(w io.Writer, model SettingsPageView, text Texts) error {
 	available := make(map[string]struct{}, len(model.Available))
 	for _, calendar := range model.Available {
 		available[calendar.Href] = struct{}{}
@@ -252,11 +259,11 @@ func renderLocalOnlyProjects(w io.Writer, model SettingsPageView) error {
 		return nil
 	}
 
-	if _, err := fmt.Fprint(w, `<div class="caldo-alert caldo-alert-warning"><p class="font-medium">Lokale Projekte ohne aktuell geladenen CalDAV-Kalender</p><ul class="mt-2 list-disc pl-5">`); err != nil {
+	if _, err := fmt.Fprintf(w, `<div class="caldo-alert caldo-alert-warning"><p class="font-medium">%s</p><ul class="mt-2 list-disc pl-5">`, html.EscapeString(text.SettingsLocalOnlyTitle)); err != nil {
 		return err
 	}
 	for _, project := range localOnly {
-		if _, err := fmt.Fprintf(w, `<li>%s · %d Aufgaben</li>`, html.EscapeString(project.DisplayName), project.TaskCount); err != nil {
+		if _, err := fmt.Fprintf(w, `<li>%s · %d %s</li>`, html.EscapeString(project.DisplayName), project.TaskCount, html.EscapeString(text.SettingsTasks)); err != nil {
 			return err
 		}
 	}
@@ -264,18 +271,18 @@ func renderLocalOnlyProjects(w io.Writer, model SettingsPageView) error {
 	return err
 }
 
-func passwordPlaceholder(configured bool) string {
+func passwordPlaceholder(configured bool, text Texts) string {
 	if configured {
-		return "unverändert lassen"
+		return html.EscapeString(text.SettingsPasswordKeep)
 	}
-	return "Passwort oder App-Passwort"
+	return html.EscapeString(text.SettingsPasswordNew)
 }
 
-func passwordHelp(configured bool) string {
+func passwordHelp(configured bool, text Texts) string {
 	if configured {
-		return "Leer lassen, um das gespeicherte Passwort beizubehalten."
+		return html.EscapeString(text.SettingsPasswordKeepHelp)
 	}
-	return "Ein Passwort oder App-Passwort ist für den Verbindungstest erforderlich."
+	return html.EscapeString(text.SettingsPasswordNewHelp)
 }
 
 func selectedCalendarSet(model SettingsPageView) map[string]bool {

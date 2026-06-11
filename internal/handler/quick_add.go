@@ -18,7 +18,8 @@ type quickAddDependencies struct {
 func QuickAddPage(deps quickAddDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout("Quick Add", view.QuickAddPage(nil, "", "")).Render(r.Context(), w); err != nil {
+		ctx := withUIPreferences(r.Context(), deps.database)
+		if err := view.BaseLayout("Quick Add", view.QuickAddPage(nil, "", "")).Render(ctx, w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -29,14 +30,16 @@ func QuickAddPreview(deps quickAddDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		text := strings.TrimSpace(r.FormValue("text"))
 		language := "de"
-		if settings, err := deps.database.LoadAppSettings(r.Context()); err == nil {
-			language = settings.UILanguage
+		ctx := r.Context()
+		if preferences, err := deps.database.LoadUIPreferences(r.Context()); err == nil {
+			language = preferences.UILanguage
+			ctx = view.WithUIPreferences(ctx, preferences.UILanguage, preferences.DarkMode)
 		}
 		draft := parser.ParseQuickAddWithLanguage(text, language)
 		requestedProject := draft.Project
 		if draft.Title == "" {
 			w.WriteHeader(http.StatusBadRequest)
-			if err := view.ErrorState("Vorschau erstellen", "validierungsfehler", false).Render(r.Context(), w); err != nil {
+			if err := view.ErrorState("Vorschau erstellen", "validierungsfehler", false).Render(ctx, w); err != nil {
 				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			}
 			return
@@ -57,7 +60,7 @@ func QuickAddPreview(deps quickAddDependencies) http.HandlerFunc {
 			}
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.QuickAddPreview(draft, text).Render(r.Context(), w); err != nil {
+		if err := view.QuickAddPreview(draft, text).Render(ctx, w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}

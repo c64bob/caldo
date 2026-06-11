@@ -48,9 +48,9 @@ func WithNavigation(ctx context.Context, snapshot NavigationSnapshot) context.Co
 func Navigation(ctx context.Context) NavigationSnapshot {
 	snapshot, ok := ctx.Value(navigationKey).(NavigationSnapshot)
 	if !ok {
-		return StaticNavigation()
+		return localizeNavigationSnapshot(StaticNavigation(), Text(ctx))
 	}
-	return snapshot
+	return localizeNavigationSnapshot(snapshot, Text(ctx))
 }
 
 // StaticNavigation returns route-only shell navigation without counters.
@@ -90,6 +90,63 @@ func systemNavigationItems(todayCount, upcomingCount, favoriteCount, overdueCoun
 		{Label: "Konflikte", Href: "/conflicts", Count: conflictCount, HasCount: counted, ActiveTitles: []string{"Konflikte", "Konfliktdetail"}},
 		{Label: "Einstellungen", Href: "/settings", ActiveTitles: []string{"Einstellungen"}},
 	}
+}
+
+func localizeNavigationSnapshot(snapshot NavigationSnapshot, text Texts) NavigationSnapshot {
+	snapshot.System = localizeSystemNavigationItems(snapshot.System, text)
+	return snapshot
+}
+
+func localizeSystemNavigationItems(items []NavigationItem, text Texts) []NavigationItem {
+	localized := make([]NavigationItem, len(items))
+	copy(localized, items)
+	for i := range localized {
+		switch localized[i].Href {
+		case "/today":
+			localized[i].Label = text.Today
+			localized[i].ActiveTitles = mergeActiveTitles(localized[i].ActiveTitles, text.Today)
+		case "/upcoming":
+			localized[i].Label = text.Upcoming
+			localized[i].ActiveTitles = mergeActiveTitles(localized[i].ActiveTitles, text.Upcoming)
+		case "/favorites":
+			localized[i].Label = text.Favorites
+			localized[i].ActiveTitles = mergeActiveTitles(localized[i].ActiveTitles, text.Favorites)
+		case "/overdue":
+			localized[i].Label = text.Overdue
+			localized[i].ActiveTitles = mergeActiveTitles(localized[i].ActiveTitles, text.Overdue)
+		case "/no-date":
+			localized[i].Label = text.NoDate
+			localized[i].ActiveTitles = mergeActiveTitles(localized[i].ActiveTitles, text.NoDate)
+		case "/completed":
+			localized[i].Label = text.Completed
+			localized[i].ActiveTitles = mergeActiveTitles(localized[i].ActiveTitles, text.Completed)
+		case "/search":
+			localized[i].Label = text.Search
+			localized[i].ActiveTitles = mergeActiveTitles(localized[i].ActiveTitles, text.Search)
+		case "/conflicts":
+			localized[i].Label = text.Conflicts
+			localized[i].ActiveTitles = mergeActiveTitles(localized[i].ActiveTitles, text.Conflicts)
+		case "/settings":
+			localized[i].Label = text.Settings
+			localized[i].ActiveTitles = mergeActiveTitles(localized[i].ActiveTitles, text.Settings)
+		}
+	}
+	return localized
+}
+
+func mergeActiveTitles(existing []string, extra string) []string {
+	if extra == "" {
+		return existing
+	}
+	for _, item := range existing {
+		if item == extra {
+			return existing
+		}
+	}
+	result := make([]string, 0, len(existing)+1)
+	result = append(result, existing...)
+	result = append(result, extra)
+	return result
 }
 
 func overviewItemsToNavigationItems(items []NavigationOverviewItem) []NavigationItem {

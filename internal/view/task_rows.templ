@@ -429,11 +429,11 @@ templ TaskDetailPanel(task TaskRowView) {
 						<h3>Wiederholung</h3>
 					</div>
 					if taskRecurrence(task).Editable {
-						<input type="hidden" name="repeat_update" value="1" disabled?={ !taskCanDetailEdit(task) }/>
+						<input type="hidden" name="repeat_update" value="1" disabled data-task-recurrence-update/>
 						<div class="caldo-task-detail-grid">
 							<label class="caldo-task-detail-field">
 								<span>Rhythmus</span>
-								<select name="repeat_freq" class="caldo-select" disabled?={ !taskCanDetailEdit(task) }>
+								<select name="repeat_freq" class="caldo-select" disabled?={ !taskCanDetailEdit(task) } data-task-recurrence-control>
 									for _, option := range taskRecurrenceFrequencyOptions() {
 										<option value={ option.Value } selected?={ option.Value == taskRecurrence(task).Frequency }>{ option.Label }</option>
 									}
@@ -441,11 +441,11 @@ templ TaskDetailPanel(task TaskRowView) {
 							</label>
 							<label class="caldo-task-detail-field">
 								<span>Intervall</span>
-								<input type="number" min="1" step="1" name="repeat_interval" value={ taskRecurrence(task).Interval } class="caldo-input" disabled?={ !taskCanDetailEdit(task) }/>
+								<input type="number" min="1" step="1" name="repeat_interval" value={ taskRecurrence(task).Interval } class="caldo-input" disabled?={ !taskCanDetailEdit(task) } data-task-recurrence-control/>
 							</label>
 							<label class="caldo-task-detail-field">
 								<span>Wochentag</span>
-								<select name="repeat_byday" class="caldo-select" disabled?={ !taskCanDetailEdit(task) }>
+								<select name="repeat_byday" class="caldo-select" disabled?={ !taskCanDetailEdit(task) } data-task-recurrence-control>
 									for _, option := range taskByDayOptions() {
 										<option value={ option.Value } selected?={ option.Value == taskRecurrence(task).ByDay }>{ option.Label }</option>
 									}
@@ -453,7 +453,7 @@ templ TaskDetailPanel(task TaskRowView) {
 							</label>
 							<label class="caldo-task-detail-field">
 								<span>Ende</span>
-								<select name="repeat_end" class="caldo-select" disabled?={ !taskCanDetailEdit(task) }>
+								<select name="repeat_end" class="caldo-select" disabled?={ !taskCanDetailEdit(task) } data-task-recurrence-control>
 									for _, option := range taskRecurrenceEndOptions() {
 										<option value={ option.Value } selected?={ option.Value == taskRecurrence(task).End }>{ option.Label }</option>
 									}
@@ -461,11 +461,11 @@ templ TaskDetailPanel(task TaskRowView) {
 							</label>
 							<label class="caldo-task-detail-field">
 								<span>Bis</span>
-								<input type="date" name="repeat_until" value={ taskRecurrence(task).Until } class="caldo-input" disabled?={ !taskCanDetailEdit(task) }/>
+								<input type="date" name="repeat_until" value={ taskRecurrence(task).Until } class="caldo-input" disabled?={ !taskCanDetailEdit(task) } data-task-recurrence-control/>
 							</label>
 							<label class="caldo-task-detail-field">
 								<span>Anzahl</span>
-								<input type="number" min="1" step="1" name="repeat_count" value={ taskRecurrence(task).Count } class="caldo-input" disabled?={ !taskCanDetailEdit(task) }/>
+								<input type="number" min="1" step="1" name="repeat_count" value={ taskRecurrence(task).Count } class="caldo-input" disabled?={ !taskCanDetailEdit(task) } data-task-recurrence-control/>
 							</label>
 						</div>
 					} else {

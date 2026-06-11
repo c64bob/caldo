@@ -427,12 +427,37 @@
     error.hidden = false;
   }
 
+  function resetTaskRecurrenceUpdate(form) {
+    var marker = form ? form.querySelector('[data-task-recurrence-update]') : null;
+    if (marker) {
+      marker.disabled = true;
+    }
+  }
+
+  function markTaskRecurrenceUpdate(control) {
+    var form = control ? control.closest('[data-task-detail-form]') : null;
+    var marker = form ? form.querySelector('[data-task-recurrence-update]') : null;
+    if (marker) {
+      marker.disabled = false;
+    }
+  }
+
+  function handleTaskRecurrenceControlEvent(event) {
+    var control = closestElement(event.target, '[data-task-recurrence-control]');
+    if (control) {
+      markTaskRecurrenceUpdate(control);
+    }
+  }
+
   function bindTaskDetail(dialog) {
     if (!dialog || dialog.dataset.taskDetailBound === 'true') return;
     dialog.dataset.taskDetailBound = 'true';
     dialog.addEventListener('close', function () {
       var form = dialog.querySelector('[data-task-detail-form]');
-      if (form) form.reset();
+      if (form) {
+        form.reset();
+        resetTaskRecurrenceUpdate(form);
+      }
       var trigger = dialog.__caldoReturnFocus;
       dialog.__caldoReturnFocus = null;
       if (trigger && document.contains(trigger)) {
@@ -482,7 +507,10 @@
     }
     dialog.removeAttribute('open');
     var form = dialog.querySelector('[data-task-detail-form]');
-    if (form) form.reset();
+    if (form) {
+      form.reset();
+      resetTaskRecurrenceUpdate(form);
+    }
     var trigger = dialog.__caldoReturnFocus;
     dialog.__caldoReturnFocus = null;
     if (trigger && document.contains(trigger)) {
@@ -1074,6 +1102,9 @@
     event.preventDefault();
     event.returnValue = '';
   });
+
+  document.addEventListener('input', handleTaskRecurrenceControlEvent, true);
+  document.addEventListener('change', handleTaskRecurrenceControlEvent, true);
 
   document.addEventListener('click', function (event) {
     var inlineCreateTrigger = closestElement(event.target, '[data-inline-task-create-trigger]');

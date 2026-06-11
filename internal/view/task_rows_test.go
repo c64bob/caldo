@@ -465,9 +465,11 @@ func TestTaskRowRendersDetailPanelForSyncedTask(t *testing.T) {
 		`value="4" selected`,
 		`name="labels" value="Büro, urgent"`,
 		`name="repeat_update" value="1"`,
+		`data-task-recurrence-update`,
 		`name="repeat_freq"`,
 		`value="WEEKLY" selected`,
 		`name="repeat_interval" value="2"`,
+		`data-task-recurrence-control`,
 		`name="repeat_end"`,
 		`value="count" selected`,
 		`name="repeat_count" value="5"`,
@@ -484,6 +486,87 @@ func TestTaskRowRendersDetailPanelForSyncedTask(t *testing.T) {
 	}
 	if strings.Contains(output, `name="labels" value="Büro, urgent, STARRED"`) {
 		t.Fatalf("reserved favorite category must not render in the label editor: %s", output)
+	}
+}
+
+func TestTaskRecurrenceSupportsMVPEditablePatterns(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		rule      string
+		frequency string
+		interval  string
+		byDay     string
+		end       string
+		until     string
+		count     string
+	}{
+		{
+			name:      "daily interval without end",
+			rule:      "FREQ=DAILY;INTERVAL=3",
+			frequency: "DAILY",
+			interval:  "3",
+			byDay:     "MO",
+			end:       "never",
+		},
+		{
+			name:      "weekly interval without end",
+			rule:      "FREQ=WEEKLY;INTERVAL=2",
+			frequency: "WEEKLY",
+			interval:  "2",
+			byDay:     "MO",
+			end:       "never",
+		},
+		{
+			name:      "weekdays",
+			rule:      "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
+			frequency: "WEEKDAYS",
+			interval:  "1",
+			byDay:     "MO",
+			end:       "never",
+		},
+		{
+			name:      "specific weekday",
+			rule:      "FREQ=WEEKLY;BYDAY=WE",
+			frequency: "BYDAY",
+			interval:  "1",
+			byDay:     "WE",
+			end:       "never",
+		},
+		{
+			name:      "monthly interval until date",
+			rule:      "FREQ=MONTHLY;INTERVAL=2;UNTIL=20260710T235959Z",
+			frequency: "MONTHLY",
+			interval:  "2",
+			byDay:     "MO",
+			end:       "until",
+			until:     "2026-07-10",
+		},
+		{
+			name:      "yearly count",
+			rule:      "FREQ=YEARLY;COUNT=4",
+			frequency: "YEARLY",
+			interval:  "1",
+			byDay:     "MO",
+			end:       "count",
+			count:     "4",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := taskRecurrence(TaskRowView{RRule: tt.rule})
+			if !got.Editable {
+				t.Fatalf("expected editable recurrence for %q", tt.rule)
+			}
+			if got.Frequency != tt.frequency || got.Interval != tt.interval || got.ByDay != tt.byDay || got.End != tt.end || got.Until != tt.until || got.Count != tt.count {
+				t.Fatalf("unexpected recurrence editor for %q: %#v", tt.rule, got)
+			}
+		})
 	}
 }
 

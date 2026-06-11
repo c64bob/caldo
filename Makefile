@@ -1,4 +1,4 @@
-.PHONY: build dev stage-caldav assets tailwind templ verify-assets test lint e2e e2e-headed docker-build
+.PHONY: build dev stage-caldav assets tailwind templ verify-assets test lint e2e e2e-webkit e2e-ci e2e-headed docker-build
 
 BINARY := caldo
 BINARY_DIR := bin
@@ -33,6 +33,12 @@ lint:
 
 e2e:
 	npm run test:e2e
+
+e2e-webkit:
+	npm run test:e2e:webkit
+
+e2e-ci:
+	npm run test:e2e:ci
 
 e2e-headed:
 	npm run test:e2e:headed

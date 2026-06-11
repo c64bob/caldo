@@ -6,7 +6,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Zusammenfassung
 
-- Bestehende Stories: 80 `Umgesetzt`, 6 `Teilweise umgesetzt`, 3 `Offen`.
+- Bestehende Stories: 81 `Umgesetzt`, 5 `Teilweise umgesetzt`, 3 `Offen`.
 - Neue Planungsstories: 15 `Umgesetzt`, 24 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
@@ -100,7 +100,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 20.1 | Umgesetzt | Go-Build ist ueber Makefile/CI vorhanden. |
 | 20.2 | Umgesetzt | Dockerfile und statische Dockerfile-Tests sind vorhanden; Build wird in CI-Kontext abgesichert. |
 | 20.3 | Umgesetzt | Compose-Referenzdateien sind vorhanden und statisch pruefbar. |
-| 21.1 | Teilweise umgesetzt | Playwright/Chromium E2E und CI existieren; WebKit/Safari ist noch nicht fest verankert. |
+| 21.1 | Umgesetzt | `playwright.config.js`, `package.json`, CI-Browser-QA und `docs/qa/playwright.md` verankern denselben MVP-Smoke fuer Chromium und Playwright WebKit; die Browserlaeufe nutzen jeweils frische lokale Caldo-/Staging-CalDAV-Instanzen und decken Setup, Navigation, Suche, Tastaturkuerzel, Write-through-Aufgabenaktionen, Fokus-Refresh, Undo, Sync/SSE-Statuspfade und Konflikte ab. |
 | 21.2 | Teilweise umgesetzt | Mobile Smoke-Abdeckung existiert; Tablet-Layout ist noch nicht systematisch fertig. |
 | 21.3 | Offen | Keine produktive Drag-and-Drop-Verschiebung oder QA-Abdeckung gefunden. |
 | 21.4 | Offen | Suche-zu-gespeichertem-Filter-Flow ist noch nicht umgesetzt. |

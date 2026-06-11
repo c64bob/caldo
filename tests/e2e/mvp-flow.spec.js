@@ -15,12 +15,11 @@ const {
 const { appURL, readState } = require('./helpers/state');
 const { createRemoteTask, deleteRemoteTask, stageState, updateRemoteTask } = require('./helpers/stage');
 
-const baselineDir = 'test-results/e2e/baselines';
 const desktopViewport = { width: 1440, height: 1000 };
 const mobileViewport = { width: 390, height: 844 };
 
-test('MVP setup, sync, write-through, and conflict flow works in a browser session', async ({ page }) => {
-  fs.mkdirSync(baselineDir, { recursive: true });
+test('MVP setup, sync, write-through, and conflict flow works in a browser session', async ({ page }, testInfo) => {
+  fs.mkdirSync(browserBaselineDir(testInfo), { recursive: true });
   const state = readState();
 
   const health = await page.request.get(appURL('/health'));
@@ -29,7 +28,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await gotoApp(page, '/');
   await expect(page).toHaveURL(/\/setup$/);
   await expect(page.getByRole('heading', { name: 'CalDAV einrichten' }).first()).toBeVisible();
-  await captureBaselineSet(page, 'setup');
+  await captureBaselineSet(page, testInfo, 'setup');
   await page.setViewportSize(desktopViewport);
 
   let response = await appFormRequest(page, 'POST', '/setup/caldav', {
@@ -65,11 +64,12 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(page.locator('[data-search-results]').filter({ hasText: 'Stage Seed Task' })).toBeVisible();
   await exerciseKeyboardShortcuts(page);
   await exerciseThemeToggle(page);
+  await exerciseSSESyncStatus(page);
   await gotoApp(page, '/search?q=Stage');
   await expect(page.locator('[data-search-results]').filter({ hasText: 'Stage Seed Task' })).toBeVisible();
 
   await gotoApp(page, '/projects');
-  await captureBaselineSet(page, 'inbox-equivalent-default-project');
+  await captureBaselineSet(page, testInfo, 'inbox-equivalent-default-project');
   const projectCreateForm = page.locator('[data-project-create-form]');
   await expect(projectCreateForm).toBeVisible();
   await ensureBrowserCSRFCookie(page);
@@ -81,13 +81,13 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
     return remoteState.calendars.some((calendar) => calendar.display_name === 'E2E Empty Project');
   }).toBe(true);
   await gotoApp(page, '/today');
-  await captureBaselineSet(page, 'today');
+  await captureBaselineSet(page, testInfo, 'today');
   await gotoApp(page, '/search?q=Stage');
-  await captureBaselineSet(page, 'search');
+  await captureBaselineSet(page, testInfo, 'search');
   await gotoApp(page, '/quick-add');
-  await captureBaselineSet(page, 'quick-add');
+  await captureBaselineSet(page, testInfo, 'quick-add');
   await gotoApp(page, '/settings');
-  await captureBaselineSet(page, 'settings');
+  await captureBaselineSet(page, testInfo, 'settings');
   await gotoApp(page, '/search?q=Stage');
 
   await page.setViewportSize(mobileViewport);
@@ -95,7 +95,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await page.getByRole('button', { name: 'Navigation öffnen' }).click();
   await expect(page.getByRole('navigation', { name: 'Mobile Hauptnavigation' })).toBeVisible();
   await expect(page.locator('[data-mobile-nav-dialog] nav[aria-label="Mobile Hauptnavigation"] a[href="/today"]')).toBeVisible();
-  await page.screenshot({ path: 'test-results/e2e/search-mobile.png', fullPage: true });
+  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/search-mobile.png`, fullPage: true });
   await page.getByRole('button', { name: 'Schließen' }).click();
   await expect(page.locator('.caldo-topbar a[href="/search"]')).toBeVisible();
   await expect(page.locator('.caldo-topbar a[href="/quick-add"]')).toBeVisible();
@@ -332,7 +332,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(undoNotifications.getByRole('button', { name: 'Rückgängig' })).toBeVisible();
   await expect(undoNotifications).toContainText('Noch');
-  await page.screenshot({ path: 'test-results/e2e/undo-available.png', fullPage: true });
+  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/undo-available.png`, fullPage: true });
   const secondPage = await page.context().newPage();
   await gotoApp(secondPage, `/search?q=${encodeURIComponent(currentLocalTitle)}`);
   await expect(secondPage.locator('#notifications').getByRole('button', { name: 'Rückgängig' })).toHaveCount(0);
@@ -393,7 +393,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await gotoApp(page, '/conflicts');
   const conflictLink = page.locator('[data-conflict-list] a').first();
   await expect(conflictLink).toBeVisible();
-  await captureBaselineSet(page, 'conflicts');
+  await captureBaselineSet(page, testInfo, 'conflicts');
   const conflictHref = await conflictLink.getAttribute('href');
   expect(conflictHref).toMatch(/^\/conflicts\//);
 
@@ -474,6 +474,51 @@ async function exerciseThemeToggle(page) {
   await expect(toggle).toContainText('Darstellung: System');
 }
 
+async function exerciseSSESyncStatus(page) {
+  const state = readState();
+  const eventsRoute = '**/events';
+  await page.route(eventsRoute, async (route) => {
+    await route.continue({
+      headers: {
+        ...route.request().headers(),
+        [state.proxyUserHeader]: 'e2e-user'
+      }
+    });
+  });
+
+  await gotoApp(page, '/today');
+  try {
+    const eventPromise = page.evaluate(() => new Promise((resolve, reject) => {
+      window.__caldoSSEConnected = false;
+      const source = new EventSource('/events');
+      const timeout = window.setTimeout(() => {
+        source.close();
+        reject(new Error('timed out waiting for sync SSE event'));
+      }, 10_000);
+      source.addEventListener('connected', () => {
+        window.__caldoSSEConnected = true;
+      });
+      source.addEventListener('app-event', (event) => {
+        window.clearTimeout(timeout);
+        source.close();
+        resolve(JSON.parse(event.data));
+      });
+      source.onerror = () => {
+        window.clearTimeout(timeout);
+        source.close();
+        reject(new Error('SSE connection failed'));
+      };
+    }));
+
+    await expect.poll(() => page.evaluate(() => window.__caldoSSEConnected === true)).toBe(true);
+    await manualSync(page);
+    const event = await eventPromise;
+    expect(event).toMatchObject({ type: 'sync', resource: 'sync_status' });
+  } finally {
+    await page.unroute(eventsRoute);
+  }
+}
+
 async function exerciseWriteStatusForFailedInlineCreate(page, inlineCreateRoot, titleInput) {
   let resolveIntercepted;
   let releaseResponse;
@@ -523,12 +568,20 @@ async function browserWouldBlockUnload(page) {
   });
 }
 
-async function captureBaselineSet(page, name) {
-  await captureBaseline(page, `${name}-desktop`, desktopViewport);
-  await captureBaseline(page, `${name}-mobile`, mobileViewport);
+function browserArtifactDir(testInfo) {
+  return `test-results/e2e/${testInfo.project.name}`;
 }
 
-async function captureBaseline(page, name, viewport) {
+function browserBaselineDir(testInfo) {
+  return `${browserArtifactDir(testInfo)}/baselines`;
+}
+
+async function captureBaselineSet(page, testInfo, name) {
+  await captureBaseline(page, testInfo, `${name}-desktop`, desktopViewport);
+  await captureBaseline(page, testInfo, `${name}-mobile`, mobileViewport);
+}
+
+async function captureBaseline(page, testInfo, name, viewport) {
   await page.setViewportSize(viewport);
-  await page.screenshot({ path: `${baselineDir}/${name}.png`, fullPage: true });
+  await page.screenshot({ path: `${browserBaselineDir(testInfo)}/${name}.png`, fullPage: true });
 }

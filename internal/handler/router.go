@@ -48,7 +48,16 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 	router.Get("/completed", Completed(dateViewDependencies{database: database}))
 	router.Get("/search", Search(searchDependencies{database: database}))
 	router.Get("/labels", LabelsPage(database))
-	router.Get("/settings", SettingsPage(database, proxyUserHeader))
+	settingsDeps := settingsDependencies{
+		database:        database,
+		encryptionKey:   csrfSecret,
+		tester:          caldav.NewConnectionTester(nil),
+		calendar:        caldav.NewCalendarClient(nil),
+		proxyUserHeader: proxyUserHeader,
+	}
+	router.Get("/settings", SettingsPage(settingsDeps))
+	router.With(SetupCSRFMiddleware(csrfSecret)).Post("/settings/caldav", SettingsCalDAVUpdate(settingsDeps))
+	router.With(SetupCSRFMiddleware(csrfSecret)).Post("/settings/calendars", SettingsCalendarsUpdate(settingsDeps))
 	router.With(SetupCSRFMiddleware(csrfSecret)).Post("/settings/sync", SettingsSyncUpdate(database))
 	router.With(SetupCSRFMiddleware(csrfSecret)).Post("/settings/ui", SettingsUIUpdate(database))
 	router.Get("/quick-add", QuickAddPage(quickAddDependencies{database: database}))

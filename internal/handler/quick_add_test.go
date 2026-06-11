@@ -47,6 +47,36 @@ func TestQuickAddPreviewUsesDefaultProject(t *testing.T) {
 	}
 }
 
+func TestQuickAddPreviewUsesPersistedUILanguage(t *testing.T) {
+	database := openSQLiteForTaskCreateHandlerTest(t)
+	seedTaskCreateHandlerProject(t, database)
+	if _, err := database.Conn.Exec(`UPDATE settings SET ui_language = 'en', dark_mode = 'light' WHERE id = 'default';`); err != nil {
+		t.Fatalf("set ui language: %v", err)
+	}
+	h := QuickAddPreview(quickAddDependencies{database: database})
+
+	form := url.Values{}
+	form.Set("text", "Call tomorrow")
+	req := httptest.NewRequest(http.MethodPost, "/quick-add/preview", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, `name="title" value="Call"`) {
+		t.Fatalf("expected English natural date token to be removed from title: %s", body)
+	}
+	if strings.Contains(body, `name="due_date" value=""`) {
+		t.Fatalf("expected English natural date token to set due date: %s", body)
+	}
+	if !strings.Contains(body, `Date`) || !strings.Contains(body, `Preview`) {
+		t.Fatalf("expected preview labels to use English UI language: %s", body)
+	}
+}
+
 func TestQuickAddPreviewUsesProjectTokenWhenProjectExists(t *testing.T) {
 	database := openSQLiteForTaskCreateHandlerTest(t)
 	seedTaskCreateHandlerProject(t, database)

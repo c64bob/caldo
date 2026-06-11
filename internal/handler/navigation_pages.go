@@ -110,11 +110,12 @@ func renderSettingsPage(w http.ResponseWriter, r *http.Request, deps settingsDep
 		settings.CalDAVURL = pageState.CalDAVURL
 		settings.CalDAVUsername = pageState.CalDAVUsername
 	}
+	ctx := view.WithUIPreferences(r.Context(), settings.UILanguage, settings.DarkMode)
 
 	available := pageState.Available
 	calendarLoadError := pageState.CalendarsError
 	if available == nil && deps.calendar != nil {
-		calendars, err := loadSettingsCalendars(r.Context(), deps)
+		calendars, err := loadSettingsCalendars(ctx, deps)
 		if err != nil {
 			if calendarLoadError == "" {
 				calendarLoadError = "kalender konnten nicht geladen werden"
@@ -142,7 +143,7 @@ func renderSettingsPage(w http.ResponseWriter, r *http.Request, deps settingsDep
 	if status != http.StatusOK {
 		w.WriteHeader(status)
 	}
-	if err := view.BaseLayout("Einstellungen", view.SettingsPageContent(settingsView)).Render(r.Context(), w); err != nil {
+	if err := view.BaseLayout("Einstellungen", view.SettingsPageContent(settingsView)).Render(ctx, w); err != nil {
 		http.Error(w, "render page", http.StatusInternalServerError)
 	}
 }

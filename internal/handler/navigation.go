@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"time"
@@ -17,16 +18,26 @@ func navigationMiddleware(database *db.Database, setupState *SetupState) func(ht
 				return
 			}
 
-			snapshot, err := database.LoadNavigationSnapshot(r.Context(), time.Now())
-			if err != nil {
-				next.ServeHTTP(w, r)
-				return
+			ctx := withUIPreferences(r.Context(), database)
+			snapshot, err := database.LoadNavigationSnapshot(ctx, time.Now())
+			if err == nil {
+				ctx = view.WithNavigation(ctx, navigationSnapshotView(snapshot))
 			}
 
-			ctx := view.WithNavigation(r.Context(), navigationSnapshotView(snapshot))
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+func withUIPreferences(ctx context.Context, database *db.Database) context.Context {
+	if database == nil {
+		return ctx
+	}
+	preferences, err := database.LoadUIPreferences(ctx)
+	if err != nil {
+		return ctx
+	}
+	return view.WithUIPreferences(ctx, preferences.UILanguage, preferences.DarkMode)
 }
 
 func shouldLoadNavigation(database *db.Database, setupState *SetupState, r *http.Request) bool {

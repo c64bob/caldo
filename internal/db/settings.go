@@ -31,6 +31,26 @@ type SettingsProject struct {
 	TaskCount     int
 }
 
+// UIPreferences contains the persisted UI language and dark-mode setting.
+type UIPreferences struct {
+	UILanguage string
+	DarkMode   string
+}
+
+// LoadUIPreferences reads persisted presentation preferences from settings.
+func (d *Database) LoadUIPreferences(ctx context.Context) (UIPreferences, error) {
+	var preferences UIPreferences
+	err := d.Conn.QueryRowContext(ctx, `
+SELECT ui_language, dark_mode
+FROM settings
+WHERE id='default';
+`).Scan(&preferences.UILanguage, &preferences.DarkMode)
+	if err != nil {
+		return UIPreferences{}, fmt.Errorf("load ui preferences: %w", err)
+	}
+	return preferences, nil
+}
+
 // LoadAppSettings reads editable settings from the singleton row.
 func (d *Database) LoadAppSettings(ctx context.Context) (AppSettings, error) {
 	var s AppSettings

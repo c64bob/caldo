@@ -1200,6 +1200,55 @@
 		color: var(--caldo-text-muted);
 	}
 
+	.caldo-conflict-split {
+		@apply mt-4 border-t pt-4;
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-conflict-split-heading h4 {
+		@apply text-sm font-semibold;
+		color: var(--caldo-text);
+	}
+
+	.caldo-conflict-split-preview-grid {
+		@apply mt-3 grid gap-3 lg:grid-cols-2;
+	}
+
+	.caldo-conflict-split-item {
+		@apply min-w-0 rounded-md border p-3;
+		background: var(--caldo-surface-muted);
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-conflict-split-title {
+		@apply mt-1 text-sm font-semibold;
+		color: var(--caldo-text);
+		overflow-wrap: anywhere;
+	}
+
+	.caldo-conflict-split-meta {
+		@apply mt-3 grid gap-2 text-xs sm:grid-cols-2;
+	}
+
+	.caldo-conflict-split-meta div {
+		@apply min-w-0;
+	}
+
+	.caldo-conflict-split-meta dt {
+		@apply font-medium uppercase tracking-normal;
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-conflict-split-meta dd {
+		@apply mt-0.5;
+		color: var(--caldo-text-muted);
+		overflow-wrap: anywhere;
+	}
+
+	.caldo-conflict-split-form {
+		@apply mt-3 flex min-w-0 flex-wrap items-center gap-2;
+	}
+
 	.caldo-conflict-manual-form {
 		@apply mt-4 border-t pt-4;
 		border-color: var(--caldo-border);

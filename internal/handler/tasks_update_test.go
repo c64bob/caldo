@@ -29,6 +29,7 @@ type stubTaskUpdateTodoClient struct {
 	lastDeleteETag string
 	lastRawVTODO   string
 	lastUpdateETag string
+	onCreate       func()
 }
 
 func (s *stubTaskUpdateTodoClient) PutVTODOUpdate(_ context.Context, _ caldav.Credentials, href string, rawVTODO string, etag string) (string, error) {
@@ -46,6 +47,9 @@ func (s *stubTaskUpdateTodoClient) PutVTODOCreate(_ context.Context, _ caldav.Cr
 	s.createCalls++
 	s.lastHref = href
 	s.lastRawVTODO = rawVTODO
+	if s.onCreate != nil {
+		s.onCreate()
+	}
 	if s.createErr != nil {
 		return "", s.createErr
 	}

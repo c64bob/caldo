@@ -85,10 +85,10 @@ templ ConflictDetailPage(conflict db.ConflictDetail, projectOptions []TaskProjec
 					if conflictHasRemoteVersion(conflict) {
 						@ConflictResolveAction(conflict, "remote", "Remote-Version übernehmen", "Übernimmt den entfernten Stand für diese Aufgabe.")
 					}
-					if conflictCanSplit(conflict) {
-						@ConflictResolveAction(conflict, "split", "Beide Versionen behalten", "Behält die lokale Aufgabe und legt die Remote-Version zusätzlich an.")
-					}
 				</div>
+				if conflictCanSplit(conflict) {
+					@ConflictSplitResolution(conflict)
+				}
 				<form
 					method="post"
 					action={ conflictResolvePath(conflict) }
@@ -161,6 +161,64 @@ templ ConflictResolveAction(conflict db.ConflictDetail, resolution string, label
 		<button type="submit" class="caldo-button caldo-button-secondary">{ label }</button>
 		<p class="caldo-conflict-resolve-hint">{ hint }</p>
 	</form>
+}
+
+templ ConflictSplitResolution(conflict db.ConflictDetail) {
+	<section class="caldo-conflict-split" data-conflict-split-preview>
+		<div class="caldo-conflict-split-heading">
+			<div>
+				<h4>Beide Versionen behalten</h4>
+				<p class="caldo-muted">Die lokale Aufgabe bleibt bestehen. Die Remote-Version wird als neue Aufgabe im selben Projekt ohne Parent-Verknüpfung angelegt.</p>
+			</div>
+		</div>
+		<div class="caldo-conflict-split-preview-grid">
+			@ConflictSplitPreview(conflictSplitLocalPreview(conflict))
+			@ConflictSplitPreview(conflictSplitRemotePreview(conflict))
+		</div>
+		<form
+			method="post"
+			action={ conflictResolvePath(conflict) }
+			hx-post={ conflictResolvePath(conflict) }
+			hx-swap="none"
+			hx-disabled-elt="find button"
+			hx-headers={ conflictResolveCSRFHeaders(ctx) }
+			class="caldo-conflict-split-form"
+			data-conflict-split-form
+		>
+			<input type="hidden" name="resolution" value="split"/>
+			<button type="submit" class="caldo-button caldo-button-secondary">Beide Versionen behalten</button>
+			<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
+		</form>
+	</section>
+}
+
+templ ConflictSplitPreview(preview conflictSplitPreview) {
+	<div class="caldo-conflict-split-item">
+		<p class="caldo-meta">{ preview.Label }</p>
+		<p class="caldo-conflict-split-title">Titel: { preview.Title }</p>
+		<dl class="caldo-conflict-split-meta">
+			<div>
+				<dt>UID</dt>
+				<dd>{ preview.UID }</dd>
+			</div>
+			<div>
+				<dt>Projekt</dt>
+				<dd>{ preview.Project }</dd>
+			</div>
+			<div>
+				<dt>Status</dt>
+				<dd>{ preview.Status }</dd>
+			</div>
+			<div>
+				<dt>Fälligkeit</dt>
+				<dd>{ preview.Due }</dd>
+			</div>
+			<div>
+				<dt>Unteraufgabe</dt>
+				<dd>{ preview.Parent }</dd>
+			</div>
+		</dl>
+	</div>
 }
 
 templ ConflictValueCell(cell conflictComparisonCell) {

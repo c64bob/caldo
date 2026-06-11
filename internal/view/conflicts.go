@@ -1,7 +1,10 @@
 package view
 
 import (
+	"context"
 	"database/sql"
+	"encoding/json"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -27,6 +30,18 @@ type conflictComparisonCell struct {
 type conflictRawVersion struct {
 	Label string
 	Raw   string
+}
+
+type conflictManualField struct {
+	Name    string
+	Label   string
+	Options []conflictManualOption
+}
+
+type conflictManualOption struct {
+	Value    string
+	Label    string
+	Selected bool
 }
 
 func conflictTypeLabel(conflictType string) string {
@@ -111,6 +126,88 @@ func conflictRawVersions(conflict db.ConflictDetail) []conflictRawVersion {
 		versions = append(versions, conflictRawVersion{Label: "Remote", Raw: conflict.RemoteVTODO.String})
 	}
 	return versions
+}
+
+func conflictResolvePath(conflict db.ConflictDetail) string {
+	return "/conflicts/" + url.PathEscape(conflict.ID) + "/resolve"
+}
+
+func conflictResolveCSRFHeaders(ctx context.Context) string {
+	encoded, err := json.Marshal(map[string]string{"X-CSRF-Token": CSRFToken(ctx)})
+	if err != nil {
+		return "{}"
+	}
+	return string(encoded)
+}
+
+func conflictCanResolveExistingTask(conflict db.ConflictDetail) bool {
+	return conflict.TaskID.Valid && strings.TrimSpace(conflict.TaskID.String) != ""
+}
+
+func conflictHasLocalVersion(conflict db.ConflictDetail) bool {
+	return conflict.LocalVTODO.Valid && strings.TrimSpace(conflict.LocalVTODO.String) != ""
+}
+
+func conflictHasRemoteVersion(conflict db.ConflictDetail) bool {
+	return conflict.RemoteVTODO.Valid && strings.TrimSpace(conflict.RemoteVTODO.String) != ""
+}
+
+func conflictCanSplit(conflict db.ConflictDetail) bool {
+	return conflictCanResolveExistingTask(conflict) && conflictHasLocalVersion(conflict) && conflictHasRemoteVersion(conflict)
+}
+
+func conflictManualFields(conflict db.ConflictDetail) []conflictManualField {
+	basePresent := conflictHasBase(conflict)
+	localPresent := conflictHasLocalVersion(conflict)
+	remotePresent := conflictHasRemoteVersion(conflict)
+	fields := []conflictManualField{}
+	for _, field := range []struct {
+		name  string
+		label string
+	}{
+		{name: "title", label: "Titel"},
+		{name: "description", label: "Beschreibung"},
+		{name: "due", label: "Fälligkeit"},
+		{name: "priority", label: "Priorität"},
+		{name: "labels", label: "Labels"},
+		{name: "status", label: "Status"},
+		{name: "parent", label: "Unteraufgaben"},
+	} {
+		options := conflictManualOptions(basePresent, localPresent, remotePresent)
+		if len(options) == 0 {
+			continue
+		}
+		fields = append(fields, conflictManualField{Name: field.name, Label: field.label, Options: options})
+	}
+	return fields
+}
+
+func conflictManualOptions(basePresent bool, localPresent bool, remotePresent bool) []conflictManualOption {
+	options := []conflictManualOption{}
+	defaultValue := "remote"
+	if !remotePresent && localPresent {
+		defaultValue = "local"
+	}
+	if !remotePresent && !localPresent && basePresent {
+		defaultValue = "base"
+	}
+	if basePresent {
+		options = append(options, conflictManualOption{Value: "base", Label: "Base", Selected: defaultValue == "base"})
+	}
+	if localPresent {
+		options = append(options, conflictManualOption{Value: "local", Label: "Lokal", Selected: defaultValue == "local"})
+	}
+	if remotePresent {
+		options = append(options, conflictManualOption{Value: "remote", Label: "Remote", Selected: defaultValue == "remote"})
+	}
+	return options
+}
+
+func conflictProjectSelected(conflict db.ConflictDetail, option TaskProjectOption) bool {
+	if !conflict.ProjectID.Valid {
+		return false
+	}
+	return strings.TrimSpace(conflict.ProjectID.String) == strings.TrimSpace(option.ID)
 }
 
 func conflictParsedFields(raw sql.NullString) (model.VTODOFields, bool) {

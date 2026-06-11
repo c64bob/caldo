@@ -24,10 +24,14 @@ func ResolveConflict(deps taskUpdateDependencies) http.HandlerFunc {
 		}
 		conflictID := chi.URLParam(r, "conflictID")
 		resolution := strings.TrimSpace(r.FormValue("resolution"))
-		loaded, err := deps.database.LoadConflictResolutionBase(r.Context(), conflictID)
+		loaded, err := deps.database.LoadConflictResolutionBase(r.Context(), conflictID, r.FormValue("project_id"))
 		if err != nil {
 			if errors.Is(err, db.ErrConflictNotFound) {
 				http.NotFound(w, r)
+				return
+			}
+			if errors.Is(err, db.ErrTaskProjectNotFound) {
+				http.Error(w, "selected project does not exist", http.StatusBadRequest)
 				return
 			}
 			http.Error(w, "failed to load conflict", http.StatusInternalServerError)
@@ -36,20 +40,24 @@ func ResolveConflict(deps taskUpdateDependencies) http.HandlerFunc {
 		resolved := loaded.RemoteVTODO
 		switch resolution {
 		case "local":
+			if strings.TrimSpace(loaded.LocalVTODO) == "" {
+				http.Error(w, "local version is unavailable", http.StatusBadRequest)
+				return
+			}
 			resolved = loaded.LocalVTODO
 		case "remote":
+			if strings.TrimSpace(loaded.RemoteVTODO) == "" {
+				http.Error(w, "remote version is unavailable", http.StatusBadRequest)
+				return
+			}
 			resolved = loaded.RemoteVTODO
 		case "manual":
-			patch := model.VTODOPatch{
-				Summary:     optionalTrimmedFormPointer(r, "title"),
-				Description: optionalTrimmedFormPointer(r, "description"),
-				Status:      optionalLowerTrimmedFormPointer(r, "status"),
-				DueDate:     parseOptionalDate(r.FormValue("due_date")),
-				Priority:    parseOptionalInt(r.FormValue("priority")),
-				Categories:  parseOptionalLabels(r.FormValue("labels")),
-			}
-			resolved = model.PatchVTODO(loaded.RemoteVTODO, patch)
+			resolved = buildManualConflictVTODO(loaded, r.PostForm)
 		case "split":
+			if strings.TrimSpace(loaded.RemoteVTODO) == "" {
+				http.Error(w, "remote version is unavailable", http.StatusBadRequest)
+				return
+			}
 			resolved = loaded.RemoteVTODO
 		default:
 			http.Error(w, "invalid resolution", http.StatusBadRequest)
@@ -61,6 +69,7 @@ func ResolveConflict(deps taskUpdateDependencies) http.HandlerFunc {
 			http.Error(w, "caldav credentials unavailable", http.StatusFailedDependency)
 			return
 		}
+		todoCredentials := caldav.Credentials{URL: creds.URL, Username: creds.Username, Password: creds.Password}
 		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUpdatePersistTimeout)
 		defer cancel()
 		if resolution == "split" {
@@ -70,8 +79,8 @@ func ResolveConflict(deps taskUpdateDependencies) http.HandlerFunc {
 				http.Error(w, "failed to build split task", http.StatusInternalServerError)
 				return
 			}
-			splitHref := joinCalendarTaskHref(loaded.Href, splitUID)
-			newETag, err := deps.todos.PutVTODOCreate(r.Context(), caldav.Credentials{URL: creds.URL, Username: creds.Username, Password: creds.Password}, splitHref, splitVTODO)
+			splitHref := joinCalendarTaskHref(loaded.PreviousHref, splitUID)
+			newETag, err := deps.todos.PutVTODOCreate(r.Context(), todoCredentials, splitHref, splitVTODO)
 			if err != nil {
 				http.Error(w, "failed to resolve conflict on caldav server", http.StatusBadGateway)
 				return
@@ -88,12 +97,29 @@ func ResolveConflict(deps taskUpdateDependencies) http.HandlerFunc {
 				return
 			}
 		} else {
-			newETag, err := deps.todos.PutVTODOUpdate(r.Context(), caldav.Credentials{URL: creds.URL, Username: creds.Username, Password: creds.Password}, loaded.Href, resolved, loaded.ETag)
+			var newETag string
+			if loaded.ProjectChanged || conflictRemoteWasDeleted(loaded) {
+				newETag, err = deps.todos.PutVTODOCreate(r.Context(), todoCredentials, loaded.NextHref, resolved)
+				if err == nil && loaded.ProjectChanged {
+					err = deps.todos.DeleteVTODO(r.Context(), todoCredentials, loaded.PreviousHref, loaded.PreviousETag)
+				}
+			} else {
+				newETag, err = deps.todos.PutVTODOUpdate(r.Context(), todoCredentials, loaded.PreviousHref, resolved, loaded.PreviousETag)
+			}
 			if err != nil {
 				http.Error(w, "failed to resolve conflict on caldav server", http.StatusBadGateway)
 				return
 			}
-			if err := deps.database.MarkConflictResolved(persistCtx, db.ResolveConflictInput{ConflictID: conflictID, Resolution: resolution, ResolvedVTODO: resolved, NewETag: newETag, ExpectedVersion: loaded.ServerVersion}); err != nil {
+			if err := deps.database.MarkConflictResolved(persistCtx, db.ResolveConflictInput{
+				ConflictID:      conflictID,
+				Resolution:      resolution,
+				ResolvedVTODO:   resolved,
+				NewETag:         newETag,
+				ProjectID:       loaded.ProjectID,
+				ProjectName:     loaded.ProjectName,
+				Href:            loaded.NextHref,
+				ExpectedVersion: loaded.ServerVersion,
+			}); err != nil {
 				http.Error(w, "failed to persist conflict resolution", http.StatusInternalServerError)
 				return
 			}
@@ -102,9 +128,118 @@ func ResolveConflict(deps taskUpdateDependencies) http.HandlerFunc {
 		if deps.broker != nil && loaded.TaskID != "" {
 			deps.broker.publish(appEvent{Type: "task", Resource: loaded.TaskID, Version: loaded.ServerVersion + 1, OriginConnection: r.Header.Get("X-Tab-ID")})
 		}
+		if strings.EqualFold(r.Header.Get("HX-Request"), "true") {
+			w.Header().Set("HX-Redirect", "/conflicts")
+		}
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("conflict resolved"))
 	}
+}
+
+type conflictVersionFields struct {
+	raw     string
+	fields  model.VTODOFields
+	present bool
+}
+
+func buildManualConflictVTODO(loaded db.ConflictResolutionBase, form map[string][]string) string {
+	base := conflictVersionFromRaw(loaded.BaseVTODO)
+	local := conflictVersionFromRaw(loaded.LocalVTODO)
+	remote := conflictVersionFromRaw(loaded.RemoteVTODO)
+	target := remote
+	if !target.present {
+		target = local
+	}
+	if !target.present {
+		target = base
+	}
+	if !target.present {
+		return loaded.RemoteVTODO
+	}
+
+	patch := model.VTODOPatch{}
+	if selected, ok := selectedConflictVersion(form, "title", base, local, remote); ok {
+		title := strings.TrimSpace(selected.fields.Title)
+		patch.Summary = &title
+	}
+	if selected, ok := selectedConflictVersion(form, "description", base, local, remote); ok {
+		description := strings.TrimSpace(selected.fields.Description)
+		patch.Description = &description
+	}
+	if selected, ok := selectedConflictVersion(form, "status", base, local, remote); ok {
+		status := strings.ToLower(strings.TrimSpace(selected.fields.Status))
+		if status == "" {
+			status = "needs-action"
+		}
+		patch.Status = &status
+		if status == "completed" && selected.fields.CompletedAt != nil {
+			patch.CompletedAt = selected.fields.CompletedAt
+		}
+		if status != "completed" {
+			patch.ClearCompleted = true
+		}
+	}
+	if selected, ok := selectedConflictVersion(form, "due", base, local, remote); ok {
+		switch {
+		case selected.fields.DueDate != nil:
+			dueDate := strings.TrimSpace(*selected.fields.DueDate)
+			patch.DueDate = &dueDate
+		case selected.fields.DueAt != nil:
+			patch.DueAt = selected.fields.DueAt
+		default:
+			patch.ClearDue = true
+		}
+	}
+	if selected, ok := selectedConflictVersion(form, "priority", base, local, remote); ok {
+		if selected.fields.Priority != nil {
+			patch.Priority = selected.fields.Priority
+		} else {
+			patch.ClearPriority = true
+		}
+	}
+	if selected, ok := selectedConflictVersion(form, "labels", base, local, remote); ok {
+		patch.Categories = append([]string(nil), selected.fields.Categories...)
+	}
+	if selected, ok := selectedConflictVersion(form, "parent", base, local, remote); ok {
+		parentUID := strings.TrimSpace(selected.fields.ParentUID)
+		if parentUID == "" {
+			patch.ClearParent = true
+		} else {
+			patch.ParentUID = &parentUID
+		}
+	}
+
+	return model.PatchVTODO(target.raw, patch)
+}
+
+func conflictVersionFromRaw(raw string) conflictVersionFields {
+	if strings.TrimSpace(raw) == "" {
+		return conflictVersionFields{}
+	}
+	return conflictVersionFields{
+		raw:     raw,
+		fields:  model.ParseVTODOFields(raw),
+		present: true,
+	}
+}
+
+func selectedConflictVersion(form map[string][]string, field string, base conflictVersionFields, local conflictVersionFields, remote conflictVersionFields) (conflictVersionFields, bool) {
+	switch strings.ToLower(strings.TrimSpace(firstFormValue(form, field+"_source"))) {
+	case "base":
+		return base, base.present
+	case "local":
+		return local, local.present
+	case "remote", "":
+		return remote, remote.present
+	default:
+		return conflictVersionFields{}, false
+	}
+}
+
+func conflictRemoteWasDeleted(loaded db.ConflictResolutionBase) bool {
+	return strings.EqualFold(strings.TrimSpace(loaded.ConflictType), "edit_delete") &&
+		strings.TrimSpace(loaded.RemoteVTODO) == "" &&
+		strings.TrimSpace(loaded.LocalVTODO) != ""
 }
 
 func prepareSplitVTODO(raw string, uid string) (string, error) {

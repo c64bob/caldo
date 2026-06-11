@@ -108,3 +108,49 @@ func TestPatchVTODOUpdatesDueCategoriesAndCompleted(t *testing.T) {
 		}
 	}
 }
+
+func TestPatchVTODOUpdatesParentRelationshipOnly(t *testing.T) {
+	raw := strings.Join([]string{
+		"BEGIN:VTODO",
+		"UID:uid-3",
+		"SUMMARY:old",
+		"RELATED-TO;RELTYPE=PARENT:parent-old",
+		"RELATED-TO;RELTYPE=SIBLING:sibling-1",
+		"END:VTODO",
+	}, "\n")
+
+	parentUID := "parent-new"
+	patched := PatchVTODO(raw, VTODOPatch{ParentUID: &parentUID})
+
+	for _, expected := range []string{
+		"RELATED-TO;RELTYPE=PARENT:parent-new",
+		"RELATED-TO;RELTYPE=SIBLING:sibling-1",
+	} {
+		if !strings.Contains(patched, expected) {
+			t.Fatalf("expected patched todo to contain %q, got %s", expected, patched)
+		}
+	}
+	if strings.Contains(patched, "parent-old") {
+		t.Fatalf("expected old parent link to be replaced, got %s", patched)
+	}
+}
+
+func TestPatchVTODOClearsParentRelationshipOnly(t *testing.T) {
+	raw := strings.Join([]string{
+		"BEGIN:VTODO",
+		"UID:uid-4",
+		"SUMMARY:old",
+		"RELATED-TO;RELTYPE=PARENT:parent-old",
+		"RELATED-TO;RELTYPE=SIBLING:sibling-1",
+		"END:VTODO",
+	}, "\n")
+
+	patched := PatchVTODO(raw, VTODOPatch{ClearParent: true})
+
+	if strings.Contains(patched, "RELTYPE=PARENT") || strings.Contains(patched, "parent-old") {
+		t.Fatalf("expected parent link to be removed, got %s", patched)
+	}
+	if !strings.Contains(patched, "RELATED-TO;RELTYPE=SIBLING:sibling-1") {
+		t.Fatalf("expected sibling link to be preserved, got %s", patched)
+	}
+}

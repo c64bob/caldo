@@ -15,13 +15,19 @@ import (
 var ErrConflictNotFound = errors.New("conflict not found")
 
 type ConflictResolutionBase struct {
-	ConflictID    string
-	TaskID        string
-	Href          string
-	ETag          string
-	ServerVersion int
-	LocalVTODO    string
-	RemoteVTODO   string
+	ConflictID     string
+	ConflictType   string
+	TaskID         string
+	PreviousHref   string
+	PreviousETag   string
+	NextHref       string
+	ProjectID      string
+	ProjectName    string
+	ProjectChanged bool
+	ServerVersion  int
+	BaseVTODO      string
+	LocalVTODO     string
+	RemoteVTODO    string
 }
 
 type ResolveConflictInput struct {
@@ -29,6 +35,9 @@ type ResolveConflictInput struct {
 	Resolution      string
 	ResolvedVTODO   string
 	NewETag         string
+	ProjectID       string
+	ProjectName     string
+	Href            string
 	ExpectedVersion int
 }
 
@@ -41,23 +50,60 @@ type ResolveConflictSplitInput struct {
 	ExpectedVersion int
 }
 
-func (d *Database) LoadConflictResolutionBase(ctx context.Context, conflictID string) (ConflictResolutionBase, error) {
+func (d *Database) LoadConflictResolutionBase(ctx context.Context, conflictID string, projectID string) (ConflictResolutionBase, error) {
 	var out ConflictResolutionBase
 	out.ConflictID = conflictID
 	var taskID sql.NullString
+	var currentProjectID, currentProjectName, uid string
+	var currentETag sql.NullString
 	row := d.Conn.QueryRowContext(ctx, `
-SELECT c.task_id, COALESCE(c.local_vtodo, ''), COALESCE(c.remote_vtodo, ''), COALESCE(t.href, ''), COALESCE(t.etag, ''), COALESCE(t.server_version, 0)
+SELECT c.task_id,
+       c.conflict_type,
+       COALESCE(c.base_vtodo, ''),
+       COALESCE(c.local_vtodo, ''),
+       COALESCE(c.remote_vtodo, ''),
+       COALESCE(t.project_id, ''),
+       COALESCE(t.project_name, ''),
+       COALESCE(t.uid, ''),
+       COALESCE(t.href, ''),
+       t.etag,
+       COALESCE(t.server_version, 0)
 FROM conflicts c
 LEFT JOIN tasks t ON t.id = c.task_id
 WHERE c.id = ? AND c.resolved_at IS NULL;
 `, conflictID)
-	if err := row.Scan(&taskID, &out.LocalVTODO, &out.RemoteVTODO, &out.Href, &out.ETag, &out.ServerVersion); err != nil {
+	if err := row.Scan(&taskID, &out.ConflictType, &out.BaseVTODO, &out.LocalVTODO, &out.RemoteVTODO, &currentProjectID, &currentProjectName, &uid, &out.PreviousHref, &currentETag, &out.ServerVersion); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ConflictResolutionBase{}, ErrConflictNotFound
 		}
 		return ConflictResolutionBase{}, fmt.Errorf("load conflict resolution base: %w", err)
 	}
 	out.TaskID = taskID.String
+	out.ProjectID = currentProjectID
+	out.ProjectName = currentProjectName
+	out.PreviousETag = strings.TrimSpace(currentETag.String)
+	out.NextHref = out.PreviousHref
+
+	targetProjectID := strings.TrimSpace(projectID)
+	if targetProjectID == "" || targetProjectID == currentProjectID || strings.TrimSpace(uid) == "" {
+		return out, nil
+	}
+
+	var targetDisplayName, targetCalendarHref string
+	if err := d.Conn.QueryRowContext(ctx, `
+SELECT display_name, calendar_href
+FROM projects
+WHERE id = ?;
+`, targetProjectID).Scan(&targetDisplayName, &targetCalendarHref); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ConflictResolutionBase{}, ErrTaskProjectNotFound
+		}
+		return ConflictResolutionBase{}, fmt.Errorf("load conflict resolution base: load target project: %w", err)
+	}
+	out.ProjectID = targetProjectID
+	out.ProjectName = targetDisplayName
+	out.NextHref = joinCalendarTaskHref(targetCalendarHref, uid)
+	out.ProjectChanged = strings.TrimSpace(out.NextHref) != strings.TrimSpace(out.PreviousHref)
 	return out, nil
 }
 
@@ -74,9 +120,23 @@ func (d *Database) MarkConflictResolved(ctx context.Context, input ResolveConfli
 	parsed := model.ParseVTODOFields(input.ResolvedVTODO)
 	resultTask, err := tx.ExecContext(ctx, `
 UPDATE tasks
-SET raw_vtodo=?, title=?, description=?, status=?, due_date=?, due_at=?, priority=?, label_names=?, etag=?, sync_status='synced', server_version=server_version+1, updated_at=CURRENT_TIMESTAMP
+SET raw_vtodo=?,
+    title=?,
+    description=?,
+    status=?,
+    due_date=?,
+    due_at=?,
+    priority=?,
+    label_names=?,
+    etag=?,
+    sync_status='synced',
+    server_version=server_version+1,
+    updated_at=CURRENT_TIMESTAMP,
+    project_id=COALESCE(NULLIF(?, ''), project_id),
+    project_name=COALESCE(NULLIF(?, ''), project_name),
+    href=COALESCE(NULLIF(?, ''), href)
 WHERE id=(SELECT task_id FROM conflicts WHERE id=?) AND server_version=?;
-`, input.ResolvedVTODO, parsed.Title, nullableString(parsed.Description), parsed.Status, nullValue(dueDateNull(parsed.DueDate)), nullValue(dueAtNull(parsed.DueAt)), nullValue(priorityNull(parsed.Priority)), nullValue(labelsNull(parsed.Categories)), nullableString(strings.TrimSpace(input.NewETag)), input.ConflictID, input.ExpectedVersion)
+`, input.ResolvedVTODO, parsed.Title, nullableString(parsed.Description), parsed.Status, nullValue(dueDateNull(parsed.DueDate)), nullValue(dueAtNull(parsed.DueAt)), nullValue(priorityNull(parsed.Priority)), nullValue(labelsNull(parsed.Categories)), nullableString(strings.TrimSpace(input.NewETag)), input.ProjectID, nullableString(input.ProjectName), input.Href, input.ConflictID, input.ExpectedVersion)
 	if err != nil {
 		return fmt.Errorf("mark conflict resolved: update task: %w", err)
 	}
@@ -142,8 +202,8 @@ SELECT ?, t.project_id, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, t.pro
 FROM tasks t
 WHERE t.id=(SELECT task_id FROM conflicts WHERE id=?);
 `, uuid.NewString(), input.NewTaskUID, input.NewTaskHref, nullableString(strings.TrimSpace(input.NewTaskETag)),
-	parsed.Title, nullableString(parsed.Description), parsed.Status, nullValue(dueAtNull(parsed.CompletedAt)), nullValue(dueDateNull(parsed.DueDate)),
-	nullValue(dueAtNull(parsed.DueAt)), nullValue(priorityNull(parsed.Priority)), nullableString(parsed.RRule), input.ResolvedVTODO, input.ResolvedVTODO, nullValue(labelsNull(parsed.Categories)), input.ConflictID)
+		parsed.Title, nullableString(parsed.Description), parsed.Status, nullValue(dueAtNull(parsed.CompletedAt)), nullValue(dueDateNull(parsed.DueDate)),
+		nullValue(dueAtNull(parsed.DueAt)), nullValue(priorityNull(parsed.Priority)), nullableString(parsed.RRule), input.ResolvedVTODO, input.ResolvedVTODO, nullValue(labelsNull(parsed.Categories)), input.ConflictID)
 	if err != nil {
 		return fmt.Errorf("mark conflict split resolved: insert split task: %w", err)
 	}

@@ -1,0 +1,100 @@
+package view
+
+import "caldo/internal/parser"
+
+templ QuickAddPage(draft *parser.QuickAddDraft, text string, errorMessage string) {
+	<section class="caldo-page caldo-quick-add">
+		<h2 class="caldo-page-title">Quick Add</h2>
+		<form
+			method="post"
+			action="/quick-add/preview"
+			hx-post="/quick-add/preview"
+			hx-target="#quick-add-preview"
+			hx-swap="outerHTML"
+			hx-disabled-elt="find button"
+			class="caldo-quick-add-form"
+		>
+			<label for="quick-add-text" class="caldo-label">Aufgabe</label>
+			<input id="quick-add-text" name="text" type="text" class="caldo-input" autofocus value={ text }/>
+			<div class="caldo-quick-add-actions">
+				<button type="submit" accesskey="q" class="caldo-button caldo-button-secondary">Vorschau</button>
+				<span class="htmx-indicator caldo-meta" aria-live="polite">Vorschau wird erstellt ...</span>
+			</div>
+		</form>
+		<div id="quick-add-preview" class="caldo-quick-add-preview-shell">
+			if errorMessage != "" {
+				<p class="caldo-alert caldo-alert-error">{ errorMessage }</p>
+			}
+			if draft != nil {
+				@quickAddPreviewContent(*draft)
+			}
+		</div>
+	</section>
+}
+
+templ QuickAddPreview(draft parser.QuickAddDraft, text string) {
+	@quickAddPreviewContent(draft)
+}
+
+templ quickAddPreviewContent(draft parser.QuickAddDraft) {
+	<section id="quick-add-preview" class="caldo-card caldo-quick-add-preview" data-quick-add-preview>
+		<h3>Vorschau</h3>
+		<dl class="caldo-quick-add-preview-grid">
+			<div>
+				<dt>Titel</dt>
+				<dd>{ draft.Title }</dd>
+			</div>
+			<div>
+				<dt>Projekt</dt>
+				<dd>
+					<span>{ quickAddProjectLabel(draft) }</span>
+					<span class="caldo-badge">{ quickAddProjectStatus(draft) }</span>
+				</dd>
+			</div>
+			<div>
+				<dt>Labels</dt>
+				<dd>{ quickAddDisplayValue(quickAddLabelsValue(draft)) }</dd>
+			</div>
+			<div>
+				<dt>Datum</dt>
+				<dd>{ quickAddDisplayValue(draft.Due) }</dd>
+			</div>
+			<div>
+				<dt>Wiederholung</dt>
+				<dd>{ quickAddDisplayValue(draft.Recurrence) }</dd>
+			</div>
+			<div>
+				<dt>Priorität</dt>
+				<dd>{ quickAddPriorityLabel(draft.Priority) }</dd>
+			</div>
+		</dl>
+		<form
+			method="post"
+			action="/tasks"
+			hx-post="/tasks"
+			hx-disabled-elt="find button"
+			hx-headers={ quickAddCSRFHeaders(ctx) }
+			class="caldo-quick-add-save-form"
+			data-quick-add-save-form
+		>
+			<input type="hidden" name="title" value={ draft.Title }/>
+			if draft.ProjectNew {
+				<input type="hidden" name="project_new_name" value={ draft.Project }/>
+				<label class="caldo-quick-add-create-project">
+					<input class="caldo-check" type="checkbox" name="create_project" value="1" checked/>
+					<span>Projekt "{ draft.Project }" als CalDAV-Kalender anlegen</span>
+				</label>
+			} else {
+				<input type="hidden" name="project_id" value={ draft.ProjectID }/>
+			}
+			<input type="hidden" name="labels" value={ quickAddLabelsValue(draft) }/>
+			<input type="hidden" name="priority" value={ draft.Priority }/>
+			<input type="hidden" name="due_date" value={ draft.Due }/>
+			<input type="hidden" name="recurrence" value={ draft.Recurrence }/>
+			<div class="caldo-quick-add-actions">
+				<button type="submit" class="caldo-button caldo-button-primary">Speichern</button>
+				<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
+			</div>
+		</form>
+	</section>
+}

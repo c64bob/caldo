@@ -1,6 +1,10 @@
 package query
 
-import "strings"
+import (
+	"strings"
+
+	"caldo/internal/token"
+)
 
 // TokenType identifies a lexical token in a filter expression.
 type TokenType string
@@ -38,7 +42,7 @@ func LexFilter(input string) []Token {
 	tokens := make([]Token, 0)
 	for i := 0; i < len(input); {
 		ch := input[i]
-		if isWhitespace(ch) {
+		if token.IsWhitespace(ch) {
 			i++
 			continue
 		}
@@ -54,11 +58,11 @@ func LexFilter(input string) []Token {
 			tokens = append(tokens, Token{Type: TokenColon, Literal: ":"})
 			i++
 		case '#':
-			literal, next := readPrefixed(input, i, '#')
+			literal, next := token.ReadPrefixed(input, i, '#')
 			tokens = append(tokens, Token{Type: TokenProject, Literal: literal})
 			i = next
 		case '@':
-			literal, next := readPrefixed(input, i, '@')
+			literal, next := token.ReadPrefixed(input, i, '@')
 			tokens = append(tokens, Token{Type: TokenLabel, Literal: literal})
 			i = next
 		default:
@@ -113,7 +117,7 @@ func classifyWord(word string) TokenType {
 
 func readNoDatePhrase(input string, wordStart, wordEnd int) (string, int, bool) {
 	i := wordEnd
-	for i < len(input) && isWhitespace(input[i]) {
+	for i < len(input) && token.IsWhitespace(input[i]) {
 		i++
 	}
 
@@ -131,27 +135,8 @@ func readNoDatePhrase(input string, wordStart, wordEnd int) (string, int, bool) 
 
 func readWord(input string, start int) (string, int) {
 	i := start
-	for i < len(input) && !isDelimiter(input[i]) {
+	for i < len(input) && !token.IsDelimiter(input[i]) {
 		i++
 	}
 	return input[start:i], i
-}
-
-func readPrefixed(input string, start int, prefix byte) (string, int) {
-	i := start + 1
-	for i < len(input) && !isDelimiter(input[i]) {
-		i++
-	}
-	if i == start+1 {
-		return string(prefix), i
-	}
-	return input[start:i], i
-}
-
-func isDelimiter(ch byte) bool {
-	return isWhitespace(ch) || ch == '(' || ch == ')' || ch == ':' || ch == '#' || ch == '@'
-}
-
-func isWhitespace(ch byte) bool {
-	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
 }

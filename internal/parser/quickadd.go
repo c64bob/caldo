@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"caldo/internal/token"
 )
 
 // QuickAddDraft contains parsed quick-add values for preview and persistence.
@@ -39,14 +41,12 @@ func parseQuickAddAt(input string, now time.Time, language string) QuickAddDraft
 	for _, token := range tokens {
 		switch {
 		case strings.HasPrefix(token, "#"):
-			project := strings.TrimSpace(strings.TrimPrefix(token, "#"))
-			if project != "" {
+			if project, ok := parseSharedPrefixedToken(token, '#'); ok {
 				draft.Project = project
 				continue
 			}
 		case strings.HasPrefix(token, "@"):
-			label := strings.TrimSpace(strings.TrimPrefix(token, "@"))
-			if label != "" {
+			if label, ok := parseSharedPrefixedToken(token, '@'); ok {
 				draft.Labels = append(draft.Labels, label)
 				continue
 			}
@@ -65,6 +65,18 @@ func parseQuickAddAt(input string, now time.Time, language string) QuickAddDraft
 	draft.Due = dueDate
 	draft.Title = strings.Join(remaining, " ")
 	return draft
+}
+
+func parseSharedPrefixedToken(raw string, prefix byte) (string, bool) {
+	if strings.TrimSpace(raw) == "" || raw[0] != prefix {
+		return "", false
+	}
+	literal, next := token.ReadPrefixed(raw, 0, prefix)
+	if next != len(raw) {
+		return "", false
+	}
+	value := strings.TrimSpace(strings.TrimPrefix(literal, string(prefix)))
+	return value, value != ""
 }
 
 func parseNaturalRecurrence(tokens []string, language string) (string, []string) {

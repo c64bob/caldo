@@ -450,6 +450,58 @@
 		overflow-wrap: anywhere;
 	}
 
+	.caldo-quick-add {
+		@apply max-w-3xl;
+	}
+
+	.caldo-quick-add-form {
+		@apply space-y-3;
+	}
+
+	.caldo-quick-add-actions {
+		@apply flex min-w-0 flex-wrap items-center gap-2;
+	}
+
+	.caldo-quick-add-preview-shell {
+		@apply min-h-24;
+	}
+
+	.caldo-quick-add-preview h3 {
+		@apply text-base font-semibold;
+		color: var(--caldo-text);
+	}
+
+	.caldo-quick-add-preview-grid {
+		@apply mt-3 grid gap-3 text-sm sm:grid-cols-2;
+	}
+
+	.caldo-quick-add-preview-grid div {
+		@apply min-w-0;
+	}
+
+	.caldo-quick-add-preview-grid dt {
+		@apply text-xs font-semibold uppercase tracking-normal;
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-quick-add-preview-grid dd {
+		@apply mt-1 flex min-w-0 flex-wrap items-center gap-2;
+		color: var(--caldo-text);
+		overflow-wrap: anywhere;
+	}
+
+	.caldo-quick-add-save-form {
+		@apply mt-4 space-y-3 border-t pt-4;
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-quick-add-create-project {
+		@apply flex min-w-0 items-start gap-2 rounded-md border p-3 text-sm;
+		background: var(--caldo-surface-muted);
+		border-color: var(--caldo-border);
+		color: var(--caldo-text);
+	}
+
 	.caldo-list {
 		@apply space-y-2;
 	}

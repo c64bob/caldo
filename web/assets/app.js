@@ -54,6 +54,29 @@
     window.location.assign(path);
   }
 
+  function shortcutViewPath(key) {
+    switch (key) {
+      case 't':
+        return '/today';
+      case 'u':
+        return '/upcoming';
+      case 'v':
+        return '/favorites';
+      case 'p':
+        return '/projects';
+      case 'l':
+        return '/labels';
+      case 'f':
+        return '/filters';
+      case 'c':
+        return '/conflicts';
+      case 'e':
+        return '/settings';
+      default:
+        return '';
+    }
+  }
+
   function closestElement(target, selector) {
     if (!target) return null;
     var element = target instanceof Element ? target : target.parentElement;
@@ -1268,13 +1291,12 @@
     }
 
     var key = event.key.toLowerCase();
+    var helpShortcut = key === '?' || (event.shiftKey && key === '/');
     if (navState.pendingView) {
-      if (key === 't') {
+      var viewPath = shortcutViewPath(key);
+      if (viewPath) {
         event.preventDefault();
-        goTo('/today');
-      } else if (key === 'u') {
-        event.preventDefault();
-        goTo('/upcoming');
+        goTo(viewPath);
       }
       navState.pendingView = null;
       return;
@@ -1291,15 +1313,15 @@
       return;
     }
 
-    if (key === 's' || key === '/') {
+    if (helpShortcut) {
       event.preventDefault();
-      goTo('/search');
+      toggleHelpDialog();
       return;
     }
 
-    if (key === '?') {
+    if (key === 's' || key === '/') {
       event.preventDefault();
-      toggleHelpDialog();
+      goTo('/search');
     }
   });
 

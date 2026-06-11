@@ -131,6 +131,48 @@ func TestBaseLayoutRendersRequiredMainNavigation(t *testing.T) {
 	}
 }
 
+func TestBaseLayoutRendersShortcutHelp(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	ctx = WithAssetManifest(ctx, assets.Manifest{
+		"app.css":       "app.hash.css",
+		"htmx.min.js":   "htmx.hash.js",
+		"htmx-sse.js":   "htmx-sse.hash.js",
+		"alpine.min.js": "alpine.hash.js",
+		"app.js":        "app.hash.js",
+	})
+
+	component := BaseLayout("Heute", PlaceholderPage("Heute"))
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render layout: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`data-shortcut-help-dialog`,
+		`data-shortcut-help-close`,
+		`Tastaturkürzel`,
+		`Neue Aufgabe`,
+		`Suche`,
+		`Heute`,
+		`Demnächst`,
+		`Favoriten`,
+		`Projekte`,
+		`Labels`,
+		`Filter`,
+		`Konflikte`,
+		`Einstellungen`,
+		`Hilfe öffnen`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected shortcut help to include %q", want)
+		}
+	}
+}
+
 func TestBaseLayoutRendersNavigationCountsAndDynamicGroups(t *testing.T) {
 	t.Parallel()
 

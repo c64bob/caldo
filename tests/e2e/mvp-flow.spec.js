@@ -63,6 +63,9 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await gotoApp(page, '/search?q=Stage');
   await expect(page.getByRole('heading', { name: 'Globale Suche' })).toBeVisible();
   await expect(page.locator('[data-search-results]').filter({ hasText: 'Stage Seed Task' })).toBeVisible();
+  await exerciseKeyboardShortcuts(page);
+  await gotoApp(page, '/search?q=Stage');
+  await expect(page.locator('[data-search-results]').filter({ hasText: 'Stage Seed Task' })).toBeVisible();
 
   await gotoApp(page, '/projects');
   await captureBaselineSet(page, 'inbox-equivalent-default-project');
@@ -403,6 +406,44 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(page.getByText('Keine ungelösten Konflikte')).toBeVisible();
   await expectSearchResult(page, 'E2E Remote Conflict Edit');
 });
+
+async function exerciseKeyboardShortcuts(page) {
+  await gotoApp(page, '/today');
+  await page.keyboard.press('n');
+  await expect(page).toHaveURL(/\/quick-add$/);
+  await expect(page.getByRole('heading', { name: 'Quick Add' })).toBeVisible();
+
+  await gotoApp(page, '/today');
+  await page.keyboard.press('s');
+  await expect(page).toHaveURL(/\/search$/);
+  await expect(page.getByRole('heading', { name: 'Globale Suche' })).toBeVisible();
+
+  const searchInput = page.locator('#global-search');
+  await expect(searchInput).toBeFocused();
+  await searchInput.fill('typing');
+  await page.keyboard.press('n');
+  await expect(page).toHaveURL(/\/search$/);
+  await expect(searchInput).toHaveValue('typingn');
+
+  await gotoApp(page, '/settings');
+  await page.keyboard.press('g');
+  await page.keyboard.press('t');
+  await expect(page).toHaveURL(/\/today$/);
+  await page.keyboard.press('g');
+  await page.keyboard.press('u');
+  await expect(page).toHaveURL(/\/upcoming$/);
+  await page.keyboard.press('g');
+  await page.keyboard.press('p');
+  await expect(page).toHaveURL(/\/projects$/);
+
+  await page.keyboard.press('Shift+/');
+  const helpDialog = page.locator('[data-shortcut-help-dialog]');
+  await expect(helpDialog).toBeVisible();
+  await expect(helpDialog).toContainText('Tastaturkürzel');
+  await expect(helpDialog).toContainText('G');
+  await helpDialog.getByRole('button', { name: 'Schließen' }).click();
+  await expect(helpDialog).toBeHidden();
+}
 
 async function captureBaselineSet(page, name) {
   await captureBaseline(page, `${name}-desktop`, desktopViewport);

@@ -22,6 +22,9 @@ type projectsPageState struct {
 	RenameProjectID string
 	RenameError     string
 	RenameValue     string
+	DeleteProjectID string
+	DeleteError     string
+	DeleteValue     string
 }
 
 func renderProjectsPage(w http.ResponseWriter, r *http.Request, database *db.Database, pageState projectsPageState, status int) {
@@ -46,6 +49,10 @@ func renderProjectsPage(w http.ResponseWriter, r *http.Request, database *db.Dat
 		if projects[index].ID == pageState.RenameProjectID {
 			projects[index].RenameError = pageState.RenameError
 			projects[index].RenameValue = pageState.RenameValue
+		}
+		if projects[index].ID == pageState.DeleteProjectID {
+			projects[index].DeleteError = pageState.DeleteError
+			projects[index].DeleteValue = pageState.DeleteValue
 		}
 	}
 	if err := view.BaseLayout("Projekte", view.ProjectsOverviewPage(projects, pageState.CreateError, pageState.CreateValue)).Render(ctx, w); err != nil {

@@ -17,10 +17,12 @@ import (
 type fakeProjectDeleteCalendarClient struct {
 	deleteErr   error
 	deleteCalls int
+	href        string
 }
 
-func (f *fakeProjectDeleteCalendarClient) DeleteCalendar(_ context.Context, _ caldav.Credentials, _ string) error {
+func (f *fakeProjectDeleteCalendarClient) DeleteCalendar(_ context.Context, _ caldav.Credentials, href string) error {
 	f.deleteCalls++
+	f.href = href
 	return f.deleteErr
 }
 
@@ -67,6 +69,12 @@ UPDATE settings SET default_project_id = 'project-1' WHERE id = 'default';
 	if calendar.deleteCalls != 1 {
 		t.Fatalf("unexpected delete calls: got %d want %d", calendar.deleteCalls, 1)
 	}
+	if calendar.href != "/cal/work/" {
+		t.Fatalf("unexpected remote calendar href: %q", calendar.href)
+	}
+	if body := responseRecorder.Body.String(); !strings.Contains(body, `data-project-create-form`) || strings.Contains(body, `data-project-delete-form`) || strings.Contains(body, `Work`) {
+		t.Fatalf("expected refreshed projects page without deleted project, got %q", body)
+	}
 
 	var projectCount int
 	if err := database.Conn.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM projects WHERE id = 'project-1';`).Scan(&projectCount); err != nil {
@@ -93,6 +101,12 @@ func TestProjectDeleteRequiresExpectedVersion(t *testing.T) {
 		t.Fatalf("open sqlite: %v", err)
 	}
 	t.Cleanup(func() { _ = database.Close() })
+	if _, err := database.Conn.ExecContext(context.Background(), `
+INSERT INTO projects (id, calendar_href, display_name, sync_strategy, server_version, created_at, updated_at)
+VALUES ('project-1', '/cal/work/', 'Work', 'fullscan', 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+`); err != nil {
+		t.Fatalf("seed project: %v", err)
+	}
 
 	calendar := &fakeProjectDeleteCalendarClient{}
 	h := ProjectDelete(projectDeleteDependencies{database: database, encryptionKey: []byte("12345678901234567890123456789012"), calendar: calendar})
@@ -104,11 +118,54 @@ func TestProjectDeleteRequiresExpectedVersion(t *testing.T) {
 
 	h(responseRecorder, request.WithContext(withProjectID(request.Context(), "project-1")))
 
-	if responseRecorder.Code != http.StatusBadRequest {
-		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusBadRequest)
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
 	}
 	if calendar.deleteCalls != 0 {
 		t.Fatalf("expected no remote delete call, got %d", calendar.deleteCalls)
+	}
+	if body := responseRecorder.Body.String(); !strings.Contains(body, `data-project-delete-error`) || !strings.Contains(body, "projektversion fehlt") {
+		t.Fatalf("expected visible version error, got %q", body)
+	}
+}
+
+func TestProjectDeleteRequiresMatchingConfirmation(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if _, err := database.Conn.ExecContext(context.Background(), `
+INSERT INTO projects (id, calendar_href, display_name, sync_strategy, server_version, created_at, updated_at)
+VALUES ('project-1', '/cal/work/', 'Work', 'fullscan', 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+`); err != nil {
+		t.Fatalf("seed project: %v", err)
+	}
+
+	calendar := &fakeProjectDeleteCalendarClient{}
+	h := ProjectDelete(projectDeleteDependencies{database: database, encryptionKey: []byte("12345678901234567890123456789012"), calendar: calendar})
+
+	form := url.Values{"expected_version": {"2"}, "confirmation_name": {"Wrok"}}
+	request := httptest.NewRequest(http.MethodDelete, "/projects/project-1", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	responseRecorder := httptest.NewRecorder()
+
+	h(responseRecorder, request.WithContext(withProjectID(request.Context(), "project-1")))
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	if calendar.deleteCalls != 0 {
+		t.Fatalf("expected no remote delete call, got %d", calendar.deleteCalls)
+	}
+	body := responseRecorder.Body.String()
+	if !strings.Contains(body, `data-project-delete-error`) || !strings.Contains(body, "bestätigung stimmt nicht mit dem projektnamen überein") {
+		t.Fatalf("expected visible confirmation error, got %q", body)
+	}
+	if !strings.Contains(body, `value="Wrok"`) {
+		t.Fatalf("expected confirmation value to remain in form, got %q", body)
 	}
 }
 
@@ -143,8 +200,15 @@ VALUES ('project-1', '/cal/work/', 'Work', 'fullscan', 2, CURRENT_TIMESTAMP, CUR
 
 	h(responseRecorder, request.WithContext(withProjectID(request.Context(), "project-1")))
 
-	if responseRecorder.Code != http.StatusBadGateway {
-		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusBadGateway)
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	body := responseRecorder.Body.String()
+	if !strings.Contains(body, `data-project-delete-error`) || !strings.Contains(body, "projekt konnte nicht auf dem caldav-server gelöscht werden") {
+		t.Fatalf("expected visible remote delete error, got %q", body)
+	}
+	if !strings.Contains(body, `value="Work"`) {
+		t.Fatalf("expected confirmation name to remain in form, got %q", body)
 	}
 
 	var projectCount int
@@ -153,6 +217,14 @@ VALUES ('project-1', '/cal/work/', 'Work', 'fullscan', 2, CURRENT_TIMESTAMP, CUR
 	}
 	if projectCount != 1 {
 		t.Fatalf("project should remain after remote failure, got %d", projectCount)
+	}
+
+	var version int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT server_version FROM projects WHERE id = 'project-1';`).Scan(&version); err != nil {
+		t.Fatalf("load project version: %v", err)
+	}
+	if version != 2 {
+		t.Fatalf("expected reservation rollback to restore version 2, got %d", version)
 	}
 }
 
@@ -182,11 +254,14 @@ VALUES ('project-1', '/cal/work/', 'Work', 'fullscan', 2, CURRENT_TIMESTAMP, CUR
 
 	h(responseRecorder, request.WithContext(withProjectID(request.Context(), "project-1")))
 
-	if responseRecorder.Code != http.StatusFailedDependency {
-		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusFailedDependency)
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
 	}
 	if calendar.deleteCalls != 0 {
 		t.Fatalf("remote delete should not be called when credentials are unavailable, got %d calls", calendar.deleteCalls)
+	}
+	if body := responseRecorder.Body.String(); !strings.Contains(body, `data-project-delete-error`) || !strings.Contains(body, "caldav-zugangsdaten sind nicht verfügbar") {
+		t.Fatalf("expected visible credentials error, got %q", body)
 	}
 
 	var version int

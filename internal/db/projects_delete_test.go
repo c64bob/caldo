@@ -90,6 +90,14 @@ WHERE id = 'default';
 		t.Fatalf("expected tasks deleted, got %d rows", taskCount)
 	}
 
+	results, err := database.SearchActiveTasks(context.Background(), "#Work", 10)
+	if err != nil {
+		t.Fatalf("search deleted project: %v", err)
+	}
+	if len(results) != 0 {
+		t.Fatalf("expected deleted project tasks removed from search index, got %#v", results)
+	}
+
 	var defaultProjectID sql.NullString
 	if err := database.Conn.QueryRowContext(context.Background(), `SELECT default_project_id FROM settings WHERE id = 'default';`).Scan(&defaultProjectID); err != nil {
 		t.Fatalf("load default project id: %v", err)

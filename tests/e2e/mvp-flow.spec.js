@@ -133,7 +133,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   inlineEditForm = inlineEditRow.locator('[data-inline-task-edit-form]');
   await inlineEditForm.locator('[name="title"]').fill('E2E Inline Edited');
   await inlineEditForm.locator('[name="description"]').fill('edited inline through browser');
-  await inlineEditForm.locator('[name="due_date"]').fill('2026-06-12');
+  await inlineEditForm.locator('[name="due_date"]').fill('2099-06-12');
   await inlineEditForm.locator('[name="priority"]').selectOption('5');
   await inlineEditForm.locator('[name="labels"]').fill('browser, inline');
   await inlineEditForm.getByRole('button', { name: 'Speichern' }).focus();
@@ -141,7 +141,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first()).toBeVisible();
   inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
   await expect(inlineEditRow).toContainText('edited inline through browser');
-  await expect(inlineEditRow).toContainText('Fällig 2026-06-12');
+  await expect(inlineEditRow).toContainText('Fällig 2099-06-12');
   await expect(inlineEditRow).toContainText('P2');
   await expect(inlineEditRow).toContainText('browser');
   await expect(inlineEditRow).toContainText('inline');
@@ -171,7 +171,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   detailDialog = inlineEditRow.locator('[data-task-detail-dialog]');
   await detailDialog.locator('[name="title"]').fill('E2E Panel Edited');
   await detailDialog.locator('[name="description"]').fill('edited through task detail panel');
-  await detailDialog.locator('[name="due_date"]').fill('2026-06-11');
+  await detailDialog.locator('[name="due_date"]').fill('2099-06-11');
   await detailDialog.locator('[name="priority"]').selectOption('1');
   await detailDialog.locator('[name="labels"]').fill('panel, browser');
   await detailDialog.locator('[name="repeat_freq"]').selectOption('DAILY');
@@ -180,7 +180,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Panel Edited' }).first()).toBeVisible();
   let detailRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Panel Edited' }).first();
   await expect(detailRow).toContainText('edited through task detail panel');
-  await expect(detailRow).toContainText('Fällig 2026-06-11');
+  await expect(detailRow).toContainText('Fällig 2099-06-11');
   await expect(detailRow).toContainText('P1');
   await expect(detailRow).toContainText('panel');
   await expect(detailRow).toContainText('browser');

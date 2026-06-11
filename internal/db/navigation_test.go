@@ -41,6 +41,9 @@ func TestLoadNavigationSnapshotReturnsCountsAndEntries(t *testing.T) {
 	if snapshot.Projects[0].ID != "project-inbox" || snapshot.Projects[0].ServerVersion != 1 {
 		t.Fatalf("unexpected project metadata: %#v", snapshot.Projects[0])
 	}
+	if snapshot.Projects[1].Name != "Work" || snapshot.Projects[1].OpenTaskCount != 1 || snapshot.Projects[1].TaskCount != 2 {
+		t.Fatalf("unexpected project counts: %#v", snapshot.Projects[1])
+	}
 	if len(snapshot.Labels) != 2 || snapshot.Labels[0].Name != "Büro" || snapshot.Labels[0].OpenTaskCount != 1 {
 		t.Fatalf("unexpected labels: %#v", snapshot.Labels)
 	}

@@ -65,13 +65,14 @@ func navigationProjectsView(items []db.NavigationListItem) []view.NavigationOver
 	result := make([]view.NavigationOverviewItem, 0, len(items))
 	for _, item := range items {
 		result = append(result, view.NavigationOverviewItem{
-			ID:            item.ID,
-			Name:          item.Name,
-			Href:          view.ProjectSearchHref(item.Name),
-			Count:         item.OpenTaskCount,
-			HasCount:      true,
-			Meta:          "Offene Aufgaben",
-			ServerVersion: item.ServerVersion,
+			ID:              item.ID,
+			Name:            item.Name,
+			Href:            view.ProjectSearchHref(item.Name),
+			Count:           item.OpenTaskCount,
+			HasCount:        true,
+			Meta:            "Offene Aufgaben",
+			ServerVersion:   item.ServerVersion,
+			DeleteTaskCount: item.TaskCount,
 		})
 	}
 	return result

@@ -6,7 +6,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Zusammenfassung
 
-- Bestehende Stories: 63 `Umgesetzt`, 23 `Teilweise umgesetzt`, 3 `Offen`.
+- Bestehende Stories: 64 `Umgesetzt`, 22 `Teilweise umgesetzt`, 3 `Offen`.
 - Neue Planungsstories: 15 `Umgesetzt`, 24 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
@@ -55,7 +55,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 7.5 | Umgesetzt | `internal/view/task_rows.templ`, `internal/view/task_rows.go`, `web/assets/app.js` und `internal/handler/tasks_complete.go` zeigen beim Erledigen von Elternaufgaben mit offenen direkten Unteraufgaben einen Entscheidungsdialog fuer Elternaufgabe, offene Unteraufgaben oder Abbruch; die bestehenden Handler pruefen Versionen und schreiben jede betroffene Task zu CalDAV. |
 | 8.1 | Umgesetzt | `internal/view/navigation_pages.templ` und `internal/handler/projects_create.go` stellen auf der Projektseite eine produktive Anlage bereit; der Handler legt zuerst per CalDAV `MKCALENDAR` an, speichert danach lokal, rendert Fehler sichtbar ohne optimistischen Listeneintrag und Router-E2E prueft die Fake-CalDAV-Kalendersichtbarkeit. |
 | 8.2 | Umgesetzt | Die Projektseite rendert Umbenennen-Formulare mit `expected_version`; `internal/handler/projects_rename.go` benennt zuerst den CalDAV-Kalender um, aktualisiert danach lokales Projekt, denormalisierte `project_name`-Felder und FTS-Suche, und zeigt Fehler ohne lokale Teilumbenennung sichtbar an. |
-| 8.3 | Teilweise umgesetzt | Projektloeschung ist backendseitig vorhanden; produktive UI-Verwaltung bleibt offen. |
+| 8.3 | Umgesetzt | Die Projektseite zeigt pro Projekt eine starke Loeschbestaetigung mit Projektname, betroffener Task-Anzahl und `expected_version`; `internal/handler/projects_delete.go` loescht zuerst den CalDAV-Kalender, entfernt danach lokales Projekt und Tasks, zeigt Fehler ohne lokale Teilloeschung und Router-E2E prueft Kalender-DELETE ohne einzelne Task-DELETEs sowie Default-Projekt-Blockade. |
 | 8.4 | Umgesetzt | `internal/db/projects_remote_cleanup.go` und Full-Scan-Sync bereinigen remote geloeschte Kalender. |
 | 9.1 | Umgesetzt | FTS-Suchindex und Tests existieren in `internal/db/tasks_search.go` und `tasks_fts_test.go`. |
 | 9.2 | Umgesetzt | Suchroute und Ergebnisrendering sind in Handlern und Tests vorhanden. |

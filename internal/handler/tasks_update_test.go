@@ -125,6 +125,70 @@ WHERE id = 'task-1';
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE session_id = 'single-user-session' AND tab_id = 'tab-1' AND task_id = 'task-1' AND action_type = 'task_updated';`, 1)
 }
 
+func TestTaskUpdatePreservesAttachAndUnknownProperties(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskUpdateHandlerTest(t)
+	seedTaskUpdateHandlerData(t, database)
+
+	if _, err := database.Conn.ExecContext(context.Background(), `UPDATE tasks SET raw_vtodo = 'BEGIN:VCALENDAR
+BEGIN:VTODO
+UID:uid-1
+SUMMARY:old
+DESCRIPTION:old-desc
+STATUS:NEEDS-ACTION
+X-CALDO-UNKNOWN:keep-me
+ATTACH:https://example.com/file.txt
+ATTACH;ENCODING=BASE64;VALUE=BINARY:AAAA
+END:VTODO
+END:VCALENDAR' WHERE id='task-1';`); err != nil {
+		t.Fatalf("seed unsupported vtodo fields: %v", err)
+	}
+
+	key := bytes.Repeat([]byte{0x72}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	stub := &stubTaskUpdateTodoClient{updateETag: `"etag-attach"`}
+	h := TaskUpdate(taskUpdateDependencies{database: database, encryptionKey: key, todos: stub})
+	form := url.Values{
+		"expected_version": {"2"},
+		"title":            {"new title"},
+		"description":      {"updated"},
+	}
+	req := httptest.NewRequest(http.MethodPatch, "/tasks/task-1", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Tab-ID", "tab-1")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("taskID", "task-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+
+	var rawVTODO string
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT raw_vtodo FROM tasks WHERE id = 'task-1';`).Scan(&rawVTODO); err != nil {
+		t.Fatalf("query task: %v", err)
+	}
+	for _, want := range []string{
+		"SUMMARY:new title",
+		"DESCRIPTION:updated",
+		"X-CALDO-UNKNOWN:keep-me",
+		"ATTACH:https://example.com/file.txt",
+		"ATTACH;ENCODING=BASE64;VALUE=BINARY:AAAA",
+	} {
+		if !bytes.Contains([]byte(rawVTODO), []byte(want)) {
+			t.Fatalf("expected raw vtodo to contain %q in %q", want, rawVTODO)
+		}
+		if !bytes.Contains([]byte(stub.lastRawVTODO), []byte(want)) {
+			t.Fatalf("expected caldav payload to contain %q in %q", want, stub.lastRawVTODO)
+		}
+	}
+}
+
 func TestTaskUpdateVersionConflict(t *testing.T) {
 	t.Parallel()
 	database := openSQLiteForTaskUpdateHandlerTest(t)

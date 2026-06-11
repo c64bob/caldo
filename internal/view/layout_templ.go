@@ -469,14 +469,14 @@ func BaseLayout(title string, content templ.Component) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</nav></div></dialog><div id=\"write-status\" class=\"hidden caldo-toast\" aria-live=\"polite\"></div><div id=\"notifications\" aria-live=\"polite\"></div><dialog data-shortcut-help-dialog class=\"caldo-dialog\"><div class=\"p-4 space-y-3\"><div class=\"flex items-center justify-between\"><h2 class=\"caldo-page-title\">Tastaturkürzel</h2><button type=\"button\" data-shortcut-help-close class=\"caldo-button caldo-button-ghost\">Schließen</button></div><ul class=\"caldo-menu\"><li class=\"caldo-menu-item\"><kbd class=\"caldo-kbd\">N</kbd> Neue Aufgabe</li><li class=\"caldo-menu-item\"><kbd class=\"caldo-kbd\">S</kbd> oder <kbd class=\"caldo-kbd\">/</kbd> Suche</li><li class=\"caldo-menu-item\"><kbd class=\"caldo-kbd\">G</kbd> dann <kbd class=\"caldo-kbd\">T</kbd> Heute</li><li class=\"caldo-menu-item\"><kbd class=\"caldo-kbd\">G</kbd> dann <kbd class=\"caldo-kbd\">U</kbd> Demnächst</li><li class=\"caldo-menu-item\"><kbd class=\"caldo-kbd\">?</kbd> Hilfe öffnen</li></ul></div></dialog><script defer src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</nav></div></dialog><div id=\"write-status\" class=\"hidden caldo-toast\" aria-live=\"polite\"></div><div id=\"notifications\" aria-live=\"polite\"></div><dialog data-shortcut-help-dialog class=\"caldo-dialog\"><div class=\"p-4 space-y-3\"><div class=\"flex items-center justify-between\"><h2 class=\"caldo-page-title\">Tastaturkürzel</h2><button type=\"button\" data-shortcut-help-close class=\"caldo-button caldo-button-ghost\">Schließen</button></div><ul class=\"caldo-menu\"><li class=\"caldo-menu-item\"><kbd class=\"caldo-kbd\">N</kbd> Neue Aufgabe</li><li class=\"caldo-menu-item\"><kbd class=\"caldo-kbd\">S</kbd> oder <kbd class=\"caldo-kbd\">/</kbd> Suche</li><li class=\"caldo-menu-item\"><kbd class=\"caldo-kbd\">G</kbd> dann <kbd class=\"caldo-kbd\">T</kbd> Heute</li><li class=\"caldo-menu-item\"><kbd class=\"caldo-kbd\">G</kbd> dann <kbd class=\"caldo-kbd\">U</kbd> Demnächst</li><li class=\"caldo-menu-item\"><kbd class=\"caldo-kbd\">G</kbd> dann <kbd class=\"caldo-kbd\">V</kbd> Favoriten</li><li class=\"caldo-menu-item\"><kbd class=\"caldo-kbd\">G</kbd> dann <kbd class=\"caldo-kbd\">P</kbd> Projekte</li><li class=\"caldo-menu-item\"><kbd class=\"caldo-kbd\">G</kbd> dann <kbd class=\"caldo-kbd\">L</kbd> Labels</li><li class=\"caldo-menu-item\"><kbd class=\"caldo-kbd\">G</kbd> dann <kbd class=\"caldo-kbd\">F</kbd> Filter</li><li class=\"caldo-menu-item\"><kbd class=\"caldo-kbd\">G</kbd> dann <kbd class=\"caldo-kbd\">C</kbd> Konflikte</li><li class=\"caldo-menu-item\"><kbd class=\"caldo-kbd\">G</kbd> dann <kbd class=\"caldo-kbd\">E</kbd> Einstellungen</li><li class=\"caldo-menu-item\"><kbd class=\"caldo-kbd\">?</kbd> Hilfe öffnen</li></ul></div></dialog><script defer src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(AssetPath(ctx, "htmx.min.js"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 174, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 180, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 		if templ_7745c5c3_Err != nil {
@@ -489,7 +489,7 @@ func BaseLayout(title string, content templ.Component) templ.Component {
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue(AssetPath(ctx, "htmx-sse.js"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 175, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 181, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
 		if templ_7745c5c3_Err != nil {
@@ -502,7 +502,7 @@ func BaseLayout(title string, content templ.Component) templ.Component {
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(AssetPath(ctx, "alpine.min.js"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 176, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 182, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 		if templ_7745c5c3_Err != nil {
@@ -515,7 +515,7 @@ func BaseLayout(title string, content templ.Component) templ.Component {
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue(AssetPath(ctx, "app.js"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 177, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 183, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 		if templ_7745c5c3_Err != nil {
@@ -586,7 +586,7 @@ func PlaceholderPage(title string) templ.Component {
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 188, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/layout.templ`, Line: 194, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {

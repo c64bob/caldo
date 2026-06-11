@@ -2,17 +2,33 @@ package view
 
 func navLinkClass(title string, activeTitles ...string) string {
 	base := "caldo-nav-link"
-	for _, candidate := range activeTitles {
-		if title == candidate {
-			return base + " caldo-nav-link-active"
-		}
+	if navLinkActive(title, activeTitles...) {
+		return base + " caldo-nav-link-active"
 	}
 
 	return base
 }
 
+func navLinkActive(title string, activeTitles ...string) bool {
+	for _, candidate := range activeTitles {
+		if title == candidate {
+			return true
+		}
+	}
+
+	return false
+}
+
+func navCurrentAttributes(title string, activeTitles ...string) templ.Attributes {
+	if navLinkActive(title, activeTitles...) {
+		return templ.Attributes{"aria-current": "page"}
+	}
+
+	return nil
+}
+
 templ navLink(title string, item NavigationItem) {
-	<a class={ navLinkClass(title, item.ActiveTitles...) } href={ templ.URL(item.Href) }>
+	<a class={ navLinkClass(title, item.ActiveTitles...) } href={ templ.URL(item.Href) } { navCurrentAttributes(title, item.ActiveTitles...)... }>
 		<span class="caldo-nav-label">{ item.Label }</span>
 		if item.HasCount {
 			<span class="caldo-nav-count" aria-label={ navCountText(item.Count) + " offene Einträge" }>{ navCountText(item.Count) }</span>

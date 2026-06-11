@@ -6,7 +6,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Zusammenfassung
 
-- Bestehende Stories: 73 `Umgesetzt`, 13 `Teilweise umgesetzt`, 3 `Offen`.
+- Bestehende Stories: 74 `Umgesetzt`, 12 `Teilweise umgesetzt`, 3 `Offen`.
 - Neue Planungsstories: 15 `Umgesetzt`, 24 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
@@ -92,7 +92,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 18.1 | Umgesetzt | Das Detailpanel rendert einen RRULE-Editor fuer MVP-Muster mit taeglich, woechentlich, monatlich, jaehrlich, werktags, Wochentag, Intervall sowie Ende nie/bis Datum/nach Anzahl; `internal/handler/tasks_update.go` ersetzt RRULEs nur bei expliziter Wiederholungsbearbeitung, waehrend andere Feldspeicherungen RRULEs unveraendert lassen. |
 | 18.2 | Umgesetzt | Komplexe RRULEs werden beim Patchen erhalten. |
 | 18.3 | Umgesetzt | `model.ParseVTODOFields` extrahiert `ATTACH`-Properties, Aufgabenzeilen und Detailpanel zeigen externe Anhaenge read-only als sichere Links sowie Inline-/Binary-Anhaenge als vorhandenen Anhang; `PatchVTODO` und der Task-Update-Handler erhalten `ATTACH` und unbekannte VTODO-Properties bei normalen Feldbearbeitungen. |
-| 19.1 | Teilweise umgesetzt | Hauptnavigation existiert; Todoist-nahe UI-Qualitaet und vollstaendige Zielseiten fehlen. |
+| 19.1 | Umgesetzt | Die App-Shell rendert Desktop- und Mobile-Hauptnavigation mit Heute, Demnaechst, Projekte, Labels, Filter, Favoriten, Suche, Konflikte und Einstellungen; aktive Ansichten erhalten die visuelle aktive Klasse und `aria-current="page"`. |
 | 19.2 | Teilweise umgesetzt | Shortcuts und Hilfe existieren teilweise; vollstaendige Tastaturfuehrung bleibt offen. |
 | 19.3 | Teilweise umgesetzt | Write-Status-Indikatoren existieren; alle Mutationsorte sind noch nicht konsistent abgedeckt. |
 | 19.4 | Teilweise umgesetzt | Settings-Seite existiert; CalDAV- und Projektverwaltung sind nicht vollstaendig. |

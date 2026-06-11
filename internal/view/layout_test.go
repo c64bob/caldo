@@ -77,6 +77,60 @@ func TestBaseLayoutUsesComponentFoundationClasses(t *testing.T) {
 	}
 }
 
+func TestBaseLayoutRendersRequiredMainNavigation(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	ctx = WithAssetManifest(ctx, assets.Manifest{
+		"app.css":       "app.hash.css",
+		"htmx.min.js":   "htmx.hash.js",
+		"htmx-sse.js":   "htmx-sse.hash.js",
+		"alpine.min.js": "alpine.hash.js",
+		"app.js":        "app.hash.js",
+	})
+
+	component := BaseLayout("Suche", PlaceholderPage("Suche"))
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render layout: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`aria-label="Hauptnavigation"`,
+		`aria-label="Mobile Hauptnavigation"`,
+		`href="/today"`,
+		`>Heute<`,
+		`href="/upcoming"`,
+		`>Demnächst<`,
+		`href="/projects"`,
+		`>Alle Projekte<`,
+		`href="/labels"`,
+		`>Alle Labels<`,
+		`href="/filters"`,
+		`>Alle Filter<`,
+		`href="/favorites"`,
+		`>Favoriten<`,
+		`href="/search"`,
+		`>Suche<`,
+		`href="/conflicts"`,
+		`>Konflikte<`,
+		`href="/settings"`,
+		`>Einstellungen<`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected main navigation to include %q", want)
+		}
+	}
+	if count := strings.Count(output, `href="/search" aria-current="page"`); count != 2 {
+		t.Fatalf("expected desktop and mobile search links to be current, got %d in %s", count, output)
+	}
+	if strings.Contains(output, `href="/settings" aria-current="page"`) {
+		t.Fatalf("expected inactive settings link not to be current: %s", output)
+	}
+}
+
 func TestBaseLayoutRendersNavigationCountsAndDynamicGroups(t *testing.T) {
 	t.Parallel()
 

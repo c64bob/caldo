@@ -6,7 +6,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Zusammenfassung
 
-- Bestehende Stories: 68 `Umgesetzt`, 18 `Teilweise umgesetzt`, 3 `Offen`.
+- Bestehende Stories: 69 `Umgesetzt`, 17 `Teilweise umgesetzt`, 3 `Offen`.
 - Neue Planungsstories: 15 `Umgesetzt`, 24 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
@@ -76,7 +76,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 13.4 | Umgesetzt | Konfliktdetails rendern lokale, Remote-, Split- und manuelle Resolve-Formulare; die manuelle Form waehlt Base/Lokal/Remote fuer Titel, Beschreibung, Faelligkeit, Prioritaet, Labels, Status und Unteraufgaben sowie das Zielprojekt, schreibt die geloeste VTODO zu CalDAV, aktualisiert `resolved_at`/`resolution` und laesst Konflikte bei Write-Fehlern ungeloest. |
 | 13.5 | Umgesetzt | Die Konfliktdetailseite zeigt einen Split-Flow mit Vorschau der lokalen Aufgabe und der neu anzulegenden Remote-Version; `ResolveConflict` schreibt die Remote-Version mit neuer UID zu CalDAV, entfernt Parent-Links, laesst die lokale UID bestehen, speichert beide Tasks im selben Projekt, markiert `resolution=split` erst nach erfolgreicher Persistenz und laesst den Konflikt bei Write-/Persistenzfehlern ungeloest. |
 | 14.1 | Umgesetzt | Quick Add Route, Preview und Save-Flow sind vorhanden. |
-| 14.2 | Teilweise umgesetzt | Projekt/Label/Prioritaet werden erkannt; Vorschlags- und Erstell-UI ist unvollstaendig. |
+| 14.2 | Umgesetzt | Quick Add nutzt gemeinsame `#`/`@`-Token-Grenzen mit der Filter-Suche, loest `#Projekt` auf, zeigt unbekannte Projekte als explizite CalDAV-Kalender-Anlageoption, erstellt neue Projekte vor dem Task-Write ueber CalDAV, uebergibt `@Label`-Tokens an die automatische Label-Anlage und erkennt `!high`, `!medium`, `!low`, `!1`, `!2` und `!3` in Preview und Speichern. |
 | 14.3 | Umgesetzt | Natuerliche Datumsangaben werden geparst und getestet. |
 | 14.4 | Umgesetzt | Recurrence Preview ist im Quick-Add-Parser vorhanden. |
 | 15.1a | Umgesetzt | `internal/query` enthaelt Lexer und Token-Definitionen fuer Filterqueries. |

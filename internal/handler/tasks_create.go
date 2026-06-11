@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -24,10 +25,18 @@ type taskCreateDependencies struct {
 	database      *db.Database
 	encryptionKey []byte
 	todos         taskCreateTodoClient
+	calendar      projectCreateCalendarClient
 	broker        *eventBroker
 }
 
 const taskCreatePersistTimeout = 5 * time.Second
+
+var (
+	errQuickAddProjectNameRequired  = errors.New("quick add project name required")
+	errQuickAddProjectCreateClient  = errors.New("quick add project create client unavailable")
+	errQuickAddProjectCreateFailed  = errors.New("quick add project create failed")
+	errQuickAddProjectPersistFailed = errors.New("quick add project persist failed")
+)
 
 // TaskCreate creates a new task and performs synchronous CalDAV write-through.
 func TaskCreate(deps taskCreateDependencies) http.HandlerFunc {
@@ -70,7 +79,7 @@ func createTask(w http.ResponseWriter, r *http.Request, deps taskCreateDependenc
 		return
 	}
 
-	project, err := deps.database.ResolveTaskProject(r.Context(), firstNonEmpty(forcedProjectID, r.FormValue("project_id")))
+	project, err := resolveCreateTaskProject(r.Context(), r, deps, forcedProjectID)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		errMessage := "failed to resolve project"
@@ -81,6 +90,15 @@ func createTask(w http.ResponseWriter, r *http.Request, deps taskCreateDependenc
 		case errors.Is(err, db.ErrTaskProjectUnavailable):
 			statusCode = http.StatusConflict
 			errMessage = "no valid default project configured"
+		case errors.Is(err, errQuickAddProjectNameRequired):
+			statusCode = http.StatusBadRequest
+			errMessage = "project name is required"
+		case errors.Is(err, errQuickAddProjectCreateFailed):
+			statusCode = http.StatusBadGateway
+			errMessage = "failed to create project on caldav server"
+		case errors.Is(err, errQuickAddProjectPersistFailed):
+			statusCode = http.StatusInternalServerError
+			errMessage = "failed to persist project"
 		}
 		http.Error(w, errMessage, statusCode)
 		return
@@ -158,6 +176,72 @@ func createTask(w http.ResponseWriter, r *http.Request, deps taskCreateDependenc
 
 	w.WriteHeader(http.StatusCreated)
 	_, _ = w.Write([]byte("task created"))
+}
+
+func resolveCreateTaskProject(ctx context.Context, r *http.Request, deps taskCreateDependencies, forcedProjectID string) (db.TaskProject, error) {
+	if strings.TrimSpace(forcedProjectID) != "" {
+		return deps.database.ResolveTaskProject(ctx, forcedProjectID)
+	}
+	if shouldCreateQuickAddProject(r) {
+		return createQuickAddProject(ctx, r, deps)
+	}
+	return deps.database.ResolveTaskProject(ctx, r.FormValue("project_id"))
+}
+
+func shouldCreateQuickAddProject(r *http.Request) bool {
+	return strings.EqualFold(strings.TrimSpace(r.FormValue("create_project")), "1") ||
+		strings.EqualFold(strings.TrimSpace(r.FormValue("create_project")), "true")
+}
+
+func createQuickAddProject(ctx context.Context, r *http.Request, deps taskCreateDependencies) (db.TaskProject, error) {
+	projectName := strings.TrimSpace(r.FormValue("project_new_name"))
+	if projectName == "" {
+		return db.TaskProject{}, errQuickAddProjectNameRequired
+	}
+
+	if existing, err := deps.database.LoadProjectByName(ctx, projectName); err == nil {
+		return existing, nil
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return db.TaskProject{}, fmt.Errorf("create quick add project: load existing project: %w", err)
+	}
+
+	if deps.calendar == nil {
+		return db.TaskProject{}, errQuickAddProjectCreateClient
+	}
+
+	credentials, err := deps.database.LoadCalDAVCredentials(ctx, deps.encryptionKey)
+	if err != nil {
+		return db.TaskProject{}, fmt.Errorf("create quick add project: load caldav credentials: %w", err)
+	}
+	capabilities, err := deps.database.LoadCalDAVServerCapabilities(ctx)
+	if err != nil {
+		return db.TaskProject{}, fmt.Errorf("create quick add project: load caldav capabilities: %w", err)
+	}
+	createdCalendar, err := deps.calendar.CreateCalendar(ctx, caldav.Credentials{
+		URL:      credentials.URL,
+		Username: credentials.Username,
+		Password: credentials.Password,
+	}, projectName)
+	if err != nil {
+		return db.TaskProject{}, fmt.Errorf("%w: %w", errQuickAddProjectCreateFailed, err)
+	}
+
+	persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), projectCreatePersistTimeout)
+	defer cancel()
+	project, err := deps.database.InsertProject(persistCtx, db.NewProjectInput{
+		CalendarHref: createdCalendar.Href,
+		DisplayName:  createdCalendar.DisplayName,
+		SyncStrategy: initialSyncStrategy(capabilities),
+	})
+	if err != nil {
+		return db.TaskProject{}, fmt.Errorf("%w: %w", errQuickAddProjectPersistFailed, err)
+	}
+
+	if deps.broker != nil {
+		deps.broker.publish(appEvent{Type: "project", Resource: project.ID, Version: 1, OriginConnection: strings.TrimSpace(r.Header.Get("X-Tab-ID"))})
+	}
+
+	return db.TaskProject{ID: project.ID, CalendarHref: project.CalendarHref, DisplayName: project.DisplayName}, nil
 }
 
 func firstNonEmpty(values ...string) string {

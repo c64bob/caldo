@@ -32,6 +32,17 @@ func TestParseQuickAddParsesProjectLabelAndPriorityTokens(t *testing.T) {
 	}
 }
 
+func TestParseQuickAddUsesSharedProjectLabelTokenBoundaries(t *testing.T) {
+	draft := ParseQuickAdd("Review #Work:later @urgent#backend")
+
+	if draft.Project != "" || len(draft.Labels) != 0 {
+		t.Fatalf("expected delimiter-adjacent project and label tokens to stay in title, got project=%q labels=%#v", draft.Project, draft.Labels)
+	}
+	if draft.Title != "Review #Work:later @urgent#backend" {
+		t.Fatalf("unexpected title: %q", draft.Title)
+	}
+}
+
 func TestParseQuickAddParsesNumericPriorityTokens(t *testing.T) {
 	tests := map[string]string{"!1": "high", "!2": "medium", "!3": "low"}
 	for input, want := range tests {
@@ -72,7 +83,6 @@ func TestParseQuickAddNaturalDueDateEnglishGerman(t *testing.T) {
 		}
 	}
 }
-
 
 func TestParseQuickAddDoesNotParseCrossLanguageDueKeywords(t *testing.T) {
 	now := time.Date(2026, time.March, 4, 10, 0, 0, 0, time.UTC)

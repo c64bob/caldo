@@ -73,12 +73,14 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 			database:      database,
 			encryptionKey: csrfSecret,
 			todos:         caldav.NewTodoClient(nil),
+			calendar:      caldav.NewCalendarClient(nil),
 			broker:        syncBroker,
 		}))
 		taskRouter.Post("/{taskID}/subtasks", TaskCreateSubtask(taskCreateDependencies{
 			database:      database,
 			encryptionKey: csrfSecret,
 			todos:         caldav.NewTodoClient(nil),
+			calendar:      caldav.NewCalendarClient(nil),
 			broker:        syncBroker,
 		}))
 		taskRouter.Get("/{taskID}", TaskFragment(dateViewDependencies{database: database}))

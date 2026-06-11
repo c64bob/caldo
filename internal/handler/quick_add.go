@@ -53,7 +53,7 @@ func QuickAddPreview(deps quickAddDependencies) http.HandlerFunc {
 				draft.Project = tokenProject.DisplayName
 			} else if tokenErr == sql.ErrNoRows {
 				draft.Project = requestedProject
-				draft.ProjectUnresolved = true
+				draft.ProjectNew = true
 			}
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")

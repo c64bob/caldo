@@ -21,7 +21,7 @@ templ ConflictListPage(conflicts []db.ConflictListRow) {
 	</section>
 }
 
-templ ConflictDetailPage(conflict db.ConflictDetail) {
+templ ConflictDetailPage(conflict db.ConflictDetail, projectOptions []TaskProjectOption) {
 	<section class="caldo-page">
 		<div class="caldo-conflict-header">
 			<div>
@@ -70,6 +70,68 @@ templ ConflictDetailPage(conflict db.ConflictDetail) {
 				</tbody>
 			</table>
 		</div>
+		if conflictCanResolveExistingTask(conflict) {
+			<section class="caldo-conflict-resolution" data-conflict-resolution>
+				<div class="caldo-conflict-resolution-heading">
+					<div>
+						<h3>Konflikt lösen</h3>
+						<p class="caldo-muted">Wähle eine ganze Version oder stelle die finale Aufgabe feldweise zusammen.</p>
+					</div>
+				</div>
+				<div class="caldo-conflict-resolution-actions">
+					if conflictHasLocalVersion(conflict) {
+						@ConflictResolveAction(conflict, "local", "Lokale Version übernehmen", "Schreibt die lokale Version nach CalDAV.")
+					}
+					if conflictHasRemoteVersion(conflict) {
+						@ConflictResolveAction(conflict, "remote", "Remote-Version übernehmen", "Übernimmt den entfernten Stand für diese Aufgabe.")
+					}
+					if conflictCanSplit(conflict) {
+						@ConflictResolveAction(conflict, "split", "Beide Versionen behalten", "Behält die lokale Aufgabe und legt die Remote-Version zusätzlich an.")
+					}
+				</div>
+				<form
+					method="post"
+					action={ conflictResolvePath(conflict) }
+					hx-post={ conflictResolvePath(conflict) }
+					hx-swap="none"
+					hx-disabled-elt="find button"
+					hx-headers={ conflictResolveCSRFHeaders(ctx) }
+					class="caldo-conflict-manual-form"
+					data-conflict-manual-form
+				>
+					<input type="hidden" name="resolution" value="manual"/>
+					<div class="caldo-conflict-manual-grid">
+						for _, field := range conflictManualFields(conflict) {
+							<label class="caldo-conflict-manual-field">
+								<span>{ field.Label }</span>
+								<select class="caldo-select" name={ field.Name + "_source" }>
+									for _, option := range field.Options {
+										<option value={ option.Value } selected?={ option.Selected }>{ option.Label }</option>
+									}
+								</select>
+							</label>
+						}
+						if len(projectOptions) > 0 {
+							<label class="caldo-conflict-manual-field">
+								<span>Projekt</span>
+								<select class="caldo-select" name="project_id">
+									for _, project := range projectOptions {
+										<option value={ project.ID } selected?={ conflictProjectSelected(conflict, project) }>{ project.Name }</option>
+									}
+								</select>
+							</label>
+						}
+					</div>
+					<p class="caldo-alert caldo-alert-error caldo-conflict-resolution-error" data-conflict-resolution-error aria-live="polite" hidden>Konflikt konnte nicht gespeichert werden.</p>
+					<div class="caldo-conflict-manual-actions">
+						<button type="submit" class="caldo-button caldo-button-primary">Ausgewählte Felder speichern</button>
+						<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
+					</div>
+				</form>
+			</section>
+		} else {
+			<p class="caldo-alert caldo-alert-warning" data-conflict-resolution-unavailable>Dieser Konflikt hat keine lokale Aufgabe, die sicher überschrieben werden kann.</p>
+		}
 		if len(conflictRawVersions(conflict)) > 0 {
 			<details class="caldo-conflict-raw">
 				<summary>Technische VTODO-Daten</summary>
@@ -82,6 +144,23 @@ templ ConflictDetailPage(conflict db.ConflictDetail) {
 			</details>
 		}
 	</section>
+}
+
+templ ConflictResolveAction(conflict db.ConflictDetail, resolution string, label string, hint string) {
+	<form
+		method="post"
+		action={ conflictResolvePath(conflict) }
+		hx-post={ conflictResolvePath(conflict) }
+		hx-swap="none"
+		hx-disabled-elt="find button"
+		hx-headers={ conflictResolveCSRFHeaders(ctx) }
+		class="caldo-conflict-resolve-form"
+		data-conflict-resolve-form
+	>
+		<input type="hidden" name="resolution" value={ resolution }/>
+		<button type="submit" class="caldo-button caldo-button-secondary">{ label }</button>
+		<p class="caldo-conflict-resolve-hint">{ hint }</p>
+	</form>
 }
 
 templ ConflictValueCell(cell conflictComparisonCell) {

@@ -43,9 +43,14 @@ func ConflictDetail(deps conflictDependencies) http.HandlerFunc {
 			renderPageError(w, r, "Konfliktdetail", "Konfliktdetail laden", http.StatusInternalServerError)
 			return
 		}
+		projectOptions, err := taskEditProjectOptions(r.Context(), deps.database)
+		if err != nil {
+			renderPageError(w, r, "Konfliktdetail", "Konfliktdetail laden", http.StatusInternalServerError)
+			return
+		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout("Konfliktdetail", view.ConflictDetailPage(detail)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Konfliktdetail", view.ConflictDetailPage(detail, projectOptions)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}

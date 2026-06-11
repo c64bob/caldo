@@ -16,9 +16,11 @@ type VTODOPatch struct {
 	DueDate        *string
 	DueAt          *time.Time
 	Categories     []string
+	ParentUID      *string
 	CompletedAt    *time.Time
 	ClearDue       bool
 	ClearPriority  bool
+	ClearParent    bool
 	ClearCompleted bool
 }
 
@@ -63,8 +65,10 @@ func hasPatchChanges(patch VTODOPatch) bool {
 		patch.DueAt != nil ||
 		patch.ClearDue ||
 		patch.Categories != nil ||
+		patch.ParentUID != nil ||
 		patch.CompletedAt != nil ||
 		patch.ClearPriority ||
+		patch.ClearParent ||
 		patch.ClearCompleted
 }
 
@@ -109,7 +113,7 @@ func filterTopLevelKnownFields(body []string, patch VTODOPatch) []string {
 	depth := 0
 
 	for _, line := range body {
-		name, _, _, ok := splitPropertyLine(line)
+		name, _, params, ok := splitPropertyLine(line)
 		if ok {
 			if name == "BEGIN" {
 				depth++
@@ -122,7 +126,7 @@ func filterTopLevelKnownFields(body []string, patch VTODOPatch) []string {
 				continue
 			}
 
-			if depth == 0 && shouldReplaceProperty(name, patch) {
+			if depth == 0 && shouldReplaceProperty(name, params, patch) {
 				continue
 			}
 		}
@@ -132,7 +136,7 @@ func filterTopLevelKnownFields(body []string, patch VTODOPatch) []string {
 	return filtered
 }
 
-func shouldReplaceProperty(name string, patch VTODOPatch) bool {
+func shouldReplaceProperty(name string, params map[string]string, patch VTODOPatch) bool {
 	switch name {
 	case "SUMMARY":
 		return patch.Summary != nil
@@ -148,6 +152,8 @@ func shouldReplaceProperty(name string, patch VTODOPatch) bool {
 		return patch.DueDate != nil || patch.DueAt != nil || patch.ClearDue
 	case "CATEGORIES":
 		return patch.Categories != nil
+	case "RELATED-TO":
+		return (patch.ParentUID != nil || patch.ClearParent) && (len(params) == 0 || propertyParamEquals(params, "RELTYPE", "PARENT"))
 	case "COMPLETED":
 		return patch.CompletedAt != nil || patch.ClearCompleted
 	default:
@@ -194,6 +200,9 @@ func buildPatchedFieldLines(patch VTODOPatch) []string {
 		if len(labels) > 0 {
 			lines = append(lines, fmt.Sprintf("CATEGORIES:%s", strings.Join(labels, ",")))
 		}
+	}
+	if patch.ParentUID != nil && strings.TrimSpace(*patch.ParentUID) != "" {
+		lines = append(lines, "RELATED-TO;RELTYPE=PARENT:"+strings.TrimSpace(*patch.ParentUID))
 	}
 	return lines
 }

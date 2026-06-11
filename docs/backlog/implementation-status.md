@@ -6,7 +6,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Zusammenfassung
 
-- Bestehende Stories: 66 `Umgesetzt`, 20 `Teilweise umgesetzt`, 3 `Offen`.
+- Bestehende Stories: 67 `Umgesetzt`, 19 `Teilweise umgesetzt`, 3 `Offen`.
 - Neue Planungsstories: 15 `Umgesetzt`, 24 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
@@ -73,7 +73,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 13.1 | Umgesetzt | Full-Scan-Sync erkennt lokale/remote Divergenz und legt Konflikte an. |
 | 13.2 | Umgesetzt | Remote-Delete gegen lokal veraenderte Aufgaben erzeugt Konflikte statt stiller Loeschung. |
 | 13.3 | Umgesetzt | Hauptnavigation, globale ungelöste Konfliktliste und Detailroute sind vorhanden; die Detailansicht zeigt Base-, lokale und Remote-Versionen als fachliche Feldvergleichstabelle, geloeschte Seiten als fehlend und Task-Zeilen mit bekanntem offenem Konflikt verlinken direkt zur Konfliktansicht. |
-| 13.4 | Teilweise umgesetzt | Resolve-Handler fuer lokal/remote/manuell existiert; feldweise UI ist unvollstaendig. |
+| 13.4 | Umgesetzt | Konfliktdetails rendern lokale, Remote-, Split- und manuelle Resolve-Formulare; die manuelle Form waehlt Base/Lokal/Remote fuer Titel, Beschreibung, Faelligkeit, Prioritaet, Labels, Status und Unteraufgaben sowie das Zielprojekt, schreibt die geloeste VTODO zu CalDAV, aktualisiert `resolved_at`/`resolution` und laesst Konflikte bei Write-Fehlern ungeloest. |
 | 13.5 | Teilweise umgesetzt | Split-Resolution existiert im Handler; sichtbarer Split-Flow bleibt offen. |
 | 14.1 | Umgesetzt | Quick Add Route, Preview und Save-Flow sind vorhanden. |
 | 14.2 | Teilweise umgesetzt | Projekt/Label/Prioritaet werden erkannt; Vorschlags- und Erstell-UI ist unvollstaendig. |

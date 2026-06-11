@@ -25,15 +25,18 @@ type NavigationItem struct {
 
 // NavigationOverviewItem contains one row on a navigation overview page.
 type NavigationOverviewItem struct {
-	ID            string
-	Name          string
-	Href          string
-	Count         int
-	HasCount      bool
-	Meta          string
-	ServerVersion int
-	RenameError   string
-	RenameValue   string
+	ID              string
+	Name            string
+	Href            string
+	Count           int
+	HasCount        bool
+	Meta            string
+	ServerVersion   int
+	RenameError     string
+	RenameValue     string
+	DeleteTaskCount int
+	DeleteError     string
+	DeleteValue     string
 }
 
 // WithNavigation stores app-shell navigation data in request context.
@@ -126,4 +129,27 @@ func projectRenameValue(item NavigationOverviewItem) string {
 		return item.RenameValue
 	}
 	return item.Name
+}
+
+func projectCanDelete(item NavigationOverviewItem) bool {
+	return item.ID != "" && item.ServerVersion > 0
+}
+
+func projectDeletePath(item NavigationOverviewItem) string {
+	return "/projects/" + url.PathEscape(item.ID)
+}
+
+func projectDeleteValue(item NavigationOverviewItem) string {
+	return item.DeleteValue
+}
+
+func projectDeleteConfirmationText(item NavigationOverviewItem) string {
+	return "Zum Löschen " + item.Name + " eingeben. " + projectDeleteTaskCountText(item.DeleteTaskCount) + " betroffen."
+}
+
+func projectDeleteTaskCountText(count int) string {
+	if count == 1 {
+		return "1 Aufgabe"
+	}
+	return strconv.Itoa(count) + " Aufgaben"
 }

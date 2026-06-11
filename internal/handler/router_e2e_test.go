@@ -318,12 +318,82 @@ INSERT INTO tasks (
 	}
 }
 
+func TestProjectDeleteRouteAgainstFakeCalDAVServer(t *testing.T) {
+	const calendarHref = "/cal/work/"
+	secret := []byte("12345678901234567890123456789012")
+	ctx := context.Background()
+
+	fake := newFakeRouterCalDAV(calendarHref, "Work")
+	fake.putObject("/cal/work/uid-1.ics", "uid-1", e2eVTODO("uid-1", "Task"), `"etag-1"`)
+	server := httptest.NewServer(fake)
+	t.Cleanup(server.Close)
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if err := database.SaveCalDAVCredentials(ctx, secret, db.CalDAVCredentials{URL: server.URL, Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+	if _, err := database.Conn.ExecContext(ctx, `
+INSERT INTO projects (id, calendar_href, display_name, sync_strategy, server_version, created_at, updated_at)
+VALUES ('project-1', '/cal/work/', 'Work', 'fullscan', 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT INTO tasks (
+	id, project_id, uid, href, server_version, title, status, raw_vtodo, base_vtodo, project_name, sync_status, created_at, updated_at
+) VALUES (
+	'task-1', 'project-1', 'uid-1', '/cal/work/uid-1.ics', 1, 'Task', 'needs-action',
+	'BEGIN:VTODO\nUID:uid-1\nEND:VTODO',
+	'BEGIN:VTODO\nUID:uid-1\nEND:VTODO',
+	'Work', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+);
+UPDATE settings SET default_project_id = 'project-1' WHERE id = 'default';
+`); err != nil {
+		t.Fatalf("seed project: %v", err)
+	}
+
+	router := NewRouter(slog.New(slog.NewTextHandler(io.Discard, nil)), "X-Forwarded-User", testManifest(t), true, secret, database, ctx, nil)
+	rr := e2eRequest(t, router, secret, http.MethodDelete, "/projects/project-1", url.Values{
+		"expected_version":  {"2"},
+		"confirmation_name": {"Work"},
+	}, "tab-project-delete")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("project delete: got status=%d body=%q", rr.Code, rr.Body.String())
+	}
+	e2eAssertProjectDeleted(t, database, "project-1")
+	fake.assertCalendarDeleted(t, "/cal/work/")
+	calendarDeletes, objectDeletes := fake.deleteStats()
+	if calendarDeletes != 1 || objectDeletes != 0 {
+		t.Fatalf("unexpected remote delete shape: calendar=%d object=%d", calendarDeletes, objectDeletes)
+	}
+	if fake.hasObject("/cal/work/uid-1.ics") {
+		t.Fatal("expected calendar delete to remove contained object in fake caldav")
+	}
+	results, err := database.SearchActiveTasks(ctx, "#Work", 10)
+	if err != nil {
+		t.Fatalf("search deleted project: %v", err)
+	}
+	if len(results) != 0 {
+		t.Fatalf("expected deleted project removed from search, got %#v", results)
+	}
+	if !strings.Contains(rr.Body.String(), `data-project-create-form`) || strings.Contains(rr.Body.String(), `data-project-delete-form`) {
+		t.Fatalf("project delete response missing refreshed project page: %q", rr.Body.String())
+	}
+
+	blocked := e2eRequest(t, router, secret, http.MethodPost, "/tasks", url.Values{"title": {"New task"}}, "tab-project-delete")
+	if blocked.Code != http.StatusConflict || !strings.Contains(blocked.Body.String(), "no valid default project configured") {
+		t.Fatalf("expected task creation blocked without default project, got status=%d body=%q", blocked.Code, blocked.Body.String())
+	}
+}
+
 type fakeRouterCalDAV struct {
-	mu                sync.Mutex
-	calendars         map[string]string
-	objects           map[string]fakeRouterCalDAVObject
-	revision          int
-	lastIfMatchByHref map[string]string
+	mu                  sync.Mutex
+	calendars           map[string]string
+	objects             map[string]fakeRouterCalDAVObject
+	revision            int
+	lastIfMatchByHref   map[string]string
+	deleteCalendarCalls int
+	deleteObjectCalls   int
 }
 
 type fakeRouterCalDAVObject struct {
@@ -424,6 +494,24 @@ func (f *fakeRouterCalDAV) assertCalendar(t *testing.T, href string, displayName
 	if got != displayName {
 		t.Fatalf("fake caldav calendar %q display name: got %q want %q", href, got, displayName)
 	}
+}
+
+func (f *fakeRouterCalDAV) assertCalendarDeleted(t *testing.T, href string) {
+	t.Helper()
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if _, ok := f.calendars[href]; ok {
+		t.Fatalf("fake caldav calendar %q should be deleted", href)
+	}
+}
+
+func (f *fakeRouterCalDAV) deleteStats() (int, int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	return f.deleteCalendarCalls, f.deleteObjectCalls
 }
 
 func (f *fakeRouterCalDAV) assertRawContains(t *testing.T, href string, want string) {
@@ -613,6 +701,22 @@ func (f *fakeRouterCalDAV) handleDelete(w http.ResponseWriter, r *http.Request) 
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
+	calendarHref := href
+	if !strings.HasSuffix(calendarHref, "/") {
+		calendarHref += "/"
+	}
+	if _, ok := f.calendars[calendarHref]; ok {
+		delete(f.calendars, calendarHref)
+		for objectHref := range f.objects {
+			if strings.HasPrefix(objectHref, calendarHref) {
+				delete(f.objects, objectHref)
+			}
+		}
+		f.deleteCalendarCalls++
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	existing, ok := f.objects[href]
 	if !ok {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
@@ -623,6 +727,7 @@ func (f *fakeRouterCalDAV) handleDelete(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	delete(f.objects, href)
+	f.deleteObjectCalls++
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -785,6 +890,34 @@ func e2eAssertProjectExists(t *testing.T, database *db.Database, displayName str
 	}
 	if count != 1 {
 		t.Fatalf("project %q with href %q: got %d rows want 1", displayName, calendarHref, count)
+	}
+}
+
+func e2eAssertProjectDeleted(t *testing.T, database *db.Database, projectID string) {
+	t.Helper()
+
+	var projectCount int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM projects WHERE id = ?;`, projectID).Scan(&projectCount); err != nil {
+		t.Fatalf("count project: %v", err)
+	}
+	if projectCount != 0 {
+		t.Fatalf("expected project deleted, got %d rows", projectCount)
+	}
+
+	var taskCount int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM tasks WHERE project_id = ?;`, projectID).Scan(&taskCount); err != nil {
+		t.Fatalf("count project tasks: %v", err)
+	}
+	if taskCount != 0 {
+		t.Fatalf("expected project tasks deleted, got %d rows", taskCount)
+	}
+
+	var defaultCount int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM settings WHERE id = 'default' AND default_project_id IS NULL;`).Scan(&defaultCount); err != nil {
+		t.Fatalf("count null default project: %v", err)
+	}
+	if defaultCount != 1 {
+		t.Fatalf("expected default_project_id to be null, got %d matching rows", defaultCount)
 	}
 }
 

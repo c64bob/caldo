@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -32,17 +31,23 @@ const projectDeletePersistTimeout = 5 * time.Second
 // ProjectDelete deletes a project by deleting the remote CalDAV calendar first, then deleting local project and tasks.
 func ProjectDelete(deps projectDeleteDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		projectID := strings.TrimSpace(chi.URLParam(r, "projectID"))
+		if projectID == "" {
+			http.Error(w, "project id is required", http.StatusBadRequest)
+			return
+		}
+
 		formValues := r.URL.Query()
 		if strings.HasPrefix(r.Header.Get("Content-Type"), "application/x-www-form-urlencoded") {
 			bodyBytes, err := io.ReadAll(io.LimitReader(r.Body, 8*1024))
 			if err != nil {
-				http.Error(w, "invalid form payload", http.StatusBadRequest)
+				renderProjectsPage(w, r, deps.database, deletePageState(projectID, "ungültige eingabe", ""), http.StatusOK)
 				return
 			}
 			if len(bodyBytes) > 0 {
 				parsed, err := url.ParseQuery(string(bodyBytes))
 				if err != nil {
-					http.Error(w, "invalid form payload", http.StatusBadRequest)
+					renderProjectsPage(w, r, deps.database, deletePageState(projectID, "ungültige eingabe", ""), http.StatusOK)
 					return
 				}
 				for key, values := range parsed {
@@ -53,21 +58,15 @@ func ProjectDelete(deps projectDeleteDependencies) http.HandlerFunc {
 			}
 		}
 
-		projectID := strings.TrimSpace(chi.URLParam(r, "projectID"))
-		if projectID == "" {
-			http.Error(w, "project id is required", http.StatusBadRequest)
-			return
-		}
-
 		expectedVersion, err := strconv.Atoi(strings.TrimSpace(formValues.Get("expected_version")))
 		if err != nil {
-			http.Error(w, "expected_version is required", http.StatusBadRequest)
+			renderProjectsPage(w, r, deps.database, deletePageState(projectID, "projektversion fehlt", formValues.Get("confirmation_name")), http.StatusOK)
 			return
 		}
 
 		confirmationName := strings.TrimSpace(formValues.Get("confirmation_name"))
 		if confirmationName == "" {
-			http.Error(w, "confirmation_name is required", http.StatusBadRequest)
+			renderProjectsPage(w, r, deps.database, deletePageState(projectID, "projektname als bestätigung erforderlich", formValues.Get("confirmation_name")), http.StatusOK)
 			return
 		}
 
@@ -77,11 +76,11 @@ func ProjectDelete(deps projectDeleteDependencies) http.HandlerFunc {
 			case errors.Is(err, db.ErrProjectNotFound):
 				http.Error(w, "project not found", http.StatusNotFound)
 			case errors.Is(err, db.ErrProjectVersionMismatch):
-				http.Error(w, "project version conflict", http.StatusConflict)
+				renderProjectsPage(w, r, deps.database, deletePageState(projectID, "projekt wurde zwischenzeitlich geändert", confirmationName), http.StatusOK)
 			case errors.Is(err, db.ErrProjectDeleteConfirmationMismatch):
-				http.Error(w, fmt.Sprintf("confirmation required for project %q with %d tasks", base.CurrentName, base.AffectedTaskCount), http.StatusConflict)
+				renderProjectsPage(w, r, deps.database, deletePageState(projectID, "bestätigung stimmt nicht mit dem projektnamen überein", confirmationName), http.StatusOK)
 			default:
-				http.Error(w, "failed to load project", http.StatusInternalServerError)
+				renderProjectsPage(w, r, deps.database, deletePageState(projectID, "projekt konnte nicht geladen werden", confirmationName), http.StatusOK)
 			}
 			return
 		}
@@ -91,7 +90,7 @@ func ProjectDelete(deps projectDeleteDependencies) http.HandlerFunc {
 			cancelCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), projectDeletePersistTimeout)
 			defer cancel()
 			_ = deps.database.CancelProjectDeleteReservation(cancelCtx, projectID, base.ReservedVersion)
-			http.Error(w, "caldav credentials unavailable", http.StatusFailedDependency)
+			renderProjectsPage(w, r, deps.database, deletePageState(projectID, "caldav-zugangsdaten sind nicht verfügbar", confirmationName), http.StatusOK)
 			return
 		}
 
@@ -103,7 +102,7 @@ func ProjectDelete(deps projectDeleteDependencies) http.HandlerFunc {
 			cancelCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), projectDeletePersistTimeout)
 			defer cancel()
 			_ = deps.database.CancelProjectDeleteReservation(cancelCtx, projectID, base.ReservedVersion)
-			http.Error(w, "failed to delete project on caldav server", http.StatusBadGateway)
+			renderProjectsPage(w, r, deps.database, deletePageState(projectID, "projekt konnte nicht auf dem caldav-server gelöscht werden", confirmationName), http.StatusOK)
 			return
 		}
 
@@ -112,10 +111,10 @@ func ProjectDelete(deps projectDeleteDependencies) http.HandlerFunc {
 
 		if err := deps.database.DeleteProject(persistCtx, projectID, base.ReservedVersion); err != nil {
 			if errors.Is(err, db.ErrProjectVersionMismatch) {
-				http.Error(w, "project version conflict", http.StatusConflict)
+				renderProjectsPage(w, r, deps.database, deletePageState(projectID, "projekt wurde zwischenzeitlich geändert", confirmationName), http.StatusOK)
 				return
 			}
-			http.Error(w, "failed to store project deletion", http.StatusInternalServerError)
+			renderProjectsPage(w, r, deps.database, deletePageState(projectID, "projektlöschung konnte nicht gespeichert werden", confirmationName), http.StatusOK)
 			return
 		}
 
@@ -123,7 +122,14 @@ func ProjectDelete(deps projectDeleteDependencies) http.HandlerFunc {
 			deps.broker.publish(appEvent{Type: "project", Resource: projectID, Version: base.ReservedVersion, OriginConnection: strings.TrimSpace(r.Header.Get("X-Tab-ID"))})
 		}
 
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("project deleted"))
+		renderProjectsPage(w, r, deps.database, projectsPageState{}, http.StatusOK)
+	}
+}
+
+func deletePageState(projectID string, errorMessage string, confirmationName string) projectsPageState {
+	return projectsPageState{
+		DeleteProjectID: strings.TrimSpace(projectID),
+		DeleteError:     errorMessage,
+		DeleteValue:     strings.TrimSpace(confirmationName),
 	}
 }

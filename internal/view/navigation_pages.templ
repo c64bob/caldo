@@ -66,6 +66,9 @@ templ NavigationOverviewList(items []NavigationOverviewItem) {
 					if projectCanRename(item) {
 						@ProjectRenameForm(item)
 					}
+					if projectCanDelete(item) {
+						@ProjectDeleteForm(item)
+					}
 				</div>
 			</li>
 		}
@@ -96,4 +99,34 @@ templ ProjectRenameForm(item NavigationOverviewItem) {
 			<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
 		</div>
 	</form>
+}
+
+templ ProjectDeleteForm(item NavigationOverviewItem) {
+	<details class="space-y-2" open?={ item.DeleteError != "" } data-project-delete-panel>
+		<summary class="caldo-button caldo-button-danger">Projekt löschen</summary>
+		<form
+			class="space-y-2"
+			method="post"
+			action={ projectDeletePath(item) }
+			hx-delete={ projectDeletePath(item) }
+			hx-target="body"
+			hx-swap="outerHTML"
+			hx-push-url="false"
+			hx-disabled-elt="find button"
+			hx-headers={ "{\"X-CSRF-Token\":\"" + CSRFToken(ctx) + "\"}" }
+			data-project-delete-form
+		>
+			<input type="hidden" name="expected_version" value={ projectExpectedVersion(item) }/>
+			if item.DeleteError != "" {
+				<p class="caldo-alert caldo-alert-error" data-project-delete-error aria-live="polite">{ item.DeleteError }</p>
+			}
+			<p class="caldo-meta" data-project-delete-summary>{ projectDeleteConfirmationText(item) }</p>
+			<label class="caldo-label" for={ "project-delete-" + item.ID }>Bestätigung</label>
+			<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+				<input id={ "project-delete-" + item.ID } class="caldo-input sm:max-w-sm" type="text" name="confirmation_name" value={ projectDeleteValue(item) } autocomplete="off" required data-project-delete-confirmation/>
+				<button type="submit" class="caldo-button caldo-button-danger-solid">Endgültig löschen</button>
+				<span class="htmx-indicator caldo-meta" aria-live="polite">Löscht ...</span>
+			</div>
+		</form>
+	</details>
 }

@@ -39,6 +39,30 @@ func TestListTodayTasksIncludesTodayAndOverdue(t *testing.T) {
 	}
 }
 
+func TestLoadTaskViewReturnsSingleTaskMetadata(t *testing.T) {
+	t.Parallel()
+
+	database := openViewTestDB(t)
+	seedViewTasks(t, database)
+
+	row, err := database.LoadTaskView(context.Background(), "task-today-active")
+	if err != nil {
+		t.Fatalf("load task view: %v", err)
+	}
+	if row.ID != "task-today-active" ||
+		row.Title != "Heute Aufgabe" ||
+		row.Description != "Heute Beschreibung" ||
+		row.ProjectName != "Work" ||
+		row.DueISODate != "2026-04-28" ||
+		row.Priority != 4 ||
+		!row.HasPriority ||
+		row.LabelNames != "Büro,urgent" ||
+		row.SyncStatus != "pending" ||
+		row.ServerVersion != 3 {
+		t.Fatalf("loaded task missing metadata: %#v", row)
+	}
+}
+
 func TestListTodayTasksIncludesDueAtStoredAsDriverTimestamp(t *testing.T) {
 	t.Parallel()
 

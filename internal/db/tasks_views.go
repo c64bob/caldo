@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -66,6 +68,48 @@ func (d *Database) ListCompletedTasks(ctx context.Context, limit int) ([]DatedTa
 	return d.listSimpleSystemTasks(ctx, `
 	AND cfg.show_completed = 1
 	AND t.status = 'completed'`, limit)
+}
+
+// LoadTaskView returns one task row for fragment rendering.
+func (d *Database) LoadTaskView(ctx context.Context, taskID string) (DatedTaskViewRow, error) {
+	var row DatedTaskViewRow
+	err := d.Conn.QueryRowContext(ctx, `
+SELECT
+	t.id,
+	t.project_id,
+	t.title,
+	COALESCE(t.description, ''),
+	t.status,
+	COALESCE(t.project_name, ''),
+	COALESCE(
+		date(t.due_at),
+		date(substr(t.due_at, 1, 19)),
+		date(substr(t.due_at, 1, 10)),
+		date(t.due_date),
+		''
+	),
+	COALESCE(t.priority, 0),
+	t.priority IS NOT NULL,
+	COALESCE(t.label_names, ''),
+	t.sync_status,
+	t.server_version,
+	COALESCE(t.parent_id, ''),
+	COALESCE(parent.title, ''),
+	t.parent_id IS NOT NULL,
+	(SELECT COUNT(1) FROM tasks child WHERE child.parent_id = t.id),
+	(SELECT COUNT(1) FROM tasks child WHERE child.parent_id = t.id AND child.status != 'completed'),
+	COALESCE(t.raw_vtodo, '')
+FROM tasks t
+LEFT JOIN tasks parent ON parent.id = t.parent_id
+WHERE t.id = ?;
+`, taskID).Scan(&row.ID, &row.ProjectID, &row.Title, &row.Description, &row.Status, &row.ProjectName, &row.DueISODate, &row.Priority, &row.HasPriority, &row.LabelNames, &row.SyncStatus, &row.ServerVersion, &row.ParentID, &row.ParentTitle, &row.IsSubtask, &row.SubtaskCount, &row.OpenSubtaskCount, &row.RawVTODO)
+	if errors.Is(err, sql.ErrNoRows) {
+		return DatedTaskViewRow{}, ErrTaskNotFound
+	}
+	if err != nil {
+		return DatedTaskViewRow{}, fmt.Errorf("load task view: %w", err)
+	}
+	return row, nil
 }
 
 func (d *Database) listSimpleSystemTasks(ctx context.Context, whereSQL string, limit int) ([]DatedTaskViewRow, error) {

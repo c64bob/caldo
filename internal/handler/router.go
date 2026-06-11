@@ -81,6 +81,7 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 			todos:         caldav.NewTodoClient(nil),
 			broker:        syncBroker,
 		}))
+		taskRouter.Get("/{taskID}", TaskFragment(dateViewDependencies{database: database}))
 		taskRouter.Patch("/{taskID}", TaskUpdate(taskUpdateDependencies{
 			database:      database,
 			encryptionKey: csrfSecret,

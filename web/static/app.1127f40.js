@@ -6,6 +6,7 @@
   var tabState = loadTabState();
   var tabID = ensureTabID(tabState);
   var undoExpiryTimer = 0;
+  var focusRefreshState = { inFlight: false, pending: false, lastRun: 0 };
 
   function generateTabID() {
     if (window.crypto && typeof window.crypto.randomUUID === 'function') {
@@ -147,6 +148,228 @@
     }
     error.textContent = message;
     error.hidden = false;
+  }
+
+  function taskRows() {
+    return Array.prototype.slice.call(document.querySelectorAll('[data-task-id]'));
+  }
+
+  function taskRowID(row) {
+    return row ? row.getAttribute('data-task-id') || '' : '';
+  }
+
+  function taskRowVersion(row) {
+    var raw = row ? row.getAttribute('data-server-version') || '' : '';
+    var version = parseInt(raw, 10);
+    if (Number.isFinite(version) && version > 0) {
+      return version;
+    }
+    var expectedVersion = row ? row.querySelector('input[name="expected_version"]') : null;
+    version = expectedVersion ? parseInt(expectedVersion.value || '', 10) : 0;
+    return Number.isFinite(version) ? version : 0;
+  }
+
+  function controlIsDirty(control) {
+    if (!control || control.disabled || !control.name) return false;
+    var type = (control.type || '').toLowerCase();
+    if (type === 'checkbox' || type === 'radio') {
+      return control.checked !== control.defaultChecked;
+    }
+    if (control.tagName === 'SELECT') {
+      return Array.prototype.some.call(control.options, function (option) {
+        return option.selected !== option.defaultSelected;
+      });
+    }
+    return control.value !== control.defaultValue;
+  }
+
+  function formIsDirty(form) {
+    if (!form || !form.elements) return false;
+    return Array.prototype.some.call(form.elements, controlIsDirty);
+  }
+
+  function openTaskForms(row) {
+    var forms = [];
+    if (!row) return forms;
+
+    var inlineEdit = row.querySelector('[data-inline-task-edit-form]');
+    if (inlineEdit && !inlineEdit.hidden) {
+      forms.push(inlineEdit);
+    }
+
+    var subtaskCreate = row.querySelector('[data-subtask-create-form]');
+    if (subtaskCreate && !subtaskCreate.hidden) {
+      forms.push(subtaskCreate);
+    }
+
+    var detailDialog = row.querySelector('[data-task-detail-dialog]');
+    if (detailDialog && detailDialog.open) {
+      var detailForm = detailDialog.querySelector('[data-task-detail-form]');
+      if (detailForm) {
+        forms.push(detailForm);
+      }
+    }
+
+    return forms;
+  }
+
+  function rowHasDirtyOpenForm(row) {
+    return openTaskForms(row).some(formIsDirty);
+  }
+
+  function markStaleLocalChanges(row) {
+    if (!row) return;
+    var message = 'Aufgabe wurde in einem anderen Tab geändert. Lokale Eingaben bleiben erhalten.';
+    row.setAttribute('data-stale-local-changes', 'true');
+    setInlineEditError(row, message);
+    setInlineCreateError(row.querySelector('[data-subtask-create]'), message);
+    setTaskDetailError(row.querySelector('[data-task-detail-dialog]'), message);
+    setTaskActionError(row, message);
+    setWriteStatus('warning', message);
+  }
+
+  function taskRowFromHTML(html, taskID) {
+    var template = document.createElement('template');
+    template.innerHTML = (html || '').trim();
+    var rows = template.content.querySelectorAll('[data-task-id]');
+    for (var i = 0; i < rows.length; i += 1) {
+      if (taskRowID(rows[i]) === taskID) {
+        return rows[i];
+      }
+    }
+    return null;
+  }
+
+  function replaceTaskRow(row, html) {
+    var taskID = taskRowID(row);
+    var nextRow = taskRowFromHTML(html, taskID);
+    if (!nextRow) return false;
+    row.replaceWith(nextRow);
+    if (window.htmx && typeof window.htmx.process === 'function') {
+      window.htmx.process(nextRow);
+    }
+    return true;
+  }
+
+  function removeTaskRow(row) {
+    if (row) {
+      row.remove();
+    }
+  }
+
+  function fetchTaskFragment(row) {
+    var taskID = taskRowID(row);
+    if (!taskID) return Promise.resolve();
+    return window.fetch('/tasks/' + encodeURIComponent(taskID), {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'text/html',
+        'X-Tab-ID': tabID
+      }
+    }).then(function (response) {
+      if (response.status === 404) {
+        removeTaskRow(row);
+        return '';
+      }
+      if (!response.ok) {
+        throw response;
+      }
+      return response.text();
+    }).then(function (html) {
+      if (html) {
+        replaceTaskRow(row, html);
+      }
+    }).catch(function () {
+      // Focus refresh is opportunistic; normal writes still surface their own errors.
+    });
+  }
+
+  function fetchCurrentTaskVersions(ids) {
+    if (ids.length === 0) {
+      return Promise.resolve({});
+    }
+    return window.fetch('/api/tasks/versions?ids=' + encodeURIComponent(ids.join(',')), {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json',
+        'X-Tab-ID': tabID
+      }
+    }).then(function (response) {
+      if (!response.ok) {
+        throw response;
+      }
+      return response.json();
+    }).then(function (payload) {
+      var versions = {};
+      (payload.tasks || []).forEach(function (task) {
+        if (task && task.task_id) {
+          versions[task.task_id] = task.server_version;
+        }
+      });
+      return versions;
+    });
+  }
+
+  function refreshStaleTaskRows() {
+    if (window.location.pathname.indexOf('/setup') === 0 || writeState.pendingRequests > 0) {
+      return Promise.resolve();
+    }
+
+    var rows = taskRows();
+    var knownRows = rows.filter(function (row) {
+      return taskRowID(row) !== '' && taskRowVersion(row) > 0;
+    });
+    if (knownRows.length === 0) {
+      return Promise.resolve();
+    }
+
+    var ids = knownRows.map(taskRowID);
+    return fetchCurrentTaskVersions(ids).then(function (versions) {
+      var refreshes = [];
+      knownRows.forEach(function (row) {
+        if (!document.contains(row)) return;
+        var taskID = taskRowID(row);
+        var currentVersion = taskRowVersion(row);
+        var serverVersion = versions[taskID];
+        var stale = typeof serverVersion !== 'number' || serverVersion !== currentVersion;
+        if (!stale) return;
+        if (rowHasDirtyOpenForm(row)) {
+          markStaleLocalChanges(row);
+          return;
+        }
+        if (typeof serverVersion !== 'number') {
+          removeTaskRow(row);
+          return;
+        }
+        refreshes.push(fetchTaskFragment(row));
+      });
+      return Promise.all(refreshes);
+    }).catch(function () {
+      // Version checks run on focus and should not interrupt the user.
+    });
+  }
+
+  function scheduleFocusRefresh() {
+    if (document.visibilityState && document.visibilityState !== 'visible') return;
+    var now = Date.now();
+    if (focusRefreshState.inFlight) {
+      focusRefreshState.pending = true;
+      return;
+    }
+    if (now - focusRefreshState.lastRun < 500) {
+      return;
+    }
+    focusRefreshState.inFlight = true;
+    focusRefreshState.lastRun = now;
+    refreshStaleTaskRows().finally(function () {
+      focusRefreshState.inFlight = false;
+      if (focusRefreshState.pending) {
+        focusRefreshState.pending = false;
+        scheduleFocusRefresh();
+      }
+    });
   }
 
   function openInlineEdit(root) {
@@ -961,6 +1184,13 @@
   window.addEventListener('resize', function () {
     if (window.innerWidth >= 768) {
       closeMobileNav();
+    }
+  });
+
+  window.addEventListener('focus', scheduleFocusRefresh);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') {
+      scheduleFocusRefresh();
     }
   });
 

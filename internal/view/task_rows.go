@@ -33,6 +33,7 @@ type TaskRowView struct {
 	IsSubtask        bool
 	SubtaskCount     int
 	OpenSubtaskCount int
+	ConflictID       string
 	RRule            string
 	Attachments      []model.Attachment
 	ProjectOptions   []TaskProjectOption
@@ -255,6 +256,21 @@ func taskDetailStatusMessage(task TaskRowView) string {
 	default:
 		return ""
 	}
+}
+
+func taskConflictPath(task TaskRowView) string {
+	if !strings.EqualFold(strings.TrimSpace(task.SyncStatus), "conflict") {
+		return ""
+	}
+	conflictID := strings.TrimSpace(task.ConflictID)
+	if conflictID == "" {
+		return ""
+	}
+	return "/conflicts/" + url.PathEscape(conflictID)
+}
+
+func taskUsesConflictLink(task TaskRowView) bool {
+	return taskConflictPath(task) != ""
 }
 
 func taskMetaChips(task TaskRowView) []taskRowChip {

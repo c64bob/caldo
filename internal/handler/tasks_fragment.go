@@ -66,6 +66,7 @@ func taskRowFromDatedRow(row db.DatedTaskViewRow, projectOptions []view.TaskProj
 		IsSubtask:        row.IsSubtask,
 		SubtaskCount:     row.SubtaskCount,
 		OpenSubtaskCount: row.OpenSubtaskCount,
+		ConflictID:       row.UnresolvedConflictID,
 		RRule:            fields.RRule,
 		Attachments:      fields.Attachments,
 		ProjectOptions:   projectOptions,

@@ -148,6 +148,37 @@ INSERT INTO tasks (
 	}
 }
 
+func TestSearchActiveTasksIncludesUnresolvedConflictID(t *testing.T) {
+	t.Parallel()
+
+	database, err := OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := database.Close(); err != nil {
+			t.Fatalf("close sqlite: %v", err)
+		}
+	})
+
+	seedFTSProject(t, database)
+	seedSearchTasks(t, database)
+	if _, err := database.Conn.Exec(`
+INSERT INTO conflicts (id, task_id, project_id, conflict_type, created_at, base_vtodo, local_vtodo, remote_vtodo)
+VALUES ('conflict-search','task-active','project-1','field_conflict',CURRENT_TIMESTAMP,'base','local','remote');
+`); err != nil {
+		t.Fatalf("insert conflict: %v", err)
+	}
+
+	results, err := database.SearchActiveTasks(context.Background(), "rechnung", 25)
+	if err != nil {
+		t.Fatalf("search active tasks: %v", err)
+	}
+	if len(results) == 0 || results[0].UnresolvedConflictID != "conflict-search" {
+		t.Fatalf("search result missing unresolved conflict id: %#v", results)
+	}
+}
+
 func seedSearchTasks(t *testing.T, database *Database) {
 	t.Helper()
 

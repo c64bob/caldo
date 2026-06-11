@@ -39,6 +39,64 @@ func TestConflictsPageShowsOnlyUnresolved(t *testing.T) {
 	}
 }
 
+func TestConflictDetailPageShowsReadableComparison(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	seedConflictData(t, database)
+	if _, err := database.Conn.ExecContext(context.Background(), `
+UPDATE conflicts
+SET base_vtodo='BEGIN:VTODO
+SUMMARY:Base title
+DESCRIPTION:Base desc
+STATUS:NEEDS-ACTION
+DUE;VALUE=DATE:20260610
+END:VTODO',
+    local_vtodo='BEGIN:VTODO
+SUMMARY:Local title
+DESCRIPTION:Local desc
+STATUS:NEEDS-ACTION
+DUE;VALUE=DATE:20260611
+END:VTODO',
+    remote_vtodo='BEGIN:VTODO
+SUMMARY:Remote title
+DESCRIPTION:Remote desc
+STATUS:COMPLETED
+DUE;VALUE=DATE:20260612
+END:VTODO'
+WHERE id='open-1';
+`); err != nil {
+		t.Fatalf("update conflict data: %v", err)
+	}
+
+	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
+	r := NewRouter(logger, "X-User", testManifest(t), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil)
+	req := httptest.NewRequest(http.MethodGet, "/conflicts/open-1", nil)
+	req.Header.Set("X-User", "u")
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status: %d body=%s", rr.Code, rr.Body.String())
+	}
+	body := rr.Body.String()
+	for _, want := range []string{
+		`data-conflict-comparison`,
+		`Base title`,
+		`Local title`,
+		`Remote title`,
+		`Erledigt`,
+		`data-conflict-value="local-title"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("response body missing conflict comparison detail %q: %s", want, body)
+		}
+	}
+}
+
 func TestResolveConflictManualOmitsMissingCoreFields(t *testing.T) {
 	t.Parallel()
 	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))

@@ -12,8 +12,8 @@ templ ConflictListPage(conflicts []db.ConflictListRow) {
 			<ul class="caldo-list" data-conflict-list>
 				for _, conflict := range conflicts {
 					<li class="caldo-list-row">
-						<a class="caldo-list-link" href={ templ.URL("/conflicts/" + conflict.ID) }>{ conflict.TaskTitle }</a>
-						<p class="caldo-meta mt-1">Typ: { conflict.ConflictType } · Projekt: { conflict.ProjectName }</p>
+						<a class="caldo-list-link" href={ templ.URL("/conflicts/" + conflict.ID) }>{ conflictTaskTitle(conflict.TaskTitle) }</a>
+						<p class="caldo-meta mt-1">Typ: { conflictTypeLabel(conflict.ConflictType) } · Projekt: { conflictProjectLabel(conflict.ProjectName) }</p>
 					</li>
 				}
 			</ul>
@@ -23,25 +23,72 @@ templ ConflictListPage(conflicts []db.ConflictListRow) {
 
 templ ConflictDetailPage(conflict db.ConflictDetail) {
 	<section class="caldo-page">
-		<h2 class="caldo-page-title">Konfliktdetail</h2>
-		<p class="caldo-muted">Konflikttyp: { conflict.ConflictType } · Projekt: { conflict.ProjectName }</p>
-		if conflict.BaseVTODO.Valid {
+		<div class="caldo-conflict-header">
 			<div>
-				<h3 class="font-medium">Ausgangsversion (Base)</h3>
-				<pre class="caldo-card mt-1 max-w-full overflow-x-auto text-xs">{ conflict.BaseVTODO.String }</pre>
+				<h2 class="caldo-page-title">Konfliktdetail</h2>
+				<p class="caldo-muted">Vergleiche die gespeicherten Versionen, bevor du eine Auflösung wählst.</p>
 			</div>
-		}
-		if conflict.LocalVTODO.Valid {
+			<a class="caldo-button caldo-button-secondary" href="/conflicts">Zur Konfliktliste</a>
+		</div>
+		<div class="caldo-conflict-summary" data-conflict-summary>
 			<div>
-				<h3 class="font-medium">Lokale Version</h3>
-				<pre class="caldo-card mt-1 max-w-full overflow-x-auto text-xs">{ conflict.LocalVTODO.String }</pre>
+				<p class="caldo-meta">Konflikttyp</p>
+				<p class="caldo-conflict-summary-value">{ conflictTypeLabel(conflict.ConflictType) }</p>
 			</div>
-		}
-		if conflict.RemoteVTODO.Valid {
 			<div>
-				<h3 class="font-medium">Remote-Version</h3>
-				<pre class="caldo-card mt-1 max-w-full overflow-x-auto text-xs">{ conflict.RemoteVTODO.String }</pre>
+				<p class="caldo-meta">Projekt</p>
+				<p class="caldo-conflict-summary-value">{ conflictProjectLabel(conflict.ProjectName) }</p>
 			</div>
+			<div>
+				<p class="caldo-meta">Erkannt</p>
+				<p class="caldo-conflict-summary-value">{ conflict.CreatedAt.UTC().Format("2006-01-02 15:04 UTC") }</p>
+			</div>
+		</div>
+		<div class="caldo-conflict-comparison" data-conflict-comparison>
+			<table class="caldo-conflict-table">
+				<thead>
+					<tr>
+						<th scope="col">Feld</th>
+						if conflictHasBase(conflict) {
+							<th scope="col">Base</th>
+						}
+						<th scope="col">Lokal</th>
+						<th scope="col">Remote</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, row := range conflictComparisonRows(conflict) {
+						<tr>
+							<th scope="row">{ row.Label }</th>
+							if conflictHasBase(conflict) {
+								@ConflictValueCell(row.Base)
+							}
+							@ConflictValueCell(row.Local)
+							@ConflictValueCell(row.Remote)
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+		if len(conflictRawVersions(conflict)) > 0 {
+			<details class="caldo-conflict-raw">
+				<summary>Technische VTODO-Daten</summary>
+				for _, version := range conflictRawVersions(conflict) {
+					<div>
+						<h3>{ version.Label }</h3>
+						<pre>{ version.Raw }</pre>
+					</div>
+				}
+			</details>
 		}
 	</section>
+}
+
+templ ConflictValueCell(cell conflictComparisonCell) {
+	<td class={ conflictCellClass(cell) } data-conflict-value={ cell.Key }>
+		<span>{ cell.Value }</span>
+		if cell.Changed {
+			<span class="caldo-conflict-change-marker">Geändert</span>
+		}
+	</td>
 }

@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"caldo/internal/caldav"
 	"caldo/internal/db"
@@ -146,6 +147,100 @@ func TestTaskUpdateVersionConflict(t *testing.T) {
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusConflict {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+}
+
+func TestTaskLabelsRouteUpdatesCategoriesUndoSearchAndFilter(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskUpdateHandlerTest(t)
+	seedTaskUpdateHandlerData(t, database)
+
+	key := bytes.Repeat([]byte{0x51}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	stub := &stubTaskUpdateTodoClient{updateETag: `"etag-labels"`}
+	h := TaskLabels(taskUpdateDependencies{database: database, encryptionKey: key, todos: stub})
+	form := url.Values{
+		"expected_version": {"2"},
+		"labels":           {"Büro, urgent"},
+	}
+	req := httptest.NewRequest(http.MethodPost, "/tasks/task-1/labels", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Tab-ID", "tab-labels")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("taskID", "task-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+
+	var labelNames, rawVTODO, etag string
+	var version int
+	if err := database.Conn.QueryRowContext(context.Background(), `
+SELECT label_names, raw_vtodo, etag, server_version
+FROM tasks
+WHERE id = 'task-1';
+`).Scan(&labelNames, &rawVTODO, &etag, &version); err != nil {
+		t.Fatalf("query task: %v", err)
+	}
+	if labelNames != "Büro,urgent" || etag != `"etag-labels"` || version != 4 {
+		t.Fatalf("unexpected task labels row: labels=%q etag=%q version=%d", labelNames, etag, version)
+	}
+	if !bytes.Contains([]byte(rawVTODO), []byte("CATEGORIES:Büro,urgent")) {
+		t.Fatalf("expected CATEGORIES in raw vtodo, got %q", rawVTODO)
+	}
+	if stub.updateCalls != 1 || stub.lastHref != "/cal/inbox/uid-1.ics" || stub.lastUpdateETag != `"etag-1"` || stub.lastRawVTODO != rawVTODO {
+		t.Fatalf("unexpected caldav label update: calls=%d href=%q etag=%q raw=%q", stub.updateCalls, stub.lastHref, stub.lastUpdateETag, stub.lastRawVTODO)
+	}
+
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM labels WHERE name IN ('Büro', 'urgent');`, 2)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM task_labels WHERE task_id = 'task-1';`, 2)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE session_id = 'single-user-session' AND tab_id = 'tab-labels' AND task_id = 'task-1' AND action_type = 'task_updated';`, 1)
+
+	results, err := database.SearchActiveTasks(context.Background(), "@urgent", 10)
+	if err != nil {
+		t.Fatalf("search active tasks: %v", err)
+	}
+	if len(results) != 1 || results[0].ID != "task-1" {
+		t.Fatalf("expected updated label to be searchable, got %#v", results)
+	}
+
+	filter, err := database.CreateSavedFilter(context.Background(), "Urgent", "@urgent", false)
+	if err != nil {
+		t.Fatalf("create saved filter: %v", err)
+	}
+	_, rows, ok, err := database.ListSavedFilterTasks(context.Background(), filter.ID, time.Date(2026, 6, 11, 0, 0, 0, 0, time.UTC), 10)
+	if err != nil {
+		t.Fatalf("list saved filter tasks: %v", err)
+	}
+	if !ok || len(rows) != 1 || rows[0].ID != "task-1" {
+		t.Fatalf("expected updated label to match saved filter, ok=%v rows=%#v", ok, rows)
+	}
+}
+
+func TestTaskLabelsRequiresLabelsField(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskUpdateHandlerTest(t)
+	seedTaskUpdateHandlerData(t, database)
+
+	h := TaskLabels(taskUpdateDependencies{database: database, todos: &stubTaskUpdateTodoClient{updateETag: `"etag-labels"`}})
+	form := url.Values{"expected_version": {"2"}}
+	req := httptest.NewRequest(http.MethodPost, "/tasks/task-1/labels", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Tab-ID", "tab-labels")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("taskID", "task-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
 	}
 }

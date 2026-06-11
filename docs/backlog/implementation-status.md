@@ -6,7 +6,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Zusammenfassung
 
-- Bestehende Stories: 70 `Umgesetzt`, 16 `Teilweise umgesetzt`, 3 `Offen`.
+- Bestehende Stories: 71 `Umgesetzt`, 15 `Teilweise umgesetzt`, 3 `Offen`.
 - Neue Planungsstories: 15 `Umgesetzt`, 24 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
@@ -84,7 +84,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 15.1c | Umgesetzt | Filterqueries werden in SQL/DB-Suchlogik kompiliert und getestet. |
 | 15.2 | Umgesetzt | Gespeicherte Filter haben lokale CRUD-Routen und Templ-Verwaltungs-UI fuer Name, Query und Favorit; Aendern und Loeschen nutzen `server_version`, Filter werden nicht zu CalDAV synchronisiert, favorisierte Filter erscheinen in der Sidebar-Navigation und `/filters/{filter_id}` rendert gespeicherte Queries als Aufgabenansicht, wobei Syntaxfehler zu einer leeren Ergebnisliste fuehren. |
 | 15.3 | Umgesetzt | Systemfilter-Routen und Smart-List-Views sind vorhanden. |
-| 16.1 | Teilweise umgesetzt | Task-Labels sind im Modell/Update-Pfad vorhanden; eigene Label-Bearbeitungs-UI ist offen. |
+| 16.1 | Umgesetzt | Aufgabenzeilen und Detailpanel bieten Labelbearbeitung; `POST /tasks/{task_id}/labels` und der allgemeine Update-Pfad schreiben Labels als VTODO-`CATEGORIES` zu CalDAV, legen neue Labels lokal an, aktualisieren `task_labels`/`label_names`, erstellen Undo-Snapshots, pruefen `expected_version` und aktualisierte Labels sind in Suche und gespeicherten Filtern wirksam. |
 | 16.2 | Umgesetzt | `STARRED`-Mapping, Favorit-Route und Favoriten-View sind umgesetzt. |
 | 17.1 | Umgesetzt | `RELATED-TO;RELTYPE=PARENT` und Nextcloud-kompatibles `RELATED-TO` werden importiert, genau eine Ebene wird ueber `parent_id` dargestellt, tiefere Ebenen bleiben Root-Aufgaben mit unveraendertem Raw-VTODO und Unteraufgaben erscheinen eingerueckt mit Parent-Metadaten. |
 | 17.2 | Umgesetzt | Direkte Unteraufgaben werden ausschliesslich ueber `Unteraufgabe hinzufuegen` erstellt, Quick Add lehnt Parent-Felder ab, Subtasks schreiben `RELATED-TO;RELTYPE=PARENT` sofort zu CalDAV, verschachtelte Subtasks sind blockiert und Handler-/Router-E2E-Tests decken die Fake-CalDAV-Sichtbarkeit ab. |

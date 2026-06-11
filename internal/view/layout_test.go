@@ -92,7 +92,7 @@ func TestBaseLayoutRendersNavigationCountsAndDynamicGroups(t *testing.T) {
 		3, 4, 1, 2, 5, 0, 1,
 		[]NavigationOverviewItem{{Name: "Inbox mit sehr langem Namen", Href: "/search?q=%23Inbox", Count: 7, HasCount: true}},
 		[]NavigationOverviewItem{{Name: "Büro", Href: "/search?q=%40B%C3%BCro", Count: 2, HasCount: true}},
-		[]NavigationOverviewItem{{Name: "Heute Fokus", Href: "/filters#filter-1"}},
+		[]NavigationOverviewItem{{Name: "Heute Fokus", Href: "/filters/filter-1"}},
 	))
 
 	component := BaseLayout("Erledigt", PlaceholderPage("Erledigt"))
@@ -110,7 +110,7 @@ func TestBaseLayoutRendersNavigationCountsAndDynamicGroups(t *testing.T) {
 		`Heute Fokus`,
 		`href="/search?q=%23Inbox"`,
 		`href="/search?q=%40B%C3%BCro"`,
-		`href="/filters#filter-1"`,
+		`href="/filters/filter-1"`,
 		`Abgeschlossen`,
 		`caldo-nav-link-active`,
 	} {

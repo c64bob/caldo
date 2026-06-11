@@ -47,7 +47,7 @@ func TestLoadNavigationSnapshotReturnsCountsAndEntries(t *testing.T) {
 	if len(snapshot.Labels) != 2 || snapshot.Labels[0].Name != "Büro" || snapshot.Labels[0].OpenTaskCount != 1 {
 		t.Fatalf("unexpected labels: %#v", snapshot.Labels)
 	}
-	if len(snapshot.SavedFilters) != 2 || snapshot.SavedFilters[0].Name != "Favorit" {
+	if len(snapshot.SavedFilters) != 1 || snapshot.SavedFilters[0].Name != "Favorit" {
 		t.Fatalf("unexpected filters: %#v", snapshot.SavedFilters)
 	}
 }

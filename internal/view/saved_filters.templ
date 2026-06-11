@@ -1,0 +1,126 @@
+package view
+
+templ SavedFiltersPage(filters []SavedFilterItemView, create SavedFilterCreateFormView) {
+	<section class="caldo-page">
+		<h2 class="caldo-page-title">Filter</h2>
+		@SavedFilterCreateForm(create)
+		if len(filters) == 0 {
+			@EmptyState("Keine gespeicherten Filter", "Die Gruppe ist eingerichtet, enthält aber noch keine Einträge.")
+		} else {
+			<ul class="caldo-list" data-saved-filter-list>
+				for _, item := range filters {
+					@SavedFilterRow(item)
+				}
+			</ul>
+		}
+	</section>
+}
+
+templ SavedFilterCreateForm(create SavedFilterCreateFormView) {
+	<form
+		class="caldo-card space-y-3"
+		method="post"
+		action="/filters"
+		hx-post="/filters"
+		hx-target="body"
+		hx-swap="outerHTML"
+		hx-push-url="false"
+		hx-disabled-elt="find button"
+		hx-headers={ "{\"X-CSRF-Token\":\"" + CSRFToken(ctx) + "\"}" }
+		data-saved-filter-create-form
+	>
+		<h3 class="font-medium">Neuer Filter</h3>
+		if create.Error != "" {
+			<p class="caldo-alert caldo-alert-error" data-saved-filter-create-error aria-live="polite">{ create.Error }</p>
+		}
+		<div class="grid gap-3 lg:grid-cols-[minmax(12rem,18rem)_1fr_auto] lg:items-end">
+			<div class="space-y-1">
+				<label class="caldo-label" for="saved-filter-create-name">Name</label>
+				<input id="saved-filter-create-name" class="caldo-input" type="text" name="name" value={ create.Name } autocomplete="off" required/>
+			</div>
+			<div class="space-y-1">
+				<label class="caldo-label" for="saved-filter-create-query">Query</label>
+				<input id="saved-filter-create-query" class="caldo-input" type="text" name="query" value={ create.Query } autocomplete="off" required/>
+			</div>
+			<button type="submit" class="caldo-button caldo-button-primary">Filter anlegen</button>
+		</div>
+		<label class="inline-flex items-center gap-2 text-sm">
+			<input class="caldo-check" type="checkbox" name="favorite" value="1" checked?={ create.IsFavorite }/>
+			<span>Favorisieren</span>
+		</label>
+	</form>
+}
+
+templ SavedFilterRow(item SavedFilterItemView) {
+	<li class="caldo-list-row" id={ "filter-" + item.ID }>
+		<div class="space-y-3">
+			<div>
+				<a class="caldo-list-link" href={ templ.URL(savedFilterPath(item)) }>{ item.Name }</a>
+				<p class="caldo-meta mt-1">
+					{ savedFilterFavoriteLabel(item) } · { item.Query }
+				</p>
+			</div>
+			@SavedFilterEditForm(item)
+			@SavedFilterDeleteForm(item)
+		</div>
+	</li>
+}
+
+templ SavedFilterEditForm(item SavedFilterItemView) {
+	<form
+		class="space-y-2"
+		method="post"
+		action={ savedFilterPath(item) }
+		hx-patch={ savedFilterPath(item) }
+		hx-target="body"
+		hx-swap="outerHTML"
+		hx-push-url="false"
+		hx-disabled-elt="find button"
+		hx-headers={ "{\"X-CSRF-Token\":\"" + CSRFToken(ctx) + "\"}" }
+		data-saved-filter-edit-form
+	>
+		<input type="hidden" name="expected_version" value={ savedFilterExpectedVersion(item) }/>
+		if item.EditError != "" {
+			<p class="caldo-alert caldo-alert-error" data-saved-filter-edit-error aria-live="polite">{ item.EditError }</p>
+		}
+		<div class="grid gap-3 lg:grid-cols-[minmax(12rem,18rem)_1fr_auto] lg:items-end">
+			<div class="space-y-1">
+				<label class="caldo-label" for={ "saved-filter-name-" + item.ID }>Name</label>
+				<input id={ "saved-filter-name-" + item.ID } class="caldo-input" type="text" name="name" value={ savedFilterEditName(item) } autocomplete="off" required/>
+			</div>
+			<div class="space-y-1">
+				<label class="caldo-label" for={ "saved-filter-query-" + item.ID }>Query</label>
+				<input id={ "saved-filter-query-" + item.ID } class="caldo-input" type="text" name="query" value={ savedFilterEditQuery(item) } autocomplete="off" required/>
+			</div>
+			<button type="submit" class="caldo-button caldo-button-secondary">Speichern</button>
+		</div>
+		<label class="inline-flex items-center gap-2 text-sm">
+			<input class="caldo-check" type="checkbox" name="favorite" value="1" checked?={ savedFilterEditFavorite(item) }/>
+			<span>Favorisieren</span>
+		</label>
+	</form>
+}
+
+templ SavedFilterDeleteForm(item SavedFilterItemView) {
+	<details class="space-y-2" open?={ item.DeleteError != "" } data-saved-filter-delete-panel>
+		<summary class="caldo-button caldo-button-danger">Filter löschen</summary>
+		<form
+			class="space-y-2"
+			method="post"
+			action={ savedFilterPath(item) }
+			hx-delete={ savedFilterPath(item) }
+			hx-target="body"
+			hx-swap="outerHTML"
+			hx-push-url="false"
+			hx-disabled-elt="find button"
+			hx-headers={ "{\"X-CSRF-Token\":\"" + CSRFToken(ctx) + "\"}" }
+			data-saved-filter-delete-form
+		>
+			<input type="hidden" name="expected_version" value={ savedFilterExpectedVersion(item) }/>
+			if item.DeleteError != "" {
+				<p class="caldo-alert caldo-alert-error" data-saved-filter-delete-error aria-live="polite">{ item.DeleteError }</p>
+			}
+			<button type="submit" class="caldo-button caldo-button-danger-solid">Endgültig löschen</button>
+		</form>
+	</details>
+}

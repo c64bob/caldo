@@ -96,8 +96,9 @@ func navigationFiltersView(items []db.NavigationListItem) []view.NavigationOverv
 	result := make([]view.NavigationOverviewItem, 0, len(items))
 	for _, item := range items {
 		result = append(result, view.NavigationOverviewItem{
+			ID:   item.ID,
 			Name: item.Name,
-			Href: "/filters#" + item.ID,
+			Href: "/filters/" + item.ID,
 			Meta: "Gespeicherter Filter",
 		})
 	}

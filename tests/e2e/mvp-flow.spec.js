@@ -256,6 +256,42 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expectSearchResult(page, 'E2E Local Edited');
 
   version = await taskVersion(page, createdID);
+  response = await appFormRequest(page, 'PATCH', `/tasks/${createdID}`, {
+    expected_version: String(version),
+    title: 'E2E Focus Refreshed',
+    description: 'refreshed after browser focus',
+    status: 'needs-action'
+  }, { tabID: 'e2e-background-refresh' });
+  expect(response.status()).toBe(200);
+  await page.waitForTimeout(600);
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  let focusRow = page.locator(`[data-task-id="${createdID}"]`);
+  await expect(focusRow).toContainText('E2E Focus Refreshed');
+  await expect(focusRow).toContainText('refreshed after browser focus');
+
+  await focusRow.getByRole('button', { name: 'Bearbeiten' }).click();
+  let focusEditForm = focusRow.locator('[data-inline-task-edit-form]');
+  await focusEditForm.locator('[name="title"]').fill('Unsaved local focus edit');
+  version = await taskVersion(page, createdID);
+  response = await appFormRequest(page, 'PATCH', `/tasks/${createdID}`, {
+    expected_version: String(version),
+    title: 'E2E Focus Dirty Remote',
+    description: 'remote changed while local form was dirty',
+    status: 'needs-action'
+  }, { tabID: 'e2e-background-dirty' });
+  expect(response.status()).toBe(200);
+  await page.waitForTimeout(600);
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(focusEditForm.locator('[name="title"]')).toHaveValue('Unsaved local focus edit');
+  await expect(focusRow).toContainText('Aufgabe wurde in einem anderen Tab geändert');
+  await focusEditForm.getByRole('button', { name: 'Abbrechen' }).click();
+  await page.waitForTimeout(600);
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(focusRow).toContainText('E2E Focus Dirty Remote');
+  await expect(focusRow).toContainText('remote changed while local form was dirty');
+  const currentLocalTitle = 'E2E Focus Dirty Remote';
+
+  version = await taskVersion(page, createdID);
   response = await appFormRequest(page, 'POST', `/tasks/${createdID}/complete`, {
     expected_version: String(version)
   }, { tabID: 'e2e-complete' });
@@ -267,9 +303,9 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   }, { tabID: 'e2e-reopen' });
   expect(response.status()).toBe(200);
 
-  await gotoApp(page, '/search?q=E2E%20Local%20Edited');
+  await gotoApp(page, `/search?q=${encodeURIComponent(currentLocalTitle)}`);
   await ensureBrowserCSRFCookie(page);
-  let deleteRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Local Edited' }).first();
+  let deleteRow = page.locator('[data-task-id]').filter({ hasText: currentLocalTitle }).first();
   let deleteDialog = deleteRow.locator('[data-task-delete-dialog]');
   await expect(deleteDialog).toBeHidden();
   await deleteRow.locator('[data-task-delete-open]').click();
@@ -282,7 +318,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await deleteRow.locator('[data-task-delete-open]').click();
   await expect(deleteDialog).toBeVisible();
   await deleteDialog.getByRole('button', { name: 'Endgültig löschen' }).click();
-  await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Local Edited' })).toHaveCount(0);
+  await expect(page.locator('[data-task-id]').filter({ hasText: currentLocalTitle })).toHaveCount(0);
   const undoNotifications = page.locator('#notifications');
   await expect(undoNotifications.getByRole('button', { name: 'Rückgängig' })).toBeVisible();
   await expect(undoNotifications).toContainText('Noch');
@@ -291,19 +327,19 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(undoNotifications).toContainText('Noch');
   await page.screenshot({ path: 'test-results/e2e/undo-available.png', fullPage: true });
   const secondPage = await page.context().newPage();
-  await gotoApp(secondPage, '/search?q=E2E%20Local%20Edited');
+  await gotoApp(secondPage, `/search?q=${encodeURIComponent(currentLocalTitle)}`);
   await expect(secondPage.locator('#notifications').getByRole('button', { name: 'Rückgängig' })).toHaveCount(0);
   await secondPage.close();
   await undoNotifications.getByRole('button', { name: 'Rückgängig' }).click();
   await expect(undoNotifications).toContainText('Rückgängig ausgeführt.');
-  await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Local Edited' }).first()).toBeVisible();
+  await expect(page.locator('[data-task-id]').filter({ hasText: currentLocalTitle }).first()).toBeVisible();
 
-  deleteRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Local Edited' }).first();
+  deleteRow = page.locator('[data-task-id]').filter({ hasText: currentLocalTitle }).first();
   deleteDialog = deleteRow.locator('[data-task-delete-dialog]');
   await deleteRow.locator('[data-task-delete-open]').click();
   await expect(deleteDialog).toBeVisible();
   await deleteDialog.getByRole('button', { name: 'Endgültig löschen' }).click();
-  await waitForNoSearchResult(page, 'E2E Local Edited');
+  await waitForNoSearchResult(page, currentLocalTitle);
   const afterDelete = await stageState();
   expect(afterDelete.tasks.some((task) => task.href === createdRemote.href)).toBe(false);
 

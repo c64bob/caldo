@@ -11,6 +11,7 @@ templ TaskRow(task TaskRowView) {
 		data-parent-task-id={ task.ParentID }
 		data-sync-status={ task.SyncStatus }
 		data-task-status={ task.Status }
+		data-server-version={ fmt.Sprint(task.ServerVersion) }
 		class={
 			"caldo-task-row",
 			templ.KV("caldo-task-row-subtask", task.IsSubtask),

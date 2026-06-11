@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"caldo/internal/db"
-	"caldo/internal/model"
 	"caldo/internal/view"
 )
 
@@ -181,30 +180,7 @@ func datedTaskRows(rows []db.DatedTaskViewRow, projectOptions []view.TaskProject
 	tasks := make([]view.TaskRowView, 0, len(rows))
 	todayISODate := referenceDate.UTC().Format("2006-01-02")
 	for _, row := range rows {
-		fields := model.ParseVTODOFields(row.RawVTODO)
-		tasks = append(tasks, view.TaskRowView{
-			ID:               row.ID,
-			ProjectID:        row.ProjectID,
-			Title:            row.Title,
-			Description:      row.Description,
-			ProjectName:      row.ProjectName,
-			LabelNames:       row.LabelNames,
-			DueISODate:       row.DueISODate,
-			TodayISODate:     todayISODate,
-			ParentID:         row.ParentID,
-			ParentTitle:      row.ParentTitle,
-			Status:           row.Status,
-			SyncStatus:       row.SyncStatus,
-			Priority:         row.Priority,
-			HasPriority:      row.HasPriority,
-			ServerVersion:    row.ServerVersion,
-			IsSubtask:        row.IsSubtask,
-			SubtaskCount:     row.SubtaskCount,
-			OpenSubtaskCount: row.OpenSubtaskCount,
-			RRule:            fields.RRule,
-			Attachments:      fields.Attachments,
-			ProjectOptions:   projectOptions,
-		})
+		tasks = append(tasks, taskRowFromDatedRow(row, projectOptions, todayISODate))
 	}
 	return tasks
 }

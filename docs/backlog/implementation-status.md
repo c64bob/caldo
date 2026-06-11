@@ -1,12 +1,12 @@
 # Implementation Status Audit
 
-Stand: 2026-06-10
+Stand: 2026-06-11
 
 Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Story-Dateien selbst enthalten nur den knappen Status, damit sie Planungsdokumente bleiben.
 
 ## Zusammenfassung
 
-- Bestehende Stories: 64 `Umgesetzt`, 22 `Teilweise umgesetzt`, 3 `Offen`.
+- Bestehende Stories: 65 `Umgesetzt`, 21 `Teilweise umgesetzt`, 3 `Offen`.
 - Neue Planungsstories: 15 `Umgesetzt`, 24 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
@@ -66,7 +66,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 10.4 | Umgesetzt | `internal/db/sync_cleanup.go` und Scheduler-Tests loeschen abgelaufene Undo-Snapshots und alte geloeste Konflikte. |
 | 11.1 | Umgesetzt | Mutierende Task-/Projekt-/Filterpfade pruefen erwartete Versionen. |
 | 11.2 | Umgesetzt | SSE-Broker und Events existieren fuer Normal- und Setup-Flows getrennt. |
-| 11.3 | Teilweise umgesetzt | Staleness-Erkennung ist serverseitig vorhanden; Fokus-/Tab-Refresh ist in der sichtbaren UI noch nicht vollstaendig. |
+| 11.3 | Umgesetzt | `GET /api/tasks/versions` bleibt als Versionsabgleich erhalten; `GET /tasks/{taskID}` rendert aktuelle TaskRow-Fragmente, `web/assets/app.js` prueft sichtbare Task-Versionen bei Fokus/Sichtbarkeit, ersetzt nur veraltete saubere Zeilen und warnt bei offenen Formularen mit lokalen Aenderungen ohne diese zu ueberschreiben. |
 | 12.1 | Umgesetzt | Undo-Snapshot-Modell und DB-Transaktionen sind implementiert. |
 | 12.2 | Umgesetzt | Undo-Route kann Snapshots wiederherstellen. |
 | 12.3 | Umgesetzt | Geloeschte Aufgaben koennen ueber Undo-Snapshots wiederhergestellt werden. |

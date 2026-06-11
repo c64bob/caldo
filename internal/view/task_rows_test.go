@@ -36,6 +36,7 @@ func TestTaskRowRendersTodoistLikeMetadataAndCompletionControl(t *testing.T) {
 	output := rendered.String()
 	for _, want := range []string{
 		`data-task-id="task-1"`,
+		`data-server-version="3"`,
 		`caldo-task-checkbox`,
 		`hx-post="/tasks/task-1/complete"`,
 		`name="expected_version" value="3"`,

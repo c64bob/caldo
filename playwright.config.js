@@ -15,8 +15,21 @@ module.exports = defineConfig({
   reporter: process.env.CI
     ? [['dot'], ['html', { open: 'never' }]]
     : [['list'], ['html', { open: 'never' }]],
+  projects: [
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome']
+      }
+    },
+    {
+      name: 'webkit',
+      use: {
+        ...devices['Desktop Safari']
+      }
+    }
+  ],
   use: {
-    ...devices['Desktop Chrome'],
     extraHTTPHeaders: {
       'X-Forwarded-User': 'e2e-user'
     },

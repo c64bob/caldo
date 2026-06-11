@@ -1,4 +1,5 @@
 const { expect } = require('@playwright/test');
+const crypto = require('node:crypto');
 const { appURL, readState } = require('./state');
 
 async function gotoApp(page, pathname) {
@@ -29,14 +30,28 @@ async function appFormRequest(page, method, pathname, fields = {}, options = {})
 
 async function ensureBrowserCSRFCookie(page) {
   const token = await currentCSRFToken(page);
-  // The app emits Secure CSRF cookies; e2e serves over local HTTP, so seed a browser cookie for HTMX writes.
-  await page.context().addCookies([{
+  const cookies = [{
     name: 'caldo_csrf',
     value: token,
     url: appURL('/'),
     httpOnly: true,
     sameSite: 'Strict'
-  }]);
+  }];
+
+  // The app emits Secure cookies; e2e serves over local HTTP, so seed browser cookies for HTMX writes.
+  const browserCookies = await page.context().cookies(appURL('/'));
+  const hasSession = browserCookies.some((cookie) => cookie.name === 'session_id' && /^[a-f0-9]{64}$/.test(cookie.value));
+  if (!hasSession) {
+    cookies.push({
+      name: 'session_id',
+      value: crypto.randomBytes(32).toString('hex'),
+      url: appURL('/'),
+      httpOnly: true,
+      sameSite: 'Strict'
+    });
+  }
+
+  await page.context().addCookies(cookies);
 }
 
 async function currentCSRFToken(page) {

@@ -899,9 +899,11 @@
 	.caldo-task-detail-dialog {
 		@apply m-0 max-h-none w-full max-w-none overflow-hidden rounded-none border-0 p-0;
 		background: var(--caldo-surface);
+		box-sizing: border-box;
 		color: var(--caldo-text);
 		height: 100dvh;
 		inset: 0 0 0 auto;
+		max-width: min(100vw, 34rem);
 		width: min(100vw, 34rem);
 	}
 
@@ -910,9 +912,11 @@
 			@apply rounded-md border;
 			border-color: var(--caldo-border-strong);
 			height: calc(100dvh - 0.5rem);
-			inset: auto;
-			margin: 0.25rem;
-			width: calc(100vw - 0.5rem);
+			inset: 0.25rem;
+			margin: 0;
+			max-height: calc(100dvh - 0.5rem);
+			max-width: calc(100vw - 0.5rem);
+			width: auto;
 		}
 	}
 

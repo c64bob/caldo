@@ -10,7 +10,7 @@ Node und npm müssen lokal vorhanden sein. Die npm-Abhängigkeiten werden ohne R
 npm ci
 ```
 
-Unter Linux benötigen Playwright-Browser einmalig Systempakete. Dieses Kommando ist der Root-Schritt:
+Unter Linux benötigen Playwright-Browser einmalig Systempakete. Dieses Kommando ist der Root-Schritt für den normalen Chromium-Smoke:
 
 ```bash
 sudo npx playwright install-deps chromium
@@ -22,20 +22,29 @@ Der Browser-Download läuft wieder als normaler Nutzer:
 npx playwright install chromium
 ```
 
-Optionaler WebKit-Check unter Linux:
+Für den Safari-nahen WebKit-Smoke werden zusätzlich WebKit-Systempakete und der WebKit-Browser benötigt:
 
 ```bash
 sudo npx playwright install-deps webkit
 npx playwright install webkit
 ```
 
-Linux-WebKit ist kein echter Safari-Ersatz. Reale Safari-Freigabe braucht macOS mit Safari oder Safari Technology Preview.
+Alternativ lädt der gemeinsame Browser-Installationsbefehl beide Browser:
+
+```bash
+npm run playwright:install
+```
+
+Linux-WebKit ist kein echter Safari-Ersatz. Die Story-21.1-Prüfung nutzt Playwright WebKit als CI-nahe Safari-Approximation; reale Safari-Freigabe braucht macOS mit Safari oder Safari Technology Preview.
 
 ## Tests Ausführen
 
 ```bash
 npm run test:e2e
+npm run test:e2e:webkit
+npm run test:e2e:ci
 npm run test:e2e:headed
+npm run test:e2e:webkit:headed
 npm run test:e2e:ui
 ```
 
@@ -43,15 +52,25 @@ Alternativ:
 
 ```bash
 make e2e
+make e2e-webkit
+make e2e-ci
 make e2e-headed
 ```
 
+`npm run test:e2e` läuft gegen Chromium. `npm run test:e2e:webkit` läuft denselben MVP-Smoke gegen Playwright WebKit. `npm run test:e2e:ci` führt beide Browser nacheinander aus; dadurch bekommt jeder Browser ein frisches temporäres Caldo/Staging-CalDAV-Setup.
+
 ## CI
 
-Der CI-Workflow führt Browser-QA in einem separaten Job aus. Der Job läuft nach den normalen Go-/Build-Checks, installiert Node über `actions/setup-node`, führt `npm ci` aus und installiert Chromium inklusive Linux-Systemabhängigkeiten mit:
+Der CI-Workflow führt Browser-QA in einem separaten Job aus. Der Job läuft nach den normalen Go-/Build-Checks, installiert Node über `actions/setup-node`, führt `npm ci` aus und installiert Chromium und WebKit inklusive Linux-Systemabhängigkeiten mit:
 
 ```bash
-npx playwright install --with-deps chromium
+npx playwright install --with-deps chromium webkit
+```
+
+Anschließend läuft:
+
+```bash
+npm run test:e2e:ci
 ```
 
 Bei Fehlschlägen werden Playwright-Report, Test-Artefakte und lokale Caldo/Staging-CalDAV-Logs als Workflow-Artefakt hochgeladen.
@@ -69,14 +88,21 @@ Die Tests verwenden keine echten CalDAV-Zugänge. Remote-Änderungen laufen übe
 Der erste Browser-Smoke deckt ab:
 
 - Setup-Gate, CalDAV-Konfiguration, Kalenderauswahl und Initialimport
+- globale Navigation, Tastaturkürzel und Theme-Toggle
+- Aufgaben erstellen, inline und im Detailpanel bearbeiten, erledigen, wieder öffnen und löschen
+- Suche sowie Fokus-Refresh bei Remote-Änderungen
+- tabbezogene Undo-Anzeige
 - lokale Task-Write-Through-Aktionen über HTTP-Routen
+- SSE-/Sync-Status-Pfade über die lokale Browser-Session
 - manueller Full-Scan-Sync
 - Remote Create/Update/Delete über Staging-CalDAV
 - Dirty-Local-vs-Remote-Changed-Konflikt
 - Konfliktdetail und Remote-Auflösung
 - einfacher mobiler Screenshot der Suchansicht
 
-Bei Fehlschlägen liegen Artefakte unter `test-results/` und der HTML-Report unter `playwright-report/`. Temporäre Serverlogs liegen während des Laufs unter `.playwright/caldo-e2e/`; mit `CALDO_E2E_KEEP_ARTIFACTS=1` bleibt auch das temporäre Datenverzeichnis erhalten.
+Der Smoke ist für Chromium und Playwright WebKit identisch. Er nutzt ausschließlich die lokale Staging-CalDAV-Testinstanz und keine echten CalDAV-Zugänge.
+
+Bei Fehlschlägen liegen Artefakte unter `test-results/` und der HTML-Report unter `playwright-report/`. Browser-spezifische Review-Screenshots liegen unter `test-results/e2e/chromium/` oder `test-results/e2e/webkit/`. Temporäre Serverlogs liegen während des Laufs unter `.playwright/caldo-e2e/`; mit `CALDO_E2E_KEEP_ARTIFACTS=1` bleibt auch das temporäre Datenverzeichnis erhalten.
 
 ## UI-Review
 
@@ -92,7 +118,7 @@ Playwright-Screenshots sind der Feedback-Loop: Ansicht öffnen, Desktop und Mobi
 
 ## Visuelle Baselines
 
-`npm run test:e2e` erzeugt Review-Screenshots unter `test-results/e2e/baselines/`. Das Verzeichnis ist ein lokales QA-Artefakt und wird nicht committed.
+`npm run test:e2e` erzeugt Review-Screenshots unter `test-results/e2e/chromium/baselines/`. `npm run test:e2e:webkit` erzeugt die WebKit-Variante unter `test-results/e2e/webkit/baselines/`. Diese Verzeichnisse sind lokale QA-Artefakte und werden nicht committed.
 
 Die Baselines erfassen Desktop und Mobile für:
 

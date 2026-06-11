@@ -86,6 +86,30 @@ func TestNewRouterServesStaticAssetsWithLongTermCacheHeaders(t *testing.T) {
 	}
 }
 
+func TestNewRouterServesEventsThroughMiddleware(t *testing.T) {
+	t.Parallel()
+
+	requestContext, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
+	responseRecorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/events", nil).WithContext(requestContext)
+	request.Header.Set("X-Forwarded-User", "alice")
+
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d body %q", responseRecorder.Code, http.StatusOK, responseRecorder.Body.String())
+	}
+	if got := responseRecorder.Header().Get("Content-Type"); !strings.Contains(got, "text/event-stream") {
+		t.Fatalf("expected event-stream content type, got %q", got)
+	}
+	if body := responseRecorder.Body.String(); !strings.Contains(body, "event: connected") {
+		t.Fatalf("expected connected SSE event, got %q", body)
+	}
+}
+
 func TestNewRouterRendersBaseLayoutOnRoot(t *testing.T) {
 	t.Parallel()
 

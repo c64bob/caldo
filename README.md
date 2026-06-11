@@ -168,6 +168,7 @@ Browser-QA ist als dev-only Playwright-Prozess dokumentiert:
 ```bash
 npm ci
 npm run test:e2e
+npm run test:e2e:webkit
 ```
 
 Die lokale Erstinstallation der Browser-Abhängigkeiten und die Root-Kommandos für Linux stehen in `docs/qa/playwright.md`.

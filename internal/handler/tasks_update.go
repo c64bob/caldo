@@ -33,185 +33,203 @@ const taskUpdatePersistTimeout = 5 * time.Second
 // TaskUpdate updates an existing task and performs synchronous CalDAV write-through.
 func TaskUpdate(deps taskUpdateDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, "invalid form payload", http.StatusBadRequest)
+		handleTaskUpdate(w, r, deps, false)
+	}
+}
+
+// TaskLabels updates the labels of an existing task and performs synchronous CalDAV write-through.
+func TaskLabels(deps taskUpdateDependencies) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		handleTaskUpdate(w, r, deps, true)
+	}
+}
+
+func handleTaskUpdate(w http.ResponseWriter, r *http.Request, deps taskUpdateDependencies, requireLabels bool) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form payload", http.StatusBadRequest)
+		return
+	}
+	if requireLabels {
+		if _, ok := r.PostForm["labels"]; !ok {
+			http.Error(w, "labels are required", http.StatusBadRequest)
 			return
 		}
+	}
 
-		taskID := chi.URLParam(r, "taskID")
-		expectedVersion, err := strconv.Atoi(strings.TrimSpace(r.FormValue("expected_version")))
-		if err != nil {
-			http.Error(w, "expected_version is required", http.StatusBadRequest)
+	taskID := chi.URLParam(r, "taskID")
+	expectedVersion, err := strconv.Atoi(strings.TrimSpace(r.FormValue("expected_version")))
+	if err != nil {
+		http.Error(w, "expected_version is required", http.StatusBadRequest)
+		return
+	}
+
+	tabID := strings.TrimSpace(r.Header.Get("X-Tab-ID"))
+	if tabID == "" {
+		http.Error(w, "X-Tab-ID header is required", http.StatusBadRequest)
+		return
+	}
+	sessionID := strings.TrimSpace(r.Header.Get("X-Forwarded-User"))
+	if sessionID == "" {
+		sessionID = "single-user-session"
+	}
+
+	base, err := deps.database.LoadTaskUpdateBase(r.Context(), taskID, r.FormValue("project_id"))
+	if err != nil {
+		switch {
+		case errors.Is(err, db.ErrTaskNotFound):
+			http.Error(w, "task not found", http.StatusNotFound)
+		case errors.Is(err, db.ErrTaskProjectNotFound):
+			http.Error(w, "selected project does not exist", http.StatusBadRequest)
+		default:
+			http.Error(w, "failed to load task", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	baseFields := model.ParseVTODOFields(base.RawVTODO)
+
+	title := strings.TrimSpace(r.FormValue("title"))
+	if title == "" {
+		title = baseFields.Title
+	}
+	if title == "" {
+		http.Error(w, "title is required", http.StatusBadRequest)
+		return
+	}
+
+	_, statusProvided := r.PostForm["status"]
+	status := strings.TrimSpace(strings.ToLower(r.FormValue("status")))
+	if status == "" {
+		status = baseFields.Status
+	}
+	if status == "" {
+		status = "needs-action"
+	}
+
+	var description *string
+	if _, ok := r.PostForm["description"]; ok {
+		description = stringPointer(strings.TrimSpace(r.FormValue("description")))
+	}
+
+	existingRRule := baseFields.RRule
+
+	patch := model.VTODOPatch{
+		Summary:     &title,
+		Description: description,
+		Status:      &status,
+	}
+	applyDuePatch(r.PostForm, baseFields, &patch)
+	applyPriorityPatch(r.PostForm, &patch)
+	applyLabelPatch(r.PostForm, baseFields.Categories, &patch)
+	if !model.IsComplexRRule(existingRRule) {
+		if recurrence := buildExplicitRRuleUpdate(r.PostForm); recurrence != nil {
+			patch.RRule = recurrence
+		}
+	}
+	if statusProvided && status == "completed" {
+		now := time.Now().UTC()
+		patch.CompletedAt = &now
+	} else if statusProvided {
+		patch.ClearCompleted = true
+	}
+
+	rawVTODO := model.PatchVTODO(base.RawVTODO, patch)
+	parsed := model.ParseVTODOFields(rawVTODO)
+
+	input := db.TaskUpdateInput{
+		TaskID:          taskID,
+		ExpectedVersion: expectedVersion,
+		SessionID:       sessionID,
+		TabID:           tabID,
+		ProjectID:       base.ProjectID,
+		ProjectName:     base.ProjectName,
+		Href:            base.Href,
+		ETag:            base.ETag,
+		RawVTODO:        rawVTODO,
+		Title:           parsed.Title,
+		Description:     parsed.Description,
+		Status:          parsed.Status,
+		CompletedAt:     nullableTime(parsed.CompletedAt),
+		DueDate:         nullableDate(parsed.DueDate),
+		DueAt:           nullableTime(parsed.DueAt),
+		Priority:        nullableInt(parsed.Priority),
+		LabelNames:      nullableCSV(parsed.Categories),
+	}
+
+	prepared, err := deps.database.PrepareTaskUpdate(r.Context(), input)
+	if err != nil {
+		if errors.Is(err, db.ErrTaskVersionMismatch) {
+			http.Error(w, "task version conflict", http.StatusConflict)
 			return
 		}
+		http.Error(w, "failed to save pending task update", http.StatusInternalServerError)
+		return
+	}
 
-		tabID := strings.TrimSpace(r.Header.Get("X-Tab-ID"))
-		if tabID == "" {
-			http.Error(w, "X-Tab-ID header is required", http.StatusBadRequest)
-			return
-		}
-		sessionID := strings.TrimSpace(r.Header.Get("X-Forwarded-User"))
-		if sessionID == "" {
-			sessionID = "single-user-session"
-		}
-
-		base, err := deps.database.LoadTaskUpdateBase(r.Context(), taskID, r.FormValue("project_id"))
-		if err != nil {
-			switch {
-			case errors.Is(err, db.ErrTaskNotFound):
-				http.Error(w, "task not found", http.StatusNotFound)
-			case errors.Is(err, db.ErrTaskProjectNotFound):
-				http.Error(w, "selected project does not exist", http.StatusBadRequest)
-			default:
-				http.Error(w, "failed to load task", http.StatusInternalServerError)
-			}
-			return
-		}
-
-		baseFields := model.ParseVTODOFields(base.RawVTODO)
-
-		title := strings.TrimSpace(r.FormValue("title"))
-		if title == "" {
-			title = baseFields.Title
-		}
-		if title == "" {
-			http.Error(w, "title is required", http.StatusBadRequest)
-			return
-		}
-
-		status := strings.TrimSpace(strings.ToLower(r.FormValue("status")))
-		if status == "" {
-			status = baseFields.Status
-		}
-		if status == "" {
-			status = "needs-action"
-		}
-
-		var description *string
-		if _, ok := r.PostForm["description"]; ok {
-			description = stringPointer(strings.TrimSpace(r.FormValue("description")))
-		}
-
-		existingRRule := baseFields.RRule
-
-		patch := model.VTODOPatch{
-			Summary:     &title,
-			Description: description,
-			Status:      &status,
-		}
-		applyDuePatch(r.PostForm, baseFields, &patch)
-		applyPriorityPatch(r.PostForm, &patch)
-		applyLabelPatch(r.PostForm, baseFields.Categories, &patch)
-		if !model.IsComplexRRule(existingRRule) {
-			if recurrence := buildExplicitRRuleUpdate(r.PostForm); recurrence != nil {
-				patch.RRule = recurrence
-			}
-		}
-		if status == "completed" {
-			now := time.Now().UTC()
-			patch.CompletedAt = &now
-		} else {
-			patch.ClearCompleted = true
-		}
-
-		rawVTODO := model.PatchVTODO(base.RawVTODO, patch)
-		parsed := model.ParseVTODOFields(rawVTODO)
-
-		input := db.TaskUpdateInput{
-			TaskID:          taskID,
-			ExpectedVersion: expectedVersion,
-			SessionID:       sessionID,
-			TabID:           tabID,
-			ProjectID:       base.ProjectID,
-			ProjectName:     base.ProjectName,
-			Href:            base.Href,
-			ETag:            base.ETag,
-			RawVTODO:        rawVTODO,
-			Title:           parsed.Title,
-			Description:     parsed.Description,
-			Status:          parsed.Status,
-			CompletedAt:     nullableTime(parsed.CompletedAt),
-			DueDate:         nullableDate(parsed.DueDate),
-			DueAt:           nullableTime(parsed.DueAt),
-			Priority:        nullableInt(parsed.Priority),
-			LabelNames:      nullableCSV(parsed.Categories),
-		}
-
-		prepared, err := deps.database.PrepareTaskUpdate(r.Context(), input)
-		if err != nil {
-			if errors.Is(err, db.ErrTaskVersionMismatch) {
-				http.Error(w, "task version conflict", http.StatusConflict)
-				return
-			}
-			http.Error(w, "failed to save pending task update", http.StatusInternalServerError)
-			return
-		}
-
-		creds, err := deps.database.LoadCalDAVCredentials(r.Context(), deps.encryptionKey)
-		if err != nil {
-			persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUpdatePersistTimeout)
-			defer cancel()
-			if markErr := deps.database.MarkTaskUpdateError(persistCtx, taskID, prepared.PendingVersion); markErr != nil {
-				http.Error(w, "failed to persist task update error state", http.StatusInternalServerError)
-				return
-			}
-			http.Error(w, "caldav credentials unavailable", http.StatusFailedDependency)
-			return
-		}
-		todoCredentials := caldav.Credentials{URL: creds.URL, Username: creds.Username, Password: creds.Password}
-
-		var newETag string
-		if prepared.ProjectChanged {
-			newETag, err = deps.todos.PutVTODOCreate(r.Context(), todoCredentials, prepared.NextHref, rawVTODO)
-			if err == nil {
-				err = deps.todos.DeleteVTODO(r.Context(), todoCredentials, prepared.PreviousHref, prepared.PreviousETag)
-				if err != nil {
-					persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUpdatePersistTimeout)
-					defer cancel()
-					if markErr := deps.database.MarkTaskUpdateErrorWithETag(persistCtx, taskID, prepared.PendingVersion, newETag); markErr != nil {
-						http.Error(w, "failed to persist task update error state", http.StatusInternalServerError)
-						return
-					}
-					http.Error(w, "failed to finalize task move on caldav server", http.StatusBadGateway)
-					return
-				}
-			}
-		} else {
-			newETag, err = deps.todos.PutVTODOUpdate(r.Context(), todoCredentials, prepared.PreviousHref, rawVTODO, prepared.PreviousETag)
-		}
-		if err != nil {
-			persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUpdatePersistTimeout)
-			defer cancel()
-			if errors.Is(err, caldav.ErrPreconditionFailed) {
-				if markErr := deps.database.MarkTaskUpdateConflict(persistCtx, taskID, prepared.PendingVersion); markErr != nil {
-					http.Error(w, "failed to persist task update conflict state", http.StatusInternalServerError)
-					return
-				}
-				http.Error(w, "task version conflict", http.StatusConflict)
-				return
-			}
-			if markErr := deps.database.MarkTaskUpdateError(persistCtx, taskID, prepared.PendingVersion); markErr != nil {
-				http.Error(w, "failed to persist task update error state", http.StatusInternalServerError)
-				return
-			}
-			http.Error(w, "failed to update task on caldav server", http.StatusBadGateway)
-			return
-		}
-
+	creds, err := deps.database.LoadCalDAVCredentials(r.Context(), deps.encryptionKey)
+	if err != nil {
 		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUpdatePersistTimeout)
 		defer cancel()
-		if err := deps.database.MarkTaskUpdateSynced(persistCtx, taskID, prepared.PendingVersion, newETag); err != nil {
-			http.Error(w, "failed to persist synced task update", http.StatusInternalServerError)
+		if markErr := deps.database.MarkTaskUpdateError(persistCtx, taskID, prepared.PendingVersion); markErr != nil {
+			http.Error(w, "failed to persist task update error state", http.StatusInternalServerError)
 			return
 		}
-
-		if deps.broker != nil {
-			deps.broker.publish(appEvent{Type: "task", Resource: taskID, Version: prepared.PendingVersion + 1, OriginConnection: tabID})
-		}
-
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("task updated"))
+		http.Error(w, "caldav credentials unavailable", http.StatusFailedDependency)
+		return
 	}
+	todoCredentials := caldav.Credentials{URL: creds.URL, Username: creds.Username, Password: creds.Password}
+
+	var newETag string
+	if prepared.ProjectChanged {
+		newETag, err = deps.todos.PutVTODOCreate(r.Context(), todoCredentials, prepared.NextHref, rawVTODO)
+		if err == nil {
+			err = deps.todos.DeleteVTODO(r.Context(), todoCredentials, prepared.PreviousHref, prepared.PreviousETag)
+			if err != nil {
+				persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUpdatePersistTimeout)
+				defer cancel()
+				if markErr := deps.database.MarkTaskUpdateErrorWithETag(persistCtx, taskID, prepared.PendingVersion, newETag); markErr != nil {
+					http.Error(w, "failed to persist task update error state", http.StatusInternalServerError)
+					return
+				}
+				http.Error(w, "failed to finalize task move on caldav server", http.StatusBadGateway)
+				return
+			}
+		}
+	} else {
+		newETag, err = deps.todos.PutVTODOUpdate(r.Context(), todoCredentials, prepared.PreviousHref, rawVTODO, prepared.PreviousETag)
+	}
+	if err != nil {
+		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUpdatePersistTimeout)
+		defer cancel()
+		if errors.Is(err, caldav.ErrPreconditionFailed) {
+			if markErr := deps.database.MarkTaskUpdateConflict(persistCtx, taskID, prepared.PendingVersion); markErr != nil {
+				http.Error(w, "failed to persist task update conflict state", http.StatusInternalServerError)
+				return
+			}
+			http.Error(w, "task version conflict", http.StatusConflict)
+			return
+		}
+		if markErr := deps.database.MarkTaskUpdateError(persistCtx, taskID, prepared.PendingVersion); markErr != nil {
+			http.Error(w, "failed to persist task update error state", http.StatusInternalServerError)
+			return
+		}
+		http.Error(w, "failed to update task on caldav server", http.StatusBadGateway)
+		return
+	}
+
+	persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUpdatePersistTimeout)
+	defer cancel()
+	if err := deps.database.MarkTaskUpdateSynced(persistCtx, taskID, prepared.PendingVersion, newETag); err != nil {
+		http.Error(w, "failed to persist synced task update", http.StatusInternalServerError)
+		return
+	}
+
+	if deps.broker != nil {
+		deps.broker.publish(appEvent{Type: "task", Resource: taskID, Version: prepared.PendingVersion + 1, OriginConnection: tabID})
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte("task updated"))
 }
 
 func parseOptionalInt(raw string) *int {

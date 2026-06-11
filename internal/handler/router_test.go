@@ -122,7 +122,9 @@ func TestNewRouterRendersBaseLayoutOnRoot(t *testing.T) {
 	for _, want := range []string{
 		"<!doctype html>",
 		`id="notifications"`,
-		`data-theme-toggle`,
+		`<button type="button" data-theme-toggle`,
+		`data-theme-mode="system"`,
+		`data-theme-system-label="System"`,
 		staticAssetPath(manifest, "htmx.min.js"),
 		staticAssetPath(manifest, "htmx-sse.js"),
 		staticAssetPath(manifest, "alpine.min.js"),

@@ -64,6 +64,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(page.getByRole('heading', { name: 'Globale Suche' })).toBeVisible();
   await expect(page.locator('[data-search-results]').filter({ hasText: 'Stage Seed Task' })).toBeVisible();
   await exerciseKeyboardShortcuts(page);
+  await exerciseThemeToggle(page);
   await gotoApp(page, '/search?q=Stage');
   await expect(page.locator('[data-search-results]').filter({ hasText: 'Stage Seed Task' })).toBeVisible();
 
@@ -446,6 +447,31 @@ async function exerciseKeyboardShortcuts(page) {
   await expect(helpDialog).toContainText('G');
   await helpDialog.getByRole('button', { name: 'Schließen' }).click();
   await expect(helpDialog).toBeHidden();
+}
+
+async function exerciseThemeToggle(page) {
+  await gotoApp(page, '/today');
+  const root = page.locator('html');
+  const toggle = page.locator('[data-theme-toggle]');
+
+  await expect(root).toHaveAttribute('data-theme-mode', 'system');
+  await expect(toggle).toContainText('Darstellung: System');
+
+  await toggle.click();
+  await expect(root).toHaveAttribute('data-theme-mode', 'dark');
+  await expect.poll(async () => (await root.getAttribute('class')) || '').toBe('dark');
+  await expect(toggle).toContainText('Darstellung: Dunkel');
+
+  await toggle.click();
+  await expect(root).toHaveAttribute('data-theme-mode', 'light');
+  await expect.poll(async () => (await root.getAttribute('class')) || '').toBe('light');
+  await expect(toggle).toContainText('Darstellung: Hell');
+
+  await toggle.click();
+  await expect(root).toHaveAttribute('data-theme-mode', 'system');
+  await expect(root).toHaveAttribute('data-theme-effective', /^(dark|light)$/);
+  await expect.poll(async () => (await root.getAttribute('class')) || '').toBe('');
+  await expect(toggle).toContainText('Darstellung: System');
 }
 
 async function exerciseWriteStatusForFailedInlineCreate(page, inlineCreateRoot, titleInput) {

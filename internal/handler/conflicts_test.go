@@ -95,6 +95,10 @@ WHERE id='open-1';
 		`data-conflict-split-preview`,
 		`Beide Versionen behalten`,
 		`data-conflict-manual-form`,
+		`data-conflict-field-source="title"`,
+		`data-conflict-source-option="local"`,
+		`type="radio" name="title_source" value="local"`,
+		`caldo-conflict-manual-value`,
 		`name="project_id"`,
 	} {
 		if !strings.Contains(body, want) {

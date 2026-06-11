@@ -83,6 +83,85 @@
     return element ? element.closest(selector) : null;
   }
 
+  function normalizeThemeMode(mode) {
+    return mode === 'light' || mode === 'dark' || mode === 'system' ? mode : 'system';
+  }
+
+  function systemThemeMode() {
+    if (!window.matchMedia) return 'light';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  function effectiveThemeMode(mode) {
+    mode = normalizeThemeMode(mode);
+    return mode === 'system' ? systemThemeMode() : mode;
+  }
+
+  function applyThemeMode(mode) {
+    var root = document.documentElement;
+    if (!root || !root.hasAttribute('data-theme-root')) return 'system';
+    mode = normalizeThemeMode(mode);
+    root.setAttribute('data-theme-mode', mode);
+    root.classList.remove('light', 'dark');
+    if (mode === 'light' || mode === 'dark') {
+      root.classList.add(mode);
+    }
+    root.setAttribute('data-theme-effective', effectiveThemeMode(mode));
+    refreshThemeToggles(mode);
+    return mode;
+  }
+
+  function themeModeLabel(button, mode) {
+    var key = 'data-theme-' + normalizeThemeMode(mode) + '-label';
+    return button.getAttribute(key) || normalizeThemeMode(mode);
+  }
+
+  function themeToggleLabel(button, mode) {
+    var prefix = button.getAttribute('data-theme-label-prefix') || 'Darstellung';
+    return prefix + ': ' + themeModeLabel(button, mode);
+  }
+
+  function refreshThemeToggles(mode) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-theme-toggle]'), function (button) {
+      var label = themeToggleLabel(button, mode);
+      button.setAttribute('data-theme-mode', mode);
+      button.setAttribute('aria-label', label);
+      button.textContent = label;
+    });
+  }
+
+  function nextThemeMode(mode) {
+    switch (normalizeThemeMode(mode)) {
+      case 'dark':
+        return 'light';
+      case 'light':
+        return 'system';
+      default:
+        return 'dark';
+    }
+  }
+
+  function initializeThemeController() {
+    var root = document.documentElement;
+    if (!root || !root.hasAttribute('data-theme-root')) return;
+    applyThemeMode(root.getAttribute('data-theme-mode') || 'system');
+
+    if (!window.matchMedia) return;
+    var systemPreference = window.matchMedia('(prefers-color-scheme: dark)');
+    var handleSystemChange = function () {
+      if (normalizeThemeMode(root.getAttribute('data-theme-mode')) === 'system') {
+        applyThemeMode('system');
+      }
+    };
+    if (typeof systemPreference.addEventListener === 'function') {
+      systemPreference.addEventListener('change', handleSystemChange);
+      return;
+    }
+    if (typeof systemPreference.addListener === 'function') {
+      systemPreference.addListener(handleSystemChange);
+    }
+  }
+
   function toggleHelpDialog() {
     var dialog = document.querySelector('[data-shortcut-help-dialog]');
     if (!dialog) return;
@@ -1158,6 +1237,14 @@
   document.addEventListener('change', handleTaskRecurrenceControlEvent, true);
 
   document.addEventListener('click', function (event) {
+    var themeToggle = closestElement(event.target, '[data-theme-toggle]');
+    if (themeToggle) {
+      event.preventDefault();
+      var currentMode = document.documentElement ? document.documentElement.getAttribute('data-theme-mode') : '';
+      applyThemeMode(nextThemeMode(currentMode));
+      return;
+    }
+
     var inlineCreateTrigger = closestElement(event.target, '[data-inline-task-create-trigger]');
     if (inlineCreateTrigger) {
       event.preventDefault();
@@ -1354,5 +1441,6 @@
   });
 
   consumeRememberedWriteStatus();
+  initializeThemeController();
   initializeUndoSurface();
 })();

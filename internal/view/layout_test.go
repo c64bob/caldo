@@ -75,6 +75,7 @@ func TestBaseLayoutUsesComponentFoundationClasses(t *testing.T) {
 		`caldo-dialog`,
 		`caldo-kbd`,
 		`caldo-page-title`,
+		`<button type="button" data-theme-toggle`,
 		`href="/quick-add"`,
 		`href="/search"`,
 	} {
@@ -113,11 +114,55 @@ func TestBaseLayoutUsesUIPreferences(t *testing.T) {
 		`New task`,
 		`System filters`,
 		`Appearance: Dark`,
+		`data-theme-mode="dark"`,
+		`data-theme-label-prefix="Appearance"`,
+		`data-theme-dark-label="Dark"`,
+		`aria-label="Appearance: Dark"`,
 		`Keyboard shortcuts`,
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected localized themed layout to include %q in %s", want, output)
 		}
+	}
+}
+
+func TestBaseLayoutRendersSystemThemeToggleButton(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	ctx = WithAssetManifest(ctx, assets.Manifest{
+		"app.css":       "app.hash.css",
+		"htmx.min.js":   "htmx.hash.js",
+		"htmx-sse.js":   "htmx-sse.hash.js",
+		"alpine.min.js": "alpine.hash.js",
+		"app.js":        "app.hash.js",
+	})
+
+	component := BaseLayout("Heute", PlaceholderPage("Heute"))
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render layout: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`<html lang="de" data-theme-root data-theme-mode="system"`,
+		`<button type="button" data-theme-toggle`,
+		`data-theme-mode="system"`,
+		`data-theme-label-prefix="Darstellung"`,
+		`data-theme-system-label="System"`,
+		`data-theme-light-label="Hell"`,
+		`data-theme-dark-label="Dunkel"`,
+		`aria-label="Darstellung: System"`,
+		`Darstellung: System`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected system theme layout to include %q in %s", want, output)
+		}
+	}
+	if strings.Contains(output, `href="/settings#ui-settings" data-theme-toggle`) {
+		t.Fatalf("expected theme toggle to be a button, got settings link: %s", output)
 	}
 }
 

@@ -6,7 +6,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Zusammenfassung
 
-- Bestehende Stories: 79 `Umgesetzt`, 7 `Teilweise umgesetzt`, 3 `Offen`.
+- Bestehende Stories: 80 `Umgesetzt`, 6 `Teilweise umgesetzt`, 3 `Offen`.
 - Neue Planungsstories: 15 `Umgesetzt`, 24 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
@@ -32,7 +32,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 2.2 | Umgesetzt | Reverse-Proxy-Auth-Middleware liest den konfigurierten Header und laesst `/health` frei. |
 | 2.3 | Umgesetzt | `internal/handler/session.go`, Router-Wiring, CSRF-Middleware, `web/assets/app.js` und Task-Undo-/Mutationshandler setzen ein sicheres `session_id`-Cookie, liefern CSRF-Token per Double-Submit-HMAC, senden `X-CSRF-Token`/`X-Tab-ID` fuer HTMX/Fetch und speichern Undo-Snapshots ueber `(session_id, tab_id)`. |
 | 2.4 | Umgesetzt | Lokale Asset-Auslieferung, Manifest und CSP sind in Router/Layout/Asset-Tests abgedeckt. |
-| 2.5 | Teilweise umgesetzt | Templ-Layout, lokale Assets und aktuelles CSRF-Meta existieren; Dark-Mode-Verhalten und Systempraeferenz sind noch nicht vollstaendig verdrahtet. |
+| 2.5 | Umgesetzt | `internal/view/layout.templ`, lokale Manifest-Assets, CSP-/Router-Tests und `web/assets/app.js` liefern BaseLayout mit CSRF-Meta, Notifications-Ziel, Navigationsplatzhaltern, lokalem HTMX/HTMX-SSE/Alpine/app/css und einem CSP-kompatiblen `button[data-theme-toggle]`, der Systempraeferenz sowie Light-/Dark-Klassen auf `<html>` steuert. |
 | 3.1 | Umgesetzt | `internal/db/settings.go` und Migrationen verwalten das Settings-Singleton. |
 | 3.2 | Umgesetzt | Projekt-/Kalender-Tabellen und DB-Funktionen sind vorhanden und getestet. |
 | 3.3 | Umgesetzt | Task-Tabelle und Repository-Funktionen decken lokale Aufgabenpersistenz ab. |

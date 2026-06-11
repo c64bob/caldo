@@ -128,7 +128,19 @@ templ BaseLayout(title string, content templ.Component) {
 							<a href="/search" class="caldo-button caldo-button-secondary">{ Text(ctx).Search }</a>
 							<a href="/quick-add" class="caldo-button caldo-button-primary">{ Text(ctx).NewTask }</a>
 							@SyncStatusBadge("idle", "nie")
-							<a href="/settings#ui-settings" data-theme-toggle class="caldo-button caldo-button-ghost">{ Text(ctx).ThemeSettings }: { ThemeModeLabel(ctx, UIDarkMode(ctx)) }</a>
+							<button
+								type="button"
+								data-theme-toggle
+								data-theme-mode={ UIDarkMode(ctx) }
+								data-theme-label-prefix={ Text(ctx).ThemeSettings }
+								data-theme-system-label={ Text(ctx).ThemeSystem }
+								data-theme-light-label={ Text(ctx).ThemeLight }
+								data-theme-dark-label={ Text(ctx).ThemeDark }
+								class="caldo-button caldo-button-ghost"
+								aria-label={ Text(ctx).ThemeSettings + ": " + ThemeModeLabel(ctx, UIDarkMode(ctx)) }
+							>
+								{ Text(ctx).ThemeSettings }: { ThemeModeLabel(ctx, UIDarkMode(ctx)) }
+							</button>
 						</div>
 					</header>
 					<main class="caldo-main">

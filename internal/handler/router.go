@@ -48,7 +48,6 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 	router.Get("/completed", Completed(dateViewDependencies{database: database}))
 	router.Get("/search", Search(searchDependencies{database: database}))
 	router.Get("/labels", LabelsPage(database))
-	router.Get("/filters", FiltersPage(database))
 	router.Get("/settings", SettingsPage(database, proxyUserHeader))
 	router.With(SetupCSRFMiddleware(csrfSecret)).Post("/settings/sync", SettingsSyncUpdate(database))
 	router.With(SetupCSRFMiddleware(csrfSecret)).Post("/settings/ui", SettingsUIUpdate(database))
@@ -145,6 +144,17 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 				calendar:      caldav.NewCalendarClient(nil),
 				broker:        syncBroker,
 			}))
+		})
+	})
+
+	router.Route("/filters", func(filterRouter chi.Router) {
+		filterRouter.Get("/", SavedFiltersPage(savedFilterDependencies{database: database}))
+		filterRouter.Get("/{filterID}", SavedFilterTasks(savedFilterDependencies{database: database}))
+		filterRouter.Group(func(mutatingFilterRouter chi.Router) {
+			mutatingFilterRouter.Use(SetupCSRFMiddleware(csrfSecret))
+			mutatingFilterRouter.Post("/", SavedFilterCreate(savedFilterDependencies{database: database}))
+			mutatingFilterRouter.Patch("/{filterID}", SavedFilterUpdate(savedFilterDependencies{database: database}))
+			mutatingFilterRouter.Delete("/{filterID}", SavedFilterDelete(savedFilterDependencies{database: database}))
 		})
 	})
 

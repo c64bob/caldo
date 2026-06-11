@@ -82,22 +82,7 @@ func LabelsPage(database *db.Database) http.HandlerFunc {
 
 // FiltersPage renders the filters navigation page.
 func FiltersPage(database *db.Database) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if database == nil {
-			renderPageError(w, r, "Filter", "Filter laden", http.StatusInternalServerError)
-			return
-		}
-
-		snapshot, err := database.LoadNavigationSnapshot(r.Context(), time.Now())
-		if err != nil {
-			renderPageError(w, r, "Filter", "Filter laden", http.StatusInternalServerError)
-			return
-		}
-
-		if err := view.BaseLayout("Filter", view.NavigationOverviewPage("Filter", "Keine gespeicherten Filter", navigationFiltersView(snapshot.SavedFilters))).Render(r.Context(), w); err != nil {
-			http.Error(w, "render page", http.StatusInternalServerError)
-		}
-	}
+	return SavedFiltersPage(savedFilterDependencies{database: database})
 }
 
 // SettingsPage renders the settings page for normal operation.

@@ -169,12 +169,13 @@ INSERT INTO saved_filters (id, name, query) VALUES ('filter-1', 'Heute Fokus', '
 
 	router := NewRouter(logging.New(bytes.NewBuffer(nil), "production", "info"), "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil)
 	for _, tc := range []struct {
-		path string
-		want string
+		path       string
+		want       string
+		wantMarker string
 	}{
-		{path: "/projects", want: "Inbox"},
-		{path: "/labels", want: "Büro"},
-		{path: "/filters", want: "Heute Fokus"},
+		{path: "/projects", want: "Inbox", wantMarker: `data-navigation-overview`},
+		{path: "/labels", want: "Büro", wantMarker: `data-navigation-overview`},
+		{path: "/filters", want: "Heute Fokus", wantMarker: `data-saved-filter-list`},
 	} {
 		responseRecorder := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodGet, tc.path, nil)
@@ -184,7 +185,7 @@ INSERT INTO saved_filters (id, name, query) VALUES ('filter-1', 'Heute Fokus', '
 			t.Fatalf("%s status: got %d want %d", tc.path, responseRecorder.Code, http.StatusOK)
 		}
 		body := responseRecorder.Body.String()
-		if !strings.Contains(body, tc.want) || !strings.Contains(body, `data-navigation-overview`) || !strings.Contains(body, `caldo-nav-count`) {
+		if !strings.Contains(body, tc.want) || !strings.Contains(body, tc.wantMarker) || !strings.Contains(body, `caldo-nav-count`) {
 			t.Fatalf("%s body missing persisted navigation content: %s", tc.path, body)
 		}
 	}
@@ -352,5 +353,33 @@ func TestNewRouterProjectDeleteRouteRequiresCSRFToken(t *testing.T) {
 
 	if responseRecorder.Code != http.StatusForbidden {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusForbidden)
+	}
+}
+
+func TestNewRouterFilterMutatingRoutesRequireCSRFToken(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		method string
+		path   string
+	}{
+		{method: http.MethodPost, path: "/filters"},
+		{method: http.MethodPatch, path: "/filters/filter-1"},
+		{method: http.MethodDelete, path: "/filters/filter-1"},
+	} {
+		t.Run(tc.method+" "+tc.path, func(t *testing.T) {
+			t.Parallel()
+
+			logger := logging.New(bytes.NewBuffer(nil), "production", "info")
+			responseRecorder := httptest.NewRecorder()
+			request := httptest.NewRequest(tc.method, tc.path, nil)
+			request.Header.Set("X-Forwarded-User", "alice")
+
+			NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
+
+			if responseRecorder.Code != http.StatusForbidden {
+				t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusForbidden)
+			}
+		})
 	}
 }

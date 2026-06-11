@@ -168,7 +168,7 @@ ORDER BY l.name COLLATE NOCASE ASC;
 }
 
 func (d *Database) listNavigationSavedFilters(ctx context.Context) ([]NavigationListItem, error) {
-	rows, err := d.Conn.QueryContext(ctx, `SELECT id, name FROM saved_filters ORDER BY is_favorite DESC, name COLLATE NOCASE ASC;`)
+	rows, err := d.Conn.QueryContext(ctx, `SELECT id, name FROM saved_filters WHERE is_favorite = 1 ORDER BY name COLLATE NOCASE ASC;`)
 	if err != nil {
 		return nil, fmt.Errorf("load navigation snapshot: list saved filters: %w", err)
 	}

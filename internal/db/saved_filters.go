@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"caldo/internal/query"
 	"github.com/google/uuid"
@@ -20,8 +21,12 @@ type SavedFilter struct {
 	ServerVersion int
 }
 
-// ErrVersionConflict indicates optimistic locking conflict.
-var ErrSavedFilterVersionConflict = errors.New("saved filter version conflict")
+var (
+	// ErrSavedFilterNotFound indicates that a saved filter does not exist.
+	ErrSavedFilterNotFound = errors.New("saved filter not found")
+	// ErrSavedFilterVersionConflict indicates optimistic locking conflict.
+	ErrSavedFilterVersionConflict = errors.New("saved filter version conflict")
+)
 
 // ListSavedFilters returns all saved filters ordered by name.
 func (d *Database) ListSavedFilters(ctx context.Context) ([]SavedFilter, error) {
@@ -45,6 +50,11 @@ func (d *Database) ListSavedFilters(ctx context.Context) ([]SavedFilter, error) 
 		return nil, fmt.Errorf("list saved filters: iterate rows: %w", err)
 	}
 	return result, nil
+}
+
+// LoadSavedFilter returns one saved filter by id.
+func (d *Database) LoadSavedFilter(ctx context.Context, id string) (SavedFilter, error) {
+	return d.loadSavedFilterByID(ctx, id)
 }
 
 // CreateSavedFilter creates a saved filter with name and query.
@@ -113,15 +123,102 @@ func (d *Database) DeleteSavedFilter(ctx context.Context, id string, expectedVer
 	return nil
 }
 
+// ListSavedFilterTasks returns tasks matching a saved filter query.
+func (d *Database) ListSavedFilterTasks(ctx context.Context, filterID string, referenceDate time.Time, limit int) (SavedFilter, []DatedTaskViewRow, bool, error) {
+	if limit <= 0 {
+		limit = 200
+	}
+
+	filter, err := d.LoadSavedFilter(ctx, filterID)
+	if err != nil {
+		return SavedFilter{}, nil, false, err
+	}
+
+	var upcomingDays int
+	if err := d.Conn.QueryRowContext(ctx, `SELECT upcoming_days FROM settings WHERE id = 'default';`).Scan(&upcomingDays); err != nil {
+		return SavedFilter{}, nil, false, fmt.Errorf("list saved filter tasks: load settings: %w", err)
+	}
+
+	whereSQL, args, ok, err := EvaluateSavedFilterAt(filter.Query, query.CompileOptions{Now: referenceDate, UpcomingDays: upcomingDays})
+	if err != nil {
+		return SavedFilter{}, nil, false, fmt.Errorf("list saved filter tasks: evaluate query: %w", err)
+	}
+	if !ok {
+		return filter, []DatedTaskViewRow{}, false, nil
+	}
+
+	queryArgs := make([]any, 0, len(args)+1)
+	queryArgs = append(queryArgs, args...)
+	queryArgs = append(queryArgs, limit)
+
+	rows, err := d.Conn.QueryContext(ctx, `
+SELECT
+	t.id,
+	t.project_id,
+	t.title,
+	COALESCE(t.description, ''),
+	t.status,
+	COALESCE(t.project_name, ''),
+	COALESCE(
+		date(t.due_at),
+		date(substr(t.due_at, 1, 19)),
+		date(substr(t.due_at, 1, 10)),
+		date(t.due_date),
+		''
+	),
+	COALESCE(t.priority, 0),
+	t.priority IS NOT NULL,
+	COALESCE(t.label_names, ''),
+	t.sync_status,
+	t.server_version,
+	COALESCE(t.parent_id, ''),
+	COALESCE(parent.title, ''),
+	t.parent_id IS NOT NULL,
+	(SELECT COUNT(1) FROM tasks child WHERE child.parent_id = t.id),
+	(SELECT COUNT(1) FROM tasks child WHERE child.parent_id = t.id AND child.status != 'completed'),
+	COALESCE((SELECT c.id FROM conflicts c WHERE c.task_id = t.id AND c.resolved_at IS NULL ORDER BY c.created_at DESC LIMIT 1), ''),
+	COALESCE(t.raw_vtodo, '')
+FROM tasks t
+LEFT JOIN tasks parent ON parent.id = t.parent_id
+WHERE t.id IN (SELECT id FROM tasks WHERE `+whereSQL+`)
+ORDER BY COALESCE(t.parent_id, t.id), CASE WHEN t.parent_id IS NULL THEN 0 ELSE 1 END, t.updated_at DESC
+LIMIT ?;
+`, queryArgs...)
+	if err != nil {
+		return SavedFilter{}, nil, false, fmt.Errorf("list saved filter tasks: query rows: %w", err)
+	}
+	defer rows.Close()
+
+	results := make([]DatedTaskViewRow, 0, limit)
+	for rows.Next() {
+		var row DatedTaskViewRow
+		if err := rows.Scan(&row.ID, &row.ProjectID, &row.Title, &row.Description, &row.Status, &row.ProjectName, &row.DueISODate, &row.Priority, &row.HasPriority, &row.LabelNames, &row.SyncStatus, &row.ServerVersion, &row.ParentID, &row.ParentTitle, &row.IsSubtask, &row.SubtaskCount, &row.OpenSubtaskCount, &row.UnresolvedConflictID, &row.RawVTODO); err != nil {
+			return SavedFilter{}, nil, false, fmt.Errorf("list saved filter tasks: scan row: %w", err)
+		}
+		results = append(results, row)
+	}
+	if err := rows.Err(); err != nil {
+		return SavedFilter{}, nil, false, fmt.Errorf("list saved filter tasks: iterate rows: %w", err)
+	}
+
+	return filter, results, true, nil
+}
+
 // EvaluateSavedFilter compiles the filter query using the provided upcoming window in days.
 // Invalid syntax returns an empty result set without error.
 func EvaluateSavedFilter(filterQuery string, upcomingDays int) (string, []any, bool, error) {
+	return EvaluateSavedFilterAt(filterQuery, query.CompileOptions{UpcomingDays: upcomingDays})
+}
+
+// EvaluateSavedFilterAt compiles the filter query with the supplied compiler options.
+// Invalid syntax returns an empty result set without error.
+func EvaluateSavedFilterAt(filterQuery string, opts query.CompileOptions) (string, []any, bool, error) {
 	tokens := query.LexFilter(filterQuery)
 	ast, err := query.ParseFilter(tokens)
 	if err != nil {
 		return "", nil, false, nil
 	}
-	where, args, err := query.CompileFilter(ast, query.CompileOptions{UpcomingDays: upcomingDays})
+	where, args, err := query.CompileFilter(ast, opts)
 	if err != nil {
 		return "", nil, false, nil
 	}
@@ -133,7 +230,7 @@ func (d *Database) loadSavedFilterByID(ctx context.Context, id string) (SavedFil
 	var favorite int
 	if err := d.Conn.QueryRowContext(ctx, `SELECT id, name, query, is_favorite, server_version FROM saved_filters WHERE id=?;`, id).Scan(&item.ID, &item.Name, &item.Query, &favorite, &item.ServerVersion); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return SavedFilter{}, fmt.Errorf("load saved filter: not found")
+			return SavedFilter{}, ErrSavedFilterNotFound
 		}
 		return SavedFilter{}, fmt.Errorf("load saved filter: %w", err)
 	}

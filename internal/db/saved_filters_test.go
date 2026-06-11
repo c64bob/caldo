@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"testing"
+	"time"
 )
 
 func TestSavedFilterCRUDAndVersioning(t *testing.T) {
@@ -96,5 +97,55 @@ func TestEvaluateSavedFilterUsesProvidedUpcomingWindow(t *testing.T) {
 	}
 	if argsThree[1] == argsSeven[1] {
 		t.Fatalf("expected different upper bound dates for different upcoming windows, got %v", argsThree[1])
+	}
+}
+
+func TestListSavedFilterTasksReturnsMatchingRows(t *testing.T) {
+	t.Parallel()
+
+	database := openViewTestDB(t)
+	seedViewTasks(t, database)
+	created, err := database.CreateSavedFilter(context.Background(), "Heute Büro", "today AND @urgent", true)
+	if err != nil {
+		t.Fatalf("create saved filter: %v", err)
+	}
+
+	filter, rows, ok, err := database.ListSavedFilterTasks(context.Background(), created.ID, time.Date(2026, 4, 28, 12, 0, 0, 0, time.UTC), 50)
+	if err != nil {
+		t.Fatalf("list saved filter tasks: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected saved filter query to compile")
+	}
+	if filter.Name != "Heute Büro" {
+		t.Fatalf("unexpected filter: %#v", filter)
+	}
+	if len(rows) != 1 || rows[0].ID != "task-today-active" || rows[0].LabelNames != "Büro,urgent" {
+		t.Fatalf("unexpected saved filter rows: %#v", rows)
+	}
+}
+
+func TestListSavedFilterTasksInvalidQueryReturnsEmpty(t *testing.T) {
+	t.Parallel()
+
+	database := openViewTestDB(t)
+	seedViewTasks(t, database)
+	created, err := database.CreateSavedFilter(context.Background(), "Broken", "today AND (", false)
+	if err != nil {
+		t.Fatalf("create saved filter: %v", err)
+	}
+
+	filter, rows, ok, err := database.ListSavedFilterTasks(context.Background(), created.ID, time.Date(2026, 4, 28, 12, 0, 0, 0, time.UTC), 50)
+	if err != nil {
+		t.Fatalf("list saved filter tasks: %v", err)
+	}
+	if ok {
+		t.Fatal("expected invalid saved filter query to return ok=false")
+	}
+	if filter.Name != "Broken" {
+		t.Fatalf("unexpected filter: %#v", filter)
+	}
+	if len(rows) != 0 {
+		t.Fatalf("expected empty rows for invalid query, got %#v", rows)
 	}
 }

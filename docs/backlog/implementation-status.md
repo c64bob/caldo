@@ -6,7 +6,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Zusammenfassung
 
-- Bestehende Stories: 69 `Umgesetzt`, 17 `Teilweise umgesetzt`, 3 `Offen`.
+- Bestehende Stories: 70 `Umgesetzt`, 16 `Teilweise umgesetzt`, 3 `Offen`.
 - Neue Planungsstories: 15 `Umgesetzt`, 24 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
@@ -82,7 +82,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 15.1a | Umgesetzt | `internal/query` enthaelt Lexer und Token-Definitionen fuer Filterqueries. |
 | 15.1b | Umgesetzt | `internal/query` enthaelt Parser und AST fuer Filterqueries. |
 | 15.1c | Umgesetzt | Filterqueries werden in SQL/DB-Suchlogik kompiliert und getestet. |
-| 15.2 | Teilweise umgesetzt | Saved-Filter-Datenbankfunktionen existieren; Verwaltungs-UI/Routen bleiben offen. |
+| 15.2 | Umgesetzt | Gespeicherte Filter haben lokale CRUD-Routen und Templ-Verwaltungs-UI fuer Name, Query und Favorit; Aendern und Loeschen nutzen `server_version`, Filter werden nicht zu CalDAV synchronisiert, favorisierte Filter erscheinen in der Sidebar-Navigation und `/filters/{filter_id}` rendert gespeicherte Queries als Aufgabenansicht, wobei Syntaxfehler zu einer leeren Ergebnisliste fuehren. |
 | 15.3 | Umgesetzt | Systemfilter-Routen und Smart-List-Views sind vorhanden. |
 | 16.1 | Teilweise umgesetzt | Task-Labels sind im Modell/Update-Pfad vorhanden; eigene Label-Bearbeitungs-UI ist offen. |
 | 16.2 | Umgesetzt | `STARRED`-Mapping, Favorit-Route und Favoriten-View sind umgesetzt. |

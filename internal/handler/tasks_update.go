@@ -68,10 +68,7 @@ func handleTaskUpdate(w http.ResponseWriter, r *http.Request, deps taskUpdateDep
 		http.Error(w, "X-Tab-ID header is required", http.StatusBadRequest)
 		return
 	}
-	sessionID := strings.TrimSpace(r.Header.Get("X-Forwarded-User"))
-	if sessionID == "" {
-		sessionID = "single-user-session"
-	}
+	sessionID := requestSessionID(r)
 
 	base, err := deps.database.LoadTaskUpdateBase(r.Context(), taskID, r.FormValue("project_id"))
 	if err != nil {

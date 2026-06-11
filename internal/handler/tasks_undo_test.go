@@ -23,7 +23,7 @@ func TestTaskUndoSuccessDeletesSnapshot(t *testing.T) {
 	h := TaskUndo(taskUpdateDependencies{database: database, encryptionKey: key, todos: &stubTaskUpdateTodoClient{updateETag: `"etag-2"`}})
 	req := httptest.NewRequest(http.MethodPost, "/tasks/undo", nil)
 	req.Header.Set("X-Tab-ID", "tab-1")
-	req.Header.Set("X-Forwarded-User", "session-1")
+	req = requestWithSession(req, "session-1")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
@@ -45,7 +45,7 @@ func TestTaskUndoPreconditionFailedMarksConflictKeepsSnapshot(t *testing.T) {
 	h := TaskUndo(taskUpdateDependencies{database: database, encryptionKey: key, todos: &stubTaskUpdateTodoClient{updateErr: caldav.ErrPreconditionFailed}})
 	req := httptest.NewRequest(http.MethodPost, "/tasks/undo", nil)
 	req.Header.Set("X-Tab-ID", "tab-1")
-	req.Header.Set("X-Forwarded-User", "session-1")
+	req = requestWithSession(req, "session-1")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusConflict {
@@ -65,7 +65,7 @@ func TestTaskUndoDeletedTaskRecreatesResourceAndTaskRow(t *testing.T) {
 	h := TaskUndo(taskUpdateDependencies{database: database, encryptionKey: key, todos: &stubTaskUpdateTodoClient{createETag: `"etag-del"`}})
 	req := httptest.NewRequest(http.MethodPost, "/tasks/undo", nil)
 	req.Header.Set("X-Tab-ID", "tab-del")
-	req.Header.Set("X-Forwarded-User", "session-del")
+	req = requestWithSession(req, "session-del")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
@@ -83,7 +83,7 @@ func TestTaskUndoStatusRendersValidSnapshot(t *testing.T) {
 	h := TaskUndoStatus(database)
 	req := httptest.NewRequest(http.MethodGet, "/tasks/undo/status", nil)
 	req.Header.Set("X-Tab-ID", "tab-1")
-	req.Header.Set("X-Forwarded-User", "session-1")
+	req = requestWithSession(req, "session-1")
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
@@ -127,7 +127,7 @@ VALUES ('undo-exp','session-exp','tab-exp','task-1','task_updated','BEGIN:VTODO\
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/tasks/undo/status", nil)
-			req.Header.Set("X-Forwarded-User", tt.sessionID)
+			req = requestWithSession(req, tt.sessionID)
 			if tt.tabID != "" {
 				req.Header.Set("X-Tab-ID", tt.tabID)
 			}
@@ -138,6 +138,10 @@ VALUES ('undo-exp','session-exp','tab-exp','task-1','task_updated','BEGIN:VTODO\
 			}
 		})
 	}
+}
+
+func requestWithSession(req *http.Request, sessionID string) *http.Request {
+	return req.WithContext(context.WithValue(req.Context(), sessionIDKey, sessionID))
 }
 
 func openSQLiteForTaskUndoHandlerTest(t *testing.T) *db.Database {

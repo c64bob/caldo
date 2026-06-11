@@ -6,7 +6,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Zusammenfassung
 
-- Bestehende Stories: 78 `Umgesetzt`, 8 `Teilweise umgesetzt`, 3 `Offen`.
+- Bestehende Stories: 79 `Umgesetzt`, 7 `Teilweise umgesetzt`, 3 `Offen`.
 - Neue Planungsstories: 15 `Umgesetzt`, 24 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
@@ -30,7 +30,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 1.7 | Umgesetzt | `internal/shutdown` und `cmd/caldo/main.go` behandeln Signale und geordnetes Beenden. |
 | 2.1 | Umgesetzt | `internal/handler/router.go` und Middleware registrieren Chi-Routen, statische Assets und Request-Kontext. |
 | 2.2 | Umgesetzt | Reverse-Proxy-Auth-Middleware liest den konfigurierten Header und laesst `/health` frei. |
-| 2.3 | Teilweise umgesetzt | CSRF- und Mutationsschutz existieren; Tab-/Session-Verhalten ist noch nicht durchgaengig in der sichtbaren UI integriert. |
+| 2.3 | Umgesetzt | `internal/handler/session.go`, Router-Wiring, CSRF-Middleware, `web/assets/app.js` und Task-Undo-/Mutationshandler setzen ein sicheres `session_id`-Cookie, liefern CSRF-Token per Double-Submit-HMAC, senden `X-CSRF-Token`/`X-Tab-ID` fuer HTMX/Fetch und speichern Undo-Snapshots ueber `(session_id, tab_id)`. |
 | 2.4 | Umgesetzt | Lokale Asset-Auslieferung, Manifest und CSP sind in Router/Layout/Asset-Tests abgedeckt. |
 | 2.5 | Teilweise umgesetzt | Templ-Layout, lokale Assets und aktuelles CSRF-Meta existieren; Dark-Mode-Verhalten und Systempraeferenz sind noch nicht vollstaendig verdrahtet. |
 | 3.1 | Umgesetzt | `internal/db/settings.go` und Migrationen verwalten das Settings-Singleton. |

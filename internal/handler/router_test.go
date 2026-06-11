@@ -106,6 +106,16 @@ func TestNewRouterRendersBaseLayoutOnRoot(t *testing.T) {
 	if csrfToken == "" {
 		t.Fatal("expected csrf token response header")
 	}
+	sessionCookie := findResponseCookie(responseRecorder, sessionCookieName)
+	if sessionCookie == nil {
+		t.Fatal("expected session_id cookie")
+	}
+	if !validSessionID(sessionCookie.Value) {
+		t.Fatalf("expected valid session_id cookie, got %q", sessionCookie.Value)
+	}
+	if !sessionCookie.HttpOnly || !sessionCookie.Secure || sessionCookie.SameSite != http.SameSiteStrictMode {
+		t.Fatalf("unexpected session cookie attributes: %+v", sessionCookie)
+	}
 	if !strings.Contains(body, `<meta name="csrf-token" content="`+csrfToken+`">`) {
 		t.Fatal("expected csrf token in base layout meta tag")
 	}
@@ -145,6 +155,15 @@ func TestNewRouterRendersBaseLayoutOnRoot(t *testing.T) {
 			t.Fatalf("response body unexpectedly contains %q", notWant)
 		}
 	}
+}
+
+func findResponseCookie(rr *httptest.ResponseRecorder, name string) *http.Cookie {
+	for _, cookie := range rr.Result().Cookies() {
+		if cookie.Name == name {
+			return cookie
+		}
+	}
+	return nil
 }
 
 func TestNewRouterAppliesPersistedUIPreferences(t *testing.T) {

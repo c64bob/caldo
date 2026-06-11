@@ -22,7 +22,7 @@ func TaskUndoStatus(database *db.Database) http.HandlerFunc {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		sessionID := undoSessionID(r)
+		sessionID := requestSessionID(r)
 
 		status, err := database.LoadUndoSnapshotStatus(r.Context(), sessionID, tabID)
 		if err != nil {
@@ -49,7 +49,7 @@ func TaskUndo(deps taskUpdateDependencies) http.HandlerFunc {
 			http.Error(w, "X-Tab-ID header is required", http.StatusBadRequest)
 			return
 		}
-		sessionID := undoSessionID(r)
+		sessionID := requestSessionID(r)
 
 		prepared, err := deps.database.PrepareTaskUndo(r.Context(), sessionID, tabID)
 		if err != nil {
@@ -132,12 +132,4 @@ func TaskUndo(deps taskUpdateDependencies) http.HandlerFunc {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
-}
-
-func undoSessionID(r *http.Request) string {
-	sessionID := strings.TrimSpace(r.Header.Get("X-Forwarded-User"))
-	if sessionID == "" {
-		sessionID = "single-user-session"
-	}
-	return sessionID
 }

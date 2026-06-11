@@ -91,6 +91,7 @@ func TestTaskUpdateSuccess(t *testing.T) {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("taskID", "task-1")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = requestWithSession(req, "session-1")
 
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
@@ -122,7 +123,7 @@ WHERE id = 'task-1';
 	if stub.updateCalls != 1 || stub.lastHref != "/cal/inbox/uid-1.ics" || stub.lastUpdateETag != `"etag-1"` || stub.lastRawVTODO != rawVTODO {
 		t.Fatalf("unexpected caldav update call: calls=%d href=%q etag=%q raw=%q", stub.updateCalls, stub.lastHref, stub.lastUpdateETag, stub.lastRawVTODO)
 	}
-	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE session_id = 'single-user-session' AND tab_id = 'tab-1' AND task_id = 'task-1' AND action_type = 'task_updated';`, 1)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE session_id = 'session-1' AND tab_id = 'tab-1' AND task_id = 'task-1' AND action_type = 'task_updated';`, 1)
 }
 
 func TestTaskUpdatePreservesAttachAndUnknownProperties(t *testing.T) {

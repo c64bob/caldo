@@ -252,6 +252,97 @@ func TestReverseProxyAuthMiddlewareAllowsHealthWithoutAuth(t *testing.T) {
 	}
 }
 
+func TestSessionMiddlewareSetsSecureSessionCookieAndContext(t *testing.T) {
+	t.Parallel()
+
+	var sessionID string
+	h := SessionMiddleware()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var ok bool
+		sessionID, ok = SessionIDFromContext(r.Context())
+		if !ok || sessionID == "" {
+			t.Fatal("expected session id in context")
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/today", nil)
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("unexpected status: got %d want %d", rr.Code, http.StatusNoContent)
+	}
+	cookies := rr.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("unexpected cookies count: got %d want %d", len(cookies), 1)
+	}
+	cookie := cookies[0]
+	if cookie.Name != sessionCookieName {
+		t.Fatalf("unexpected cookie name: got %q want %q", cookie.Name, sessionCookieName)
+	}
+	if cookie.Value != sessionID || !validSessionID(cookie.Value) {
+		t.Fatalf("unexpected session cookie value: cookie=%q context=%q", cookie.Value, sessionID)
+	}
+	if !cookie.HttpOnly {
+		t.Fatal("expected session cookie to be httpOnly")
+	}
+	if !cookie.Secure {
+		t.Fatal("expected session cookie to be secure")
+	}
+	if cookie.SameSite != http.SameSiteStrictMode {
+		t.Fatalf("unexpected SameSite: got %v want %v", cookie.SameSite, http.SameSiteStrictMode)
+	}
+}
+
+func TestSessionMiddlewareReusesExistingSessionCookie(t *testing.T) {
+	t.Parallel()
+
+	existing, err := generateSessionID()
+	if err != nil {
+		t.Fatalf("generate session id: %v", err)
+	}
+
+	var sessionID string
+	h := SessionMiddleware()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sessionID, _ = SessionIDFromContext(r.Context())
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/today", nil)
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: existing})
+	h.ServeHTTP(rr, req)
+
+	if sessionID != existing {
+		t.Fatalf("unexpected session id: got %q want %q", sessionID, existing)
+	}
+	if len(rr.Result().Cookies()) != 0 {
+		t.Fatalf("expected no replacement cookie, got %v", rr.Result().Cookies())
+	}
+}
+
+func TestSessionMiddlewareSkipsHealth(t *testing.T) {
+	t.Parallel()
+
+	h := SessionMiddleware()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := SessionIDFromContext(r.Context()); ok {
+			t.Fatal("did not expect session on health request")
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("unexpected status: got %d want %d", rr.Code, http.StatusNoContent)
+	}
+	if len(rr.Result().Cookies()) != 0 {
+		t.Fatalf("expected no session cookie on health, got %v", rr.Result().Cookies())
+	}
+}
+
 func TestSetupGateMiddlewareRedirectsDisallowedRoutesWhenSetupIncomplete(t *testing.T) {
 	t.Parallel()
 

@@ -33,6 +33,7 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 	router.Use(SafeLoggingMiddleware(logger))
 	router.Use(SecurityHeadersMiddleware())
 	router.Use(ReverseProxyAuthMiddleware(proxyUserHeader))
+	router.Use(SessionMiddleware())
 	router.Use(SetupGateMiddleware(setupState, manifest))
 	router.Use(AssetManifestMiddleware(manifest))
 	router.Use(CSRFTokenMiddleware(csrfSecret))

@@ -38,10 +38,7 @@ func TaskFavorite(deps taskUpdateDependencies) http.HandlerFunc {
 			http.Error(w, "X-Tab-ID header is required", http.StatusBadRequest)
 			return
 		}
-		sessionID := strings.TrimSpace(r.Header.Get("X-Forwarded-User"))
-		if sessionID == "" {
-			sessionID = "single-user-session"
-		}
+		sessionID := requestSessionID(r)
 
 		if err := performTaskFavoriteUpdate(r.Context(), deps, taskID, expectedVersion, sessionID, tabID, favorite); err != nil {
 			writeTaskCompletionError(w, err)

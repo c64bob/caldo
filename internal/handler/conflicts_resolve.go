@@ -259,13 +259,34 @@ func removeParentRelatedTo(raw string) string {
 	lines := strings.Split(strings.ReplaceAll(raw, "\r\n", "\n"), "\n")
 	filtered := make([]string, 0, len(lines))
 	for _, line := range lines {
-		upper := strings.ToUpper(line)
-		if strings.HasPrefix(upper, "RELATED-TO") && strings.Contains(upper, "RELTYPE=PARENT") {
+		if isParentRelatedToLine(line) {
 			continue
 		}
 		filtered = append(filtered, line)
 	}
 	return strings.Join(filtered, "\r\n")
+}
+
+func isParentRelatedToLine(line string) bool {
+	rawName, _, ok := strings.Cut(line, ":")
+	if !ok {
+		return false
+	}
+	name, rawParams, hasParams := strings.Cut(strings.ToUpper(strings.TrimSpace(rawName)), ";")
+	if name != "RELATED-TO" {
+		return false
+	}
+	if !hasParams {
+		return true
+	}
+	for _, param := range strings.Split(rawParams, ";") {
+		key, value, hasValue := strings.Cut(strings.TrimSpace(param), "=")
+		if !hasValue || key != "RELTYPE" {
+			continue
+		}
+		return strings.EqualFold(strings.Trim(value, `"`), "PARENT")
+	}
+	return false
 }
 
 func replaceVTODOUID(raw string, uid string) (string, error) {

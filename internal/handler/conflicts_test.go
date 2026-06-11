@@ -92,6 +92,8 @@ WHERE id='open-1';
 		`Erledigt`,
 		`data-conflict-value="local-title"`,
 		`data-conflict-resolution`,
+		`data-conflict-split-preview`,
+		`Beide Versionen behalten`,
 		`data-conflict-manual-form`,
 		`name="project_id"`,
 	} {
@@ -450,7 +452,7 @@ func TestResolveConflictSplitCreatesSecondTaskAndMarksResolved(t *testing.T) {
 	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "a", Password: "b"}); err != nil {
 		t.Fatal(err)
 	}
-	remote := "BEGIN:VCALENDAR\r\nBEGIN:VTODO\r\nUID:uid-remote\r\nSUMMARY:Remote version\r\nSTATUS:NEEDS-ACTION\r\nRELATED-TO;RELTYPE=PARENT:uid-parent\r\nEND:VTODO\r\nEND:VCALENDAR\r\n"
+	remote := "BEGIN:VCALENDAR\r\nBEGIN:VTODO\r\nUID:uid-remote\r\nSUMMARY:Remote version\r\nSTATUS:NEEDS-ACTION\r\nRELATED-TO;RELTYPE=PARENT:uid-parent\r\nRELATED-TO:uid-bare-parent\r\nRELATED-TO;RELTYPE=SIBLING:uid-sibling\r\nEND:VTODO\r\nEND:VCALENDAR\r\n"
 	if _, err := database.Conn.Exec(`UPDATE conflicts SET remote_vtodo=? WHERE id='open-1'`, remote); err != nil {
 		t.Fatal(err)
 	}
@@ -470,8 +472,11 @@ func TestResolveConflictSplitCreatesSecondTaskAndMarksResolved(t *testing.T) {
 	if todos.updateCalls != 0 || todos.createCalls != 1 {
 		t.Fatalf("unexpected caldav calls: update=%d create=%d", todos.updateCalls, todos.createCalls)
 	}
-	if strings.Contains(strings.ToUpper(todos.lastRawVTODO), "RELATED-TO;RELTYPE=PARENT") {
+	if strings.Contains(strings.ToUpper(todos.lastRawVTODO), "RELATED-TO;RELTYPE=PARENT") || strings.Contains(todos.lastRawVTODO, "RELATED-TO:uid-bare-parent") {
 		t.Fatalf("split payload must not include parent link: %s", todos.lastRawVTODO)
+	}
+	if !strings.Contains(todos.lastRawVTODO, "RELATED-TO;RELTYPE=SIBLING:uid-sibling") {
+		t.Fatalf("split payload should preserve non-parent related-to links: %s", todos.lastRawVTODO)
 	}
 	if !strings.Contains(todos.lastRawVTODO, "UID:"+splitConflictUID("open-1")) {
 		t.Fatalf("split payload uid not rewritten deterministically: %s", todos.lastRawVTODO)
@@ -510,4 +515,70 @@ func TestResolveConflictSplitCreatesSecondTaskAndMarksResolved(t *testing.T) {
 	if splitParentID.Valid {
 		t.Fatalf("expected no parent link, got %q", splitParentID.String)
 	}
+}
+
+func TestResolveConflictSplitKeepsUnresolvedOnCreateFailure(t *testing.T) {
+	t.Parallel()
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	seedConflictData(t, database)
+	key := bytes.Repeat([]byte{0x46}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "a", Password: "b"}); err != nil {
+		t.Fatal(err)
+	}
+
+	todos := &stubTaskUpdateTodoClient{createErr: errors.New("boom")}
+	h := ResolveConflict(taskUpdateDependencies{database: database, encryptionKey: key, todos: todos})
+	req := httptest.NewRequest(http.MethodPost, "/conflicts/open-1/resolve", strings.NewReader("resolution=split"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("conflictID", "open-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadGateway {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM conflicts WHERE id='open-1' AND resolved_at IS NULL;`, 1)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM tasks WHERE project_id='project-1';`, 1)
+}
+
+func TestResolveConflictSplitKeepsUnresolvedOnPersistFailure(t *testing.T) {
+	t.Parallel()
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	seedConflictData(t, database)
+	key := bytes.Repeat([]byte{0x47}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "a", Password: "b"}); err != nil {
+		t.Fatal(err)
+	}
+
+	todos := &stubTaskUpdateTodoClient{
+		createETag: `"etag-split"`,
+		onCreate: func() {
+			_, _ = database.Conn.ExecContext(context.Background(), `UPDATE tasks SET server_version=server_version+1 WHERE id='task-1';`)
+		},
+	}
+	h := ResolveConflict(taskUpdateDependencies{database: database, encryptionKey: key, todos: todos})
+	req := httptest.NewRequest(http.MethodPost, "/conflicts/open-1/resolve", strings.NewReader("resolution=split"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("conflictID", "open-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if todos.createCalls != 1 {
+		t.Fatalf("create calls=%d", todos.createCalls)
+	}
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM conflicts WHERE id='open-1' AND resolved_at IS NULL;`, 1)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM tasks WHERE project_id='project-1';`, 1)
 }

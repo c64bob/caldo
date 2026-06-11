@@ -44,6 +44,16 @@ type conflictManualOption struct {
 	Selected bool
 }
 
+type conflictSplitPreview struct {
+	Label   string
+	Title   string
+	UID     string
+	Project string
+	Status  string
+	Due     string
+	Parent  string
+}
+
 func conflictTypeLabel(conflictType string) string {
 	switch strings.ToLower(strings.TrimSpace(conflictType)) {
 	case "field_conflict":
@@ -208,6 +218,53 @@ func conflictProjectSelected(conflict db.ConflictDetail, option TaskProjectOptio
 		return false
 	}
 	return strings.TrimSpace(conflict.ProjectID.String) == strings.TrimSpace(option.ID)
+}
+
+func conflictSplitLocalPreview(conflict db.ConflictDetail) conflictSplitPreview {
+	fields, _ := conflictParsedFields(conflict.LocalVTODO)
+	return conflictSplitPreview{
+		Label:   "Lokale Aufgabe bleibt",
+		Title:   conflictTitleValue(fields),
+		UID:     conflictSplitUIDLabel(fields.UID, "UID bleibt erhalten"),
+		Project: conflictProjectLabel(conflict.ProjectName),
+		Status:  conflictStatusValue(fields),
+		Due:     conflictDueValue(fields),
+		Parent:  conflictSplitLocalParentLabel(fields),
+	}
+}
+
+func conflictSplitRemotePreview(conflict db.ConflictDetail) conflictSplitPreview {
+	fields, _ := conflictParsedFields(conflict.RemoteVTODO)
+	return conflictSplitPreview{
+		Label:   "Remote-Version wird neue Aufgabe",
+		Title:   conflictTitleValue(fields),
+		UID:     "Neue UID beim Speichern",
+		Project: conflictProjectLabel(conflict.ProjectName),
+		Status:  conflictStatusValue(fields),
+		Due:     conflictDueValue(fields),
+		Parent:  conflictSplitRemoteParentLabel(fields),
+	}
+}
+
+func conflictSplitUIDLabel(uid string, fallback string) string {
+	if trimmed := strings.TrimSpace(uid); trimmed != "" {
+		return "UID " + trimmed
+	}
+	return fallback
+}
+
+func conflictSplitLocalParentLabel(fields model.VTODOFields) string {
+	if parent := strings.TrimSpace(fields.ParentUID); parent != "" {
+		return "Unteraufgabe bleibt: " + parent
+	}
+	return "Keine Unteraufgaben-Beziehung"
+}
+
+func conflictSplitRemoteParentLabel(fields model.VTODOFields) string {
+	if strings.TrimSpace(fields.ParentUID) != "" {
+		return "Parent-Beziehung wird entfernt"
+	}
+	return "Keine Unteraufgaben-Beziehung"
 }
 
 func conflictParsedFields(raw sql.NullString) (model.VTODOFields, bool) {

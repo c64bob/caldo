@@ -113,10 +113,13 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(inlineTitle).toBeHidden();
   await inlineTrigger.click();
   await expect(inlineTitle).toHaveValue('');
+  await inlineTitle.fill('E2E Inline Preserved');
+  await exerciseWriteStatusForFailedInlineCreate(page, mainInlineCreate, inlineTitle);
   await inlineTitle.fill('E2E Inline Created');
   await inlineTitle.press('Enter');
   await expect.poll(async () => page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Created' }).count()).toBe(1);
   await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Created' }).first()).toBeVisible();
+  await expect(page.locator('[data-write-status]')).toContainText('Gespeichert');
 
   await gotoApp(page, '/search?q=%23Work');
   let inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Created' }).first();
@@ -443,6 +446,55 @@ async function exerciseKeyboardShortcuts(page) {
   await expect(helpDialog).toContainText('G');
   await helpDialog.getByRole('button', { name: 'Schließen' }).click();
   await expect(helpDialog).toBeHidden();
+}
+
+async function exerciseWriteStatusForFailedInlineCreate(page, inlineCreateRoot, titleInput) {
+  let resolveIntercepted;
+  let releaseResponse;
+  const requestIntercepted = new Promise((resolve) => {
+    resolveIntercepted = resolve;
+  });
+  const responseGate = new Promise((resolve) => {
+    releaseResponse = resolve;
+  });
+  const routePattern = '**/tasks/';
+  const routeHandler = async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.continue();
+      return;
+    }
+    resolveIntercepted();
+    await responseGate;
+    await route.fulfill({
+      status: 502,
+      headers: { 'content-type': 'text/plain; charset=utf-8' },
+      body: 'failed to update task on caldav server'
+    });
+  };
+
+  await page.route(routePattern, routeHandler);
+  try {
+    await titleInput.press('Enter');
+    await requestIntercepted;
+    await expect(page.locator('[data-write-status]')).toContainText('Speichern ...');
+    await expect.poll(async () => browserWouldBlockUnload(page)).toBe(true);
+    releaseResponse();
+    await expect(inlineCreateRoot.locator('[data-inline-task-create-error]')).toBeVisible();
+    await expect(inlineCreateRoot.locator('[data-inline-task-create-error]')).toContainText('Aufgabe konnte nicht gespeichert werden.');
+    await expect(titleInput).toHaveValue('E2E Inline Preserved');
+    await expect(page.locator('[data-write-status]')).toContainText('Speichern fehlgeschlagen');
+    await expect.poll(async () => browserWouldBlockUnload(page)).toBe(false);
+  } finally {
+    await page.unroute(routePattern, routeHandler);
+  }
+}
+
+async function browserWouldBlockUnload(page) {
+  return page.evaluate(() => {
+    const event = new Event('beforeunload', { cancelable: true });
+    const dispatched = window.dispatchEvent(event);
+    return !dispatched || event.defaultPrevented;
+  });
 }
 
 async function captureBaselineSet(page, name) {

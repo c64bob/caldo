@@ -6,7 +6,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Zusammenfassung
 
-- Bestehende Stories: 75 `Umgesetzt`, 11 `Teilweise umgesetzt`, 3 `Offen`.
+- Bestehende Stories: 76 `Umgesetzt`, 10 `Teilweise umgesetzt`, 3 `Offen`.
 - Neue Planungsstories: 15 `Umgesetzt`, 24 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
@@ -94,7 +94,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 18.3 | Umgesetzt | `model.ParseVTODOFields` extrahiert `ATTACH`-Properties, Aufgabenzeilen und Detailpanel zeigen externe Anhaenge read-only als sichere Links sowie Inline-/Binary-Anhaenge als vorhandenen Anhang; `PatchVTODO` und der Task-Update-Handler erhalten `ATTACH` und unbekannte VTODO-Properties bei normalen Feldbearbeitungen. |
 | 19.1 | Umgesetzt | Die App-Shell rendert Desktop- und Mobile-Hauptnavigation mit Heute, Demnaechst, Projekte, Labels, Filter, Favoriten, Suche, Konflikte und Einstellungen; aktive Ansichten erhalten die visuelle aktive Klasse und `aria-current="page"`. |
 | 19.2 | Umgesetzt | `web/assets/app.js` bietet lokale CSP-kompatible Shortcuts fuer neue Aufgabe, Suche, Hauptansichtenwechsel und Hilfe, ignoriert aktive Eingabefelder und der Hilfedialog dokumentiert die verfuegbaren Kuerzel; Browser-QA deckt die Shortcut-Pfade ab. |
-| 19.3 | Teilweise umgesetzt | Write-Status-Indikatoren existieren; alle Mutationsorte sind noch nicht konsistent abgedeckt. |
+| 19.3 | Umgesetzt | Der globale HTMX-/Fetch-Write-Tracker zeigt Pending-, Erfolgs- und Fehlerstatus sichtbar an, nutzt `beforeunload` bei laufenden Writes, erhaelt fehlgeschlagene Formularwerte ohne Browser-Offline-Queue und Browser-QA deckt Pending, Fehler, Reload-Erfolg und Navigation mit laufendem Write ab. |
 | 19.4 | Teilweise umgesetzt | Settings-Seite existiert; CalDAV- und Projektverwaltung sind nicht vollstaendig. |
 | 19.5 | Teilweise umgesetzt | Theme-/Sprachpraeferenzen existieren teilweise; vollstaendige Lokalisierung/Politur fehlt. |
 | 20.1 | Umgesetzt | Go-Build ist ueber Makefile/CI vorhanden. |

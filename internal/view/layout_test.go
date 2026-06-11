@@ -29,8 +29,15 @@ func TestBaseLayoutIncludesWriteStatusRegion(t *testing.T) {
 	}
 
 	output := rendered.String()
-	if !strings.Contains(output, `id="write-status"`) {
-		t.Fatal("expected write status region in base layout")
+	for _, want := range []string{
+		`id="write-status"`,
+		`data-write-status`,
+		`role="status"`,
+		`aria-live="polite"`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected write status region to include %q", want)
+		}
 	}
 }
 

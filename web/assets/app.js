@@ -913,7 +913,7 @@
   function executeUndo(button) {
     if (!button || button.disabled) return;
     button.disabled = true;
-    setWriteStatus('pending', 'Speichern ...');
+    beginWriteRequest('Speichern ...');
     window.fetch('/tasks/undo', {
       method: 'POST',
       credentials: 'same-origin',
@@ -933,19 +933,50 @@
       } else {
         showUndoResult('Rückgängig ausgeführt.');
       }
+      finishWriteRequest();
       setWriteStatus('saved', 'Rückgängig ausgeführt.');
+      rememberWriteStatus('saved', 'Rückgängig ausgeführt.');
       window.setTimeout(function () {
         window.location.reload();
       }, 1200);
     }).catch(function (response) {
       var status = response && response.status ? response.status : 0;
       button.disabled = false;
+      finishWriteRequest();
       setWriteStatus('error', 'Rückgängig fehlgeschlagen. Änderungen prüfen.');
       setUndoNotificationError(button, undoFailureMessage(status));
     });
   }
 
   var writeState = { pendingRequests: 0 };
+
+  function beginWriteRequest(message) {
+    writeState.pendingRequests += 1;
+    setWriteStatus('pending', message || 'Speichern ...');
+  }
+
+  function finishWriteRequest() {
+    if (writeState.pendingRequests > 0) {
+      writeState.pendingRequests -= 1;
+    }
+  }
+
+  function rememberWriteStatus(kind, message) {
+    if (!message) return;
+    tabState.writeStatus = { kind: kind || 'saved', message: message };
+    saveTabState(tabState);
+  }
+
+  function consumeRememberedWriteStatus() {
+    var status = tabState.writeStatus;
+    if (!status || !status.message) return;
+    delete tabState.writeStatus;
+    saveTabState(tabState);
+    setWriteStatus(status.kind || 'saved', status.message);
+    if ((status.kind || 'saved') === 'saved') {
+      clearSavedStatusSoon();
+    }
+  }
 
   function setWriteStatus(kind, message) {
     var el = document.getElementById('write-status');
@@ -979,7 +1010,7 @@
       if (writeState.pendingRequests === 0) {
         setWriteStatus(null, '');
       }
-    }, 1200);
+    }, 2500);
   }
 
   function csrfToken() {
@@ -1010,8 +1041,7 @@
   document.body.addEventListener('htmx:beforeRequest', function (event) {
     var method = ((event.detail && event.detail.requestConfig && event.detail.requestConfig.verb) || '').toUpperCase();
     if (!method || method === 'GET') return;
-    writeState.pendingRequests += 1;
-    setWriteStatus('pending', 'Speichern ...');
+    beginWriteRequest('Speichern ...');
     var inlineCreate = closestElement(event.detail && event.detail.elt, '[data-inline-task-create]');
     if (inlineCreate) {
       setInlineCreateError(inlineCreate, '');
@@ -1045,9 +1075,7 @@
   document.body.addEventListener('htmx:afterRequest', function (event) {
     var method = ((event.detail && event.detail.requestConfig && event.detail.requestConfig.verb) || '').toUpperCase();
     if (!method || method === 'GET') return;
-    if (writeState.pendingRequests > 0) {
-      writeState.pendingRequests -= 1;
-    }
+    finishWriteRequest();
 
     var successful = !!(event.detail && event.detail.successful);
     if (!successful) {
@@ -1087,10 +1115,6 @@
       var failedInlineEdit = closestElement(event.detail && event.detail.elt, '[data-task-id]');
       if (failedInlineEdit && failedInlineEdit.querySelector('[data-inline-task-edit-form]')) {
         setInlineEditError(failedInlineEdit, 'Aufgabe konnte nicht gespeichert werden.');
-        var status = event.detail && event.detail.xhr ? event.detail.xhr.status : 0;
-        if (status === 409 || status >= 500) {
-          window.location.reload();
-        }
       }
       return;
     }
@@ -1110,12 +1134,16 @@
       var deleteRow = successfulTaskDelete.closest('[data-task-id]');
       closeTaskDelete(successfulTaskDelete.closest('[data-task-delete-dialog]'));
       removeDeletedTaskRows(deleteRow);
-      setWriteStatus(null, '');
+      setWriteStatus('saved', 'Gespeichert');
+      clearSavedStatusSoon();
       refreshUndoNotification();
       return;
     }
 
     if (closestElement(event.detail && event.detail.elt, '[data-refresh-after-write]')) {
+      if (writeState.pendingRequests === 0) {
+        rememberWriteStatus('saved', 'Gespeichert');
+      }
       window.location.reload();
     }
   });
@@ -1325,5 +1353,6 @@
     }
   });
 
+  consumeRememberedWriteStatus();
   initializeUndoSurface();
 })();

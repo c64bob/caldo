@@ -15,6 +15,7 @@ type stubRunner struct {
 	runs          int
 	block         chan struct{}
 	ignoreContext bool
+	ran           chan struct{}
 }
 
 func TestPeriodicSchedulerRunSyncTickCleansUpArtifacts(t *testing.T) {
@@ -59,7 +60,14 @@ VALUES ('conflict-old', 'task-1', 'project-1', 'field_conflict', CURRENT_TIMESTA
 func (s *stubRunner) Run(ctx context.Context) error {
 	s.mu.Lock()
 	s.runs++
+	ran := s.ran
 	s.mu.Unlock()
+	if ran != nil {
+		select {
+		case ran <- struct{}{}:
+		default:
+		}
+	}
 	if s.block != nil {
 		if s.ignoreContext {
 			<-s.block
@@ -80,13 +88,28 @@ func (s *stubRunner) count() int {
 	return s.runs
 }
 
+func (s *stubRunner) waitForAtLeast(runs int, timeout time.Duration) bool {
+	deadline := time.NewTimer(timeout)
+	defer deadline.Stop()
+	for {
+		if s.count() >= runs {
+			return true
+		}
+		select {
+		case <-s.ran:
+		case <-deadline.C:
+			return s.count() >= runs
+		}
+	}
+}
+
 func TestPeriodicSchedulerRunsAndRestartsInterval(t *testing.T) {
 	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
 	defer database.Close()
-	runner := &stubRunner{}
+	runner := &stubRunner{ran: make(chan struct{}, 8)}
 	s := NewPeriodicScheduler(nil, database, runner)
 	if err := s.SetInterval(context.Background(), 10*time.Millisecond); err != nil {
 		t.Fatalf("set interval: %v", err)
@@ -96,19 +119,22 @@ func TestPeriodicSchedulerRunsAndRestartsInterval(t *testing.T) {
 	if err := s.Start(ctx); err != nil {
 		t.Fatalf("start: %v", err)
 	}
-	time.Sleep(35 * time.Millisecond)
-	first := runner.count()
-	if first < 1 {
-		t.Fatalf("expected at least one run, got %d", first)
+	t.Cleanup(func() {
+		cancel()
+		stopCtx, stopCancel := context.WithTimeout(context.Background(), time.Second)
+		defer stopCancel()
+		if err := s.Stop(stopCtx); err != nil {
+			t.Errorf("stop scheduler: %v", err)
+		}
+	})
+	if !runner.waitForAtLeast(1, 2*time.Second) {
+		t.Fatalf("expected at least one run, got %d", runner.count())
 	}
+	first := runner.count()
 	if err := s.SetInterval(context.Background(), 5*time.Millisecond); err != nil {
 		t.Fatalf("reset interval: %v", err)
 	}
-	deadline := time.Now().Add(2 * time.Second)
-	for runner.count() <= first && time.Now().Before(deadline) {
-		time.Sleep(10 * time.Millisecond)
-	}
-	if runner.count() <= first {
+	if !runner.waitForAtLeast(first+1, 2*time.Second) {
 		t.Fatalf("expected more runs after interval restart; first=%d current=%d", first, runner.count())
 	}
 	if err := s.Stop(context.Background()); err != nil {

@@ -84,6 +84,25 @@ func TestParseQuickAddNaturalDueDateEnglishGerman(t *testing.T) {
 	}
 }
 
+func TestParseQuickAddKeepsNaturalDueSourceAndAmbiguity(t *testing.T) {
+	now := time.Date(2026, time.March, 4, 10, 0, 0, 0, time.UTC)
+
+	relative := parseQuickAddAt("Task morgen", now, "de")
+	if relative.Due != "2026-03-05" || relative.DueSource != "morgen" || relative.DueAmbiguous {
+		t.Fatalf("unexpected relative due metadata: due=%q source=%q ambiguous=%t", relative.Due, relative.DueSource, relative.DueAmbiguous)
+	}
+
+	ambiguous := parseQuickAddAt("Task Mittwoch", now, "de")
+	if ambiguous.Due != "2026-03-11" || ambiguous.DueSource != "Mittwoch" || !ambiguous.DueAmbiguous {
+		t.Fatalf("unexpected ambiguous due metadata: due=%q source=%q ambiguous=%t", ambiguous.Due, ambiguous.DueSource, ambiguous.DueAmbiguous)
+	}
+
+	explicit := parseQuickAddAt("Task nächsten Montag", now, "de")
+	if explicit.Due != "2026-03-09" || explicit.DueSource != "nächsten Montag" || explicit.DueAmbiguous {
+		t.Fatalf("unexpected explicit due metadata: due=%q source=%q ambiguous=%t", explicit.Due, explicit.DueSource, explicit.DueAmbiguous)
+	}
+}
+
 func TestParseQuickAddDoesNotParseCrossLanguageDueKeywords(t *testing.T) {
 	now := time.Date(2026, time.March, 4, 10, 0, 0, 0, time.UTC)
 

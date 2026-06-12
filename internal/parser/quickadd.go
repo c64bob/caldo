@@ -21,6 +21,8 @@ type QuickAddDraft struct {
 	LabelOptions       []QuickAddLabelSuggestion
 	Labels             []string
 	Due                string
+	DueSource          string
+	DueAmbiguous       bool
 	Recurrence         string
 	Priority           string
 }
@@ -75,8 +77,10 @@ func parseQuickAddAt(input string, now time.Time, language string) QuickAddDraft
 	}
 	draft.Recurrence, remainingAfterRecurrence = parseNaturalRecurrence(titleTokens, language)
 
-	dueDate, remaining := parseNaturalDue(remainingAfterRecurrence, now, language)
-	draft.Due = dueDate
+	due, remaining := parseNaturalDue(remainingAfterRecurrence, now, language)
+	draft.Due = due.Date
+	draft.DueSource = due.Source
+	draft.DueAmbiguous = due.Ambiguous
 	draft.Title = strings.Join(remaining, " ")
 	return draft
 }
@@ -207,42 +211,50 @@ func normalizePriorityToken(token string) (string, bool) {
 	}
 }
 
-func parseNaturalDue(tokens []string, now time.Time, language string) (string, []string) {
+type quickAddDueMatch struct {
+	Date      string
+	Source    string
+	Ambiguous bool
+}
+
+func parseNaturalDue(tokens []string, now time.Time, language string) (quickAddDueMatch, []string) {
 	remaining := make([]string, 0, len(tokens))
 	for i := 0; i < len(tokens); {
-		matched, due, consumed := matchDueToken(tokens, i, now, language)
+		matched, due, ambiguous, consumed := matchDueToken(tokens, i, now, language)
 		if matched {
+			due.Source = strings.Join(tokens[i:i+consumed], " ")
+			due.Ambiguous = ambiguous
 			return due, append(remaining, tokens[i+consumed:]...)
 		}
 		remaining = append(remaining, tokens[i])
 		i++
 	}
-	return "", remaining
+	return quickAddDueMatch{}, remaining
 }
 
-func matchDueToken(tokens []string, i int, now time.Time, language string) (bool, string, int) {
+func matchDueToken(tokens []string, i int, now time.Time, language string) (bool, quickAddDueMatch, bool, int) {
 	n := len(tokens)
 	lower := strings.ToLower(tokens[i])
 	switch lower {
 	case "heute":
 		if language == "de" {
-			return true, now.Format("2006-01-02"), 1
+			return true, quickAddDueMatch{Date: now.Format("2006-01-02")}, false, 1
 		}
 	case "today":
 		if language == "en" {
-			return true, now.Format("2006-01-02"), 1
+			return true, quickAddDueMatch{Date: now.Format("2006-01-02")}, false, 1
 		}
 	case "morgen":
 		if language == "de" {
-			return true, now.AddDate(0, 0, 1).Format("2006-01-02"), 1
+			return true, quickAddDueMatch{Date: now.AddDate(0, 0, 1).Format("2006-01-02")}, false, 1
 		}
 	case "tomorrow":
 		if language == "en" {
-			return true, now.AddDate(0, 0, 1).Format("2006-01-02"), 1
+			return true, quickAddDueMatch{Date: now.AddDate(0, 0, 1).Format("2006-01-02")}, false, 1
 		}
 	case "übermorgen":
 		if language == "de" {
-			return true, now.AddDate(0, 0, 2).Format("2006-01-02"), 1
+			return true, quickAddDueMatch{Date: now.AddDate(0, 0, 2).Format("2006-01-02")}, false, 1
 		}
 	}
 
@@ -250,21 +262,21 @@ func matchDueToken(tokens []string, i int, now time.Time, language string) (bool
 		if num, err := strconv.Atoi(tokens[i+1]); err == nil && num >= 0 {
 			unit := strings.ToLower(tokens[i+2])
 			if (language == "de" && (unit == "tagen" || unit == "tage")) || (language == "en" && (unit == "days" || unit == "day")) {
-				return true, now.AddDate(0, 0, num).Format("2006-01-02"), 3
+				return true, quickAddDueMatch{Date: now.AddDate(0, 0, num).Format("2006-01-02")}, false, 3
 			}
 		}
 	}
 
 	if i+1 < n && ((language == "en" && lower == "next") || (language == "de" && lower == "nächsten")) {
 		if wd, ok := weekdayToken(tokens[i+1], language); ok {
-			return true, nextWeekday(now, wd).Format("2006-01-02"), 2
+			return true, quickAddDueMatch{Date: nextWeekday(now, wd).Format("2006-01-02")}, false, 2
 		}
 	}
 
 	if wd, ok := weekdayToken(tokens[i], language); ok {
-		return true, nextWeekday(now, wd).Format("2006-01-02"), 1
+		return true, quickAddDueMatch{Date: nextWeekday(now, wd).Format("2006-01-02")}, true, 1
 	}
-	return false, "", 0
+	return false, quickAddDueMatch{}, false, 0
 }
 
 func weekdayToken(token string, language string) (time.Weekday, bool) {

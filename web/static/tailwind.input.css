@@ -629,6 +629,22 @@
 		@apply mt-1 shrink-0;
 	}
 
+	.caldo-quick-add-date-preview {
+		@apply mb-2 flex min-w-0 flex-wrap items-center gap-2 text-sm;
+		color: var(--caldo-text);
+	}
+
+	.caldo-quick-add-date-preview strong {
+		@apply font-semibold;
+	}
+
+	.caldo-quick-add-date-source {
+		@apply min-w-0 truncate rounded border px-2 py-0.5 text-xs;
+		background: var(--caldo-surface-muted);
+		border-color: var(--caldo-border);
+		color: var(--caldo-text-muted);
+	}
+
 	.caldo-quick-add-suggestions {
 		@apply mt-2 flex min-w-0 flex-wrap items-center gap-2;
 	}
@@ -1628,6 +1644,12 @@
 		background: var(--caldo-accent-muted);
 		border-color: var(--caldo-accent-border);
 		color: var(--caldo-accent);
+	}
+
+	.caldo-badge-warning {
+		background: var(--caldo-warning-muted);
+		border-color: var(--caldo-warning);
+		color: var(--caldo-warning);
 	}
 
 	.caldo-alert {

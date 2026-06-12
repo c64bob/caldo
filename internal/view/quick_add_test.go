@@ -116,6 +116,7 @@ func TestQuickAddPreviewRendersCorrectionChipsAndEditableFields(t *testing.T) {
 		},
 		Labels:     []string{"urgent", "backend"},
 		Due:        "2026-06-13",
+		DueSource:  "morgen",
 		Recurrence: "FREQ=WEEKLY",
 		Priority:   "medium",
 	}, "")
@@ -139,6 +140,8 @@ func TestQuickAddPreviewRendersCorrectionChipsAndEditableFields(t *testing.T) {
 		`data-quick-add-label-suggestions`,
 		`data-quick-add-append-label="review"`,
 		`id="quick-add-preview-label-options"`,
+		`data-quick-add-date-resolution`,
+		`morgen`,
 		`name="due_date" value="2026-06-13"`,
 		`name="recurrence" value="FREQ=WEEKLY"`,
 		`value="medium" selected`,
@@ -148,6 +151,35 @@ func TestQuickAddPreviewRendersCorrectionChipsAndEditableFields(t *testing.T) {
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected correction preview to include %q in %s", want, output)
+		}
+	}
+}
+
+func TestQuickAddPreviewRendersAmbiguousDateWarning(t *testing.T) {
+	t.Parallel()
+
+	component := QuickAddPreview(parser.QuickAddDraft{
+		Title:        "Review",
+		Due:          "2026-06-17",
+		DueSource:    "Mittwoch",
+		DueAmbiguous: true,
+	}, "")
+
+	var rendered bytes.Buffer
+	if err := component.Render(context.Background(), &rendered); err != nil {
+		t.Fatalf("render quick add preview: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`data-quick-add-date-resolution`,
+		`data-quick-add-date-warning`,
+		`Datum prüfen`,
+		`Mittwoch`,
+		`2026-06-17`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected ambiguous date preview to include %q in %s", want, output)
 		}
 	}
 }

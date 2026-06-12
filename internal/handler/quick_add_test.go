@@ -103,8 +103,74 @@ func TestQuickAddPreviewUsesPersistedUILanguage(t *testing.T) {
 	if strings.Contains(body, `name="due_date" value=""`) {
 		t.Fatalf("expected English natural date token to set due date: %s", body)
 	}
-	if !strings.Contains(body, `Date`) || !strings.Contains(body, `Preview`) {
-		t.Fatalf("expected preview labels to use English UI language: %s", body)
+	for _, want := range []string{
+		`Date`,
+		`Preview`,
+		`data-quick-add-date-resolution`,
+		`tomorrow`,
+		`Recognized`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected English date preview to include %q in %s", want, body)
+		}
+	}
+	if strings.Contains(body, `data-quick-add-date-warning`) {
+		t.Fatalf("expected explicit relative date to avoid ambiguity warning: %s", body)
+	}
+}
+
+func TestQuickAddPreviewMarksAmbiguousWeekdayDate(t *testing.T) {
+	database := openSQLiteForTaskCreateHandlerTest(t)
+	seedTaskCreateHandlerProject(t, database)
+	if _, err := database.Conn.Exec(`UPDATE settings SET ui_language = 'en', dark_mode = 'light' WHERE id = 'default';`); err != nil {
+		t.Fatalf("set ui language: %v", err)
+	}
+	h := QuickAddPreview(quickAddDependencies{database: database})
+
+	form := url.Values{}
+	form.Set("text", "Call monday")
+	req := httptest.NewRequest(http.MethodPost, "/quick-add/preview", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d", w.Code)
+	}
+	body := w.Body.String()
+	for _, want := range []string{
+		`data-quick-add-date-resolution`,
+		`data-quick-add-date-warning`,
+		`Check date`,
+		`monday`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected ambiguous date preview to include %q in %s", want, body)
+		}
+	}
+}
+
+func TestQuickAddPreviewDoesNotPersistTask(t *testing.T) {
+	database := openSQLiteForTaskCreateHandlerTest(t)
+	seedTaskCreateHandlerProject(t, database)
+	h := QuickAddPreview(quickAddDependencies{database: database})
+
+	form := url.Values{}
+	form.Set("text", "Nur Vorschau morgen")
+	req := httptest.NewRequest(http.MethodPost, "/quick-add/preview", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d", w.Code)
+	}
+	var count int
+	if err := database.Conn.QueryRow(`SELECT COUNT(*) FROM tasks;`).Scan(&count); err != nil {
+		t.Fatalf("count tasks: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected preview to avoid persisting tasks, got %d", count)
 	}
 }
 

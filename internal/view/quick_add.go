@@ -115,6 +115,18 @@ func quickAddDisplayValue(ctx context.Context, value string) string {
 	return Text(ctx).None
 }
 
+func quickAddDueChipLabel(draft parser.QuickAddDraft) string {
+	due := strings.TrimSpace(draft.Due)
+	if due == "" {
+		return ""
+	}
+	source := strings.TrimSpace(draft.DueSource)
+	if source == "" {
+		return due
+	}
+	return source + " -> " + due
+}
+
 func quickAddPriorityLabel(ctx context.Context, priority string) string {
 	switch strings.ToLower(strings.TrimSpace(priority)) {
 	case "high":

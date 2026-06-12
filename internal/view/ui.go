@@ -153,6 +153,7 @@ type Texts struct {
 	SettingsPasswordNew      string
 	SettingsPasswordKeepHelp string
 	SettingsPasswordNewHelp  string
+	SettingsCalDAVTest       string
 	SettingsCalDAVSubmit     string
 	SettingsCalDAVPending    string
 	SettingsCalendarsTitle   string
@@ -264,7 +265,8 @@ var germanTexts = Texts{
 	SettingsPasswordNew:      "Passwort oder App-Passwort",
 	SettingsPasswordKeepHelp: "Leer lassen, um das gespeicherte Passwort beizubehalten.",
 	SettingsPasswordNewHelp:  "Ein Passwort oder App-Passwort ist für den Verbindungstest erforderlich.",
-	SettingsCalDAVSubmit:     "CalDAV speichern und testen",
+	SettingsCalDAVTest:       "Verbindung testen",
+	SettingsCalDAVSubmit:     "CalDAV speichern",
 	SettingsCalDAVPending:    "Verbindung wird getestet ...",
 	SettingsCalendarsTitle:   "Kalender & Projektmapping",
 	SettingsCalendarsHelp:    "Ausgewählte CalDAV-Kalender werden als Projekte geführt. Bestehende Projekte mit Aufgaben bleiben erhalten.",
@@ -375,7 +377,8 @@ var englishTexts = Texts{
 	SettingsPasswordNew:      "Password or app password",
 	SettingsPasswordKeepHelp: "Leave empty to keep the stored password.",
 	SettingsPasswordNewHelp:  "A password or app password is required for the connection test.",
-	SettingsCalDAVSubmit:     "Save and test CalDAV",
+	SettingsCalDAVTest:       "Test connection",
+	SettingsCalDAVSubmit:     "Save CalDAV",
 	SettingsCalDAVPending:    "Testing connection ...",
 	SettingsCalendarsTitle:   "Calendars & project mapping",
 	SettingsCalendarsHelp:    "Selected CalDAV calendars are managed as projects. Existing projects with tasks are preserved.",

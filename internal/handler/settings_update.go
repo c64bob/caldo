@@ -19,6 +19,7 @@ type settingsDependencies struct {
 
 type settingsPageState struct {
 	CalDAVError    string
+	CalDAVSuccess  string
 	CalendarsError string
 	Available      []caldav.Calendar
 	SelectedHrefs  []string
@@ -28,7 +29,7 @@ type settingsPageState struct {
 	PreserveCalDAV bool
 }
 
-// SettingsCalDAVUpdate persists CalDAV settings after a successful connection test.
+// SettingsCalDAVUpdate tests CalDAV settings and persists them after a successful save action.
 func SettingsCalDAVUpdate(deps settingsDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if deps.database == nil || deps.tester == nil {
@@ -68,6 +69,12 @@ func SettingsCalDAVUpdate(deps settingsDependencies) http.HandlerFunc {
 		})
 		if err != nil {
 			state.CalDAVError = "verbindungstest fehlgeschlagen"
+			renderSettingsPage(w, r, deps, state, http.StatusOK)
+			return
+		}
+
+		if strings.EqualFold(strings.TrimSpace(r.FormValue("caldav_action")), "test") {
+			state.CalDAVSuccess = "verbindungstest erfolgreich"
 			renderSettingsPage(w, r, deps, state, http.StatusOK)
 			return
 		}
@@ -148,6 +155,11 @@ func SettingsCalendarsUpdate(deps settingsDependencies) http.HandlerFunc {
 		}
 		if defaultHref == "" {
 			state.CalendarsError = "ein default-projekt ist erforderlich"
+			renderSettingsPage(w, r, deps, state, http.StatusOK)
+			return
+		}
+		if _, ok := seen[defaultHref]; !ok {
+			state.CalendarsError = "default-projekt muss ein ausgewählter kalender sein"
 			renderSettingsPage(w, r, deps, state, http.StatusOK)
 			return
 		}

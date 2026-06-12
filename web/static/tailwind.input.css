@@ -1468,6 +1468,12 @@
 		color: var(--caldo-warning);
 	}
 
+	.caldo-alert-success {
+		background: var(--caldo-success-muted);
+		border-color: var(--caldo-success);
+		color: var(--caldo-success);
+	}
+
 	.caldo-dialog {
 		@apply w-full max-w-xl overflow-auto rounded-md border p-0;
 		background: var(--caldo-surface);

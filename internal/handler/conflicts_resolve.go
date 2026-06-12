@@ -62,6 +62,10 @@ func ResolveConflict(deps taskUpdateDependencies) http.HandlerFunc {
 				http.Error(w, "remote version is unavailable", http.StatusBadRequest)
 				return
 			}
+			if !formBool(firstFormValue(r.PostForm, "confirm_split")) {
+				http.Error(w, "split confirmation is required", http.StatusBadRequest)
+				return
+			}
 			resolved = loaded.RemoteVTODO
 		default:
 			http.Error(w, "invalid resolution", http.StatusBadRequest)
@@ -101,6 +105,9 @@ func ResolveConflict(deps taskUpdateDependencies) http.HandlerFunc {
 				NewTaskETag:     newETag,
 				ExpectedVersion: loaded.ServerVersion,
 			}); err != nil {
+				cleanupCtx, cleanupCancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUpdatePersistTimeout)
+				defer cleanupCancel()
+				_ = deps.todos.DeleteVTODO(cleanupCtx, todoCredentials, splitHref, newETag)
 				http.Error(w, "failed to persist conflict resolution", http.StatusInternalServerError)
 				return
 			}

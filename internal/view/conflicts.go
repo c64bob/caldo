@@ -70,13 +70,16 @@ type conflictManualPreviewRow struct {
 }
 
 type conflictSplitPreview struct {
-	Label   string
-	Title   string
-	UID     string
-	Project string
-	Status  string
-	Due     string
-	Parent  string
+	Role        string
+	Label       string
+	Description string
+	Title       string
+	UID         string
+	Project     string
+	Status      string
+	Due         string
+	Labels      string
+	Parent      string
 }
 
 func conflictTypeLabel(conflictType string) string {
@@ -513,26 +516,32 @@ func conflictProjectSelected(conflict db.ConflictDetail, option TaskProjectOptio
 func conflictSplitLocalPreview(conflict db.ConflictDetail) conflictSplitPreview {
 	fields, _ := conflictParsedFields(conflict.LocalVTODO)
 	return conflictSplitPreview{
-		Label:   "Lokale Aufgabe bleibt",
-		Title:   conflictTitleValue(fields),
-		UID:     conflictSplitUIDLabel(fields.UID, "UID bleibt erhalten"),
-		Project: conflictProjectLabel(conflict.ProjectName),
-		Status:  conflictStatusValue(fields),
-		Due:     conflictDueValue(fields),
-		Parent:  conflictSplitLocalParentLabel(fields),
+		Role:        "local",
+		Label:       "Aufgabe 1: Lokale Variante bleibt",
+		Description: "Die lokale Aufgabe bleibt als bestehende Aufgabe im aktuellen Projekt erhalten.",
+		Title:       conflictTitleValue(fields),
+		UID:         conflictSplitUIDLabel(fields.UID, "UID bleibt erhalten"),
+		Project:     conflictProjectLabel(conflict.ProjectName),
+		Status:      conflictStatusValue(fields),
+		Due:         conflictDueValue(fields),
+		Labels:      conflictLabelsValue(fields),
+		Parent:      conflictSplitLocalParentLabel(fields),
 	}
 }
 
 func conflictSplitRemotePreview(conflict db.ConflictDetail) conflictSplitPreview {
 	fields, _ := conflictParsedFields(conflict.RemoteVTODO)
 	return conflictSplitPreview{
-		Label:   "Remote-Version wird neue Aufgabe",
-		Title:   conflictTitleValue(fields),
-		UID:     "Neue UID beim Speichern",
-		Project: conflictProjectLabel(conflict.ProjectName),
-		Status:  conflictStatusValue(fields),
-		Due:     conflictDueValue(fields),
-		Parent:  conflictSplitRemoteParentLabel(fields),
+		Role:        "remote",
+		Label:       "Aufgabe 2: Remote-Variante wird neu angelegt",
+		Description: "Die entfernte Variante wird als zweite Aufgabe im selben Projekt gespeichert.",
+		Title:       conflictTitleValue(fields),
+		UID:         "Neue UID beim Speichern",
+		Project:     conflictProjectLabel(conflict.ProjectName),
+		Status:      conflictStatusValue(fields),
+		Due:         conflictDueValue(fields),
+		Labels:      conflictLabelsValue(fields),
+		Parent:      conflictSplitRemoteParentLabel(fields),
 	}
 }
 

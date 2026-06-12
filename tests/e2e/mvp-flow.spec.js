@@ -472,6 +472,14 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(page.locator('[data-conflict-comparison]')).toBeVisible();
   await expect(page.locator('[data-conflict-field="project"]')).toBeVisible();
   await page.setViewportSize(desktopViewport);
+  const conflictSplitPreview = page.locator('[data-conflict-split-preview]');
+  await expect(conflictSplitPreview).toContainText('Nach dem Split existieren zwei Aufgaben');
+  await expect(conflictSplitPreview.locator('[data-conflict-split-target="local"]')).toContainText('E2E Local Conflict Edit');
+  await expect(conflictSplitPreview.locator('[data-conflict-split-target="remote"]')).toContainText('E2E Remote Conflict Edit');
+  await expect(conflictSplitPreview.locator('[data-conflict-split-submit]')).toBeDisabled();
+  await conflictSplitPreview.locator('[data-conflict-split-confirm]').check();
+  await expect(conflictSplitPreview.locator('[data-conflict-split-submit]')).toBeEnabled();
+  await conflictSplitPreview.locator('[data-conflict-split-confirm]').uncheck();
   const conflictManualForm = page.locator('[data-conflict-manual-form]');
   await expect(conflictManualForm.locator('[data-conflict-field-source="title"] [data-conflict-source-option="local"]')).toContainText('E2E Local Conflict Edit');
   await expect(conflictManualForm.locator('[data-conflict-field-source="title"] [data-conflict-source-option="remote"]')).toContainText('E2E Remote Conflict Edit');

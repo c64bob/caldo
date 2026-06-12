@@ -155,16 +155,60 @@ func conflictComparisonRows(conflict db.ConflictDetail) []conflictComparisonRow 
 
 	rows := make([]conflictComparisonRow, 0, len(specs))
 	for _, spec := range specs {
-		base := conflictCell("base-"+spec.key, basePresent, spec.value(baseFields), false)
+		baseValue := spec.value(baseFields)
+		localValue := spec.value(localFields)
+		remoteValue := spec.value(remoteFields)
+		localChanged, remoteChanged := conflictComparisonChanged(basePresent, localPresent, remotePresent, baseValue, localValue, remoteValue)
+		base := conflictCell("base-"+spec.key, basePresent, baseValue, false)
 		rows = append(rows, conflictComparisonRow{
 			Field:  spec.key,
 			Label:  spec.label,
 			Base:   base,
-			Local:  conflictCell("local-"+spec.key, localPresent, spec.value(localFields), basePresent && localPresent && spec.value(localFields) != base.Value),
-			Remote: conflictCell("remote-"+spec.key, remotePresent, spec.value(remoteFields), basePresent && remotePresent && spec.value(remoteFields) != base.Value),
+			Local:  conflictCell("local-"+spec.key, localPresent, localValue, localChanged),
+			Remote: conflictCell("remote-"+spec.key, remotePresent, remoteValue, remoteChanged),
 		})
 	}
+	rows = append([]conflictComparisonRow{conflictProjectComparisonRow(conflict, basePresent, localPresent, remotePresent)}, rows...)
 	return rows
+}
+
+func conflictProjectComparisonRow(conflict db.ConflictDetail, basePresent bool, localPresent bool, remotePresent bool) conflictComparisonRow {
+	project := conflictProjectLabel(conflict.ProjectName)
+	return conflictComparisonRow{
+		Field:  "project",
+		Label:  "Projekt",
+		Base:   conflictCell("base-project", basePresent, project, false),
+		Local:  conflictCell("local-project", localPresent, project, false),
+		Remote: conflictCell("remote-project", remotePresent, project, false),
+	}
+}
+
+func conflictComparisonChanged(basePresent bool, localPresent bool, remotePresent bool, baseValue string, localValue string, remoteValue string) (bool, bool) {
+	if basePresent {
+		return localPresent && localValue != baseValue, remotePresent && remoteValue != baseValue
+	}
+	if localPresent && remotePresent && localValue != remoteValue {
+		return true, true
+	}
+	return false, false
+}
+
+func conflictComparisonRowChanged(row conflictComparisonRow) bool {
+	return row.Base.Changed || row.Local.Changed || row.Remote.Changed
+}
+
+func conflictComparisonRowClass(row conflictComparisonRow) string {
+	if conflictComparisonRowChanged(row) {
+		return "caldo-conflict-row-changed"
+	}
+	return "caldo-conflict-row-unchanged"
+}
+
+func conflictComparisonRowState(row conflictComparisonRow) string {
+	if conflictComparisonRowChanged(row) {
+		return "changed"
+	}
+	return "unchanged"
 }
 
 func conflictRawVersions(conflict db.ConflictDetail) []conflictRawVersion {

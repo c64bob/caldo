@@ -32,10 +32,17 @@ func TestQuickAddPreviewIncludesCSRFHeaderForSaveForm(t *testing.T) {
 	}
 }
 
-func TestQuickAddPreviewRendersUnknownProjectCreateOption(t *testing.T) {
+func TestQuickAddPreviewRendersUnknownProjectSuggestionsAndCreateOption(t *testing.T) {
 	t.Parallel()
 
-	component := QuickAddPreview(parser.QuickAddDraft{Title: "Test", Project: "Work", ProjectNew: true}, "")
+	component := QuickAddPreview(parser.QuickAddDraft{
+		Title:      "Test",
+		Project:    "Work",
+		ProjectNew: true,
+		ProjectSuggestions: []parser.QuickAddProjectSuggestion{
+			{ID: "project-work", Name: "Work Inbox"},
+		},
+	}, "")
 
 	var rendered bytes.Buffer
 	if err := component.Render(context.Background(), &rendered); err != nil {
@@ -43,9 +50,22 @@ func TestQuickAddPreviewRendersUnknownProjectCreateOption(t *testing.T) {
 	}
 
 	output := rendered.String()
-	for _, want := range []string{`Neu anlegen`, `name="project_new_name" value="Work"`, `name="create_project" value="1"`, `checked`} {
+	for _, want := range []string{
+		`Projektvorschläge`,
+		`data-quick-add-project-suggestions`,
+		`data-quick-add-project-suggestion`,
+		`name="project_new_name" value="Work"`,
+		`name="project_selection" value="existing:project-work"`,
+		`Work Inbox`,
+		`name="project_selection" value="create"`,
+		`Neu anlegen`,
+		`checked`,
+	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected quick add project create option %q in %s", want, output)
 		}
+	}
+	if strings.Contains(output, `name="create_project"`) {
+		t.Fatalf("expected project selection radios instead of legacy create checkbox: %s", output)
 	}
 }

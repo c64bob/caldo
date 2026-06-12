@@ -6,7 +6,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Zusammenfassung
 
-- Bestehende Stories: 85 `Umgesetzt`, 1 `Teilweise umgesetzt`, 3 `Offen`.
+- Bestehende Stories: 86 `Umgesetzt`, 0 `Teilweise umgesetzt`, 3 `Offen`.
 - Neue Planungsstories: 15 `Umgesetzt`, 24 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
@@ -108,7 +108,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 21.6 | Umgesetzt | `docs/qa/performance.md` dokumentiert wiederholbare QA-Messpunkte mit PRD-Zielwerten fuer Startzeit ohne Migrationen, erste UI-Ansicht mit 10.000 lokalen Tasks, Initialimport mit 400 Remote-Tasks und inkrementellen Sync mit 400 Tasks; `docs/qa/playwright.md` verweist auf den separaten Performance-QA-Prozess. |
 | 22.1 | Umgesetzt | `internal/view/conflicts.templ`, `internal/view/conflicts.go`, `web/static/tailwind.input.css` und Konflikt-View-/Handler-Tests zeigen je Konfliktfeld explizite Base-/Lokal-/Remote-Quellen mit den zugehoerigen Werten als Radio-Auswahl und behalten den bestehenden `ResolveConflict`-Pfad fuer feldweise Aufloesung bei. |
 | 22.2 | Umgesetzt | `/settings` rendert CalDAV-URL, Benutzername, Passwort-/App-Passwort, separaten Verbindungstest, Speichern nach erfolgreichem Test, Kalenderauswahl und Default-Projekt; `internal/handler/settings_update.go`, `internal/view/settings.go`, `internal/view/settings_test.go` und `internal/handler/settings_update_test.go` decken Test-only, Save und Default-Validierung ab. |
-| 22.3 | Teilweise umgesetzt | Quick Add erkennt unbekannte Projekte; Vorschlags-/Anlagefluss ist noch nicht fertig. |
+| 22.3 | Umgesetzt | `internal/handler/quick_add.go`, `internal/view/quick_add.templ`, `internal/handler/tasks_create.go` und zugehoerige Tests zeigen bei unbekanntem `#Projekt` eine auswählbare Projektvorschlagsliste, bieten direktes CalDAV-Projektanlegen an und nutzen die Auswahl beim aktuellen Quick-Add-Speichern. |
 
 ## Neue Planungsstories
 

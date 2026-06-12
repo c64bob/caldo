@@ -30,6 +30,7 @@ type taskCreateDependencies struct {
 }
 
 const taskCreatePersistTimeout = 5 * time.Second
+const quickAddExistingProjectSelectionPrefix = "existing:"
 
 var (
 	errQuickAddProjectNameRequired  = errors.New("quick add project name required")
@@ -181,6 +182,17 @@ func createTask(w http.ResponseWriter, r *http.Request, deps taskCreateDependenc
 func resolveCreateTaskProject(ctx context.Context, r *http.Request, deps taskCreateDependencies, forcedProjectID string) (db.TaskProject, error) {
 	if strings.TrimSpace(forcedProjectID) != "" {
 		return deps.database.ResolveTaskProject(ctx, forcedProjectID)
+	}
+	projectSelection := strings.TrimSpace(r.FormValue("project_selection"))
+	if projectSelection == "create" {
+		return createQuickAddProject(ctx, r, deps)
+	}
+	if strings.HasPrefix(projectSelection, quickAddExistingProjectSelectionPrefix) {
+		projectID := strings.TrimSpace(strings.TrimPrefix(projectSelection, quickAddExistingProjectSelectionPrefix))
+		if projectID == "" {
+			return db.TaskProject{}, db.ErrTaskProjectNotFound
+		}
+		return deps.database.ResolveTaskProject(ctx, projectID)
 	}
 	if shouldCreateQuickAddProject(r) {
 		return createQuickAddProject(ctx, r, deps)

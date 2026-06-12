@@ -113,8 +113,22 @@ func TestQuickAddPreviewMarksUnknownProjectTokenAsNew(t *testing.T) {
 		t.Fatalf("unexpected status: %d", w.Code)
 	}
 	body := w.Body.String()
-	if !strings.Contains(body, "Unbekannt") || !strings.Contains(body, "Neu anlegen") || !strings.Contains(body, `name="project_new_name"`) || !strings.Contains(body, `name="create_project"`) {
-		t.Fatalf("expected unknown project warning in preview, got body: %s", body)
+	for _, want := range []string{
+		"Unbekannt",
+		"Neu anlegen",
+		"Projektvorschläge",
+		`data-quick-add-project-suggestions`,
+		`data-quick-add-project-suggestion`,
+		`name="project_new_name"`,
+		`name="project_selection" value="existing:project-default"`,
+		`name="project_selection" value="create"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected unknown project preview to include %q in %s", want, body)
+		}
+	}
+	if strings.Contains(body, `name="create_project"`) {
+		t.Fatalf("expected project selection radios instead of legacy create checkbox, got body: %s", body)
 	}
 }
 

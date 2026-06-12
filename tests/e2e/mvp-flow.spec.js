@@ -81,6 +81,13 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
     const remoteState = await stageState();
     return remoteState.calendars.some((calendar) => calendar.display_name === 'E2E Empty Project');
   }).toBe(true);
+  await gotoApp(page, '/search?q=%23Work');
+  const searchSaveFilterForm = page.locator('[data-search-save-filter-form]');
+  await expect(searchSaveFilterForm).toBeVisible();
+  await searchSaveFilterForm.locator('[data-search-save-filter-name]').fill('E2E Work Filter');
+  await searchSaveFilterForm.getByRole('button', { name: 'Filter anlegen' }).click();
+  await expect(page.locator('[data-saved-filter-list]').filter({ hasText: 'E2E Work Filter' })).toBeVisible();
+  await expect(page.locator('[data-nav-user-filters] a').filter({ hasText: 'E2E Work Filter' })).toHaveCount(2);
   await gotoApp(page, '/today');
   await captureBaselineSet(page, testInfo, 'today');
   await gotoApp(page, '/upcoming');

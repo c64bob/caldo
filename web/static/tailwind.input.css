@@ -552,6 +552,34 @@
 		color: var(--caldo-text);
 	}
 
+	.caldo-quick-add-chips {
+		@apply mt-3 flex min-w-0 flex-wrap gap-2;
+	}
+
+	.caldo-quick-add-chip {
+		@apply inline-flex min-h-7 min-w-0 max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium;
+		background: var(--caldo-accent-muted);
+		border-color: var(--caldo-accent-border);
+		color: var(--caldo-accent);
+	}
+
+	button.caldo-quick-add-chip {
+		@apply cursor-pointer transition;
+	}
+
+	button.caldo-quick-add-chip:hover {
+		background: var(--caldo-surface-muted);
+		border-color: var(--caldo-accent);
+	}
+
+	.caldo-quick-add-chip span {
+		@apply shrink-0;
+	}
+
+	.caldo-quick-add-chip strong {
+		@apply min-w-0 truncate font-semibold;
+	}
+
 	.caldo-quick-add-preview-grid {
 		@apply mt-3 grid gap-3 text-sm sm:grid-cols-2;
 	}
@@ -576,8 +604,29 @@
 		border-color: var(--caldo-border);
 	}
 
+	.caldo-quick-add-corrections {
+		@apply grid gap-3 sm:grid-cols-2;
+	}
+
+	.caldo-quick-add-corrections > .caldo-label:first-child {
+		@apply sm:col-span-2;
+	}
+
+	.caldo-quick-add-correction-row {
+		@apply flex min-w-0 items-start gap-2;
+	}
+
+	.caldo-quick-add-correction-row .caldo-input,
+	.caldo-quick-add-correction-row .caldo-select {
+		@apply min-w-0 flex-1;
+	}
+
+	.caldo-quick-add-correction-row .caldo-button {
+		@apply mt-1 shrink-0;
+	}
+
 	.caldo-quick-add-project-options {
-		@apply grid gap-2 rounded-md border p-3 text-sm;
+		@apply grid gap-2 rounded-md border p-3 text-sm sm:col-span-2;
 		background: var(--caldo-surface-muted);
 		border-color: var(--caldo-border);
 		color: var(--caldo-text);

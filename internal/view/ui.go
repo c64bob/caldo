@@ -141,6 +141,7 @@ type Texts struct {
 	QuickAddCreateNew        string
 	QuickAddFound            string
 	QuickAddDefault          string
+	QuickAddClearValue       string
 	None                     string
 	PriorityHigh             string
 	PriorityMedium           string
@@ -254,6 +255,7 @@ var germanTexts = Texts{
 	QuickAddCreateNew:        "Neu anlegen",
 	QuickAddFound:            "Gefunden",
 	QuickAddDefault:          "Default",
+	QuickAddClearValue:       "Entfernen",
 	None:                     "Keine",
 	PriorityHigh:             "Hoch",
 	PriorityMedium:           "Mittel",
@@ -367,6 +369,7 @@ var englishTexts = Texts{
 	QuickAddCreateNew:        "Create new",
 	QuickAddFound:            "Found",
 	QuickAddDefault:          "Default",
+	QuickAddClearValue:       "Remove",
 	None:                     "None",
 	PriorityHigh:             "High",
 	PriorityMedium:           "Medium",

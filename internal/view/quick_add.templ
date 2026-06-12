@@ -1,6 +1,10 @@
 package view
 
-import "caldo/internal/parser"
+import (
+	"strings"
+
+	"caldo/internal/parser"
+)
 
 templ QuickAddPage(draft *parser.QuickAddDraft, text string, errorMessage string) {
 	<section class="caldo-page caldo-quick-add">
@@ -10,6 +14,7 @@ templ QuickAddPage(draft *parser.QuickAddDraft, text string, errorMessage string
 			action="/quick-add/preview"
 			hx-post="/quick-add/preview"
 			hx-target="#quick-add-preview"
+			hx-trigger="input changed delay:350ms, submit"
 			hx-swap="outerHTML"
 			hx-disabled-elt="find button"
 			class="caldo-quick-add-form"
@@ -45,6 +50,7 @@ templ QuickAddOverlay() {
 					action="/quick-add/preview"
 					hx-post="/quick-add/preview"
 					hx-target="#quick-add-overlay-preview"
+					hx-trigger="input changed delay:350ms, submit"
 					hx-swap="outerHTML"
 					hx-disabled-elt="find button"
 					class="caldo-quick-add-form"
@@ -76,6 +82,47 @@ templ QuickAddOverlayPreview(draft parser.QuickAddDraft, text string) {
 templ quickAddPreviewContent(draft parser.QuickAddDraft, previewID string, surface string) {
 	<section id={ previewID } class="caldo-card caldo-quick-add-preview" data-quick-add-preview>
 		<h3>{ Text(ctx).QuickAddPreviewHeading }</h3>
+		if quickAddHasRecognizedTokens(draft) {
+			<div class="caldo-quick-add-chips" data-quick-add-chips>
+				if strings.TrimSpace(draft.Project) != "" {
+					if draft.ProjectNew {
+						<button type="button" class="caldo-quick-add-chip" data-quick-add-clear="[name='project_new_name']">
+							<span>{ Text(ctx).QuickAddFieldProject }</span>
+							<strong>{ draft.Project }</strong>
+						</button>
+					} else {
+						<button type="button" class="caldo-quick-add-chip" data-quick-add-clear="[name='project_selection']">
+							<span>{ Text(ctx).QuickAddFieldProject }</span>
+							<strong>{ draft.Project }</strong>
+						</button>
+					}
+				}
+				for _, label := range draft.Labels {
+					<span class="caldo-quick-add-chip">
+						<span>{ Text(ctx).QuickAddFieldLabels }</span>
+						<strong>{ label }</strong>
+					</span>
+				}
+				if strings.TrimSpace(draft.Due) != "" {
+					<button type="button" class="caldo-quick-add-chip" data-quick-add-clear="[name='due_date']">
+						<span>{ Text(ctx).QuickAddFieldDate }</span>
+						<strong>{ draft.Due }</strong>
+					</button>
+				}
+				if strings.TrimSpace(draft.Recurrence) != "" {
+					<button type="button" class="caldo-quick-add-chip" data-quick-add-clear="[name='recurrence']">
+						<span>{ Text(ctx).QuickAddFieldRecurrence }</span>
+						<strong>{ draft.Recurrence }</strong>
+					</button>
+				}
+				if strings.TrimSpace(draft.Priority) != "" {
+					<button type="button" class="caldo-quick-add-chip" data-quick-add-clear="[name='priority']">
+						<span>{ Text(ctx).QuickAddFieldPriority }</span>
+						<strong>{ quickAddPriorityLabel(ctx, draft.Priority) }</strong>
+					</button>
+				}
+			</div>
+		}
 		<dl class="caldo-quick-add-preview-grid">
 			<div>
 				<dt>{ Text(ctx).QuickAddFieldTitle }</dt>
@@ -115,33 +162,80 @@ templ quickAddPreviewContent(draft parser.QuickAddDraft, previewID string, surfa
 			data-quick-add-save-form
 			{ quickAddOverlayAttributes(surface)... }
 		>
-			<input type="hidden" name="title" value={ draft.Title }/>
-			if draft.ProjectNew {
-				<input type="hidden" name="project_new_name" value={ draft.Project }/>
-				<fieldset class="caldo-quick-add-project-options" data-quick-add-project-suggestions>
-					<legend>{ Text(ctx).QuickAddProjectList }</legend>
-					if len(draft.ProjectSuggestions) > 0 {
-						for _, suggestion := range draft.ProjectSuggestions {
-							<label class="caldo-quick-add-project-option" data-quick-add-project-suggestion>
-								<input class="caldo-check" type="radio" name="project_selection" value={ "existing:" + suggestion.ID }/>
-								<span>{ suggestion.Name }</span>
-								<span class="caldo-badge">{ Text(ctx).QuickAddFound }</span>
-							</label>
-						}
-					}
-					<label class="caldo-quick-add-project-option">
-						<input class="caldo-check" type="radio" name="project_selection" value="create" checked/>
-						<span>{ Text(ctx).QuickAddFieldProject } "{ draft.Project }" { Text(ctx).QuickAddCreateProject }</span>
-						<span class="caldo-badge caldo-badge-accent">{ Text(ctx).QuickAddCreateNew }</span>
+			<div class="caldo-quick-add-corrections" data-quick-add-corrections>
+				<label class="caldo-label">
+					{ Text(ctx).QuickAddFieldTitle }
+					<input class="caldo-input" type="text" name="title" value={ draft.Title } data-quick-add-correction="title"/>
+				</label>
+				if draft.ProjectNew {
+					<label class="caldo-label">
+						{ Text(ctx).QuickAddFieldProject }
+						<input class="caldo-input" type="text" name="project_new_name" value={ draft.Project } data-quick-add-correction="project"/>
 					</label>
-				</fieldset>
-			} else {
-				<input type="hidden" name="project_id" value={ draft.ProjectID }/>
-			}
-			<input type="hidden" name="labels" value={ quickAddLabelsValue(draft) }/>
-			<input type="hidden" name="priority" value={ draft.Priority }/>
-			<input type="hidden" name="due_date" value={ draft.Due }/>
-			<input type="hidden" name="recurrence" value={ draft.Recurrence }/>
+					<fieldset class="caldo-quick-add-project-options" data-quick-add-project-suggestions>
+						<legend>{ Text(ctx).QuickAddProjectList }</legend>
+						if len(draft.ProjectSuggestions) > 0 {
+							for _, suggestion := range draft.ProjectSuggestions {
+								<label class="caldo-quick-add-project-option" data-quick-add-project-suggestion>
+									<input class="caldo-check" type="radio" name="project_selection" value={ "existing:" + suggestion.ID }/>
+									<span>{ suggestion.Name }</span>
+									<span class="caldo-badge">{ Text(ctx).QuickAddFound }</span>
+								</label>
+							}
+						}
+						<label class="caldo-quick-add-project-option">
+							<input class="caldo-check" type="radio" name="project_selection" value="create" checked/>
+							<span>{ Text(ctx).QuickAddFieldProject } "{ draft.Project }" { Text(ctx).QuickAddCreateProject }</span>
+							<span class="caldo-badge caldo-badge-accent">{ Text(ctx).QuickAddCreateNew }</span>
+						</label>
+					</fieldset>
+				} else if len(draft.ProjectOptions) > 0 {
+					<label class="caldo-label">
+						{ Text(ctx).QuickAddFieldProject }
+						<select class="caldo-select" name="project_selection" data-quick-add-correction="project">
+							<option value="">{ Text(ctx).QuickAddDefaultProject }</option>
+							for _, project := range draft.ProjectOptions {
+								<option value={ quickAddSelectProjectValue(project.ID) } selected?={ quickAddProjectSelected(draft, project.ID) }>{ project.Name }</option>
+							}
+						</select>
+					</label>
+				} else {
+					<input type="hidden" name="project_id" value={ draft.ProjectID }/>
+				}
+				<label class="caldo-label">
+					{ Text(ctx).QuickAddFieldLabels }
+					<div class="caldo-quick-add-correction-row">
+						<input class="caldo-input" type="text" name="labels" value={ quickAddLabelsValue(draft) } data-quick-add-correction="labels"/>
+						<button type="button" class="caldo-button caldo-button-ghost" data-quick-add-clear="[name='labels']">{ Text(ctx).QuickAddClearValue }</button>
+					</div>
+				</label>
+				<label class="caldo-label">
+					{ Text(ctx).QuickAddFieldDate }
+					<div class="caldo-quick-add-correction-row">
+						<input class="caldo-input" type="date" name="due_date" value={ draft.Due } data-quick-add-correction="due"/>
+						<button type="button" class="caldo-button caldo-button-ghost" data-quick-add-clear="[name='due_date']">{ Text(ctx).QuickAddClearValue }</button>
+					</div>
+				</label>
+				<label class="caldo-label">
+					{ Text(ctx).QuickAddFieldRecurrence }
+					<div class="caldo-quick-add-correction-row">
+						<input class="caldo-input" type="text" name="recurrence" value={ draft.Recurrence } data-quick-add-correction="recurrence"/>
+						<button type="button" class="caldo-button caldo-button-ghost" data-quick-add-clear="[name='recurrence']">{ Text(ctx).QuickAddClearValue }</button>
+					</div>
+				</label>
+				<label class="caldo-label">
+					{ Text(ctx).QuickAddFieldPriority }
+					<div class="caldo-quick-add-correction-row">
+						<select class="caldo-select" name="priority" data-quick-add-correction="priority">
+							<option value="" selected?={ strings.TrimSpace(draft.Priority) == "" }>{ Text(ctx).None }</option>
+							<option value="high" selected?={ strings.TrimSpace(draft.Priority) == "high" }>{ Text(ctx).PriorityHigh }</option>
+							<option value="medium" selected?={ strings.TrimSpace(draft.Priority) == "medium" }>{ Text(ctx).PriorityMedium }</option>
+							<option value="low" selected?={ strings.TrimSpace(draft.Priority) == "low" }>{ Text(ctx).PriorityLow }</option>
+						</select>
+						<button type="button" class="caldo-button caldo-button-ghost" data-quick-add-clear="[name='priority']">{ Text(ctx).QuickAddClearValue }</button>
+					</div>
+				</label>
+			</div>
 			<div class="caldo-quick-add-actions">
 				<button type="submit" class="caldo-button caldo-button-primary">{ Text(ctx).QuickAddSaveAction }</button>
 				<span class="htmx-indicator caldo-meta" aria-live="polite">{ Text(ctx).QuickAddSavePending }</span>

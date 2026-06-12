@@ -588,14 +588,29 @@ async function exerciseQuickAddOverlay(page) {
   await expect(input).toHaveValue('E2E Overlay Failed');
   await expect(page).toHaveURL(searchURL);
 
-  await input.fill('E2E Overlay Created');
+  await input.fill('E2E Overlay Chips #Work @urgent morgen !2');
   await previewForm.getByRole('button', { name: 'Vorschau' }).click();
   saveForm = overlay.locator('[data-quick-add-overlay-save-form]');
-  await expect(saveForm.locator('input[name="title"]')).toHaveValue('E2E Overlay Created');
+  await expect(overlay.locator('[data-quick-add-chips]')).toContainText('Work');
+  await expect(overlay.locator('[data-quick-add-chips]')).toContainText('urgent');
+  await expect(saveForm.locator('input[name="title"]')).toHaveValue('E2E Overlay Chips');
+  await expect(saveForm.locator('input[name="labels"]')).toHaveValue('urgent');
+  await expect(saveForm.locator('input[name="due_date"]')).toHaveValue(/\d{4}-\d{2}-\d{2}/);
+  await expect(saveForm.locator('select[name="priority"]')).toHaveValue('medium');
+  const priorityChip = overlay.locator(`[data-quick-add-chips] button[data-quick-add-clear="[name='priority']"]`);
+  await priorityChip.click();
+  await expect(saveForm.locator('select[name="priority"]')).toHaveValue('');
+  await expect(priorityChip).toBeHidden();
+  await saveForm.locator('input[name="title"]').fill('E2E Overlay Corrected');
+  await saveForm.locator('input[name="labels"]').fill('reviewed');
+  await saveForm.locator('select[name="priority"]').selectOption('low');
   await saveForm.getByRole('button', { name: 'Speichern' }).click();
   await expect(overlay).toBeHidden();
   await expect(page).toHaveURL(searchURL);
-  await waitForSearchResult(page, 'E2E Overlay Created');
+  await waitForSearchResult(page, 'E2E Overlay Corrected');
+  const correctedRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Overlay Corrected' }).first();
+  await expect(correctedRow).toContainText('reviewed');
+  await expect(correctedRow).toContainText('P3');
 
   await page.setViewportSize(mobileViewport);
   await gotoApp(page, '/search?q=Stage');

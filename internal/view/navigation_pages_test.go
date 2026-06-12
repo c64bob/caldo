@@ -236,3 +236,33 @@ func TestProjectsOverviewPageRendersCreateError(t *testing.T) {
 		}
 	}
 }
+
+func TestNavigationOverviewPageRendersLabelLinksAndCounters(t *testing.T) {
+	t.Parallel()
+
+	var output bytes.Buffer
+	err := NavigationOverviewPage("Labels", "Keine Labels", []NavigationOverviewItem{{
+		ID:       "label-long",
+		Name:     "ein-sehr-langes-label-ohne-trennzeichen-1234567890",
+		Href:     "/labels/label-long",
+		Count:    12,
+		HasCount: true,
+		Meta:     "30 Aufgaben gesamt",
+	}}).Render(context.Background(), &output)
+	if err != nil {
+		t.Fatalf("render labels page: %v", err)
+	}
+
+	body := output.String()
+	for _, want := range []string{
+		`href="/labels/label-long"`,
+		`caldo-list-link`,
+		`ein-sehr-langes-label-ohne-trennzeichen-1234567890`,
+		`30 Aufgaben gesamt`,
+		`12 offen`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("labels page missing %q in %s", want, body)
+		}
+	}
+}

@@ -923,10 +923,11 @@
 
 	.caldo-task-chip,
 	.caldo-task-state {
-		@apply inline-flex min-h-5 max-w-full items-center truncate rounded border px-1.5 text-xs leading-4;
+		@apply inline-flex min-h-5 max-w-full min-w-0 items-center rounded border px-1.5 text-xs leading-4;
 		background: var(--caldo-surface-muted);
 		border-color: var(--caldo-border);
 		color: var(--caldo-text-subtle);
+		overflow-wrap: anywhere;
 	}
 
 	.caldo-task-chip-label {
@@ -1408,8 +1409,9 @@
 	}
 
 	.caldo-list-link {
-		@apply rounded-sm font-medium underline decoration-transparent underline-offset-2 transition;
+		@apply inline-block max-w-full rounded-sm font-medium underline decoration-transparent underline-offset-2 transition;
 		color: var(--caldo-text);
+		overflow-wrap: anywhere;
 	}
 
 	.caldo-list-link:hover {

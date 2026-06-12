@@ -148,7 +148,62 @@ func LabelsPage(database *db.Database) http.HandlerFunc {
 			return
 		}
 
-		if err := view.BaseLayout("Labels", view.NavigationOverviewPage("Labels", "Keine Labels", navigationLabelsView(snapshot.Labels))).Render(r.Context(), w); err != nil {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		ctx := view.WithNavigation(r.Context(), navigationSnapshotView(snapshot))
+		if err := view.BaseLayout("Labels", view.NavigationOverviewPage("Labels", "Keine Labels", navigationLabelsView(snapshot.Labels))).Render(ctx, w); err != nil {
+			http.Error(w, "render page", http.StatusInternalServerError)
+		}
+	}
+}
+
+// LabelTasksPage renders the task list for one label.
+func LabelTasksPage(deps dateViewDependencies) http.HandlerFunc {
+	nowFn := withDefaultNow(deps.now)
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if deps.database == nil {
+			renderPageError(w, r, "Labels", "Label laden", http.StatusInternalServerError)
+			return
+		}
+
+		labelID := strings.TrimSpace(chi.URLParam(r, "labelID"))
+		if labelID == "" {
+			http.Error(w, "label id is required", http.StatusBadRequest)
+			return
+		}
+
+		label, err := deps.database.LoadLabelDetail(r.Context(), labelID)
+		if err != nil {
+			if errors.Is(err, db.ErrLabelNotFound) {
+				renderPageError(w, r, "Label", "Label laden", http.StatusNotFound)
+				return
+			}
+			renderPageError(w, r, "Label", "Label laden", http.StatusInternalServerError)
+			return
+		}
+
+		reference := nowFn()
+		tasks, err := deps.database.ListLabelTasks(r.Context(), label.ID, 200)
+		if err != nil {
+			renderPageError(w, r, label.Name, "Label laden", http.StatusInternalServerError)
+			return
+		}
+
+		projectOptions, err := taskEditProjectOptions(r.Context(), deps.database)
+		if err != nil {
+			renderPageError(w, r, label.Name, "Label laden", http.StatusInternalServerError)
+			return
+		}
+
+		snapshot, err := deps.database.LoadNavigationSnapshot(r.Context(), reference)
+		if err != nil {
+			renderPageError(w, r, label.Name, "Label laden", http.StatusInternalServerError)
+			return
+		}
+
+		ctx := view.WithNavigation(r.Context(), navigationSnapshotViewWithActiveLabel(snapshot, label.ID))
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := view.BaseLayout(label.Name, view.DateScopedTasksPage(label.Name, "Keine Aufgaben mit diesem Label.", datedTaskRows(tasks, projectOptions, reference), view.InlineTaskCreateView{})).Render(ctx, w); err != nil {
 			http.Error(w, "render page", http.StatusInternalServerError)
 		}
 	}

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"caldo/internal/model"
 )
 
 // NavigationSnapshot contains factual counts and entries for the app shell.
@@ -141,13 +143,18 @@ ORDER BY p.is_default DESC, p.display_name COLLATE NOCASE ASC, p.id ASC;
 
 func (d *Database) listNavigationLabels(ctx context.Context) ([]NavigationListItem, error) {
 	rows, err := d.Conn.QueryContext(ctx, `
-SELECT l.id, l.name, COUNT(t.id)
+SELECT
+	l.id,
+	l.name,
+	COUNT(CASE WHEN t.id IS NOT NULL AND LOWER(t.status) != 'completed' THEN 1 END),
+	COUNT(t.id)
 FROM labels l
 LEFT JOIN task_labels tl ON tl.label_id = l.id
-LEFT JOIN tasks t ON t.id = tl.task_id AND t.status != 'completed'
+LEFT JOIN tasks t ON t.id = tl.task_id
+WHERE LOWER(l.name) != LOWER(?)
 GROUP BY l.id, l.name
-ORDER BY l.name COLLATE NOCASE ASC;
-`)
+ORDER BY l.name COLLATE NOCASE ASC, l.id ASC;
+`, model.ReservedFavoriteCategory)
 	if err != nil {
 		return nil, fmt.Errorf("load navigation snapshot: list labels: %w", err)
 	}
@@ -156,7 +163,7 @@ ORDER BY l.name COLLATE NOCASE ASC;
 	items := make([]NavigationListItem, 0)
 	for rows.Next() {
 		var item NavigationListItem
-		if err := rows.Scan(&item.ID, &item.Name, &item.OpenTaskCount); err != nil {
+		if err := rows.Scan(&item.ID, &item.Name, &item.OpenTaskCount, &item.TaskCount); err != nil {
 			return nil, fmt.Errorf("load navigation snapshot: scan label: %w", err)
 		}
 		items = append(items, item)

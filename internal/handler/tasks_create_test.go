@@ -188,6 +188,54 @@ VALUES ('project-work', '/cal/work/', 'Work', 'fullscan', CURRENT_TIMESTAMP, CUR
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM projects WHERE display_name = 'Work';`, 1)
 }
 
+func TestTaskCreateQuickAddUsesSelectedProjectSuggestion(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskCreateHandlerTest(t)
+	seedTaskCreateHandlerProject(t, database)
+
+	key := bytes.Repeat([]byte{0x14}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example/caldav", Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+	if _, err := database.Conn.ExecContext(context.Background(), `
+INSERT INTO projects (id, calendar_href, display_name, sync_strategy, created_at, updated_at)
+VALUES ('project-work', '/cal/work/', 'Work', 'fullscan', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+`); err != nil {
+		t.Fatalf("seed suggested project: %v", err)
+	}
+
+	todos := &stubTaskCreateTodoClient{etag: `"etag-suggestion"`}
+	calendar := &fakeProjectCreateCalendarClient{created: caldav.Calendar{Href: "/cal/new-work/", DisplayName: "Wrok"}}
+	h := TaskCreate(taskCreateDependencies{database: database, encryptionKey: key, todos: todos, calendar: calendar})
+
+	form := url.Values{
+		"title":             {"Plan release"},
+		"project_selection": {"existing:project-work"},
+		"project_new_name":  {"Wrok"},
+	}
+	req := httptest.NewRequest(http.MethodPost, "/tasks", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+	if calendar.createCalls != 0 {
+		t.Fatalf("expected selected suggestion to skip remote project create, got %d calls", calendar.createCalls)
+	}
+	if !strings.HasPrefix(todos.href, "/cal/work/") {
+		t.Fatalf("expected task in selected work project, got href %q", todos.href)
+	}
+	var projectName string
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT project_name FROM tasks WHERE title = 'Plan release';`).Scan(&projectName); err != nil {
+		t.Fatalf("query selected suggestion task: %v", err)
+	}
+	if projectName != "Work" {
+		t.Fatalf("unexpected project name: got %q want Work", projectName)
+	}
+}
+
 func TestTaskCreateRejectsRecurrenceWithCRLF(t *testing.T) {
 	t.Parallel()
 	database := openSQLiteForTaskCreateHandlerTest(t)

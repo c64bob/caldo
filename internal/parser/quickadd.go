@@ -11,15 +11,22 @@ import (
 
 // QuickAddDraft contains parsed quick-add values for preview and persistence.
 type QuickAddDraft struct {
-	Title             string
-	ProjectID         string
-	Project           string
-	ProjectNew        bool
-	ProjectUnresolved bool
-	Labels            []string
-	Due               string
-	Recurrence        string
-	Priority          string
+	Title              string
+	ProjectID          string
+	Project            string
+	ProjectNew         bool
+	ProjectUnresolved  bool
+	ProjectSuggestions []QuickAddProjectSuggestion
+	Labels             []string
+	Due                string
+	Recurrence         string
+	Priority           string
+}
+
+// QuickAddProjectSuggestion contains one existing project suggestion for an unresolved project token.
+type QuickAddProjectSuggestion struct {
+	ID   string
+	Name string
 }
 
 // ParseQuickAdd extracts supported quick-add tokens and remaining title text.

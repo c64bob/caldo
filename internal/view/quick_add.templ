@@ -80,10 +80,23 @@ templ quickAddPreviewContent(draft parser.QuickAddDraft) {
 			<input type="hidden" name="title" value={ draft.Title }/>
 			if draft.ProjectNew {
 				<input type="hidden" name="project_new_name" value={ draft.Project }/>
-				<label class="caldo-quick-add-create-project">
-					<input class="caldo-check" type="checkbox" name="create_project" value="1" checked/>
-					<span>{ Text(ctx).QuickAddFieldProject } "{ draft.Project }" { Text(ctx).QuickAddCreateProject }</span>
-				</label>
+				<fieldset class="caldo-quick-add-project-options" data-quick-add-project-suggestions>
+					<legend>{ Text(ctx).QuickAddProjectList }</legend>
+					if len(draft.ProjectSuggestions) > 0 {
+						for _, suggestion := range draft.ProjectSuggestions {
+							<label class="caldo-quick-add-project-option" data-quick-add-project-suggestion>
+								<input class="caldo-check" type="radio" name="project_selection" value={ "existing:" + suggestion.ID }/>
+								<span>{ suggestion.Name }</span>
+								<span class="caldo-badge">{ Text(ctx).QuickAddFound }</span>
+							</label>
+						}
+					}
+					<label class="caldo-quick-add-project-option">
+						<input class="caldo-check" type="radio" name="project_selection" value="create" checked/>
+						<span>{ Text(ctx).QuickAddFieldProject } "{ draft.Project }" { Text(ctx).QuickAddCreateProject }</span>
+						<span class="caldo-badge caldo-badge-accent">{ Text(ctx).QuickAddCreateNew }</span>
+					</label>
+				</fieldset>
 			} else {
 				<input type="hidden" name="project_id" value={ draft.ProjectID }/>
 			}

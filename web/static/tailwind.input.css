@@ -532,11 +532,27 @@
 		border-color: var(--caldo-border);
 	}
 
-	.caldo-quick-add-create-project {
-		@apply flex min-w-0 items-start gap-2 rounded-md border p-3 text-sm;
+	.caldo-quick-add-project-options {
+		@apply grid gap-2 rounded-md border p-3 text-sm;
 		background: var(--caldo-surface-muted);
 		border-color: var(--caldo-border);
 		color: var(--caldo-text);
+	}
+
+	.caldo-quick-add-project-options legend {
+		@apply px-1 text-xs font-semibold uppercase tracking-normal;
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-quick-add-project-option {
+		@apply flex min-w-0 items-center gap-2 rounded-md border px-3 py-2;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-quick-add-project-option:has(input:checked) {
+		border-color: var(--caldo-accent);
+		background: var(--caldo-accent-muted);
 	}
 
 	.caldo-list {

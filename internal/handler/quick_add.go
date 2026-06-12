@@ -14,6 +14,8 @@ type quickAddDependencies struct {
 	database *db.Database
 }
 
+const quickAddProjectSuggestionLimit = 5
+
 // QuickAddPage renders quick-add with optional preview.
 func QuickAddPage(deps quickAddDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -57,6 +59,9 @@ func QuickAddPreview(deps quickAddDependencies) http.HandlerFunc {
 			} else if tokenErr == sql.ErrNoRows {
 				draft.Project = requestedProject
 				draft.ProjectNew = true
+				if projects, projectErr := deps.database.ListProjectOptions(r.Context()); projectErr == nil {
+					draft.ProjectSuggestions = quickAddProjectSuggestions(projects, requestedProject)
+				}
 			}
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -64,4 +69,45 @@ func QuickAddPreview(deps quickAddDependencies) http.HandlerFunc {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
+}
+
+func quickAddProjectSuggestions(projects []db.ProjectOption, requestedProject string) []parser.QuickAddProjectSuggestion {
+	requested := normalizeQuickAddSuggestionText(requestedProject)
+	if requested == "" {
+		return nil
+	}
+
+	matches := make([]parser.QuickAddProjectSuggestion, 0, quickAddProjectSuggestionLimit)
+	seen := make(map[string]struct{}, len(projects))
+	appendSuggestion := func(project db.ProjectOption) {
+		id := strings.TrimSpace(project.ID)
+		name := strings.TrimSpace(project.DisplayName)
+		if id == "" || name == "" || len(matches) >= quickAddProjectSuggestionLimit {
+			return
+		}
+		if _, ok := seen[id]; ok {
+			return
+		}
+		seen[id] = struct{}{}
+		matches = append(matches, parser.QuickAddProjectSuggestion{ID: id, Name: name})
+	}
+
+	for _, project := range projects {
+		name := normalizeQuickAddSuggestionText(project.DisplayName)
+		if name == "" {
+			continue
+		}
+		if strings.Contains(name, requested) || strings.Contains(requested, name) {
+			appendSuggestion(project)
+		}
+	}
+	for _, project := range projects {
+		appendSuggestion(project)
+	}
+
+	return matches
+}
+
+func normalizeQuickAddSuggestionText(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
 }

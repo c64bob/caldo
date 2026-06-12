@@ -134,6 +134,7 @@ type Texts struct {
 	QuickAddFieldRecurrence  string
 	QuickAddFieldPriority    string
 	QuickAddCreateProject    string
+	QuickAddProjectList      string
 	QuickAddSaveAction       string
 	QuickAddSavePending      string
 	QuickAddDefaultProject   string
@@ -246,6 +247,7 @@ var germanTexts = Texts{
 	QuickAddFieldRecurrence:  "Wiederholung",
 	QuickAddFieldPriority:    "Priorität",
 	QuickAddCreateProject:    "als CalDAV-Kalender anlegen",
+	QuickAddProjectList:      "Projektvorschläge",
 	QuickAddSaveAction:       "Speichern",
 	QuickAddSavePending:      "Speichern ...",
 	QuickAddDefaultProject:   "Default-Projekt",
@@ -358,6 +360,7 @@ var englishTexts = Texts{
 	QuickAddFieldRecurrence:  "Recurrence",
 	QuickAddFieldPriority:    "Priority",
 	QuickAddCreateProject:    "as CalDAV calendar",
+	QuickAddProjectList:      "Project suggestions",
 	QuickAddSaveAction:       "Save",
 	QuickAddSavePending:      "Saving ...",
 	QuickAddDefaultProject:   "Default project",

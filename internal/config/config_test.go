@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -14,6 +16,10 @@ func TestLoadFromLookup(t *testing.T) {
 
 	validKey := make([]byte, 32)
 	encodedKey := base64.StdEncoding.EncodeToString(validKey)
+	keyFile := filepath.Join(t.TempDir(), "caldo_key")
+	if err := os.WriteFile(keyFile, []byte(encodedKey+"\n"), 0o600); err != nil {
+		t.Fatalf("write key file: %v", err)
+	}
 
 	tests := []struct {
 		name      string
@@ -39,6 +45,23 @@ func TestLoadFromLookup(t *testing.T) {
 				if cfg.DBPath != defaultDBPath {
 					t.Fatalf("unexpected db path: %s", cfg.DBPath)
 				}
+			},
+		},
+		{
+			name: "loads encryption key from file when direct key missing",
+			env: map[string]string{
+				"BASE_URL":            "https://todos.example.com",
+				"PROXY_USER_HEADER":   "X-Forwarded-User",
+				"ENCRYPTION_KEY_FILE": keyFile,
+			},
+		},
+		{
+			name: "direct encryption key ignores stale key file path",
+			env: map[string]string{
+				"BASE_URL":            "https://todos.example.com",
+				"PROXY_USER_HEADER":   "X-Forwarded-User",
+				"ENCRYPTION_KEY":      encodedKey,
+				"ENCRYPTION_KEY_FILE": "/run/secrets/caldo_key",
 			},
 		},
 		{
@@ -90,6 +113,15 @@ func TestLoadFromLookup(t *testing.T) {
 				"PROXY_USER_HEADER": "X-Forwarded-User",
 			},
 			assertErr: validationError("ENCRYPTION_KEY", "missing"),
+		},
+		{
+			name: "fails when encryption key file cannot be read",
+			env: map[string]string{
+				"BASE_URL":            "https://todos.example.com",
+				"PROXY_USER_HEADER":   "X-Forwarded-User",
+				"ENCRYPTION_KEY_FILE": filepath.Join(t.TempDir(), "missing_key"),
+			},
+			assertErr: validationError("ENCRYPTION_KEY_FILE", "read_failed"),
 		},
 		{
 			name: "fails when encryption key is not base64",

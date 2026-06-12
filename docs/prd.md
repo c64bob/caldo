@@ -235,7 +235,7 @@ Die Serverkonfiguration erfolgt über Environment-Variablen.
 Pflichtvariablen:
 
 - `BASE_URL`
-- `ENCRYPTION_KEY`
+- `ENCRYPTION_KEY` oder `ENCRYPTION_KEY_FILE`
 - `PROXY_USER_HEADER`
 
 CalDAV-Zugangsdaten werden nicht dauerhaft über Environment-Variablen bereitgestellt, sondern ausschließlich verschlüsselt in SQLite gespeichert.
@@ -243,7 +243,9 @@ CalDAV-Zugangsdaten werden nicht dauerhaft über Environment-Variablen bereitges
 ### 6.4 Verschlüsselung
 
 - CalDAV-Zugangsdaten müssen verschlüsselt in SQLite gespeichert werden.
-- Der Verschlüsselungsschlüssel wird über `ENCRYPTION_KEY` bereitgestellt.
+- Der Verschlüsselungsschlüssel wird primär über `ENCRYPTION_KEY` bereitgestellt.
+- Alternativ darf `ENCRYPTION_KEY_FILE` auf eine Datei mit demselben Base64-Schlüssel zeigen, z. B. für Docker Secrets.
+- Wenn beide gesetzt sind, hat `ENCRYPTION_KEY` Vorrang.
 - Ohne gesetzten Verschlüsselungsschlüssel darf die App nicht starten.
 
 ### 6.5 HTTPS
@@ -330,7 +332,7 @@ Der Setup-Wizard muss mindestens folgende Schritte enthalten:
 
 1. Systemcheck:
    - `BASE_URL` ist gesetzt.
-   - `ENCRYPTION_KEY` ist gesetzt.
+   - `ENCRYPTION_KEY` oder `ENCRYPTION_KEY_FILE` ist gesetzt.
    - `PROXY_USER_HEADER` ist gesetzt.
    - Reverse-Proxy-Auth-Header wird erkannt.
    - Die HTTPS-Anforderung wird gemäß Abschnitt 6.5 geprüft.
@@ -1340,7 +1342,7 @@ Das MVP gilt im Bereich Betrieb als erfüllt, wenn:
 - Docker-Compose-Referenzdeployment vorhanden ist.
 - SQLite verwendet wird.
 - Pflicht-Environment-Variablen validiert werden.
-- Ohne `ENCRYPTION_KEY` kein Start erfolgt.
+- Ohne konfigurierten Verschlüsselungsschlüssel (`ENCRYPTION_KEY` oder `ENCRYPTION_KEY_FILE`) kein Start erfolgt.
 - HTTPS-only-Verhalten durchgesetzt wird.
 - Healthcheck verfügbar ist.
 - Strukturierte Logs ohne sensible Inhalte erzeugt werden.

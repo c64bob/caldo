@@ -91,7 +91,10 @@ func LoadFromLookup(lookup func(key string) (string, bool)) (Config, error) {
 	}
 	cfg.ProxyUserHeader = proxyUserHeader
 
-	encryptionKeyRaw := strings.TrimSpace(getenv(lookup, "ENCRYPTION_KEY"))
+	encryptionKeyRaw, err := loadEncryptionKeyRaw(lookup)
+	if err != nil {
+		return Config{}, err
+	}
 	if encryptionKeyRaw == "" {
 		return Config{}, &ValidationError{Field: "ENCRYPTION_KEY", Code: "missing"}
 	}
@@ -126,4 +129,22 @@ func getenv(lookup func(key string) (string, bool), key string) string {
 	}
 
 	return value
+}
+
+func loadEncryptionKeyRaw(lookup func(key string) (string, bool)) (string, error) {
+	if direct := strings.TrimSpace(getenv(lookup, "ENCRYPTION_KEY")); direct != "" {
+		return direct, nil
+	}
+
+	keyFile := strings.TrimSpace(getenv(lookup, "ENCRYPTION_KEY_FILE"))
+	if keyFile == "" {
+		return "", nil
+	}
+
+	contents, err := os.ReadFile(keyFile)
+	if err != nil {
+		return "", &ValidationError{Field: "ENCRYPTION_KEY_FILE", Code: "read_failed", Err: fmt.Errorf("read encryption key file: %w", err)}
+	}
+
+	return strings.TrimSpace(string(contents)), nil
 }

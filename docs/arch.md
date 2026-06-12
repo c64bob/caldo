@@ -179,7 +179,7 @@ Die Serverkonfiguration erfolgt über Environment-Variablen.
 Pflichtvariablen:
 
 - `BASE_URL`
-- `ENCRYPTION_KEY`
+- `ENCRYPTION_KEY` oder `ENCRYPTION_KEY_FILE`
 - `PROXY_USER_HEADER`
 
 Optionale Variablen:
@@ -205,7 +205,7 @@ Harter Startabbruch erfolgt bei:
 - fehlendem `BASE_URL`
 - `BASE_URL` ohne `https://`
 - fehlendem `PROXY_USER_HEADER`
-- fehlendem oder formal ungültigem `ENCRYPTION_KEY`
+- fehlendem oder formal ungültigem Verschluesselungsschluessel (`ENCRYPTION_KEY` oder `ENCRYPTION_KEY_FILE`)
 - Migrationsfehler
 - Checksum-Abweichung bereits angewendeter Migrationen
 - nicht erwerbbarem Startup-Lock
@@ -218,7 +218,7 @@ Harter Startabbruch erfolgt bei:
 
 1. **Environment-Variablen laden und validieren (`config.Load`).**
    - `BASE_URL` fehlt oder beginnt nicht mit `https://` → `os.Exit(1)`.
-   - `ENCRYPTION_KEY` fehlt, ist kein gültiges Base64 oder decodiert nicht auf exakt 32 Bytes → `os.Exit(1)`.
+   - `ENCRYPTION_KEY` beziehungsweise `ENCRYPTION_KEY_FILE` fehlt, ist kein gültiges Base64 oder decodiert nicht auf exakt 32 Bytes → `os.Exit(1)`.
    - `PROXY_USER_HEADER` fehlt → `os.Exit(1)`.
 2. **Startup-Lock erwerben (`syscall.Flock`).**
    - Lock nicht erwerbbar → `os.Exit(1)`.
@@ -731,6 +731,10 @@ caldo_backup_pre_migration_<version>_<timestamp>.db
 - direkter AES-256-Schlüssel
 - keine Passphrase
 - keine KDF
+
+Alternativ kann `ENCRYPTION_KEY_FILE` auf eine Datei zeigen, deren Inhalt dasselbe Base64-Format hat.
+Das ist nur ein Secret-Transportmechanismus, nicht ein anderes Key-Format.
+Wenn `ENCRYPTION_KEY` nicht leer gesetzt ist, wird `ENCRYPTION_KEY_FILE` ignoriert.
 
 Ungültige Formen führen zum Startabbruch.
 
@@ -2171,6 +2175,7 @@ Niemals, auch nicht auf Debug-Level:
 - CalDAV-Passwort
 - App-Token
 - `ENCRYPTION_KEY`
+- `ENCRYPTION_KEY_FILE`-Inhalt
 - `session_id`
 - `csrf_token`
 - Proxy-Auth-Header-Werte
@@ -2344,7 +2349,8 @@ Empfohlene Dateipfade innerhalb `/data`:
 | Variable | Pflicht | Beispiel |
 |---|---|---|
 | `BASE_URL` | ja | `https://todos.example.com` |
-| `ENCRYPTION_KEY` | ja | `<base64, 32 Bytes>` |
+| `ENCRYPTION_KEY` | ja, alternativ `ENCRYPTION_KEY_FILE` | `<base64, 32 Bytes>` |
+| `ENCRYPTION_KEY_FILE` | nein | `/run/secrets/caldo_key` |
 | `PROXY_USER_HEADER` | ja | `X-Authentik-Username` |
 | `LOG_LEVEL` | nein | `info` (Default) |
 | `PORT` | nein | `8080` (Default) |
@@ -2444,7 +2450,7 @@ Diese Invarianten dürfen in der Implementierung nicht verletzt werden.
 3. CSRF schützt alle mutierenden Methoden.
 4. `session_id` ist `HttpOnly`, `Secure`, `SameSite=Strict`.
 5. `csrf_token` ist JS-lesbar, `Secure`, `SameSite=Strict`.
-6. `ENCRYPTION_KEY` ist Base64-kodierter 32-Byte-Key.
+6. `ENCRYPTION_KEY` beziehungsweise der Inhalt von `ENCRYPTION_KEY_FILE` ist ein Base64-kodierter 32-Byte-Key.
 7. AES-256-GCM ist der einzige Secret-Algorithmus im MVP.
 
 ### 28.4 Datenschutz

@@ -61,7 +61,7 @@ Die folgenden Abschnitte dokumentieren den aktuellen Stand von Caldo für Betrie
 - Docker Engine + Docker Compose Plugin (für Referenzdeployment)
 - Reverse Proxy mit vorgeschalteter Authentifizierung und TLS-Terminierung
 - Gültige HTTPS-Basis-URL für die Instanz (`BASE_URL`)
-- 32-Byte-Schlüssel als Base64 für `ENCRYPTION_KEY`
+- 32-Byte-Schlüssel als Base64 für `ENCRYPTION_KEY` oder als Datei über `ENCRYPTION_KEY_FILE`
 
 ### 4) Installation
 
@@ -92,7 +92,7 @@ Pflichtvariablen:
 | Variable | Pflicht | Beschreibung |
 |---|---:|---|
 | `BASE_URL` | Ja | Externe HTTPS-Basis-URL der Instanz (muss mit `https://` beginnen). |
-| `ENCRYPTION_KEY` | Ja | Base64-Schlüssel, der auf exakt 32 Byte decodiert. |
+| `ENCRYPTION_KEY` | Ja, alternativ `ENCRYPTION_KEY_FILE` | Base64-Schlüssel, der auf exakt 32 Byte decodiert. Hat Vorrang vor `ENCRYPTION_KEY_FILE`. |
 | `PROXY_USER_HEADER` | Ja | Headername, über den der Reverse Proxy den Benutzer übergibt. |
 
 Optionale Variablen:
@@ -102,6 +102,7 @@ Optionale Variablen:
 | `LOG_LEVEL` | Nein | Loglevel (Default: `info`). |
 | `PORT` | Nein | HTTP-Port im Container/Prozess (Default: `8080`). |
 | `DB_PATH` | Nein | Pfad zur SQLite-Datei (Default: `/data/caldo.db`). |
+| `ENCRYPTION_KEY_FILE` | Nein | Pfad zu einer Datei mit dem Base64-Schlüssel, z. B. `/run/secrets/caldo_key`. Wird nur gelesen, wenn `ENCRYPTION_KEY` leer ist. |
 
 > Wichtiger Hinweis: `BASE_URL` muss immer eine `https://`-URL sein – auch dann, wenn der Reverse Proxy intern per HTTP an Caldo weiterleitet.
 
@@ -115,6 +116,8 @@ LOG_LEVEL=info
 PORT=8080
 DB_PATH=/data/caldo.db
 ```
+
+Wenn eine vorhandene Deployment-Konfiguration noch `ENCRYPTION_KEY_FILE=/run/secrets/caldo_key` setzt, aber der Secret-Mount nicht existiert, reicht ein nicht-leeres `ENCRYPTION_KEY` in `.env`: der direkte Wert hat Vorrang und die fehlende Datei wird ignoriert.
 
 ### 6) Nutzung
 
@@ -190,7 +193,7 @@ Teststrategie:
 
 ### 11) Troubleshooting
 
-- **Start schlägt fehl:** Pflicht-ENVs (`BASE_URL`, `ENCRYPTION_KEY`, `PROXY_USER_HEADER`) prüfen.
+- **Start schlägt fehl:** Pflicht-ENVs (`BASE_URL`, `ENCRYPTION_KEY` oder `ENCRYPTION_KEY_FILE`, `PROXY_USER_HEADER`) prüfen.
 - **Setup blockiert:** Reverse-Proxy-Auth-Header und HTTPS-Termination verifizieren.
 - **CalDAV-Probleme:** Erreichbarkeit, Credentials und Kalenderberechtigungen kontrollieren.
 - **Konflikte bei Änderungen:** Konfliktstatus im UI prüfen und bewusst manuell auflösen statt blind zu überschreiben.

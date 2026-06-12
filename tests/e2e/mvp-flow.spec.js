@@ -150,7 +150,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await inlineEditRow.getByRole('button', { name: 'Bearbeiten' }).click();
   inlineEditForm = inlineEditRow.locator('[data-inline-task-edit-form]');
   await inlineEditForm.locator('[name="title"]').fill('E2E Inline Edited');
-  await inlineEditForm.locator('[name="description"]').fill('edited inline through browser');
+  await inlineEditForm.locator('[name="description"]').fill('edited inline through browser https://example.com/browser');
   await inlineEditForm.locator('[name="due_date"]').fill('2099-06-12');
   await inlineEditForm.locator('[name="priority"]').selectOption('5');
   await inlineEditForm.locator('[name="labels"]').fill('browser, inline');
@@ -159,6 +159,8 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first()).toBeVisible();
   inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
   await expect(inlineEditRow).toContainText('edited inline through browser');
+  await expect(inlineEditRow.locator('.caldo-task-description-link[href="https://example.com/browser"]')).toHaveAttribute('target', '_blank');
+  await expect(inlineEditRow.locator('.caldo-task-description-link[href="https://example.com/browser"]')).toHaveAttribute('rel', 'noopener noreferrer');
   await expect(inlineEditRow).toContainText('Fällig 2099-06-12');
   await expect(inlineEditRow).toContainText('P2');
   await expect(inlineEditRow).toContainText('browser');

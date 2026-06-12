@@ -64,6 +64,67 @@ func TestTaskRowRendersTodoistLikeMetadataAndCompletionControl(t *testing.T) {
 	}
 }
 
+func TestTaskRowRendersDescriptionURLsAsSafeLinks(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	description := "Bitte https://example.com/browser prüfen."
+	component := TaskRow(TaskRowView{
+		ID:            "task-link",
+		ProjectID:     "project-1",
+		Title:         "Link Aufgabe",
+		Description:   description,
+		Status:        "needs-action",
+		SyncStatus:    "synced",
+		ServerVersion: 2,
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render task row: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`Bitte `,
+		`<a href="https://example.com/browser" target="_blank" rel="noopener noreferrer" class="caldo-task-description-link">https://example.com/browser</a>`,
+		` prüfen.`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected linked description to include %q in %s", want, output)
+		}
+	}
+	if strings.Count(output, description) < 2 {
+		t.Fatalf("expected edit controls to preserve raw description %q in %s", description, output)
+	}
+}
+
+func TestTaskRowLeavesPlainDescriptionTextUnlinked(t *testing.T) {
+	t.Parallel()
+
+	component := TaskRow(TaskRowView{
+		ID:            "task-plain",
+		Title:         "Plain Aufgabe",
+		Description:   "Nur Text ohne URL",
+		Status:        "needs-action",
+		SyncStatus:    "synced",
+		ServerVersion: 1,
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(context.Background(), &rendered); err != nil {
+		t.Fatalf("render task row: %v", err)
+	}
+
+	output := rendered.String()
+	if !strings.Contains(output, `Nur Text ohne URL`) {
+		t.Fatalf("expected plain description text in %s", output)
+	}
+	if strings.Contains(output, `caldo-task-description-link`) || strings.Contains(output, `<a href=`) {
+		t.Fatalf("plain description must not render as link: %s", output)
+	}
+}
+
 func TestTaskRowRendersCompletedReopenControlAndConflictState(t *testing.T) {
 	t.Parallel()
 

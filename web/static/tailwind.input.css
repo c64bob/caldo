@@ -733,6 +733,22 @@
 		overflow-wrap: anywhere;
 	}
 
+	.caldo-task-description-link {
+		@apply rounded-sm underline decoration-transparent underline-offset-2 transition;
+		color: var(--caldo-accent);
+	}
+
+	.caldo-task-description-link:hover,
+	.caldo-task-description-link:focus-visible {
+		text-decoration-color: var(--caldo-accent);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+	}
+
+	.caldo-task-description-link:focus-visible {
+		outline-color: var(--caldo-focus);
+	}
+
 	.caldo-task-meta-line,
 	.caldo-task-attachments {
 		@apply flex min-w-0 flex-wrap items-center gap-1.5;

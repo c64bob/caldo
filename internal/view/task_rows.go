@@ -80,6 +80,11 @@ type taskSelectOption struct {
 	Label string
 }
 
+type taskDescriptionSegment struct {
+	Text string
+	URL  string
+}
+
 func taskRowTitle(task TaskRowView) string {
 	title := strings.TrimSpace(task.Title)
 	if title == "" {
@@ -90,6 +95,105 @@ func taskRowTitle(task TaskRowView) string {
 
 func taskRowDescription(task TaskRowView) string {
 	return strings.TrimSpace(task.Description)
+}
+
+func taskDescriptionSegments(description string) []taskDescriptionSegment {
+	description = strings.TrimSpace(description)
+	if description == "" {
+		return nil
+	}
+
+	segments := make([]taskDescriptionSegment, 0, 3)
+	remaining := description
+	for len(remaining) > 0 {
+		index, schemeLen := nextDescriptionURLIndex(remaining)
+		if index < 0 {
+			segments = append(segments, taskDescriptionSegment{Text: remaining})
+			break
+		}
+		if index > 0 {
+			segments = append(segments, taskDescriptionSegment{Text: remaining[:index]})
+		}
+
+		candidateEnd := index
+		for candidateEnd < len(remaining) && !unicode.IsSpace(rune(remaining[candidateEnd])) {
+			candidateEnd++
+		}
+		candidate := remaining[index:candidateEnd]
+		urlText, suffix := trimDescriptionURL(candidate)
+		if descriptionURLIsSafe(urlText, schemeLen) {
+			segments = append(segments, taskDescriptionSegment{Text: urlText, URL: urlText})
+			if suffix != "" {
+				segments = append(segments, taskDescriptionSegment{Text: suffix})
+			}
+			remaining = remaining[candidateEnd:]
+			continue
+		}
+
+		plainEnd := index + schemeLen
+		segments = append(segments, taskDescriptionSegment{Text: remaining[index:plainEnd]})
+		remaining = remaining[plainEnd:]
+	}
+
+	return mergeTaskDescriptionSegments(segments)
+}
+
+func nextDescriptionURLIndex(text string) (int, int) {
+	httpIndex := strings.Index(text, "http://")
+	httpsIndex := strings.Index(text, "https://")
+	switch {
+	case httpIndex < 0:
+		return httpsIndex, len("https://")
+	case httpsIndex < 0:
+		return httpIndex, len("http://")
+	case httpIndex < httpsIndex:
+		return httpIndex, len("http://")
+	default:
+		return httpsIndex, len("https://")
+	}
+}
+
+func trimDescriptionURL(candidate string) (string, string) {
+	linkEnd := len(candidate)
+	for linkEnd > 0 {
+		switch candidate[linkEnd-1] {
+		case '.', ',', ';', ':', '!', '?', ')', ']', '}':
+			linkEnd--
+		default:
+			return candidate[:linkEnd], candidate[linkEnd:]
+		}
+	}
+	return candidate, ""
+}
+
+func descriptionURLIsSafe(candidate string, schemeLen int) bool {
+	if len(candidate) <= schemeLen {
+		return false
+	}
+	parsed, err := url.Parse(candidate)
+	if err != nil {
+		return false
+	}
+	if parsed.Host == "" {
+		return false
+	}
+	return parsed.Scheme == "http" || parsed.Scheme == "https"
+}
+
+func mergeTaskDescriptionSegments(segments []taskDescriptionSegment) []taskDescriptionSegment {
+	merged := make([]taskDescriptionSegment, 0, len(segments))
+	for _, segment := range segments {
+		if segment.Text == "" {
+			continue
+		}
+		last := len(merged) - 1
+		if segment.URL == "" && last >= 0 && merged[last].URL == "" {
+			merged[last].Text += segment.Text
+			continue
+		}
+		merged = append(merged, segment)
+	}
+	return merged
 }
 
 func taskIsCompleted(task TaskRowView) bool {

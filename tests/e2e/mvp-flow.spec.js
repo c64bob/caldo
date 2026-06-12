@@ -100,6 +100,15 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await searchSaveFilterForm.getByRole('button', { name: 'Filter anlegen' }).click();
   await expect(page.locator('[data-saved-filter-list]').filter({ hasText: 'E2E Work Filter' })).toBeVisible();
   await expect(page.locator('[data-nav-user-filters] a').filter({ hasText: 'E2E Work Filter' })).toHaveCount(2);
+  await gotoApp(page, '/filters');
+  const invalidFilterCreateForm = page.locator('[data-saved-filter-create-form]');
+  await invalidFilterCreateForm.locator('[name="name"]').fill('E2E Broken Filter');
+  await invalidFilterCreateForm.locator('[name="query"]').fill('today AND (');
+  await invalidFilterCreateForm.locator('[name="favorite"]').check();
+  await invalidFilterCreateForm.getByRole('button', { name: 'Filter anlegen' }).click();
+  await expect(page.locator('[data-saved-filter-create-error]')).toContainText('filterquery ist ungültig');
+  await expect(page.locator('[data-saved-filter-list]').filter({ hasText: 'E2E Broken Filter' })).toHaveCount(0);
+  await expect(page.locator('[data-nav-user-filters] a').filter({ hasText: 'E2E Broken Filter' })).toHaveCount(0);
   await gotoApp(page, '/today');
   await captureBaselineSet(page, testInfo, 'today');
   await gotoApp(page, '/upcoming');

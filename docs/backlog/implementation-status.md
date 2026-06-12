@@ -7,7 +7,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 ## Zusammenfassung
 
 - Bestehende Stories: 89 `Umgesetzt`, 0 `Teilweise umgesetzt`, 0 `Offen`.
-- Neue Planungsstories: 24 `Umgesetzt`, 15 `Offen`.
+- Neue Planungsstories: 25 `Umgesetzt`, 14 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
 ## Legende
@@ -140,7 +140,7 @@ Die neuen Epics 23 bis 28 brechen die verbleibende UI- und QA-Arbeit in kleinere
 | 26.1 | Umgesetzt | `internal/db/navigation.go`, `internal/handler/navigation_pages.go`, `internal/view/layout.templ`, `web/static/tailwind.input.css` und `tests/e2e/mvp-flow.spec.js` listen Projekte stabil in der Sidebar, zeigen offene Aufgabenzaehler, verlinken auf `/projects/{projectID}`, markieren die aktive Projektansicht und halten lange Projektlisten scrollbar. |
 | 26.2 | Umgesetzt | `internal/view/navigation_pages.templ`, `internal/handler/projects_create.go`, `internal/handler/projects_rename.go`, `internal/handler/projects_delete.go` und Projekt-/Router-E2E-Tests zeigen Projektanlage, Umbenennung und Loeschung mit sichtbaren Erfolgs- und Fehlerzustaenden, klarer Loeschfolge fuer lokale Aufgaben und unveraendertem Remote-Write-through vor lokaler Persistenz. |
 | 26.3 | Umgesetzt | `internal/db/labels.go`, `internal/db/tasks_views.go`, `internal/handler/navigation_pages.go`, `internal/view/navigation_pages.templ`, `internal/view/task_rows.templ`, `web/static/tailwind.input.css` und `tests/e2e/mvp-flow.spec.js` verlinken Labels auf `/labels/{labelID}`, zeigen Label-Zaehler und passende Aufgaben, nutzen die bestehenden write-through Label-Editoren an Aufgaben und halten lange Labelnamen layoutstabil. |
-| 26.4 | Offen | Gespeicherte Filter koennen nicht produktiv in der UI verwaltet werden. |
+| 26.4 | Umgesetzt | `internal/handler/saved_filters.go`, `internal/db/navigation.go`, `internal/view/saved_filters.templ` und `tests/e2e/mvp-flow.spec.js` bieten Filteranlage, Umbenennen, Loeschen und Favorisieren mit sichtbarer Queryvalidierung vor dem Speichern; gueltige favorisierte Filter erscheinen in der Navigation, ungueltige neue oder bestehende Favoriten nicht. |
 | 26.5 | Umgesetzt | Die Suche uebernimmt valide Filterqueries in ein benanntes Speichern-Formular, validiert die Ueberfuehrbarkeit vor Anzeige, erstellt favorisierte gespeicherte Filter ueber die bestehende Filter-Route und zeigt sie danach in Filterverwaltung und Navigation. |
 | 26.6 | Umgesetzt | Projekt-Drop-Ziele in Sidebar und Projektuebersicht sowie draggable Task-Zeilen rufen `POST /tasks/{taskID}/move` auf; Handler- und View-Tests decken Endpunkt, Pflicht-`project_id` und Markup fuer Drag-and-Drop ab. |
 | 27.1 | Offen | Konfliktliste existiert, aber nicht als ausgearbeitete Arbeitsansicht. |

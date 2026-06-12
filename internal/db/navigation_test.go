@@ -148,7 +148,10 @@ INSERT INTO conflicts (id, task_id, project_id, conflict_type, created_at, resol
 VALUES ('conflict-resolved', 'task-overdue', 'project-inbox', 'field_conflict', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 INSERT INTO saved_filters (id, name, query, is_favorite)
-VALUES ('filter-normal', 'Normal', 'today', 0), ('filter-favorite', 'Favorit', 'starred:true', 1);
+VALUES
+	('filter-normal', 'Normal', 'today', 0),
+	('filter-favorite', 'Favorit', 'today', 1),
+	('filter-invalid-favorite', 'Broken', 'today AND (', 1);
 `); err != nil {
 		t.Fatalf("seed navigation data: %v", err)
 	}

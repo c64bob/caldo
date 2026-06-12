@@ -175,7 +175,7 @@ ORDER BY l.name COLLATE NOCASE ASC, l.id ASC;
 }
 
 func (d *Database) listNavigationSavedFilters(ctx context.Context) ([]NavigationListItem, error) {
-	rows, err := d.Conn.QueryContext(ctx, `SELECT id, name FROM saved_filters WHERE is_favorite = 1 ORDER BY name COLLATE NOCASE ASC;`)
+	rows, err := d.Conn.QueryContext(ctx, `SELECT id, name, query FROM saved_filters WHERE is_favorite = 1 ORDER BY name COLLATE NOCASE ASC;`)
 	if err != nil {
 		return nil, fmt.Errorf("load navigation snapshot: list saved filters: %w", err)
 	}
@@ -184,8 +184,12 @@ func (d *Database) listNavigationSavedFilters(ctx context.Context) ([]Navigation
 	items := make([]NavigationListItem, 0)
 	for rows.Next() {
 		var item NavigationListItem
-		if err := rows.Scan(&item.ID, &item.Name); err != nil {
+		var filterQuery string
+		if err := rows.Scan(&item.ID, &item.Name, &filterQuery); err != nil {
 			return nil, fmt.Errorf("load navigation snapshot: scan saved filter: %w", err)
+		}
+		if _, _, ok, err := EvaluateSavedFilter(filterQuery, 7); err != nil || !ok {
+			continue
 		}
 		items = append(items, item)
 	}

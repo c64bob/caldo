@@ -1605,6 +1605,12 @@
 		overflow-wrap: anywhere;
 	}
 
+	.caldo-conflict-split-description {
+		@apply mt-2 text-xs leading-5;
+		color: var(--caldo-text-muted);
+		overflow-wrap: anywhere;
+	}
+
 	.caldo-conflict-split-meta {
 		@apply mt-3 grid gap-2 text-xs sm:grid-cols-2;
 	}
@@ -1626,6 +1632,18 @@
 
 	.caldo-conflict-split-form {
 		@apply mt-3 flex min-w-0 flex-wrap items-center gap-2;
+	}
+
+	.caldo-conflict-split-confirm {
+		@apply flex min-w-0 basis-full items-start gap-2 rounded-md border px-3 py-2 text-sm font-medium;
+		background: var(--caldo-surface-muted);
+		border-color: var(--caldo-border);
+		color: var(--caldo-text);
+	}
+
+	.caldo-conflict-split-confirm span {
+		@apply min-w-0;
+		overflow-wrap: anywhere;
 	}
 
 	.caldo-conflict-manual-form {

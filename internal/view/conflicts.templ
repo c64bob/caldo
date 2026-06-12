@@ -256,7 +256,7 @@ templ ConflictSplitResolution(conflict db.ConflictDetail) {
 		<div class="caldo-conflict-split-heading">
 			<div>
 				<h4>Beide Versionen behalten</h4>
-				<p class="caldo-muted">Die lokale Aufgabe bleibt bestehen. Die Remote-Version wird als neue Aufgabe im selben Projekt ohne Parent-Verknüpfung angelegt.</p>
+				<p class="caldo-muted">Nach dem Split existieren zwei Aufgaben: die lokale Variante bleibt bestehen, die Remote-Variante wird als neue Aufgabe im selben Projekt ohne Parent-Verknüpfung angelegt.</p>
 			</div>
 		</div>
 		<div class="caldo-conflict-split-preview-grid">
@@ -274,15 +274,20 @@ templ ConflictSplitResolution(conflict db.ConflictDetail) {
 			data-conflict-split-form
 		>
 			<input type="hidden" name="resolution" value="split"/>
-			<button type="submit" class="caldo-button caldo-button-secondary">Beide Versionen behalten</button>
+			<label class="caldo-conflict-split-confirm">
+				<input class="caldo-check" type="checkbox" name="confirm_split" value="1" required data-conflict-split-confirm/>
+				<span>Ich möchte aus diesem Konflikt zwei getrennte Aufgaben erstellen.</span>
+			</label>
+			<button type="submit" class="caldo-button caldo-button-secondary" disabled data-conflict-split-submit>Beide Versionen behalten</button>
 			<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
 		</form>
 	</section>
 }
 
 templ ConflictSplitPreview(preview conflictSplitPreview) {
-	<div class="caldo-conflict-split-item">
+	<div class="caldo-conflict-split-item" data-conflict-split-target={ preview.Role }>
 		<p class="caldo-meta">{ preview.Label }</p>
+		<p class="caldo-conflict-split-description">{ preview.Description }</p>
 		<p class="caldo-conflict-split-title">Titel: { preview.Title }</p>
 		<dl class="caldo-conflict-split-meta">
 			<div>
@@ -300,6 +305,10 @@ templ ConflictSplitPreview(preview conflictSplitPreview) {
 			<div>
 				<dt>Fälligkeit</dt>
 				<dd>{ preview.Due }</dd>
+			</div>
+			<div>
+				<dt>Labels</dt>
+				<dd>{ preview.Labels }</dd>
 			</div>
 			<div>
 				<dt>Unteraufgabe</dt>

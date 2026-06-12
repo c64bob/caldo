@@ -136,6 +136,11 @@ WHERE id='open-1';
 		`data-conflict-value="local-title"`,
 		`data-conflict-resolution`,
 		`data-conflict-split-preview`,
+		`Nach dem Split existieren zwei Aufgaben`,
+		`data-conflict-split-target="local"`,
+		`data-conflict-split-target="remote"`,
+		`name="confirm_split" value="1" required`,
+		`data-conflict-split-submit`,
 		`Beide Versionen behalten`,
 		`data-conflict-manual-form`,
 		`data-conflict-field-source="title"`,
@@ -622,7 +627,7 @@ func TestResolveConflictSplitCreatesSecondTaskAndMarksResolved(t *testing.T) {
 
 	todos := &stubTaskUpdateTodoClient{createETag: `"etag-split"`}
 	h := ResolveConflict(taskUpdateDependencies{database: database, encryptionKey: key, todos: todos})
-	req := httptest.NewRequest(http.MethodPost, "/conflicts/open-1/resolve", strings.NewReader("resolution=split"))
+	req := httptest.NewRequest(http.MethodPost, "/conflicts/open-1/resolve", strings.NewReader("resolution=split&confirm_split=1"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("conflictID", "open-1")
@@ -680,6 +685,38 @@ func TestResolveConflictSplitCreatesSecondTaskAndMarksResolved(t *testing.T) {
 	}
 }
 
+func TestResolveConflictSplitRequiresConfirmation(t *testing.T) {
+	t.Parallel()
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	seedConflictData(t, database)
+	key := bytes.Repeat([]byte{0x4a}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "a", Password: "b"}); err != nil {
+		t.Fatal(err)
+	}
+
+	todos := &stubTaskUpdateTodoClient{createETag: `"etag-split"`}
+	h := ResolveConflict(taskUpdateDependencies{database: database, encryptionKey: key, todos: todos})
+	req := httptest.NewRequest(http.MethodPost, "/conflicts/open-1/resolve", strings.NewReader("resolution=split"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("conflictID", "open-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if todos.createCalls != 0 || todos.updateCalls != 0 || todos.deleteCalls != 0 {
+		t.Fatalf("split should not write without confirmation: create=%d update=%d delete=%d", todos.createCalls, todos.updateCalls, todos.deleteCalls)
+	}
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM conflicts WHERE id='open-1' AND resolved_at IS NULL;`, 1)
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM tasks WHERE project_id='project-1';`, 1)
+}
+
 func TestResolveConflictSplitKeepsUnresolvedOnCreateFailure(t *testing.T) {
 	t.Parallel()
 	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
@@ -695,7 +732,7 @@ func TestResolveConflictSplitKeepsUnresolvedOnCreateFailure(t *testing.T) {
 
 	todos := &stubTaskUpdateTodoClient{createErr: errors.New("boom")}
 	h := ResolveConflict(taskUpdateDependencies{database: database, encryptionKey: key, todos: todos})
-	req := httptest.NewRequest(http.MethodPost, "/conflicts/open-1/resolve", strings.NewReader("resolution=split"))
+	req := httptest.NewRequest(http.MethodPost, "/conflicts/open-1/resolve", strings.NewReader("resolution=split&confirm_split=1"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("conflictID", "open-1")
@@ -729,7 +766,7 @@ func TestResolveConflictSplitKeepsUnresolvedOnPersistFailure(t *testing.T) {
 		},
 	}
 	h := ResolveConflict(taskUpdateDependencies{database: database, encryptionKey: key, todos: todos})
-	req := httptest.NewRequest(http.MethodPost, "/conflicts/open-1/resolve", strings.NewReader("resolution=split"))
+	req := httptest.NewRequest(http.MethodPost, "/conflicts/open-1/resolve", strings.NewReader("resolution=split&confirm_split=1"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("conflictID", "open-1")
@@ -741,6 +778,9 @@ func TestResolveConflictSplitKeepsUnresolvedOnPersistFailure(t *testing.T) {
 	}
 	if todos.createCalls != 1 {
 		t.Fatalf("create calls=%d", todos.createCalls)
+	}
+	if todos.deleteCalls != 1 || todos.lastDeleteHref != "/cal/inbox/"+splitConflictUID("open-1")+".ics" || todos.lastDeleteETag != `"etag-split"` {
+		t.Fatalf("expected split cleanup delete, calls=%d href=%q etag=%q", todos.deleteCalls, todos.lastDeleteHref, todos.lastDeleteETag)
 	}
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM conflicts WHERE id='open-1' AND resolved_at IS NULL;`, 1)
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM tasks WHERE project_id='project-1';`, 1)

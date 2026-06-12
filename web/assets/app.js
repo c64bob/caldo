@@ -1689,6 +1689,18 @@
     Array.prototype.forEach.call((root || document).querySelectorAll('[data-conflict-manual-form]'), updateConflictManualPreview);
   }
 
+  function updateConflictSplitConfirmation(form) {
+    if (!form) return;
+    var checkbox = form.querySelector('[data-conflict-split-confirm]');
+    var submit = form.querySelector('[data-conflict-split-submit]');
+    if (!checkbox || !submit) return;
+    submit.disabled = !checkbox.checked;
+  }
+
+  function initializeConflictSplitConfirmations(root) {
+    Array.prototype.forEach.call((root || document).querySelectorAll('[data-conflict-split-form]'), updateConflictSplitConfirmation);
+  }
+
   function handleConflictManualControlEvent(event) {
     var manualInput = closestElement(event.target, '[data-conflict-manual-input]');
     if (manualInput) {
@@ -1712,6 +1724,12 @@
     if (projectSelect) {
       updateConflictManualPreview(closestElement(projectSelect, '[data-conflict-manual-form]'));
     }
+  }
+
+  function handleConflictSplitConfirmationEvent(event) {
+    var checkbox = closestElement(event.target, '[data-conflict-split-confirm]');
+    if (!checkbox) return;
+    updateConflictSplitConfirmation(closestElement(checkbox, '[data-conflict-split-form]'));
   }
 
   document.body.addEventListener('htmx:configRequest', function (event) {
@@ -1779,6 +1797,7 @@
     var targetElement = event.detail && event.detail.target instanceof Element ? event.detail.target : null;
     focusQuickAddPreviewResult(requestElement, targetElement);
     initializeConflictManualPreviews(targetElement || document);
+    initializeConflictSplitConfirmations(targetElement || document);
   });
 
   document.body.addEventListener('htmx:afterSettle', function (event) {
@@ -1898,6 +1917,7 @@
   document.addEventListener('change', handleQuickAddRecurrenceInputEvent, true);
   document.addEventListener('input', handleConflictManualControlEvent, true);
   document.addEventListener('change', handleConflictManualControlEvent, true);
+  document.addEventListener('change', handleConflictSplitConfirmationEvent, true);
   document.addEventListener('submit', handleQuickAddSaveSubmit, true);
 
   document.addEventListener('dragstart', function (event) {
@@ -2218,4 +2238,5 @@
   initializeThemeController();
   initializeUndoSurface();
   initializeConflictManualPreviews();
+  initializeConflictSplitConfirmations();
 })();

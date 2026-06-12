@@ -574,12 +574,39 @@
 		background: var(--caldo-surface-muted);
 	}
 
+	.caldo-list-row.caldo-project-drop-active,
+	.caldo-nav-link.caldo-project-drop-active {
+		background: var(--caldo-accent-muted);
+		box-shadow: inset 0 0 0 2px var(--caldo-accent);
+		color: var(--caldo-accent);
+	}
+
+	.caldo-list-row.caldo-project-drop-blocked,
+	.caldo-nav-link.caldo-project-drop-blocked {
+		background: var(--caldo-danger-muted);
+		box-shadow: inset 0 0 0 2px var(--caldo-danger);
+		color: var(--caldo-danger);
+	}
+
 	.caldo-task-row {
 		@apply border-b px-0 py-3 transition;
 		background: transparent;
 		border-color: var(--caldo-border);
 		overflow-wrap: anywhere;
 		position: relative;
+	}
+
+	.caldo-task-row[draggable="true"] {
+		cursor: grab;
+	}
+
+	.caldo-task-row-dragging,
+	.caldo-task-row-moving {
+		opacity: 0.62;
+	}
+
+	.caldo-task-row-dragging {
+		cursor: grabbing;
 	}
 
 	.caldo-task-row:last-child {

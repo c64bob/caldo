@@ -170,6 +170,18 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
   await expect(inlineEditRow.getByRole('button', { name: 'Favorit setzen' })).toHaveAttribute('aria-pressed', 'false');
 
+  await dragTaskRowToProject(page, inlineEditRow, 'E2E Empty Project');
+  await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' })).toHaveCount(0);
+  await gotoApp(page, '/search?q=%23E2E%20Empty%20Project');
+  let movedProjectRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
+  await expect(movedProjectRow).toBeVisible();
+  await expect(movedProjectRow).toContainText('E2E Empty Project');
+  await dragTaskRowToProject(page, movedProjectRow, 'Work');
+  await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' })).toHaveCount(0);
+  await gotoApp(page, '/search?q=%23Work');
+  inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
+  await expect(inlineEditRow).toBeVisible();
+
   let detailDialog = inlineEditRow.locator('[data-task-detail-dialog]');
   await expect(detailDialog).toBeHidden();
   await inlineEditRow.getByRole('button', { name: 'Details' }).click();
@@ -420,6 +432,14 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(page.getByText('Keine ungelösten Konflikte')).toBeVisible();
   await expectSearchResult(page, 'E2E Remote Conflict Edit');
 });
+
+async function dragTaskRowToProject(page, row, projectName) {
+  const target = page.locator('.caldo-sidebar [data-nav-projects] [data-project-drop-target]').filter({ hasText: projectName }).first();
+  await expect(row).toBeVisible();
+  await expect(row).toHaveAttribute('draggable', 'true');
+  await expect(target).toBeVisible();
+  await row.dragTo(target);
+}
 
 async function exerciseTabletCoreViews(page) {
   await page.setViewportSize(tabletViewport);

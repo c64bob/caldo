@@ -33,18 +33,25 @@ const taskUpdatePersistTimeout = 5 * time.Second
 // TaskUpdate updates an existing task and performs synchronous CalDAV write-through.
 func TaskUpdate(deps taskUpdateDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		handleTaskUpdate(w, r, deps, false)
+		handleTaskUpdate(w, r, deps, false, false)
 	}
 }
 
 // TaskLabels updates the labels of an existing task and performs synchronous CalDAV write-through.
 func TaskLabels(deps taskUpdateDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		handleTaskUpdate(w, r, deps, true)
+		handleTaskUpdate(w, r, deps, true, false)
 	}
 }
 
-func handleTaskUpdate(w http.ResponseWriter, r *http.Request, deps taskUpdateDependencies, requireLabels bool) {
+// TaskMove moves an existing task to another project and performs synchronous CalDAV write-through.
+func TaskMove(deps taskUpdateDependencies) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		handleTaskUpdate(w, r, deps, false, true)
+	}
+}
+
+func handleTaskUpdate(w http.ResponseWriter, r *http.Request, deps taskUpdateDependencies, requireLabels bool, requireProject bool) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "invalid form payload", http.StatusBadRequest)
 		return
@@ -54,6 +61,10 @@ func handleTaskUpdate(w http.ResponseWriter, r *http.Request, deps taskUpdateDep
 			http.Error(w, "labels are required", http.StatusBadRequest)
 			return
 		}
+	}
+	if requireProject && strings.TrimSpace(r.FormValue("project_id")) == "" {
+		http.Error(w, "project_id is required", http.StatusBadRequest)
+		return
 	}
 
 	taskID := chi.URLParam(r, "taskID")

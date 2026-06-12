@@ -12,6 +12,10 @@ templ TaskRow(task TaskRowView) {
 		data-sync-status={ task.SyncStatus }
 		data-task-status={ task.Status }
 		data-server-version={ fmt.Sprint(task.ServerVersion) }
+		data-task-project-id={ task.ProjectID }
+		data-task-move-path={ taskMovePath(task) }
+		data-task-drag-move?={ taskCanDragMove(task) }
+		draggable={ taskDragMoveDraggable(task) }
 		class={
 			"caldo-task-row",
 			templ.KV("caldo-task-row-subtask", task.IsSubtask),

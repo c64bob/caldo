@@ -129,6 +129,10 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 	output := rendered.String()
 	for _, want := range []string{
 		`data-inline-task-display`,
+		`data-task-project-id="project-1"`,
+		`data-task-move-path="/tasks/task-1/move"`,
+		`data-task-drag-move`,
+		`draggable="true"`,
 		`data-inline-task-edit-open`,
 		`data-inline-task-edit-form`,
 		`data-task-favorite-form`,
@@ -175,6 +179,32 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 	}
 	if strings.Contains(output, `name="labels" value="Büro, urgent, STARRED"`) {
 		t.Fatalf("reserved favorite category must not render in the label editor: %s", output)
+	}
+}
+
+func TestTaskRowDoesNotEnableDragMoveForUnsyncedTask(t *testing.T) {
+	t.Parallel()
+
+	component := TaskRow(TaskRowView{
+		ID:            "task-pending",
+		ProjectID:     "project-1",
+		Title:         "Pending",
+		Status:        "needs-action",
+		SyncStatus:    "pending",
+		ServerVersion: 3,
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(context.Background(), &rendered); err != nil {
+		t.Fatalf("render task row: %v", err)
+	}
+
+	output := rendered.String()
+	if strings.Contains(output, `data-task-drag-move`) {
+		t.Fatalf("pending task must not be draggable between projects: %s", output)
+	}
+	if !strings.Contains(output, `draggable="false"`) {
+		t.Fatalf("expected pending task to render draggable=false in %s", output)
 	}
 }
 

@@ -122,6 +122,10 @@ func taskEditPath(task TaskRowView) string {
 	return "/tasks/" + url.PathEscape(strings.TrimSpace(task.ID))
 }
 
+func taskMovePath(task TaskRowView) string {
+	return taskEditPath(task) + "/move"
+}
+
 func taskDeletePath(task TaskRowView) string {
 	return taskEditPath(task)
 }
@@ -201,6 +205,17 @@ func taskCanDetailEdit(task TaskRowView) bool {
 
 func taskCanDelete(task TaskRowView) bool {
 	return taskCanToggleCompletion(task)
+}
+
+func taskCanDragMove(task TaskRowView) bool {
+	return taskCanToggleCompletion(task) && strings.TrimSpace(task.ProjectID) != ""
+}
+
+func taskDragMoveDraggable(task TaskRowView) string {
+	if taskCanDragMove(task) {
+		return "true"
+	}
+	return "false"
 }
 
 func taskCanCreateSubtask(task TaskRowView) bool {

@@ -87,7 +87,7 @@ func TaskUndo(deps taskUpdateDependencies) http.HandlerFunc {
 			persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUndoPersistTimeout)
 			defer cancel()
 			if errors.Is(err, caldav.ErrPreconditionFailed) && prepared.ActionType != "task_deleted" {
-				if markErr := deps.database.MarkTaskUpdateConflict(persistCtx, prepared.TaskID, prepared.PendingVersion); markErr != nil {
+				if markErr := markTaskUpdateConflict(persistCtx, deps, todoCredentials, prepared.TaskID, prepared.PendingVersion, prepared.TodoHref, prepared.RawVTODO, prepared.RawVTODO); markErr != nil {
 					http.Error(w, "failed to persist undo conflict state", http.StatusInternalServerError)
 					return
 				}

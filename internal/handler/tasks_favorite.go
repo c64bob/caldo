@@ -103,7 +103,7 @@ func performTaskFavoriteUpdate(ctx context.Context, deps taskUpdateDependencies,
 		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), taskUpdatePersistTimeout)
 		defer cancel()
 		if errors.Is(err, caldav.ErrPreconditionFailed) {
-			if markErr := deps.database.MarkTaskUpdateConflict(persistCtx, taskID, prepared.PendingVersion); markErr != nil {
+			if markErr := markTaskUpdateConflict(persistCtx, deps, todoCredentials, taskID, prepared.PendingVersion, prepared.PreviousHref, base.RawVTODO, rawVTODO); markErr != nil {
 				return errTaskCompletionPersistConflict
 			}
 			return errTaskCompletionVersionConflict

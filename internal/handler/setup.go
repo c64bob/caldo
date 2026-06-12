@@ -350,6 +350,10 @@ func SetupComplete(deps setupDependencies) http.HandlerFunc {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
+		if deps.importBroker != nil && !deps.importBroker.CanCompleteSetup() {
+			http.Error(w, "setup import is not complete", http.StatusConflict)
+			return
+		}
 
 		if err := deps.database.CompleteSetup(r.Context()); err != nil {
 			if errors.Is(err, db.ErrSetupPrerequisitesNotMet) {

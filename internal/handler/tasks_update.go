@@ -16,6 +16,7 @@ import (
 )
 
 type taskUpdateTodoClient interface {
+	GetVTODO(ctx context.Context, credentials caldav.Credentials, todoHref string) (string, string, error)
 	PutVTODOUpdate(ctx context.Context, credentials caldav.Credentials, todoHref string, rawVTODO string, etag string) (string, error)
 	PutVTODOCreate(ctx context.Context, credentials caldav.Credentials, todoHref string, rawVTODO string) (string, error)
 	DeleteVTODO(ctx context.Context, credentials caldav.Credentials, todoHref string, etag string) error
@@ -212,7 +213,7 @@ func handleTaskUpdate(w http.ResponseWriter, r *http.Request, deps taskUpdateDep
 		persistCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), taskUpdatePersistTimeout)
 		defer cancel()
 		if errors.Is(err, caldav.ErrPreconditionFailed) {
-			if markErr := deps.database.MarkTaskUpdateConflict(persistCtx, taskID, prepared.PendingVersion); markErr != nil {
+			if markErr := markTaskUpdateConflict(persistCtx, deps, todoCredentials, taskID, prepared.PendingVersion, prepared.PreviousHref, base.RawVTODO, rawVTODO); markErr != nil {
 				http.Error(w, "failed to persist task update conflict state", http.StatusInternalServerError)
 				return
 			}
@@ -240,6 +241,16 @@ func handleTaskUpdate(w http.ResponseWriter, r *http.Request, deps taskUpdateDep
 
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("task updated"))
+}
+
+func markTaskUpdateConflict(ctx context.Context, deps taskUpdateDependencies, credentials caldav.Credentials, taskID string, pendingVersion int, href string, baseVTODO string, localVTODO string) error {
+	remoteVTODO := ""
+	if deps.todos != nil {
+		if raw, _, err := deps.todos.GetVTODO(ctx, credentials, href); err == nil {
+			remoteVTODO = raw
+		}
+	}
+	return deps.database.MarkTaskUpdateConflict(ctx, taskID, pendingVersion, baseVTODO, localVTODO, remoteVTODO)
 }
 
 func parseOptionalInt(raw string) *int {

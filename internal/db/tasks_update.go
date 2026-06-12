@@ -307,12 +307,18 @@ WHERE id = ? AND server_version = ?;
 	return nil
 }
 
-// MarkTaskUpdateConflict marks a pending task update as conflict when CalDAV reports an etag mismatch.
-func (d *Database) MarkTaskUpdateConflict(ctx context.Context, taskID string, expectedVersion int) error {
+// MarkTaskUpdateConflict marks a pending task update as conflict and stores the versions for visible resolution.
+func (d *Database) MarkTaskUpdateConflict(ctx context.Context, taskID string, expectedVersion int, baseVTODO string, localVTODO string, remoteVTODO string) error {
 	d.WriteMu.Lock()
 	defer d.WriteMu.Unlock()
 
-	result, err := d.Conn.ExecContext(ctx, `
+	tx, err := d.Conn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("mark task update conflict: begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	result, err := tx.ExecContext(ctx, `
 UPDATE tasks
 SET sync_status = 'conflict',
     updated_at = CURRENT_TIMESTAMP
@@ -328,6 +334,19 @@ WHERE id = ? AND server_version = ?;
 	}
 	if affected != 1 {
 		return ErrTaskVersionMismatch
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+INSERT INTO conflicts (id, task_id, project_id, conflict_type, created_at, base_vtodo, local_vtodo, remote_vtodo)
+SELECT ?, t.id, t.project_id, ?, CURRENT_TIMESTAMP, NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, '')
+FROM tasks t
+WHERE t.id = ?;
+`, uuid.NewString(), conflictTypeFieldConflict, baseVTODO, localVTODO, remoteVTODO, taskID); err != nil {
+		return fmt.Errorf("mark task update conflict: insert conflict: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("mark task update conflict: commit transaction: %w", err)
 	}
 
 	return nil

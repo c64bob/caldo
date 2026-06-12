@@ -22,9 +22,13 @@ type stubTaskUpdateTodoClient struct {
 	createETag     string
 	createErr      error
 	deleteErr      error
+	getRawVTODO    string
+	getETag        string
+	getErr         error
 	updateCalls    int
 	deleteCalls    int
 	createCalls    int
+	getCalls       int
 	lastHref       string
 	lastDeleteHref string
 	lastDeleteETag string
@@ -42,6 +46,15 @@ func (s *stubTaskUpdateTodoClient) PutVTODOUpdate(_ context.Context, _ caldav.Cr
 		return "", s.updateErr
 	}
 	return s.updateETag, nil
+}
+
+func (s *stubTaskUpdateTodoClient) GetVTODO(_ context.Context, _ caldav.Credentials, href string) (string, string, error) {
+	s.getCalls++
+	s.lastHref = href
+	if s.getErr != nil {
+		return "", "", s.getErr
+	}
+	return s.getRawVTODO, s.getETag, nil
 }
 
 func (s *stubTaskUpdateTodoClient) PutVTODOCreate(_ context.Context, _ caldav.Credentials, href string, rawVTODO string) (string, error) {
@@ -437,7 +450,12 @@ func TestTaskUpdatePreconditionFailedMarksConflict(t *testing.T) {
 		t.Fatalf("save credentials: %v", err)
 	}
 
-	h := TaskUpdate(taskUpdateDependencies{database: database, encryptionKey: key, todos: &stubTaskUpdateTodoClient{updateErr: caldav.ErrPreconditionFailed}})
+	stub := &stubTaskUpdateTodoClient{
+		updateErr:   caldav.ErrPreconditionFailed,
+		getRawVTODO: "BEGIN:VTODO\nUID:uid-1\nSUMMARY:remote title\nEND:VTODO",
+		getETag:     `"etag-remote"`,
+	}
+	h := TaskUpdate(taskUpdateDependencies{database: database, encryptionKey: key, todos: stub})
 	form := url.Values{"expected_version": {"2"}, "title": {"new title"}}
 	req := httptest.NewRequest(http.MethodPatch, "/tasks/task-1", bytes.NewBufferString(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -459,6 +477,18 @@ func TestTaskUpdatePreconditionFailedMarksConflict(t *testing.T) {
 	}
 	if syncStatus != "conflict" || version != 3 {
 		t.Fatalf("unexpected row: status=%q version=%d", syncStatus, version)
+	}
+	assertSingleIntResult(t, database, `
+SELECT COUNT(*)
+FROM conflicts
+WHERE task_id = 'task-1'
+  AND conflict_type = 'field_conflict'
+  AND base_vtodo LIKE '%SUMMARY:old%'
+  AND local_vtodo LIKE '%SUMMARY:new title%'
+  AND remote_vtodo LIKE '%SUMMARY:remote title%';
+`, 1)
+	if stub.getCalls != 1 {
+		t.Fatalf("expected remote VTODO fetch after precondition failure, got %d", stub.getCalls)
 	}
 }
 

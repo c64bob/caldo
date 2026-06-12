@@ -123,6 +123,11 @@ WHERE id='open-1';
 	body := rr.Body.String()
 	for _, want := range []string{
 		`data-conflict-comparison`,
+		`aria-label="Feldvergleich lokaler und entfernter Konfliktversionen"`,
+		`data-conflict-field="project"`,
+		`data-conflict-row-state="unchanged"`,
+		`data-conflict-field="title"`,
+		`data-conflict-row-state="changed"`,
 		`Base title`,
 		`Local title`,
 		`Remote title`,

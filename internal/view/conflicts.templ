@@ -64,7 +64,7 @@ templ ConflictDetailPage(conflict db.ConflictDetail, projectOptions []TaskProjec
 			</div>
 		</div>
 		<div class="caldo-conflict-comparison" data-conflict-comparison>
-			<table class="caldo-conflict-table">
+			<table class="caldo-conflict-table" aria-label="Feldvergleich lokaler und entfernter Konfliktversionen">
 				<thead>
 					<tr>
 						<th scope="col">Feld</th>
@@ -77,7 +77,7 @@ templ ConflictDetailPage(conflict db.ConflictDetail, projectOptions []TaskProjec
 				</thead>
 				<tbody>
 					for _, row := range conflictComparisonRows(conflict) {
-						<tr>
+						<tr class={ conflictComparisonRowClass(row) } data-conflict-row-state={ conflictComparisonRowState(row) } data-conflict-field={ row.Field }>
 							<th scope="row">{ row.Label }</th>
 							if conflictHasBase(conflict) {
 								@ConflictValueCell(row.Base)

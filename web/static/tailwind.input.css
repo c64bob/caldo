@@ -1516,6 +1516,16 @@
 		@apply border-b-0;
 	}
 
+	.caldo-conflict-row-unchanged th,
+	.caldo-conflict-row-unchanged td {
+		background: var(--caldo-surface-muted);
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-conflict-row-changed th {
+		color: var(--caldo-text);
+	}
+
 	.caldo-conflict-value {
 		@apply min-w-0;
 		overflow-wrap: anywhere;

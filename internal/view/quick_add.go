@@ -9,7 +9,10 @@ import (
 	"github.com/a-h/templ"
 )
 
-const quickAddOverlaySurface = "overlay"
+const (
+	quickAddOverlaySurface       = "overlay"
+	quickAddLabelSuggestionLimit = 8
+)
 
 func quickAddCSRFHeaders(ctx context.Context) string {
 	encoded, err := json.Marshal(map[string]string{"X-CSRF-Token": CSRFToken(ctx)})
@@ -39,6 +42,70 @@ func quickAddProjectStatus(ctx context.Context, draft parser.QuickAddDraft) stri
 
 func quickAddLabelsValue(draft parser.QuickAddDraft) string {
 	return strings.Join(draft.Labels, ", ")
+}
+
+func quickAddLabelKnown(draft parser.QuickAddDraft, label string) bool {
+	key := strings.ToLower(strings.TrimSpace(label))
+	if key == "" {
+		return false
+	}
+	for _, option := range draft.LabelOptions {
+		if strings.ToLower(strings.TrimSpace(option.Name)) == key {
+			return true
+		}
+	}
+	return false
+}
+
+func quickAddLabelStatus(ctx context.Context, draft parser.QuickAddDraft, label string) string {
+	if quickAddLabelKnown(draft, label) {
+		return Text(ctx).QuickAddFound
+	}
+	return Text(ctx).QuickAddNewLabel
+}
+
+func quickAddLabelDatalistID(previewID string) string {
+	id := strings.TrimSpace(previewID)
+	if id == "" {
+		return "quick-add-label-options"
+	}
+	return id + "-label-options"
+}
+
+func quickAddLabelSuggestions(draft parser.QuickAddDraft) []parser.QuickAddLabelSuggestion {
+	selected := make(map[string]struct{}, len(draft.Labels))
+	for _, label := range draft.Labels {
+		key := strings.ToLower(strings.TrimSpace(label))
+		if key != "" {
+			selected[key] = struct{}{}
+		}
+	}
+
+	suggestions := make([]parser.QuickAddLabelSuggestion, 0, min(len(draft.LabelOptions), quickAddLabelSuggestionLimit))
+	seen := make(map[string]struct{}, len(draft.LabelOptions))
+	for _, option := range draft.LabelOptions {
+		name := strings.TrimSpace(option.Name)
+		if name == "" {
+			continue
+		}
+		key := strings.ToLower(name)
+		if _, ok := selected[key]; ok {
+			continue
+		}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		suggestions = append(suggestions, parser.QuickAddLabelSuggestion{Name: name})
+		if len(suggestions) >= quickAddLabelSuggestionLimit {
+			break
+		}
+	}
+	return suggestions
+}
+
+func quickAddHasLabelSuggestions(draft parser.QuickAddDraft) bool {
+	return len(quickAddLabelSuggestions(draft)) > 0
 }
 
 func quickAddDisplayValue(ctx context.Context, value string) string {

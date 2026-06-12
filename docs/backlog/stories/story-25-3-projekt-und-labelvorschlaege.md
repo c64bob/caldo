@@ -4,7 +4,7 @@
 Story 25.3 — Projekt- und Labelvorschlaege
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Quick Add schlaegt vorhandene Projekte und Labels vor und behandelt unbekannte Eingaben klar.

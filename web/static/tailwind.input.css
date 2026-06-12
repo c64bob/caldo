@@ -580,6 +580,10 @@
 		@apply min-w-0 truncate font-semibold;
 	}
 
+	.caldo-quick-add-chip .caldo-badge {
+		@apply ml-1 shrink-0;
+	}
+
 	.caldo-quick-add-preview-grid {
 		@apply mt-3 grid gap-3 text-sm sm:grid-cols-2;
 	}
@@ -623,6 +627,28 @@
 
 	.caldo-quick-add-correction-row .caldo-button {
 		@apply mt-1 shrink-0;
+	}
+
+	.caldo-quick-add-suggestions {
+		@apply mt-2 flex min-w-0 flex-wrap items-center gap-2;
+	}
+
+	.caldo-quick-add-suggestion-list {
+		@apply flex min-w-0 flex-wrap gap-1.5;
+	}
+
+	.caldo-quick-add-suggestion {
+		@apply inline-flex min-h-7 max-w-full items-center rounded-full border px-2.5 py-1 text-xs font-medium transition;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border);
+		color: var(--caldo-text);
+	}
+
+	.caldo-quick-add-suggestion:hover,
+	.caldo-quick-add-suggestion:focus-visible {
+		background: var(--caldo-accent-muted);
+		border-color: var(--caldo-accent-border);
+		color: var(--caldo-accent);
 	}
 
 	.caldo-quick-add-project-options {

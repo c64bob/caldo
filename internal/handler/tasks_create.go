@@ -34,6 +34,7 @@ const quickAddExistingProjectSelectionPrefix = "existing:"
 
 var (
 	errQuickAddProjectNameRequired  = errors.New("quick add project name required")
+	errQuickAddProjectSelection     = errors.New("quick add project selection required")
 	errQuickAddProjectCreateClient  = errors.New("quick add project create client unavailable")
 	errQuickAddProjectCreateFailed  = errors.New("quick add project create failed")
 	errQuickAddProjectPersistFailed = errors.New("quick add project persist failed")
@@ -94,6 +95,9 @@ func createTask(w http.ResponseWriter, r *http.Request, deps taskCreateDependenc
 		case errors.Is(err, errQuickAddProjectNameRequired):
 			statusCode = http.StatusBadRequest
 			errMessage = "project name is required"
+		case errors.Is(err, errQuickAddProjectSelection):
+			statusCode = http.StatusBadRequest
+			errMessage = "project selection is required"
 		case errors.Is(err, errQuickAddProjectCreateFailed):
 			statusCode = http.StatusBadGateway
 			errMessage = "failed to create project on caldav server"
@@ -196,6 +200,9 @@ func resolveCreateTaskProject(ctx context.Context, r *http.Request, deps taskCre
 	}
 	if shouldCreateQuickAddProject(r) {
 		return createQuickAddProject(ctx, r, deps)
+	}
+	if strings.TrimSpace(r.FormValue("project_new_name")) != "" {
+		return db.TaskProject{}, errQuickAddProjectSelection
 	}
 	return deps.database.ResolveTaskProject(ctx, r.FormValue("project_id"))
 }

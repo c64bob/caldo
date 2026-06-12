@@ -135,10 +135,12 @@ type Texts struct {
 	QuickAddFieldPriority    string
 	QuickAddCreateProject    string
 	QuickAddProjectList      string
+	QuickAddLabelSuggestions string
 	QuickAddSaveAction       string
 	QuickAddSavePending      string
 	QuickAddDefaultProject   string
 	QuickAddCreateNew        string
+	QuickAddNewLabel         string
 	QuickAddFound            string
 	QuickAddDefault          string
 	QuickAddClearValue       string
@@ -249,10 +251,12 @@ var germanTexts = Texts{
 	QuickAddFieldPriority:    "Priorität",
 	QuickAddCreateProject:    "als CalDAV-Kalender anlegen",
 	QuickAddProjectList:      "Projektvorschläge",
+	QuickAddLabelSuggestions: "Labelvorschläge",
 	QuickAddSaveAction:       "Speichern",
 	QuickAddSavePending:      "Speichern ...",
 	QuickAddDefaultProject:   "Default-Projekt",
 	QuickAddCreateNew:        "Neu anlegen",
+	QuickAddNewLabel:         "Neu",
 	QuickAddFound:            "Gefunden",
 	QuickAddDefault:          "Default",
 	QuickAddClearValue:       "Entfernen",
@@ -363,10 +367,12 @@ var englishTexts = Texts{
 	QuickAddFieldPriority:    "Priority",
 	QuickAddCreateProject:    "as CalDAV calendar",
 	QuickAddProjectList:      "Project suggestions",
+	QuickAddLabelSuggestions: "Label suggestions",
 	QuickAddSaveAction:       "Save",
 	QuickAddSavePending:      "Saving ...",
 	QuickAddDefaultProject:   "Default project",
 	QuickAddCreateNew:        "Create new",
+	QuickAddNewLabel:         "New",
 	QuickAddFound:            "Found",
 	QuickAddDefault:          "Default",
 	QuickAddClearValue:       "Remove",

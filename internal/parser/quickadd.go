@@ -18,6 +18,7 @@ type QuickAddDraft struct {
 	ProjectUnresolved  bool
 	ProjectSuggestions []QuickAddProjectSuggestion
 	ProjectOptions     []QuickAddProjectSuggestion
+	LabelOptions       []QuickAddLabelSuggestion
 	Labels             []string
 	Due                string
 	Recurrence         string
@@ -27,6 +28,11 @@ type QuickAddDraft struct {
 // QuickAddProjectSuggestion contains one existing project suggestion for an unresolved project token.
 type QuickAddProjectSuggestion struct {
 	ID   string
+	Name string
+}
+
+// QuickAddLabelSuggestion contains one existing local label suggestion.
+type QuickAddLabelSuggestion struct {
 	Name string
 }
 

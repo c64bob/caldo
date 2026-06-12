@@ -258,6 +258,7 @@ INSERT INTO saved_filters (id, name, query) VALUES ('filter-1', 'Heute Fokus', '
 	}{
 		{path: "/projects", want: "Inbox", wantMarker: `data-navigation-overview`},
 		{path: "/labels", want: "Büro", wantMarker: `data-navigation-overview`},
+		{path: "/labels/label-1", want: "Task 1", wantMarker: `data-date-view-results`},
 		{path: "/filters", want: "Heute Fokus", wantMarker: `data-saved-filter-list`},
 	} {
 		responseRecorder := httptest.NewRecorder()

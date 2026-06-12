@@ -44,8 +44,11 @@ func TestLoadNavigationSnapshotReturnsCountsAndEntries(t *testing.T) {
 	if snapshot.Projects[1].Name != "Work" || snapshot.Projects[1].OpenTaskCount != 1 || snapshot.Projects[1].TaskCount != 2 {
 		t.Fatalf("unexpected project counts: %#v", snapshot.Projects[1])
 	}
-	if len(snapshot.Labels) != 2 || snapshot.Labels[0].Name != "Büro" || snapshot.Labels[0].OpenTaskCount != 1 {
+	if len(snapshot.Labels) != 2 || snapshot.Labels[0].ID != "label-buro" || snapshot.Labels[0].Name != "Büro" || snapshot.Labels[0].OpenTaskCount != 1 || snapshot.Labels[0].TaskCount != 2 {
 		t.Fatalf("unexpected labels: %#v", snapshot.Labels)
+	}
+	if snapshot.Labels[1].Name != "Home" || snapshot.Labels[1].OpenTaskCount != 1 || snapshot.Labels[1].TaskCount != 1 {
+		t.Fatalf("unexpected home label counts: %#v", snapshot.Labels[1])
 	}
 	if len(snapshot.SavedFilters) != 1 || snapshot.SavedFilters[0].Name != "Favorit" {
 		t.Fatalf("unexpected filters: %#v", snapshot.SavedFilters)

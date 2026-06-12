@@ -210,6 +210,50 @@ func TestProjectTasksRouteShowsProjectTasksAndActiveSidebar(t *testing.T) {
 	}
 }
 
+func TestLabelTasksRouteShowsLabelTasksAndActiveSidebar(t *testing.T) {
+	t.Parallel()
+
+	database := openDateViewRouteDB(t)
+	seedDateViewRouteTasks(t, database)
+	if _, err := database.Conn.Exec(`
+INSERT INTO labels (id, name, created_at) VALUES ('label-buro', 'Büro', CURRENT_TIMESTAMP);
+INSERT INTO task_labels (task_id, label_id) VALUES
+	('task-today-active', 'label-buro'),
+	('task-overdue-completed', 'label-buro');
+`); err != nil {
+		t.Fatalf("seed label route tasks: %v", err)
+	}
+
+	router := chi.NewRouter()
+	router.Get("/labels/{labelID}", LabelTasksPage(dateViewDependencies{database: database, now: fixedNow}))
+
+	request := httptest.NewRequest(http.MethodGet, "/labels/label-buro", nil)
+	responseRecorder := httptest.NewRecorder()
+	router.ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+
+	body := responseRecorder.Body.String()
+	for _, want := range []string{
+		"Büro",
+		"Heute Aufgabe",
+		`href="/labels/label-buro"`,
+		`aria-current="page"`,
+		`data-nav-labels`,
+		`name="labels" value="Büro, urgent"`,
+		`data-task-labels-input`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("label page missing %q: %q", want, body)
+		}
+	}
+	if strings.Contains(body, "Überfällig erledigt") || strings.Contains(body, "Ohne Fälligkeit") {
+		t.Fatalf("label page should only show matching visible tasks: %q", body)
+	}
+}
+
 func fixedNow() time.Time {
 	return time.Date(2026, 4, 28, 10, 0, 0, 0, time.UTC)
 }

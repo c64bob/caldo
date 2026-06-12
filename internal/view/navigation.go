@@ -97,6 +97,11 @@ func LabelSearchHref(name string) string {
 	return "/search?q=" + url.QueryEscape("@"+name)
 }
 
+// LabelHref returns the canonical label task view route.
+func LabelHref(labelID string) string {
+	return "/labels/" + url.PathEscape(labelID)
+}
+
 func systemNavigationItems(todayCount, upcomingCount, favoriteCount, overdueCount, noDateCount, completedCount, conflictCount int, counted bool) []NavigationItem {
 	return []NavigationItem{
 		{Label: "Heute", Href: "/today", Count: todayCount, HasCount: counted, ActiveTitles: []string{"Heute"}},
@@ -176,6 +181,7 @@ func overviewItemsToNavigationItems(items []NavigationOverviewItem) []Navigation
 			Href:     item.Href,
 			Count:    item.Count,
 			HasCount: item.HasCount,
+			Active:   item.Active,
 		})
 	}
 	return result

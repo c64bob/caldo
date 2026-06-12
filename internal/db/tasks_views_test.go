@@ -114,6 +114,50 @@ INSERT INTO tasks (
 	}
 }
 
+func TestListLabelTasksFiltersByLabelAndShowCompleted(t *testing.T) {
+	t.Parallel()
+
+	database := openViewTestDB(t)
+	seedViewTasks(t, database)
+	if _, err := database.Conn.Exec(`
+INSERT INTO labels (id, name, created_at) VALUES
+	('label-buro', 'Büro', CURRENT_TIMESTAMP),
+	('label-other', 'Other', CURRENT_TIMESTAMP);
+INSERT INTO task_labels (task_id, label_id) VALUES
+	('task-today-active', 'label-buro'),
+	('task-overdue-completed', 'label-buro'),
+	('task-without-due', 'label-other');
+`); err != nil {
+		t.Fatalf("seed label tasks: %v", err)
+	}
+
+	results, err := database.ListLabelTasks(context.Background(), "label-buro", 50)
+	if err != nil {
+		t.Fatalf("list label tasks: %v", err)
+	}
+	if len(results) != 1 || results[0].ID != "task-today-active" {
+		t.Fatalf("unexpected default label results: %#v", results)
+	}
+	if results[0].LabelNames != "Büro,urgent" || results[0].ProjectName != "Work" || results[0].ServerVersion != 3 {
+		t.Fatalf("label result missing task metadata: %#v", results[0])
+	}
+
+	if _, err := database.Conn.Exec(`UPDATE settings SET show_completed = TRUE WHERE id = 'default';`); err != nil {
+		t.Fatalf("update show_completed: %v", err)
+	}
+
+	withCompleted, err := database.ListLabelTasks(context.Background(), "label-buro", 50)
+	if err != nil {
+		t.Fatalf("list label tasks with completed: %v", err)
+	}
+	if !containsDatedTask(withCompleted, "task-today-active") || !containsDatedTask(withCompleted, "task-overdue-completed") {
+		t.Fatalf("label results should include matching completed tasks when enabled: %#v", withCompleted)
+	}
+	if containsDatedTask(withCompleted, "task-without-due") {
+		t.Fatalf("label results included another label's task: %#v", withCompleted)
+	}
+}
+
 func TestLoadTaskViewIncludesUnresolvedConflictID(t *testing.T) {
 	t.Parallel()
 

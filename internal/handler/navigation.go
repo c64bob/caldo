@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -55,10 +56,18 @@ func shouldLoadNavigation(database *db.Database, setupState *SetupState, r *http
 }
 
 func navigationSnapshotView(snapshot db.NavigationSnapshot) view.NavigationSnapshot {
-	return navigationSnapshotViewWithActiveProject(snapshot, "")
+	return navigationSnapshotViewWithActive(snapshot, "", "")
 }
 
 func navigationSnapshotViewWithActiveProject(snapshot db.NavigationSnapshot, activeProjectID string) view.NavigationSnapshot {
+	return navigationSnapshotViewWithActive(snapshot, activeProjectID, "")
+}
+
+func navigationSnapshotViewWithActiveLabel(snapshot db.NavigationSnapshot, activeLabelID string) view.NavigationSnapshot {
+	return navigationSnapshotViewWithActive(snapshot, "", activeLabelID)
+}
+
+func navigationSnapshotViewWithActive(snapshot db.NavigationSnapshot, activeProjectID string, activeLabelID string) view.NavigationSnapshot {
 	projects := navigationProjectsView(snapshot.Projects)
 	activeProjectID = strings.TrimSpace(activeProjectID)
 	for index := range projects {
@@ -67,6 +76,12 @@ func navigationSnapshotViewWithActiveProject(snapshot db.NavigationSnapshot, act
 		}
 	}
 	labels := navigationLabelsView(snapshot.Labels)
+	activeLabelID = strings.TrimSpace(activeLabelID)
+	for index := range labels {
+		if activeLabelID != "" && labels[index].ID == activeLabelID {
+			labels[index].Active = true
+		}
+	}
 	filters := navigationFiltersView(snapshot.SavedFilters)
 	return view.BuildNavigationSnapshot(
 		snapshot.TodayCount,
@@ -103,14 +118,22 @@ func navigationLabelsView(items []db.NavigationListItem) []view.NavigationOvervi
 	result := make([]view.NavigationOverviewItem, 0, len(items))
 	for _, item := range items {
 		result = append(result, view.NavigationOverviewItem{
+			ID:       item.ID,
 			Name:     item.Name,
-			Href:     view.LabelSearchHref(item.Name),
+			Href:     view.LabelHref(item.ID),
 			Count:    item.OpenTaskCount,
 			HasCount: true,
-			Meta:     "Offene Aufgaben",
+			Meta:     labelOverviewMeta(item.TaskCount),
 		})
 	}
 	return result
+}
+
+func labelOverviewMeta(taskCount int) string {
+	if taskCount == 1 {
+		return "1 Aufgabe gesamt"
+	}
+	return strconv.Itoa(taskCount) + " Aufgaben gesamt"
 }
 
 func navigationFiltersView(items []db.NavigationListItem) []view.NavigationOverviewItem {

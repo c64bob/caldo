@@ -166,6 +166,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await inlineEditForm.locator('[name="due_date"]').fill('2099-06-12');
   await inlineEditForm.locator('[name="priority"]').selectOption('5');
   await inlineEditForm.locator('[name="labels"]').fill('browser, inline');
+  await expect(inlineEditForm.locator('[data-task-labels-input]')).toHaveValue('browser, inline');
   await inlineEditForm.getByRole('button', { name: 'Speichern' }).focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first()).toBeVisible();
@@ -177,6 +178,10 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(inlineEditRow).toContainText('P2');
   await expect(inlineEditRow).toContainText('browser');
   await expect(inlineEditRow).toContainText('inline');
+  await openLabelDetail(page, 'browser');
+  await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first()).toBeVisible();
+  await gotoApp(page, '/search?q=%23Work');
+  inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
   await ensureBrowserCSRFCookie(page);
   await expect(inlineEditRow.getByRole('button', { name: 'Favorit setzen' })).toHaveAttribute('aria-pressed', 'false');
   await inlineEditRow.getByRole('button', { name: 'Favorit setzen' }).click();
@@ -218,6 +223,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await detailDialog.locator('[name="due_date"]').fill('2099-06-11');
   await detailDialog.locator('[name="priority"]').selectOption('1');
   await detailDialog.locator('[name="labels"]').fill('panel, browser');
+  await expect(detailDialog.locator('[data-task-labels-input]')).toHaveValue('panel, browser');
   await detailDialog.locator('[name="repeat_freq"]').selectOption('DAILY');
   await detailDialog.getByRole('button', { name: 'Speichern' }).focus();
   await page.keyboard.press('Enter');
@@ -228,6 +234,14 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(detailRow).toContainText('P1');
   await expect(detailRow).toContainText('panel');
   await expect(detailRow).toContainText('browser');
+  await openLabelDetail(page, 'inline');
+  await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Panel Edited' })).toHaveCount(0);
+  await expect(page.getByText('Keine Aufgaben mit diesem Label.')).toBeVisible();
+  await openLabelDetail(page, 'browser');
+  await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Panel Edited' }).first()).toBeVisible();
+  await gotoApp(page, '/search?q=%23Work');
+  detailRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Panel Edited' }).first();
+  await expect(detailRow).toBeVisible();
 
   const panelTaskID = await detailRow.getAttribute('data-task-id');
   await ensureBrowserCSRFCookie(page);
@@ -460,6 +474,15 @@ async function dragTaskRowToProject(page, row, projectName) {
   await expect(row).toHaveAttribute('draggable', 'true');
   await expect(target).toBeVisible();
   await row.dragTo(target);
+}
+
+async function openLabelDetail(page, labelName) {
+  await gotoApp(page, '/labels');
+  const link = page.locator('[data-navigation-overview] a[href^="/labels/"]').filter({ hasText: labelName }).first();
+  await expect(link).toBeVisible();
+  await link.click();
+  await expect(page.locator('main').getByRole('heading', { name: labelName })).toBeVisible();
+  await expect(page).toHaveURL(/\/labels\/[^/]+$/);
 }
 
 async function exerciseTabletCoreViews(page) {

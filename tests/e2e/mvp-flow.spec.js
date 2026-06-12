@@ -72,6 +72,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
 
   await gotoApp(page, '/projects');
   await captureBaselineSet(page, testInfo, 'inbox-equivalent-default-project');
+  await page.setViewportSize(desktopViewport);
   const projectCreateForm = page.locator('[data-project-create-form]');
   await expect(projectCreateForm).toBeVisible();
   await ensureBrowserCSRFCookie(page);
@@ -82,6 +83,15 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
     const remoteState = await stageState();
     return remoteState.calendars.some((calendar) => calendar.display_name === 'E2E Empty Project');
   }).toBe(true);
+  const emptyProjectNav = page.locator('.caldo-sidebar [data-nav-projects] a').filter({ hasText: 'E2E Empty Project' }).first();
+  await emptyProjectNav.scrollIntoViewIfNeeded();
+  await expect(emptyProjectNav).toBeVisible();
+  await expect(emptyProjectNav.locator('.caldo-nav-count')).toHaveText('0');
+  await emptyProjectNav.click();
+  await expect(page).toHaveURL(/\/projects\/[^/]+$/);
+  await expect(page.getByRole('heading', { name: 'E2E Empty Project' })).toBeVisible();
+  await expect(page.locator('.caldo-sidebar [data-nav-projects] a[aria-current="page"]').filter({ hasText: 'E2E Empty Project' })).toBeVisible();
+  await expect(page.getByText('Keine offenen Aufgaben in diesem Projekt.')).toBeVisible();
   await gotoApp(page, '/search?q=%23Work');
   const searchSaveFilterForm = page.locator('[data-search-save-filter-form]');
   await expect(searchSaveFilterForm).toBeVisible();
@@ -578,6 +588,7 @@ async function exerciseQuickAddOverlay(page) {
   await expect(page).toHaveURL(searchURL);
 
   await page.keyboard.press('n');
+  await expect(input).toBeFocused();
   await page.keyboard.type('n');
   await expect(input).toHaveValue('n');
   await input.fill('E2E Overlay Failed');

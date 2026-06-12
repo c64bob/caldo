@@ -112,13 +112,13 @@ func (d *Database) listNavigationProjects(ctx context.Context) ([]NavigationList
 SELECT
 	p.id,
 	p.display_name,
-	COUNT(CASE WHEN t.status != 'completed' THEN 1 END),
+	COUNT(CASE WHEN LOWER(t.status) != 'completed' THEN 1 END),
 	COUNT(t.id),
 	p.server_version
 FROM projects p
 LEFT JOIN tasks t ON t.project_id = p.id
 GROUP BY p.id, p.display_name, p.is_default, p.server_version
-ORDER BY p.is_default DESC, p.display_name COLLATE NOCASE ASC;
+ORDER BY p.is_default DESC, p.display_name COLLATE NOCASE ASC, p.id ASC;
 `)
 	if err != nil {
 		return nil, fmt.Errorf("load navigation snapshot: list projects: %w", err)

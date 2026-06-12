@@ -163,6 +163,15 @@
 		@apply mt-0;
 	}
 
+	.caldo-sidebar-project-list {
+		@apply max-h-80 overflow-y-auto pr-1 outline-none;
+		scrollbar-gutter: stable;
+	}
+
+	.caldo-sidebar-project-list:focus-visible {
+		box-shadow: var(--caldo-focus-ring);
+	}
+
 	.caldo-workspace {
 		@apply flex min-h-screen min-w-0 flex-1 flex-col;
 		background: var(--caldo-bg);

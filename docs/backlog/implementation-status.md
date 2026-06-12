@@ -7,7 +7,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 ## Zusammenfassung
 
 - Bestehende Stories: 89 `Umgesetzt`, 0 `Teilweise umgesetzt`, 0 `Offen`.
-- Neue Planungsstories: 21 `Umgesetzt`, 18 `Offen`.
+- Neue Planungsstories: 22 `Umgesetzt`, 17 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
 ## Legende
@@ -137,7 +137,7 @@ Die neuen Epics 23 bis 28 brechen die verbleibende UI- und QA-Arbeit in kleinere
 | 25.4 | Umgesetzt | `internal/parser/quickadd.go`, `internal/view/quick_add.templ`, `web/static/tailwind.input.css` und `tests/e2e/mvp-flow.spec.js` zeigen natuerliche Datumsangaben als konkrete ISO-Daten mit erkannter Eingabequelle, markieren mehrdeutige Wochentagsangaben mit Korrekturhinweis, erlauben Entfernen und Ersetzen ueber das bestehende Datumskorrekturfeld und pruefen, dass die Preview-Route keine Aufgabe persistiert. |
 | 25.5 | Umgesetzt | `internal/view/quick_add.go`, `internal/view/quick_add.templ`, `internal/handler/tasks_create.go`, `web/assets/app.js`, `web/static/tailwind.input.css` und `tests/e2e/mvp-flow.spec.js` zeigen einfache RRULEs in Quick Add als menschenlesbare Chips, behalten komplexe RRULEs raw erhalten, machen Prioritaeten als P1/P2/P3 plus Text sichtbar und blockieren fehlerhafte Wiederholungswerte mit sichtbarem Hinweis vor dem Speichern. |
 | 25.6 | Umgesetzt | `web/assets/app.js` und `tests/e2e/mvp-flow.spec.js` ergaenzen den Quick-Add-Overlay-Fluss um Tastaturstart per `N`, erwartete Fokusuebergabe nach Preview, Escape-Abbruch mit Fokus-Rueckkehr, Ctrl/Cmd+Enter-Speichern, Pfeiltasten-Navigation ueber erkannte Tokenchips und Browser-QA fuer den tastaturbasierten Schnellanlagepfad. |
-| 26.1 | Offen | Projektliste erscheint in der Sidebar, aber die Story ist als eigene Sidebar-Projektlistenarbeit noch nicht gezielt umgesetzt. |
+| 26.1 | Umgesetzt | `internal/db/navigation.go`, `internal/handler/navigation_pages.go`, `internal/view/layout.templ`, `web/static/tailwind.input.css` und `tests/e2e/mvp-flow.spec.js` listen Projekte stabil in der Sidebar, zeigen offene Aufgabenzaehler, verlinken auf `/projects/{projectID}`, markieren die aktive Projektansicht und halten lange Projektlisten scrollbar. |
 | 26.2 | Offen | Projektverwaltung ist backendseitig vorhanden, aber keine vollstaendige produktive UI. |
 | 26.3 | Offen | Label-Seite existiert nur als Navigationsuebersicht; Label-Bearbeitung ist offen. |
 | 26.4 | Offen | Gespeicherte Filter koennen nicht produktiv in der UI verwaltet werden. |

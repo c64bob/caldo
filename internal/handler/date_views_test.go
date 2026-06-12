@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"caldo/internal/db"
+	"github.com/go-chi/chi/v5"
 )
 
 func TestTodayRouteShowsTodayAndOverdueTasks(t *testing.T) {
@@ -168,6 +169,44 @@ func TestAdditionalSystemFilters(t *testing.T) {
 	Completed(dateViewDependencies{database: database, now: fixedNow}).ServeHTTP(rr, req)
 	if !strings.Contains(rr.Body.String(), "Überfällig erledigt") {
 		t.Fatal("completed tasks must be visible when show_completed is true")
+	}
+}
+
+func TestProjectTasksRouteShowsProjectTasksAndActiveSidebar(t *testing.T) {
+	t.Parallel()
+
+	database := openDateViewRouteDB(t)
+	seedDateViewRouteTasks(t, database)
+
+	router := chi.NewRouter()
+	router.Get("/projects/{projectID}", ProjectTasksPage(dateViewDependencies{database: database, now: fixedNow}))
+
+	request := httptest.NewRequest(http.MethodGet, "/projects/project-1", nil)
+	responseRecorder := httptest.NewRecorder()
+	router.ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+
+	body := responseRecorder.Body.String()
+	for _, want := range []string{
+		"Work",
+		"Überfällige Aufgabe",
+		"Heute Aufgabe",
+		`href="/projects/project-1"`,
+		`aria-current="page"`,
+		`caldo-sidebar-project-list`,
+		`data-nav-projects`,
+		`name="project_id" value="project-1"`,
+		"Aufgabe in Work hinzufügen",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("project page missing %q: %q", want, body)
+		}
+	}
+	if strings.Contains(body, "Überfällig erledigt") {
+		t.Fatalf("project page should hide completed tasks by default: %q", body)
 	}
 }
 

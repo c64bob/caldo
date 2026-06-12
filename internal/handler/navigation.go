@@ -55,7 +55,17 @@ func shouldLoadNavigation(database *db.Database, setupState *SetupState, r *http
 }
 
 func navigationSnapshotView(snapshot db.NavigationSnapshot) view.NavigationSnapshot {
+	return navigationSnapshotViewWithActiveProject(snapshot, "")
+}
+
+func navigationSnapshotViewWithActiveProject(snapshot db.NavigationSnapshot, activeProjectID string) view.NavigationSnapshot {
 	projects := navigationProjectsView(snapshot.Projects)
+	activeProjectID = strings.TrimSpace(activeProjectID)
+	for index := range projects {
+		if activeProjectID != "" && projects[index].ID == activeProjectID {
+			projects[index].Active = true
+		}
+	}
 	labels := navigationLabelsView(snapshot.Labels)
 	filters := navigationFiltersView(snapshot.SavedFilters)
 	return view.BuildNavigationSnapshot(
@@ -78,7 +88,7 @@ func navigationProjectsView(items []db.NavigationListItem) []view.NavigationOver
 		result = append(result, view.NavigationOverviewItem{
 			ID:              item.ID,
 			Name:            item.Name,
-			Href:            view.ProjectSearchHref(item.Name),
+			Href:            view.ProjectHref(item.ID),
 			Count:           item.OpenTaskCount,
 			HasCount:        true,
 			Meta:            "Offene Aufgaben",

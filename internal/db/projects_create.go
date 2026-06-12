@@ -72,7 +72,7 @@ func (d *Database) ListProjectOptions(ctx context.Context) ([]ProjectOption, err
 	rows, err := d.Conn.QueryContext(ctx, `
 SELECT id, display_name
 FROM projects
-ORDER BY is_default DESC, display_name COLLATE NOCASE ASC;
+ORDER BY is_default DESC, display_name COLLATE NOCASE ASC, id ASC;
 `)
 	if err != nil {
 		return nil, fmt.Errorf("list project options: %w", err)

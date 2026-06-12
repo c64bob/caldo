@@ -63,6 +63,57 @@ func TestLoadTaskViewReturnsSingleTaskMetadata(t *testing.T) {
 	}
 }
 
+func TestListProjectTasksFiltersByProjectAndShowCompleted(t *testing.T) {
+	t.Parallel()
+
+	database := openViewTestDB(t)
+	seedViewTasks(t, database)
+	if _, err := database.Conn.Exec(`
+INSERT INTO projects (
+	id, calendar_href, display_name, sync_strategy, server_version, created_at, updated_at
+) VALUES (
+	'project-2', '/calendars/home', 'Home', 'fullscan', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+);
+
+INSERT INTO tasks (
+	id, project_id, uid, href, etag, server_version, title, status, raw_vtodo, base_vtodo,
+	project_name, sync_status, created_at, updated_at
+) VALUES (
+	'task-home', 'project-2', 'uid-home', '/calendars/home/task-home.ics', '"etag-home"', 1,
+	'Home Task', 'needs-action', 'BEGIN:VTODO\nUID:uid-home\nEND:VTODO',
+	'BEGIN:VTODO\nUID:uid-home\nEND:VTODO', 'Home', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+);
+`); err != nil {
+		t.Fatalf("seed second project: %v", err)
+	}
+
+	results, err := database.ListProjectTasks(context.Background(), "project-1", 50)
+	if err != nil {
+		t.Fatalf("list project tasks: %v", err)
+	}
+	if containsDatedTask(results, "task-home") {
+		t.Fatalf("project results included another project's task: %#v", results)
+	}
+	if containsDatedTask(results, "task-overdue-completed") {
+		t.Fatalf("project results included completed task while hidden: %#v", results)
+	}
+	if !containsDatedTask(results, "task-today-active") || !containsDatedTask(results, "task-without-due") {
+		t.Fatalf("project results missing expected active tasks: %#v", results)
+	}
+
+	if _, err := database.Conn.Exec(`UPDATE settings SET show_completed = TRUE WHERE id = 'default';`); err != nil {
+		t.Fatalf("update show_completed: %v", err)
+	}
+
+	withCompleted, err := database.ListProjectTasks(context.Background(), "project-1", 50)
+	if err != nil {
+		t.Fatalf("list project tasks with completed: %v", err)
+	}
+	if !containsDatedTask(withCompleted, "task-overdue-completed") {
+		t.Fatalf("project results should include completed task when enabled: %#v", withCompleted)
+	}
+}
+
 func TestLoadTaskViewIncludesUnresolvedConflictID(t *testing.T) {
 	t.Parallel()
 
@@ -84,6 +135,15 @@ VALUES ('conflict-resolved','task-today-active','project-1','field_conflict',CUR
 	if row.UnresolvedConflictID != "conflict-open" {
 		t.Fatalf("unexpected unresolved conflict id: got %q", row.UnresolvedConflictID)
 	}
+}
+
+func containsDatedTask(rows []DatedTaskViewRow, taskID string) bool {
+	for _, row := range rows {
+		if row.ID == taskID {
+			return true
+		}
+	}
+	return false
 }
 
 func TestListTodayTasksIncludesDueAtStoredAsDriverTimestamp(t *testing.T) {

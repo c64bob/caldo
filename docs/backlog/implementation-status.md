@@ -7,7 +7,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 ## Zusammenfassung
 
 - Bestehende Stories: 89 `Umgesetzt`, 0 `Teilweise umgesetzt`, 0 `Offen`.
-- Neue Planungsstories: 32 `Umgesetzt`, 7 `Offen`.
+- Neue Planungsstories: 33 `Umgesetzt`, 6 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
 ## Legende
@@ -148,7 +148,7 @@ Die neuen Epics 23 bis 28 brechen die verbleibende UI- und QA-Arbeit in kleinere
 | 27.3 | Umgesetzt | `internal/view/conflicts.templ`, `internal/view/conflicts.go`, `internal/handler/conflicts_resolve.go`, `web/assets/app.js`, `web/static/tailwind.input.css` und `tests/e2e/mvp-flow.spec.js` bieten je konfliktfaehigem Feld lokale, Remote- und manuelle Auswahl mit sichtbarer Vorschau, schreiben gemischte manuelle Werte zu CalDAV, halten 412-Folgekonflikte sichtbar ohne Retry und bewahren nicht betroffene VTODO-Daten. |
 | 27.4 | Umgesetzt | `internal/view/conflicts.templ`, `internal/view/conflicts.go`, `internal/handler/conflicts_resolve.go`, `web/assets/app.js`, `web/static/tailwind.input.css` und Konflikt-/Browser-Tests zeigen den Split als bewussten UI-Flow mit zwei Zielaufgaben-Vorschauen, Pflichtbestaetigung vor dem Speichern, CalDAV-Split-Write und unveraendert ungeloestem Konflikt bei Teilfehlern inklusive best-effort Cleanup. |
 | 27.5 | Umgesetzt | `internal/handler/settings_update.go`, `internal/handler/navigation_pages.go`, `internal/view/settings.go`, `internal/view/settings_test.go` und `internal/handler/settings_update_test.go` testen CalDAV-Verbindungen mit sanitisierten Erfolgs-/Fehlerklassen, speichern neue Zugangsdaten verschluesselt, rendern keine Passwortwerte und zeigen nach dem Speichern den aktuellen Sync-Zustand inklusive letzter sicherer Fehlerklasse in den Einstellungen. |
-| 27.6 | Offen | Kalenderauswahl und Default-Projekt nach Setup sind nicht als produktive Settings-UI umgesetzt. |
+| 27.6 | Umgesetzt | `internal/view/settings.go`, `internal/view/settings_test.go`, `internal/handler/settings_update.go`, `internal/handler/settings_update_test.go`, `internal/db/settings_update.go`, `internal/db/tasks_create.go`, `internal/handler/quick_add_test.go` und `internal/db/projects_remote_cleanup.go` zeigen synchronisierte, remote-only und remote nicht gefundene Kalenderzustände in den Einstellungen, machen Entfernen-Folgen vor dem Speichern sichtbar, speichern das Default-Projekt fuer den gemeinsamen Task-Erstellungsresolver und halten remote geloeschte Kalender nachvollziehbar. |
 | 28.1 | Offen | Tablet-Layout ist nicht systematisch fuer alle Kernansichten abgesichert. |
 | 28.2 | Offen | Mobile Navigation ist grundlegend vorhanden, aber die eigene Story fuer kleine Breiten ist noch nicht vollstaendig umgesetzt. |
 | 28.3 | Offen | Safari-/WebKit-QA ist nicht fest im Prozess verankert. |

@@ -28,7 +28,8 @@ func TestSettingsPageContentRendersCalDAVCalendarSyncUIAndSecuritySettings(t *te
 			CalDAVUsername:      "alice",
 			CalDAVConfigured:    true,
 			Projects: []db.SettingsProject{
-				{ID: "project-1", CalendarHref: "/cal/work/", DisplayName: "Work", IsDefault: true, OpenTaskCount: 2, TaskCount: 3},
+				{ID: "project-1", CalendarHref: "/cal/work/", DisplayName: "Work", SyncStrategy: "fullscan", IsDefault: true, OpenTaskCount: 2, TaskCount: 3},
+				{ID: "project-archive", CalendarHref: "/cal/archive/", DisplayName: "Archive", SyncStrategy: "fullscan", TaskCount: 1},
 			},
 		},
 		SyncStatus: db.SyncStatus{
@@ -41,6 +42,7 @@ func TestSettingsPageContentRendersCalDAVCalendarSyncUIAndSecuritySettings(t *te
 			{Href: "/cal/work/", DisplayName: "Work"},
 			{Href: "/cal/home/", DisplayName: "Home"},
 		},
+		CalendarsLoaded:  true,
 		CalDAVSuccess:    "verbindungstest erfolgreich",
 		ProxyUserHeader:  "X-Forwarded-User",
 		ProxyUserPresent: true,
@@ -69,10 +71,22 @@ func TestSettingsPageContentRendersCalDAVCalendarSyncUIAndSecuritySettings(t *te
 		`name="caldav_action" value="save"`,
 		`CalDAV speichern`,
 		`unverändert lassen`,
+		`data-settings-calendars`,
 		`action="/settings/calendars"`,
+		`data-settings-calendar-state="synced"`,
 		`name="calendar_href" value="/cal/work/" checked`,
 		`name="default_calendar_href" value="/cal/work/" checked`,
+		`Lokal und remote synchronisiert`,
+		`Default-Projekt`,
 		`Projekt: Work`,
+		`Sync-Strategie: fullscan`,
+		`data-calendar-remove-impact`,
+		`Beim Entfernen bleiben lokale Aufgaben erhalten`,
+		`data-settings-calendar-state="remote-only"`,
+		`Remote verfügbar, noch nicht lokal synchronisiert`,
+		`data-settings-calendar-state="remote-missing"`,
+		`Remote nicht gefunden`,
+		`Archive`,
 		`data-settings-sync-state="idle"`,
 		`Letzter erfolgreicher Sync`,
 		`02.01.2026 03:04`,
@@ -96,5 +110,36 @@ func TestSettingsPageContentRendersCalDAVCalendarSyncUIAndSecuritySettings(t *te
 	}
 	if strings.Contains(output, `value="secret"`) {
 		t.Fatalf("settings page must not render plaintext caldav password: %s", output)
+	}
+}
+
+func TestSettingsPageContentDoesNotMarkRemoteMissingWhenCalendarsDidNotLoad(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	component := SettingsPageContent(SettingsPageView{
+		Settings: db.AppSettings{
+			SyncIntervalMinutes: 15,
+			UpcomingDays:        7,
+			UILanguage:          "de",
+			DarkMode:            "system",
+			Projects: []db.SettingsProject{
+				{ID: "project-1", CalendarHref: "/cal/work/", DisplayName: "Work", SyncStrategy: "fullscan", IsDefault: true, TaskCount: 1},
+			},
+		},
+		CalendarsError: "kalender konnten nicht geladen werden",
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render settings page: %v", err)
+	}
+
+	output := rendered.String()
+	if strings.Contains(output, `data-settings-calendar-state="remote-missing"`) {
+		t.Fatalf("calendar load failure must not be rendered as remote-missing state: %s", output)
+	}
+	if !strings.Contains(output, "kalender konnten nicht geladen werden") {
+		t.Fatalf("expected calendar load error in settings page: %s", output)
 	}
 }

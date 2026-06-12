@@ -169,6 +169,15 @@ type Texts struct {
 	SettingsNotMapped        string
 	SettingsProjectPrefix    string
 	SettingsOpenTasks        string
+	SettingsCalSynced        string
+	SettingsCalRemoteOnly    string
+	SettingsCalDefault       string
+	SettingsCalSyncStrategy  string
+	SettingsCalRemoveEmpty   string
+	SettingsCalRemoveTasks   string
+	SettingsCalRemoteMissing string
+	SettingsCalMissingHelp   string
+	SettingsCalMissingImpact string
 	SettingsUseAsDefault     string
 	SettingsSaveCalendars    string
 	SettingsCalendarsPending string
@@ -299,6 +308,15 @@ var germanTexts = Texts{
 	SettingsNotMapped:        "Noch nicht als Projekt hinzugefügt",
 	SettingsProjectPrefix:    "Projekt",
 	SettingsOpenTasks:        "offene Aufgaben",
+	SettingsCalSynced:        "Lokal und remote synchronisiert",
+	SettingsCalRemoteOnly:    "Remote verfügbar, noch nicht lokal synchronisiert",
+	SettingsCalDefault:       "Default-Projekt",
+	SettingsCalSyncStrategy:  "Sync-Strategie",
+	SettingsCalRemoveEmpty:   "Beim Entfernen wird das leere lokale Projekt entfernt.",
+	SettingsCalRemoveTasks:   "Beim Entfernen bleiben lokale Aufgaben erhalten; Projekt bleibt lokal sichtbar.",
+	SettingsCalRemoteMissing: "Remote nicht gefunden",
+	SettingsCalMissingHelp:   "Diese lokalen Projekte wurden in der aktuellen CalDAV-Liste nicht gefunden.",
+	SettingsCalMissingImpact: "Ein Sync übernimmt Remote-Löschungen und entfernt lokale Aufgaben gemäß CalDAV-Führung.",
 	SettingsUseAsDefault:     "Als Default-Projekt verwenden",
 	SettingsSaveCalendars:    "Kalenderauswahl speichern",
 	SettingsCalendarsPending: "Speichern ...",
@@ -429,6 +447,15 @@ var englishTexts = Texts{
 	SettingsNotMapped:        "Not added as a project yet",
 	SettingsProjectPrefix:    "Project",
 	SettingsOpenTasks:        "open tasks",
+	SettingsCalSynced:        "Synced locally and remotely",
+	SettingsCalRemoteOnly:    "Remote available, not synced locally yet",
+	SettingsCalDefault:       "Default project",
+	SettingsCalSyncStrategy:  "Sync strategy",
+	SettingsCalRemoveEmpty:   "Removing it deletes the empty local project.",
+	SettingsCalRemoveTasks:   "Removing it keeps local tasks; the project stays visible locally.",
+	SettingsCalRemoteMissing: "Remote not found",
+	SettingsCalMissingHelp:   "These local projects were not found in the current CalDAV calendar list.",
+	SettingsCalMissingImpact: "A sync applies remote deletions and removes local tasks according to CalDAV leadership.",
 	SettingsUseAsDefault:     "Use as default project",
 	SettingsSaveCalendars:    "Save calendar selection",
 	SettingsCalendarsPending: "Saving ...",

@@ -47,6 +47,37 @@ func TestQuickAddPreviewUsesDefaultProject(t *testing.T) {
 	}
 }
 
+func TestQuickAddPreviewUsesOverlaySurface(t *testing.T) {
+	database := openSQLiteForTaskCreateHandlerTest(t)
+	seedTaskCreateHandlerProject(t, database)
+	h := QuickAddPreview(quickAddDependencies{database: database})
+
+	form := url.Values{}
+	form.Set("text", "Overlay Aufgabe")
+	form.Set("surface", "overlay")
+	req := httptest.NewRequest(http.MethodPost, "/quick-add/preview", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d", w.Code)
+	}
+	body := w.Body.String()
+	for _, want := range []string{
+		`id="quick-add-overlay-preview"`,
+		`data-quick-add-overlay-save-form`,
+		`name="title" value="Overlay Aufgabe"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected overlay preview to include %q in %s", want, body)
+		}
+	}
+	if strings.Contains(body, `id="quick-add-preview"`) {
+		t.Fatalf("expected overlay preview response to avoid page preview id: %s", body)
+	}
+}
+
 func TestQuickAddPreviewUsesPersistedUILanguage(t *testing.T) {
 	database := openSQLiteForTaskCreateHandlerTest(t)
 	seedTaskCreateHandlerProject(t, database)

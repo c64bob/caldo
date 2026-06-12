@@ -6,7 +6,10 @@ import (
 	"strings"
 
 	"caldo/internal/parser"
+	"github.com/a-h/templ"
 )
+
+const quickAddOverlaySurface = "overlay"
 
 func quickAddCSRFHeaders(ctx context.Context) string {
 	encoded, err := json.Marshal(map[string]string{"X-CSRF-Token": CSRFToken(ctx)})
@@ -56,4 +59,12 @@ func quickAddPriorityLabel(ctx context.Context, priority string) string {
 	default:
 		return Text(ctx).None
 	}
+}
+
+func quickAddOverlayAttributes(surface string) templ.Attributes {
+	if surface == quickAddOverlaySurface {
+		return templ.Attributes{"data-quick-add-overlay-save-form": ""}
+	}
+
+	return nil
 }

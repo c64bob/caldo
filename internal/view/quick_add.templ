@@ -26,18 +26,55 @@ templ QuickAddPage(draft *parser.QuickAddDraft, text string, errorMessage string
 				<p class="caldo-alert caldo-alert-error">{ errorMessage }</p>
 			}
 			if draft != nil {
-				@quickAddPreviewContent(*draft)
+				@quickAddPreviewContent(*draft, "quick-add-preview", "")
 			}
 		</div>
 	</section>
 }
 
-templ QuickAddPreview(draft parser.QuickAddDraft, text string) {
-	@quickAddPreviewContent(draft)
+templ QuickAddOverlay() {
+	<dialog id="quick-add-overlay" class="caldo-quick-add-overlay" data-quick-add-overlay aria-labelledby="quick-add-overlay-title">
+		<div class="caldo-quick-add-overlay-panel">
+			<div class="caldo-quick-add-overlay-header">
+				<h2 id="quick-add-overlay-title" class="caldo-page-title">{ Text(ctx).QuickAddTitle }</h2>
+				<button type="button" class="caldo-button caldo-button-ghost" data-quick-add-close>{ Text(ctx).Close }</button>
+			</div>
+			<div class="caldo-quick-add-overlay-body">
+				<form
+					method="post"
+					action="/quick-add/preview"
+					hx-post="/quick-add/preview"
+					hx-target="#quick-add-overlay-preview"
+					hx-swap="outerHTML"
+					hx-disabled-elt="find button"
+					class="caldo-quick-add-form"
+					data-quick-add-overlay-form
+				>
+					<input type="hidden" name="surface" value={ quickAddOverlaySurface }/>
+					<label for="quick-add-overlay-text" class="caldo-label">{ Text(ctx).QuickAddTaskLabel }</label>
+					<input id="quick-add-overlay-text" name="text" type="text" class="caldo-input" data-quick-add-overlay-input/>
+					<div class="caldo-quick-add-actions">
+						<button type="submit" accesskey="q" class="caldo-button caldo-button-secondary">{ Text(ctx).QuickAddPreviewAction }</button>
+						<span class="htmx-indicator caldo-meta" aria-live="polite">{ Text(ctx).QuickAddPreviewPending }</span>
+					</div>
+				</form>
+				<p class="caldo-alert caldo-alert-error" data-quick-add-overlay-error hidden></p>
+				<div id="quick-add-overlay-preview" class="caldo-quick-add-preview-shell"></div>
+			</div>
+		</div>
+	</dialog>
 }
 
-templ quickAddPreviewContent(draft parser.QuickAddDraft) {
-	<section id="quick-add-preview" class="caldo-card caldo-quick-add-preview" data-quick-add-preview>
+templ QuickAddPreview(draft parser.QuickAddDraft, text string) {
+	@quickAddPreviewContent(draft, "quick-add-preview", "")
+}
+
+templ QuickAddOverlayPreview(draft parser.QuickAddDraft, text string) {
+	@quickAddPreviewContent(draft, "quick-add-overlay-preview", quickAddOverlaySurface)
+}
+
+templ quickAddPreviewContent(draft parser.QuickAddDraft, previewID string, surface string) {
+	<section id={ previewID } class="caldo-card caldo-quick-add-preview" data-quick-add-preview>
 		<h3>{ Text(ctx).QuickAddPreviewHeading }</h3>
 		<dl class="caldo-quick-add-preview-grid">
 			<div>
@@ -76,6 +113,7 @@ templ quickAddPreviewContent(draft parser.QuickAddDraft) {
 			hx-headers={ quickAddCSRFHeaders(ctx) }
 			class="caldo-quick-add-save-form"
 			data-quick-add-save-form
+			{ quickAddOverlayAttributes(surface)... }
 		>
 			<input type="hidden" name="title" value={ draft.Title }/>
 			if draft.ProjectNew {

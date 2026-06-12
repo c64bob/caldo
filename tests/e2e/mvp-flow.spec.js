@@ -64,6 +64,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(page.getByRole('heading', { name: 'Globale Suche' })).toBeVisible();
   await expect(page.locator('[data-search-results]').filter({ hasText: 'Stage Seed Task' })).toBeVisible();
   await exerciseKeyboardShortcuts(page);
+  await exerciseQuickAddOverlay(page);
   await exerciseThemeToggle(page);
   await exerciseSSESyncStatus(page);
   await gotoApp(page, '/search?q=Stage');
@@ -517,8 +518,12 @@ async function exerciseTabletTaskActions(page, panelTaskID) {
 async function exerciseKeyboardShortcuts(page) {
   await gotoApp(page, '/today');
   await page.keyboard.press('n');
-  await expect(page).toHaveURL(/\/quick-add$/);
-  await expect(page.getByRole('heading', { name: 'Quick Add' })).toBeVisible();
+  const quickAddOverlay = page.locator('[data-quick-add-overlay]');
+  await expect(quickAddOverlay).toBeVisible();
+  await expect(page).toHaveURL(/\/today$/);
+  await expect(quickAddOverlay.locator('[data-quick-add-overlay-input]')).toBeFocused();
+  await quickAddOverlay.getByRole('button', { name: 'Schließen' }).click();
+  await expect(quickAddOverlay).toBeHidden();
 
   await gotoApp(page, '/today');
   await page.keyboard.press('s');
@@ -550,6 +555,56 @@ async function exerciseKeyboardShortcuts(page) {
   await expect(helpDialog).toContainText('G');
   await helpDialog.getByRole('button', { name: 'Schließen' }).click();
   await expect(helpDialog).toBeHidden();
+}
+
+async function exerciseQuickAddOverlay(page) {
+  await gotoApp(page, '/search?q=Stage');
+  await ensureBrowserCSRFCookie(page);
+  const searchURL = page.url();
+  const overlay = page.locator('[data-quick-add-overlay]');
+  const input = overlay.locator('[data-quick-add-overlay-input]');
+  const previewForm = overlay.locator('[data-quick-add-overlay-form]');
+
+  await page.locator('.caldo-topbar [data-quick-add-open]').click();
+  await expect(overlay).toBeVisible();
+  await expect(input).toBeFocused();
+  await expect(page).toHaveURL(searchURL);
+  await input.fill('E2E Overlay Canceled');
+  await overlay.getByRole('button', { name: 'Schließen' }).click();
+  await expect(overlay).toBeHidden();
+  await expect(page).toHaveURL(searchURL);
+
+  await page.locator('.caldo-topbar [data-quick-add-open]').click();
+  await input.fill('E2E Overlay Failed');
+  await previewForm.getByRole('button', { name: 'Vorschau' }).click();
+  let saveForm = overlay.locator('[data-quick-add-overlay-save-form]');
+  await expect(saveForm).toBeVisible();
+  await saveForm.locator('input[name="title"]').evaluate((element) => {
+    element.value = '';
+  });
+  await saveForm.getByRole('button', { name: 'Speichern' }).click();
+  await expect(overlay).toBeVisible();
+  await expect(overlay.locator('[data-quick-add-overlay-error]')).toContainText('Aufgabe konnte nicht gespeichert werden.');
+  await expect(input).toHaveValue('E2E Overlay Failed');
+  await expect(page).toHaveURL(searchURL);
+
+  await input.fill('E2E Overlay Created');
+  await previewForm.getByRole('button', { name: 'Vorschau' }).click();
+  saveForm = overlay.locator('[data-quick-add-overlay-save-form]');
+  await expect(saveForm.locator('input[name="title"]')).toHaveValue('E2E Overlay Created');
+  await saveForm.getByRole('button', { name: 'Speichern' }).click();
+  await expect(overlay).toBeHidden();
+  await expect(page).toHaveURL(searchURL);
+  await waitForSearchResult(page, 'E2E Overlay Created');
+
+  await page.setViewportSize(mobileViewport);
+  await gotoApp(page, '/search?q=Stage');
+  await page.locator('.caldo-topbar [data-quick-add-open]').click();
+  await expect(overlay).toBeVisible();
+  await expectElementWithinViewport(overlay, mobileViewport);
+  await overlay.getByRole('button', { name: 'Schließen' }).click();
+  await expect(overlay).toBeHidden();
+  await page.setViewportSize(desktopViewport);
 }
 
 async function exerciseThemeToggle(page) {

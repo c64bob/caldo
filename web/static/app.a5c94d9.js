@@ -278,6 +278,57 @@
     });
   }
 
+  function clearQuickAddControl(button) {
+    if (!button) return;
+    var selector = button.getAttribute('data-quick-add-clear') || '';
+    if (!selector) return;
+    var preview = button.closest('[data-quick-add-preview]');
+    var form = button.closest('[data-quick-add-save-form]');
+    if (!form && preview) {
+      form = preview.querySelector('[data-quick-add-save-form]');
+    }
+    if (!form) return;
+    var controls = form.querySelectorAll(selector);
+    if (!controls.length) return;
+
+    Array.prototype.forEach.call(controls, function (control) {
+      if (control.type === 'checkbox' || control.type === 'radio') {
+        control.checked = false;
+      } else {
+        control.value = '';
+      }
+      control.dispatchEvent(new Event('input', { bubbles: true }));
+      control.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    if (selector.indexOf('project_new_name') !== -1) {
+      Array.prototype.forEach.call(form.querySelectorAll('[name="project_selection"]'), function (selection) {
+        if (selection.type === 'radio') {
+          selection.checked = false;
+        } else {
+          selection.value = '';
+        }
+        selection.dispatchEvent(new Event('input', { bubbles: true }));
+        selection.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    }
+
+    var chip = button.closest('.caldo-quick-add-chip');
+    if (chip && chip.closest('[data-quick-add-chips]')) {
+      chip.hidden = true;
+      chip.style.display = 'none';
+      var chipList = chip.closest('[data-quick-add-chips]');
+      if (chipList && !chipList.querySelector('.caldo-quick-add-chip:not([hidden])')) {
+        chipList.hidden = true;
+        chipList.style.display = 'none';
+      }
+    }
+
+    if (typeof controls[0].focus === 'function') {
+      controls[0].focus();
+    }
+  }
+
   function inlineCreateError(root) {
     return root ? root.querySelector('[data-inline-task-create-error]') : null;
   }
@@ -1536,6 +1587,13 @@
   document.addEventListener('dragend', clearTaskMoveDragState);
 
   document.addEventListener('click', function (event) {
+    var quickAddClear = closestElement(event.target, '[data-quick-add-clear]');
+    if (quickAddClear) {
+      event.preventDefault();
+      clearQuickAddControl(quickAddClear);
+      return;
+    }
+
     var quickAddOpen = closestElement(event.target, '[data-quick-add-open]');
     if (quickAddOpen) {
       event.preventDefault();

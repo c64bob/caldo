@@ -17,6 +17,7 @@ type QuickAddDraft struct {
 	ProjectNew         bool
 	ProjectUnresolved  bool
 	ProjectSuggestions []QuickAddProjectSuggestion
+	ProjectOptions     []QuickAddProjectSuggestion
 	Labels             []string
 	Due                string
 	Recurrence         string

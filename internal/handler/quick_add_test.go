@@ -179,9 +179,36 @@ func TestQuickAddPreviewShowsLabelsAndPriorityTokens(t *testing.T) {
 		t.Fatalf("unexpected status: %d", w.Code)
 	}
 	body := w.Body.String()
-	for _, want := range []string{`urgent, backend`, `value="urgent, backend"`, `medium`, `name="priority" value="medium"`} {
+	for _, want := range []string{`urgent, backend`, `value="urgent, backend"`, `name="priority"`, `value="medium" selected`} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("expected quick add token preview to include %q in %s", want, body)
+		}
+	}
+}
+
+func TestQuickAddPreviewIncludesEditableProjectOptions(t *testing.T) {
+	database := openSQLiteForTaskCreateHandlerTest(t)
+	seedTaskCreateHandlerProject(t, database)
+	h := QuickAddPreview(quickAddDependencies{database: database})
+
+	form := url.Values{}
+	form.Set("text", "Neue Aufgabe #Inbox")
+	req := httptest.NewRequest(http.MethodPost, "/quick-add/preview", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d", w.Code)
+	}
+	body := w.Body.String()
+	for _, want := range []string{
+		`name="project_selection"`,
+		`value="existing:project-default" selected`,
+		`data-quick-add-correction="project"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected editable project options to include %q in %s", want, body)
 		}
 	}
 }

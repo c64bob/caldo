@@ -27,8 +27,16 @@ func TestQuickAddPreviewIncludesCSRFHeaderForSaveForm(t *testing.T) {
 	if !strings.Contains(output, `X-CSRF-Token`) || !strings.Contains(output, `token-123`) {
 		t.Fatal("expected quick add save form to include csrf token in htmx headers")
 	}
-	if !strings.Contains(output, `name="labels"`) || !strings.Contains(output, `name="priority"`) || !strings.Contains(output, `name="recurrence"`) {
-		t.Fatal("expected quick add save form to include labels, priority, and recurrence fields")
+	for _, want := range []string{
+		`data-quick-add-corrections`,
+		`name="title" value="Test"`,
+		`name="labels"`,
+		`name="priority"`,
+		`name="recurrence"`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected quick add save form to include %q in %s", want, output)
+		}
 	}
 }
 
@@ -49,6 +57,7 @@ func TestQuickAddOverlayUsesDistinctPreviewTarget(t *testing.T) {
 		`data-quick-add-overlay-form`,
 		`id="quick-add-overlay-text"`,
 		`hx-target="#quick-add-overlay-preview"`,
+		`hx-trigger="input changed delay:350ms, submit"`,
 		`name="surface" value="overlay"`,
 		`data-quick-add-overlay-error hidden`,
 		`id="quick-add-overlay-preview"`,
@@ -85,6 +94,52 @@ func TestQuickAddOverlayPreviewUsesOverlayTargetAndSaveHook(t *testing.T) {
 	}
 	if strings.Contains(output, `id="quick-add-preview"`) {
 		t.Fatalf("expected overlay preview to avoid page preview id: %s", output)
+	}
+}
+
+func TestQuickAddPreviewRendersCorrectionChipsAndEditableFields(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	component := QuickAddPreview(parser.QuickAddDraft{
+		Title:     "Review",
+		ProjectID: "project-work",
+		Project:   "Work",
+		ProjectOptions: []parser.QuickAddProjectSuggestion{
+			{ID: "project-default", Name: "Inbox"},
+			{ID: "project-work", Name: "Work"},
+		},
+		Labels:     []string{"urgent", "backend"},
+		Due:        "2026-06-13",
+		Recurrence: "FREQ=WEEKLY",
+		Priority:   "medium",
+	}, "")
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render quick add preview: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`data-quick-add-chips`,
+		`class="caldo-quick-add-chip"`,
+		`data-quick-add-corrections`,
+		`data-quick-add-correction="title"`,
+		`name="title" value="Review"`,
+		`name="project_selection"`,
+		`value="existing:project-work" selected`,
+		`name="labels" value="urgent, backend"`,
+		`name="due_date" value="2026-06-13"`,
+		`name="recurrence" value="FREQ=WEEKLY"`,
+		`value="medium" selected`,
+		`data-quick-add-clear="[name='labels']"`,
+		`data-quick-add-clear="[name='due_date']"`,
+		`data-quick-add-clear="[name='priority']"`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected correction preview to include %q in %s", want, output)
+		}
 	}
 }
 

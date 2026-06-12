@@ -4,7 +4,7 @@
 Story 25.2 — Live-Parsing-Chips und Korrekturen
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Die Quick-Add-Eingabe zeigt erkannte Bestandteile direkt und korrigierbar an.

@@ -39,6 +39,10 @@ func QuickAddPreview(deps quickAddDependencies) http.HandlerFunc {
 		}
 		draft := parser.ParseQuickAddWithLanguage(text, language)
 		requestedProject := draft.Project
+		projectOptions, projectOptionsErr := deps.database.ListProjectOptions(r.Context())
+		if projectOptionsErr == nil {
+			draft.ProjectOptions = quickAddProjectOptions(projectOptions)
+		}
 		if draft.Title == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			if err := view.ErrorState("Vorschau erstellen", "validierungsfehler", false).Render(ctx, w); err != nil {
@@ -59,8 +63,8 @@ func QuickAddPreview(deps quickAddDependencies) http.HandlerFunc {
 			} else if tokenErr == sql.ErrNoRows {
 				draft.Project = requestedProject
 				draft.ProjectNew = true
-				if projects, projectErr := deps.database.ListProjectOptions(r.Context()); projectErr == nil {
-					draft.ProjectSuggestions = quickAddProjectSuggestions(projects, requestedProject)
+				if projectOptionsErr == nil {
+					draft.ProjectSuggestions = quickAddProjectSuggestions(projectOptions, requestedProject)
 				}
 			}
 		}
@@ -110,6 +114,24 @@ func quickAddProjectSuggestions(projects []db.ProjectOption, requestedProject st
 	}
 
 	return matches
+}
+
+func quickAddProjectOptions(projects []db.ProjectOption) []parser.QuickAddProjectSuggestion {
+	options := make([]parser.QuickAddProjectSuggestion, 0, len(projects))
+	seen := make(map[string]struct{}, len(projects))
+	for _, project := range projects {
+		id := strings.TrimSpace(project.ID)
+		name := strings.TrimSpace(project.DisplayName)
+		if id == "" || name == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		options = append(options, parser.QuickAddProjectSuggestion{ID: id, Name: name})
+	}
+	return options
 }
 
 func normalizeQuickAddSuggestionText(value string) string {

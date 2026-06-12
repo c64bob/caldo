@@ -61,6 +61,26 @@ func quickAddPriorityLabel(ctx context.Context, priority string) string {
 	}
 }
 
+func quickAddHasRecognizedTokens(draft parser.QuickAddDraft) bool {
+	return strings.TrimSpace(draft.Project) != "" ||
+		len(draft.Labels) > 0 ||
+		strings.TrimSpace(draft.Due) != "" ||
+		strings.TrimSpace(draft.Recurrence) != "" ||
+		strings.TrimSpace(draft.Priority) != ""
+}
+
+func quickAddProjectSelected(draft parser.QuickAddDraft, projectID string) bool {
+	return strings.TrimSpace(projectID) != "" && strings.TrimSpace(projectID) == strings.TrimSpace(draft.ProjectID)
+}
+
+func quickAddSelectProjectValue(projectID string) string {
+	id := strings.TrimSpace(projectID)
+	if id == "" {
+		return ""
+	}
+	return "existing:" + id
+}
+
 func quickAddOverlayAttributes(surface string) templ.Attributes {
 	if surface == quickAddOverlaySurface {
 		return templ.Attributes{"data-quick-add-overlay-save-form": ""}

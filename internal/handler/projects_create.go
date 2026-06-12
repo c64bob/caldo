@@ -71,6 +71,6 @@ func ProjectCreate(deps projectCreateDependencies) http.HandlerFunc {
 			deps.broker.publish(appEvent{Type: "project", Resource: project.ID, Version: 1, OriginConnection: strings.TrimSpace(r.Header.Get("X-Tab-ID"))})
 		}
 
-		renderProjectsPage(w, r, deps.database, projectsPageState{}, http.StatusCreated)
+		renderProjectsPage(w, r, deps.database, projectsPageState{CreateSuccess: "projekt wurde angelegt"}, http.StatusCreated)
 	}
 }

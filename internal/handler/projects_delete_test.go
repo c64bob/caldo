@@ -72,7 +72,7 @@ UPDATE settings SET default_project_id = 'project-1' WHERE id = 'default';
 	if calendar.href != "/cal/work/" {
 		t.Fatalf("unexpected remote calendar href: %q", calendar.href)
 	}
-	if body := responseRecorder.Body.String(); !strings.Contains(body, `data-project-create-form`) || strings.Contains(body, `data-project-delete-form`) || strings.Contains(body, `Work`) {
+	if body := responseRecorder.Body.String(); !strings.Contains(body, `data-project-create-form`) || !strings.Contains(body, `data-project-page-success`) || !strings.Contains(body, `projekt wurde gelöscht`) || strings.Contains(body, `data-project-delete-form`) || strings.Contains(body, `Work`) {
 		t.Fatalf("expected refreshed projects page without deleted project, got %q", body)
 	}
 

@@ -100,7 +100,7 @@ func ProjectRename(deps projectRenameDependencies) http.HandlerFunc {
 			deps.broker.publish(appEvent{Type: "project", Resource: projectID, Version: base.ReservedVersion, OriginConnection: strings.TrimSpace(r.Header.Get("X-Tab-ID"))})
 		}
 
-		renderProjectsPage(w, r, deps.database, projectsPageState{}, http.StatusOK)
+		renderProjectsPage(w, r, deps.database, renameSuccessPageState(projectID), http.StatusOK)
 	}
 }
 
@@ -109,5 +109,12 @@ func renamePageState(projectID string, errorMessage string, displayName string) 
 		RenameProjectID: strings.TrimSpace(projectID),
 		RenameError:     errorMessage,
 		RenameValue:     strings.TrimSpace(displayName),
+	}
+}
+
+func renameSuccessPageState(projectID string) projectsPageState {
+	return projectsPageState{
+		RenameProjectID: strings.TrimSpace(projectID),
+		RenameSuccess:   "projekt wurde umbenannt",
 	}
 }

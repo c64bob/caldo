@@ -18,7 +18,7 @@ func TestProjectsOverviewPageRendersCreateForm(t *testing.T) {
 		Count:    0,
 		HasCount: true,
 		Meta:     "Offene Aufgaben",
-	}}, "", "").Render(ctx, &output)
+	}}, ProjectFeedback{}).Render(ctx, &output)
 	if err != nil {
 		t.Fatalf("render projects page: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestProjectsOverviewPageRendersRenameForm(t *testing.T) {
 		HasCount:      true,
 		Meta:          "Offene Aufgaben",
 		ServerVersion: 3,
-	}}, "", "").Render(ctx, &output)
+	}}, ProjectFeedback{}).Render(ctx, &output)
 	if err != nil {
 		t.Fatalf("render projects page: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestProjectsOverviewPageRendersRenameError(t *testing.T) {
 		ServerVersion: 3,
 		RenameError:   "projekt konnte nicht umbenannt werden",
 		RenameValue:   "New Work",
-	}}, "", "").Render(context.Background(), &output)
+	}}, ProjectFeedback{}).Render(context.Background(), &output)
 	if err != nil {
 		t.Fatalf("render projects page: %v", err)
 	}
@@ -104,6 +104,43 @@ func TestProjectsOverviewPageRendersRenameError(t *testing.T) {
 		`data-project-rename-error`,
 		`projekt konnte nicht umbenannt werden`,
 		`value="New Work"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("projects page missing %q in %s", want, body)
+		}
+	}
+}
+
+func TestProjectsOverviewPageRendersProjectSuccessMessages(t *testing.T) {
+	t.Parallel()
+
+	var output bytes.Buffer
+	err := ProjectsOverviewPage([]NavigationOverviewItem{{
+		ID:            "project-1",
+		Name:          "Work",
+		Href:          "/projects/project-1",
+		Count:         2,
+		HasCount:      true,
+		Meta:          "Offene Aufgaben",
+		ServerVersion: 3,
+		RenameSuccess: "projekt wurde umbenannt",
+	}}, ProjectFeedback{
+		PageSuccess:   "projekt wurde gelöscht",
+		CreateSuccess: "projekt wurde angelegt",
+	}).Render(context.Background(), &output)
+	if err != nil {
+		t.Fatalf("render projects page: %v", err)
+	}
+
+	body := output.String()
+	for _, want := range []string{
+		`data-project-page-success`,
+		`projekt wurde gelöscht`,
+		`data-project-create-success`,
+		`projekt wurde angelegt`,
+		`data-project-rename-success`,
+		`projekt wurde umbenannt`,
+		`caldo-alert-success`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("projects page missing %q in %s", want, body)
@@ -125,7 +162,7 @@ func TestProjectsOverviewPageRendersDeleteForm(t *testing.T) {
 		Meta:            "Offene Aufgaben",
 		ServerVersion:   3,
 		DeleteTaskCount: 5,
-	}}, "", "").Render(ctx, &output)
+	}}, ProjectFeedback{}).Render(ctx, &output)
 	if err != nil {
 		t.Fatalf("render projects page: %v", err)
 	}
@@ -137,7 +174,7 @@ func TestProjectsOverviewPageRendersDeleteForm(t *testing.T) {
 		`hx-delete="/projects/project-1"`,
 		`name="expected_version" value="3"`,
 		`name="confirmation_name"`,
-		`Zum Löschen Work eingeben. 5 Aufgaben betroffen.`,
+		`Dieses Projekt wird auf dem CalDAV-Server gelöscht. 5 Aufgaben werden lokal entfernt. Zum Löschen Work eingeben.`,
 		`Endgültig löschen`,
 	} {
 		if !strings.Contains(body, want) {
@@ -161,7 +198,7 @@ func TestProjectsOverviewPageRendersDeleteError(t *testing.T) {
 		DeleteTaskCount: 2,
 		DeleteError:     "projekt konnte nicht gelöscht werden",
 		DeleteValue:     "Wrok",
-	}}, "", "").Render(context.Background(), &output)
+	}}, ProjectFeedback{}).Render(context.Background(), &output)
 	if err != nil {
 		t.Fatalf("render projects page: %v", err)
 	}
@@ -183,7 +220,7 @@ func TestProjectsOverviewPageRendersCreateError(t *testing.T) {
 	t.Parallel()
 
 	var output bytes.Buffer
-	err := ProjectsOverviewPage(nil, "projekt konnte nicht angelegt werden", "New Project").Render(context.Background(), &output)
+	err := ProjectsOverviewPage(nil, ProjectFeedback{CreateError: "projekt konnte nicht angelegt werden", CreateValue: "New Project"}).Render(context.Background(), &output)
 	if err != nil {
 		t.Fatalf("render projects page: %v", err)
 	}

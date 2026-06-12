@@ -268,7 +268,7 @@ func TestProjectCreateRouteAgainstFakeCalDAVServer(t *testing.T) {
 	}
 	e2eAssertProjectExists(t, database, "Local Empty Project", "/local-empty-project/")
 	fake.assertCalendar(t, "/local-empty-project/", "Local Empty Project")
-	if !strings.Contains(rr.Body.String(), "Local Empty Project") || !strings.Contains(rr.Body.String(), `data-project-create-form`) {
+	if !strings.Contains(rr.Body.String(), "Local Empty Project") || !strings.Contains(rr.Body.String(), `data-project-create-form`) || !strings.Contains(rr.Body.String(), `data-project-create-success`) {
 		t.Fatalf("project create response missing refreshed project page: %q", rr.Body.String())
 	}
 }
@@ -316,7 +316,7 @@ INSERT INTO tasks (
 	e2eAssertProjectExists(t, database, "Renamed Work", "/cal/work/")
 	fake.assertCalendar(t, "/cal/work/", "Renamed Work")
 	e2eAssertTaskProjectName(t, database, "task-1", "Renamed Work")
-	if !strings.Contains(rr.Body.String(), "Renamed Work") || !strings.Contains(rr.Body.String(), `data-project-rename-form`) {
+	if !strings.Contains(rr.Body.String(), "Renamed Work") || !strings.Contains(rr.Body.String(), `data-project-rename-form`) || !strings.Contains(rr.Body.String(), `data-project-rename-success`) {
 		t.Fatalf("project rename response missing refreshed project page: %q", rr.Body.String())
 	}
 	results, err := database.SearchActiveTasks(ctx, "#Renamed", 10)
@@ -386,7 +386,7 @@ UPDATE settings SET default_project_id = 'project-1' WHERE id = 'default';
 	if len(results) != 0 {
 		t.Fatalf("expected deleted project removed from search, got %#v", results)
 	}
-	if !strings.Contains(rr.Body.String(), `data-project-create-form`) || strings.Contains(rr.Body.String(), `data-project-delete-form`) {
+	if !strings.Contains(rr.Body.String(), `data-project-create-form`) || !strings.Contains(rr.Body.String(), `data-project-page-success`) || strings.Contains(rr.Body.String(), `data-project-delete-form`) {
 		t.Fatalf("project delete response missing refreshed project page: %q", rr.Body.String())
 	}
 

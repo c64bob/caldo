@@ -249,6 +249,7 @@ func renderSettingsPage(w http.ResponseWriter, r *http.Request, deps settingsDep
 
 	available := pageState.Available
 	calendarLoadError := pageState.CalendarsError
+	calendarsLoaded := available != nil
 	if available == nil && deps.calendar != nil {
 		calendars, err := loadSettingsCalendars(ctx, deps)
 		if err != nil {
@@ -257,6 +258,7 @@ func renderSettingsPage(w http.ResponseWriter, r *http.Request, deps settingsDep
 			}
 		} else {
 			available = calendars
+			calendarsLoaded = true
 		}
 	}
 
@@ -266,6 +268,7 @@ func renderSettingsPage(w http.ResponseWriter, r *http.Request, deps settingsDep
 		Settings:         settings,
 		SyncStatus:       syncStatus,
 		Available:        available,
+		CalendarsLoaded:  calendarsLoaded,
 		CalDAVError:      pageState.CalDAVError,
 		CalDAVSuccess:    pageState.CalDAVSuccess,
 		CalendarsError:   calendarLoadError,

@@ -18,6 +18,7 @@ type SettingsPageView struct {
 	Settings         db.AppSettings
 	SyncStatus       db.SyncStatus
 	Available        []caldav.Calendar
+	CalendarsLoaded  bool
 	CalDAVError      string
 	CalDAVSuccess    string
 	CalendarsError   string
@@ -113,7 +114,7 @@ func renderCalDAVSettings(w io.Writer, csrfToken string, model SettingsPageView,
 }
 
 func renderCalendarSettings(w io.Writer, csrfToken string, model SettingsPageView, text Texts) error {
-	if _, err := fmt.Fprintf(w, `<div class="caldo-card">
+	if _, err := fmt.Fprintf(w, `<div class="caldo-card" data-settings-calendars>
 <h3 class="font-medium">%s</h3>
 <p class="caldo-muted mt-1">%s</p>`, html.EscapeString(text.SettingsCalendarsTitle), html.EscapeString(text.SettingsCalendarsHelp)); err != nil {
 		return err
@@ -149,25 +150,50 @@ func renderCalendarSettings(w io.Writer, csrfToken string, model SettingsPageVie
 			if calendar.Href == defaultHref {
 				defaultChecked = " checked"
 			}
-			mapping := text.SettingsNotMapped
+			state := "remote-only"
+			stateLabel := text.SettingsCalRemoteOnly
+			stateBadgeClass := "caldo-badge"
 			if project.ID != "" {
-				mapping = fmt.Sprintf("%s: %s · %d %s", text.SettingsProjectPrefix, project.DisplayName, project.OpenTaskCount, text.SettingsOpenTasks)
+				state = "synced"
+				stateLabel = text.SettingsCalSynced
+				stateBadgeClass = "caldo-badge caldo-badge-accent"
 			}
-			if _, err := fmt.Fprintf(w, `<div class="caldo-list-row">
+			if _, err := fmt.Fprintf(w, `<div class="caldo-list-row" data-settings-calendar-state="%s">
 <label class="flex items-center gap-2">
 <input class="caldo-check" type="checkbox" name="calendar_href" value="%s"%s/>
 <span class="font-medium">%s</span>
 </label>
-<p class="caldo-meta mt-1">%s</p>
+<div class="mt-2 flex flex-wrap items-center gap-2">
+<span class="%s">%s</span>`,
+				state,
+				html.EscapeString(calendar.Href),
+				checked,
+				html.EscapeString(calendar.DisplayName),
+				stateBadgeClass,
+				html.EscapeString(stateLabel),
+			); err != nil {
+				return err
+			}
+			if defaultChecked != "" {
+				if _, err := fmt.Fprintf(w, `<span class="caldo-badge caldo-badge-accent">%s</span>`, html.EscapeString(text.SettingsCalDefault)); err != nil {
+					return err
+				}
+			}
+			if _, err := fmt.Fprintf(w, `</div>
+<p class="caldo-meta mt-1">%s</p>`, html.EscapeString(settingsCalendarMeta(project, text))); err != nil {
+				return err
+			}
+			if project.ID != "" {
+				if _, err := fmt.Fprintf(w, `<p class="caldo-meta mt-1" data-calendar-remove-impact>%s</p>`, html.EscapeString(settingsCalendarRemoveImpact(project, text))); err != nil {
+					return err
+				}
+			}
+			if _, err := fmt.Fprintf(w, `
 <label class="caldo-muted mt-2 flex items-center gap-2">
 <input class="caldo-check" type="radio" name="default_calendar_href" value="%s"%s/>
 <span>%s</span>
 </label>
 </div>`,
-				html.EscapeString(calendar.Href),
-				checked,
-				html.EscapeString(calendar.DisplayName),
-				html.EscapeString(mapping),
 				html.EscapeString(calendar.Href),
 				defaultChecked,
 				html.EscapeString(text.SettingsUseAsDefault),
@@ -289,6 +315,9 @@ func renderSecurityStatus(w io.Writer, model SettingsPageView, text Texts) error
 }
 
 func renderLocalOnlyProjects(w io.Writer, model SettingsPageView, text Texts) error {
+	if !settingsCalendarsLoaded(model) {
+		return nil
+	}
 	available := make(map[string]struct{}, len(model.Available))
 	for _, calendar := range model.Available {
 		available[calendar.Href] = struct{}{}
@@ -304,16 +333,61 @@ func renderLocalOnlyProjects(w io.Writer, model SettingsPageView, text Texts) er
 		return nil
 	}
 
-	if _, err := fmt.Fprintf(w, `<div class="caldo-alert caldo-alert-warning"><p class="font-medium">%s</p><ul class="mt-2 list-disc pl-5">`, html.EscapeString(text.SettingsLocalOnlyTitle)); err != nil {
+	if _, err := fmt.Fprintf(w, `<div class="caldo-alert caldo-alert-warning" data-settings-calendar-state="remote-missing"><p class="font-medium">%s</p><p class="caldo-meta mt-1">%s</p><ul class="mt-2 space-y-2">`,
+		html.EscapeString(text.SettingsLocalOnlyTitle),
+		html.EscapeString(text.SettingsCalMissingHelp),
+	); err != nil {
 		return err
 	}
 	for _, project := range localOnly {
-		if _, err := fmt.Fprintf(w, `<li>%s · %d %s</li>`, html.EscapeString(project.DisplayName), project.TaskCount, html.EscapeString(text.SettingsTasks)); err != nil {
+		if _, err := fmt.Fprintf(w, `<li data-settings-calendar-state="remote-missing"><div class="flex flex-wrap items-center gap-2"><span class="font-medium">%s</span><span class="caldo-badge caldo-badge-warning">%s</span>`,
+			html.EscapeString(project.DisplayName),
+			html.EscapeString(text.SettingsCalRemoteMissing),
+		); err != nil {
+			return err
+		}
+		if project.IsDefault {
+			if _, err := fmt.Fprintf(w, `<span class="caldo-badge caldo-badge-accent">%s</span>`, html.EscapeString(text.SettingsCalDefault)); err != nil {
+				return err
+			}
+		}
+		if _, err := fmt.Fprintf(w, `</div><p class="caldo-meta mt-1">%d %s · %s</p></li>`,
+			project.TaskCount,
+			html.EscapeString(text.SettingsTasks),
+			html.EscapeString(text.SettingsCalMissingImpact),
+		); err != nil {
 			return err
 		}
 	}
 	_, err := fmt.Fprint(w, `</ul></div>`)
 	return err
+}
+
+func settingsCalendarsLoaded(model SettingsPageView) bool {
+	return model.CalendarsLoaded || model.Available != nil
+}
+
+func settingsCalendarMeta(project db.SettingsProject, text Texts) string {
+	if project.ID == "" {
+		return text.SettingsNotMapped
+	}
+	return fmt.Sprintf("%s: %s · %d %s · %d %s · %s: %s",
+		text.SettingsProjectPrefix,
+		project.DisplayName,
+		project.OpenTaskCount,
+		text.SettingsOpenTasks,
+		project.TaskCount,
+		text.SettingsTasks,
+		text.SettingsCalSyncStrategy,
+		project.SyncStrategy,
+	)
+}
+
+func settingsCalendarRemoveImpact(project db.SettingsProject, text Texts) string {
+	if project.TaskCount == 0 {
+		return text.SettingsCalRemoveEmpty
+	}
+	return text.SettingsCalRemoveTasks
 }
 
 func passwordPlaceholder(configured bool, text Texts) string {

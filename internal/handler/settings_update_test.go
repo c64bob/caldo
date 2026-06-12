@@ -303,6 +303,13 @@ func TestSettingsCalendarsUpdateStoresSelectedCalendarsAndDefault(t *testing.T) 
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM projects;`, 2)
 	assertSingleTextResult(t, database, `SELECT sync_strategy FROM projects WHERE calendar_href = '/cal/work/';`, "ctag")
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM projects WHERE is_default = TRUE AND calendar_href = '/cal/home/';`, 1)
+	defaultProject, err := database.ResolveTaskProject(context.Background(), "")
+	if err != nil {
+		t.Fatalf("resolve default task project: %v", err)
+	}
+	if defaultProject.CalendarHref != "/cal/home/" || defaultProject.DisplayName != "Home" {
+		t.Fatalf("unexpected default task project: %#v", defaultProject)
+	}
 }
 
 func TestSettingsCalendarsUpdateRejectsDefaultCalendarThatIsNotSelected(t *testing.T) {

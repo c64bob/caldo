@@ -4,7 +4,7 @@
 Story 25.4 — Datumsauswahl und natuerliche Eingabe-Vorschau
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Natuerliche Datumsangaben werden in Quick Add nachvollziehbar dargestellt und korrigierbar gemacht.

@@ -596,6 +596,12 @@ async function exerciseQuickAddOverlay(page) {
   await expect(saveForm.locator('input[name="title"]')).toHaveValue('E2E Overlay Chips');
   await expect(saveForm.locator('input[name="labels"]')).toHaveValue('urgent');
   await expect(saveForm.locator('input[name="due_date"]')).toHaveValue(/\d{4}-\d{2}-\d{2}/);
+  await expect(overlay.locator('[data-quick-add-date-resolution]')).toContainText('morgen');
+  const dateChip = overlay.locator(`[data-quick-add-chips] button[data-quick-add-clear="[name='due_date']"]`);
+  await dateChip.click();
+  await expect(saveForm.locator('input[name="due_date"]')).toHaveValue('');
+  await expect(dateChip).toBeHidden();
+  await saveForm.locator('input[name="due_date"]').fill('2099-06-30');
   await expect(saveForm.locator('select[name="priority"]')).toHaveValue('medium');
   await expect(overlay.locator('[data-quick-add-chips]')).toContainText('Neu');
   const priorityChip = overlay.locator(`[data-quick-add-chips] button[data-quick-add-clear="[name='priority']"]`);
@@ -612,6 +618,7 @@ async function exerciseQuickAddOverlay(page) {
   const correctedRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Overlay Corrected' }).first();
   await expect(correctedRow).toContainText('reviewed');
   await expect(correctedRow).toContainText('P3');
+  await expect(correctedRow).toContainText('Fällig 2099-06-30');
 
   await page.locator('.caldo-topbar [data-quick-add-open]').click();
   await input.fill('E2E Overlay Suggested #Work');

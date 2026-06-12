@@ -7,7 +7,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 ## Zusammenfassung
 
 - Bestehende Stories: 89 `Umgesetzt`, 0 `Teilweise umgesetzt`, 0 `Offen`.
-- Neue Planungsstories: 20 `Umgesetzt`, 19 `Offen`.
+- Neue Planungsstories: 21 `Umgesetzt`, 18 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
 ## Legende
@@ -134,7 +134,7 @@ Die neuen Epics 23 bis 28 brechen die verbleibende UI- und QA-Arbeit in kleinere
 | 25.1 | Umgesetzt | `internal/view/layout.templ`, `internal/view/quick_add.templ`, `web/assets/app.js` und `web/static/tailwind.input.css` stellen ein globales Quick-Add-Overlay mit sichtbaren Shell-Aktionen, Tastaturstart, Kontextverbleib, responsivem Dialog und sichtbaren Fehlern bei fehlgeschlagenem Speichern bereit; `tests/e2e/mvp-flow.spec.js` prueft den Browserfluss. |
 | 25.2 | Umgesetzt | `internal/view/quick_add.templ`, `internal/handler/quick_add.go`, `web/assets/app.js` und `web/static/tailwind.input.css` rendern erkannte Quick-Add-Bestandteile als Chips, stellen editierbare Korrekturfelder fuer Titel, Projekt, Labels, Datum, Wiederholung und Prioritaet bereit, halten unbekannte Eingabe im Titel und speichern die sichtbaren Korrekturwerte; `tests/e2e/mvp-flow.spec.js` prueft Korrektur und Speichern im Browser. |
 | 25.3 | Umgesetzt | `internal/handler/quick_add.go`, `internal/db/labels.go`, `internal/view/quick_add.templ`, `web/assets/app.js` und `web/static/tailwind.input.css` speisen Quick Add mit lokalen Projekt- und Labelvorschlaegen, zeigen bestehende und neue Labels unterscheidbar an, lassen Labelvorschlaege per Button in das Korrekturfeld uebernehmen und verlangen bei unbekannten Projekten eine explizite Auswahl zwischen bestehendem Projekt und Neuanlage; Handler-, View-, DB- und Browser-Tests decken den Flow ab. |
-| 25.4 | Offen | Datumsauswahl und natuerliche Eingabevorschau sind nur teilweise ueber bestehende Quick-Add-Preview abgedeckt. |
+| 25.4 | Umgesetzt | `internal/parser/quickadd.go`, `internal/view/quick_add.templ`, `web/static/tailwind.input.css` und `tests/e2e/mvp-flow.spec.js` zeigen natuerliche Datumsangaben als konkrete ISO-Daten mit erkannter Eingabequelle, markieren mehrdeutige Wochentagsangaben mit Korrekturhinweis, erlauben Entfernen und Ersetzen ueber das bestehende Datumskorrekturfeld und pruefen, dass die Preview-Route keine Aufgabe persistiert. |
 | 25.5 | Offen | Wiederholungs- und Prioritaetsvorschau ist nicht als produktive Vorschlags-UI umgesetzt. |
 | 25.6 | Offen | Kein vollstaendiger tastaturbasierter Quick-Add-Overlay-Fluss umgesetzt. |
 | 26.1 | Offen | Projektliste erscheint in der Sidebar, aber die Story ist als eigene Sidebar-Projektlistenarbeit noch nicht gezielt umgesetzt. |

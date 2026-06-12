@@ -107,7 +107,7 @@ templ quickAddPreviewContent(draft parser.QuickAddDraft, previewID string, surfa
 				if strings.TrimSpace(draft.Due) != "" {
 					<button type="button" class="caldo-quick-add-chip" data-quick-add-clear="[name='due_date']">
 						<span>{ Text(ctx).QuickAddFieldDate }</span>
-						<strong>{ draft.Due }</strong>
+						<strong>{ quickAddDueChipLabel(draft) }</strong>
 					</button>
 				}
 				if strings.TrimSpace(draft.Recurrence) != "" {
@@ -229,6 +229,18 @@ templ quickAddPreviewContent(draft parser.QuickAddDraft, previewID string, surfa
 				</label>
 				<label class="caldo-label">
 					{ Text(ctx).QuickAddFieldDate }
+					if strings.TrimSpace(draft.Due) != "" {
+						<div class="caldo-quick-add-date-preview" data-quick-add-date-resolution>
+							<span class="caldo-meta">{ Text(ctx).QuickAddDateResolved }</span>
+							<strong>{ draft.Due }</strong>
+							if strings.TrimSpace(draft.DueSource) != "" {
+								<span class="caldo-quick-add-date-source">{ draft.DueSource }</span>
+							}
+							if draft.DueAmbiguous {
+								<span class="caldo-badge caldo-badge-warning" data-quick-add-date-warning>{ Text(ctx).QuickAddDateReviewHint }</span>
+							}
+						</div>
+					}
 					<div class="caldo-quick-add-correction-row">
 						<input class="caldo-input" type="date" name="due_date" value={ draft.Due } data-quick-add-correction="due"/>
 						<button type="button" class="caldo-button caldo-button-ghost" data-quick-add-clear="[name='due_date']">{ Text(ctx).QuickAddClearValue }</button>

@@ -133,6 +133,8 @@ type Texts struct {
 	QuickAddFieldDate        string
 	QuickAddFieldRecurrence  string
 	QuickAddFieldPriority    string
+	QuickAddDateResolved     string
+	QuickAddDateReviewHint   string
 	QuickAddCreateProject    string
 	QuickAddProjectList      string
 	QuickAddLabelSuggestions string
@@ -249,6 +251,8 @@ var germanTexts = Texts{
 	QuickAddFieldDate:        "Datum",
 	QuickAddFieldRecurrence:  "Wiederholung",
 	QuickAddFieldPriority:    "Priorität",
+	QuickAddDateResolved:     "Erkannt",
+	QuickAddDateReviewHint:   "Datum prüfen",
 	QuickAddCreateProject:    "als CalDAV-Kalender anlegen",
 	QuickAddProjectList:      "Projektvorschläge",
 	QuickAddLabelSuggestions: "Labelvorschläge",
@@ -365,6 +369,8 @@ var englishTexts = Texts{
 	QuickAddFieldDate:        "Date",
 	QuickAddFieldRecurrence:  "Recurrence",
 	QuickAddFieldPriority:    "Priority",
+	QuickAddDateResolved:     "Recognized",
+	QuickAddDateReviewHint:   "Check date",
 	QuickAddCreateProject:    "as CalDAV calendar",
 	QuickAddProjectList:      "Project suggestions",
 	QuickAddLabelSuggestions: "Label suggestions",

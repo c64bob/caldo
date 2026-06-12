@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"caldo/internal/db"
 	"caldo/internal/model"
@@ -70,6 +71,45 @@ func conflictTypeLabel(conflictType string) string {
 			return trimmed
 		}
 		return "Konflikt"
+	}
+}
+
+func conflictTypeBadgeClass(conflictType string) string {
+	base := "caldo-badge caldo-conflict-type-badge"
+	switch strings.ToLower(strings.TrimSpace(conflictType)) {
+	case "edit_delete", "delete_edit":
+		return base + " caldo-conflict-type-badge-danger"
+	case "field_conflict":
+		return base + " caldo-conflict-type-badge-warning"
+	default:
+		return base
+	}
+}
+
+func conflictListCountLabel(count int) string {
+	if count == 1 {
+		return "1 offener Konflikt"
+	}
+	return strconv.Itoa(count) + " offene Konflikte"
+}
+
+func conflictCreatedAtLabel(createdAt time.Time) string {
+	if createdAt.IsZero() {
+		return "Erkannt unbekannt"
+	}
+	return "Erkannt " + createdAt.UTC().Format("2006-01-02 15:04 UTC")
+}
+
+func conflictNextActionLabel(conflictType string) string {
+	switch strings.ToLower(strings.TrimSpace(conflictType)) {
+	case "field_conflict":
+		return "Felder vergleichen und Zielversion wählen"
+	case "edit_delete":
+		return "Lokale Änderung prüfen oder Remote-Löschung übernehmen"
+	case "delete_edit":
+		return "Remote-Änderung prüfen oder lokale Löschung bestätigen"
+	default:
+		return "Konflikt prüfen und Auflösung wählen"
 	}
 }
 

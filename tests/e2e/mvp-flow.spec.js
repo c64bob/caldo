@@ -453,6 +453,9 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   }).toContain('/conflicts/');
 
   await gotoApp(page, '/conflicts');
+  await expect(page.locator('[data-conflict-list-summary]')).toContainText('offener Konflikt');
+  await expect(page.locator('[data-conflict-list-row]').first()).toContainText('Feldkonflikt');
+  await expect(page.locator('[data-conflict-next-action]').first()).toContainText('Felder vergleichen und Zielversion wählen');
   const conflictLink = page.locator('[data-conflict-list] a').first();
   await expect(conflictLink).toBeVisible();
   await captureBaselineSet(page, testInfo, 'conflicts');

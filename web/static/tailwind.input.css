@@ -1423,6 +1423,54 @@
 		@apply flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between;
 	}
 
+	.caldo-conflict-worklist-summary {
+		@apply min-w-0 rounded-md border px-3 py-2 text-sm font-medium;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border);
+		color: var(--caldo-text);
+	}
+
+	.caldo-conflict-list {
+		@apply space-y-2;
+	}
+
+	.caldo-conflict-list-row {
+		@apply flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between;
+	}
+
+	.caldo-conflict-list-main {
+		@apply min-w-0 flex-1;
+	}
+
+	.caldo-conflict-list-topline {
+		@apply mb-2 flex min-w-0 flex-wrap items-center gap-2;
+	}
+
+	.caldo-conflict-list-title {
+		@apply text-base;
+	}
+
+	.caldo-conflict-list-action {
+		@apply mt-2 text-sm font-medium;
+		color: var(--caldo-text-muted);
+	}
+
+	.caldo-conflict-type-badge {
+		@apply rounded px-2;
+	}
+
+	.caldo-conflict-type-badge-warning {
+		background: var(--caldo-warning-muted);
+		border-color: var(--caldo-warning);
+		color: var(--caldo-warning);
+	}
+
+	.caldo-conflict-type-badge-danger {
+		background: var(--caldo-danger-muted);
+		border-color: var(--caldo-danger);
+		color: var(--caldo-danger);
+	}
+
 	.caldo-conflict-summary {
 		@apply grid gap-3 rounded-md border p-4 sm:grid-cols-3;
 		background: var(--caldo-surface);

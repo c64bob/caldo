@@ -4,16 +4,35 @@ import "caldo/internal/db"
 
 templ ConflictListPage(conflicts []db.ConflictListRow) {
 	<section class="caldo-page">
-		<h2 class="caldo-page-title">Konflikte</h2>
+		<div class="caldo-conflict-header">
+			<div>
+				<h2 class="caldo-page-title">Konflikte</h2>
+				<p class="caldo-muted">Offene Konflikte, priorisiert nach notwendiger Entscheidung.</p>
+			</div>
+			if len(conflicts) > 0 {
+				<div class="caldo-conflict-worklist-summary" data-conflict-list-summary>
+					<p class="caldo-meta">Arbeitsliste</p>
+					<p>{ conflictListCountLabel(len(conflicts)) }</p>
+				</div>
+			}
+		</div>
 		if len(conflicts) == 0 {
 			@EmptyState("Keine ungelösten Konflikte", "Lokale und entfernte Versionen sind aktuell nicht in Konflikt.")
 		}
 		if len(conflicts) > 0 {
-			<ul class="caldo-list" data-conflict-list>
+			<ul class="caldo-list caldo-conflict-list" data-conflict-list>
 				for _, conflict := range conflicts {
-					<li class="caldo-list-row">
-						<a class="caldo-list-link" href={ templ.URL("/conflicts/" + conflict.ID) }>{ conflictTaskTitle(conflict.TaskTitle) }</a>
-						<p class="caldo-meta mt-1">Typ: { conflictTypeLabel(conflict.ConflictType) } · Projekt: { conflictProjectLabel(conflict.ProjectName) }</p>
+					<li class="caldo-list-row caldo-conflict-list-row" data-conflict-list-row data-conflict-type={ conflict.ConflictType }>
+						<div class="caldo-conflict-list-main">
+							<div class="caldo-conflict-list-topline">
+								<span class={ conflictTypeBadgeClass(conflict.ConflictType) }>{ conflictTypeLabel(conflict.ConflictType) }</span>
+								<span class="caldo-meta">{ conflictCreatedAtLabel(conflict.CreatedAt) }</span>
+							</div>
+							<a class="caldo-list-link caldo-conflict-list-title" href={ templ.URL("/conflicts/" + conflict.ID) }>{ conflictTaskTitle(conflict.TaskTitle) }</a>
+							<p class="caldo-meta mt-1">Projekt: { conflictProjectLabel(conflict.ProjectName) }</p>
+							<p class="caldo-conflict-list-action" data-conflict-next-action>{ conflictNextActionLabel(conflict.ConflictType) }</p>
+						</div>
+						<a class="caldo-button caldo-button-secondary" href={ templ.URL("/conflicts/" + conflict.ID) }>Konflikt lösen</a>
 					</li>
 				}
 			</ul>

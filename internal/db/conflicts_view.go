@@ -31,7 +31,7 @@ type ConflictDetail struct {
 	RemoteVTODO  sql.NullString
 }
 
-// ListUnresolvedConflicts returns unresolved conflicts ordered newest first.
+// ListUnresolvedConflicts returns unresolved conflicts ordered by worklist priority.
 func (d *Database) ListUnresolvedConflicts(ctx context.Context) ([]ConflictListRow, error) {
 	rows, err := d.Conn.QueryContext(ctx, `
 SELECT c.id,
@@ -45,7 +45,15 @@ FROM conflicts c
 LEFT JOIN projects p ON p.id = c.project_id
 LEFT JOIN tasks t ON t.id = c.task_id
 WHERE c.resolved_at IS NULL
-ORDER BY c.created_at DESC
+ORDER BY
+  CASE LOWER(c.conflict_type)
+    WHEN 'edit_delete' THEN 0
+    WHEN 'delete_edit' THEN 1
+    WHEN 'field_conflict' THEN 2
+    ELSE 3
+  END,
+  c.created_at DESC,
+  c.id ASC
 ;
 `)
 	if err != nil {

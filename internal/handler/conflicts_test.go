@@ -24,6 +24,20 @@ func TestConflictsPageShowsOnlyUnresolved(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = database.Close() })
 	seedConflictData(t, database)
+	if _, err := database.Conn.ExecContext(context.Background(), `
+INSERT INTO conflicts (id, task_id, project_id, conflict_type, created_at, base_vtodo, local_vtodo)
+VALUES ('open-delete','task-1','project-1','edit_delete',datetime(CURRENT_TIMESTAMP, '-1 hour'),'BEGIN:VCALENDAR
+BEGIN:VTODO
+SUMMARY:Base delete
+END:VTODO
+END:VCALENDAR','BEGIN:VCALENDAR
+BEGIN:VTODO
+SUMMARY:Local delete
+END:VTODO
+END:VCALENDAR');
+`); err != nil {
+		t.Fatalf("seed delete conflict: %v", err)
+	}
 
 	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
 	r := NewRouter(logger, "X-User", testManifest(t), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil)
@@ -37,6 +51,29 @@ func TestConflictsPageShowsOnlyUnresolved(t *testing.T) {
 	body := rr.Body.String()
 	if !strings.Contains(body, "open-1") || strings.Contains(body, "resolved-1") {
 		t.Fatalf("unexpected body: %s", body)
+	}
+	for _, want := range []string{
+		`data-conflict-list-summary`,
+		`2 offene Konflikte`,
+		`data-conflict-list-row`,
+		`data-conflict-type="edit_delete"`,
+		`Lokal geändert, remote gelöscht`,
+		`Lokale Änderung prüfen oder Remote-Löschung übernehmen`,
+		`data-conflict-type="field_conflict"`,
+		`Felder vergleichen und Zielversion wählen`,
+		`Konflikt lösen`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("response body missing conflict worklist detail %q: %s", want, body)
+		}
+	}
+	if strings.Contains(body, "BEGIN:VTODO") || strings.Contains(body, "BEGIN:VCALENDAR") {
+		t.Fatalf("conflict list must not render raw vtodo data: %s", body)
+	}
+	deleteIndex := strings.Index(body, "/conflicts/open-delete")
+	fieldIndex := strings.Index(body, "/conflicts/open-1")
+	if deleteIndex < 0 || fieldIndex < 0 || deleteIndex > fieldIndex {
+		t.Fatalf("delete conflict should be prioritized before field conflict: %s", body)
 	}
 }
 

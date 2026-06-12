@@ -496,6 +496,28 @@
 		overflow-wrap: anywhere;
 	}
 
+	.caldo-settings-sync-summary {
+		@apply mt-3 grid gap-2 rounded-md border p-3 text-sm;
+		background: var(--caldo-surface-muted);
+		border-color: var(--caldo-border);
+		color: var(--caldo-text);
+	}
+
+	@media (min-width: 640px) {
+		.caldo-settings-sync-summary {
+			@apply grid-cols-3;
+		}
+	}
+
+	.caldo-settings-sync-summary [data-settings-sync-error] {
+		@apply sm:col-span-3;
+	}
+
+	.caldo-settings-sync-label {
+		@apply block text-xs;
+		color: var(--caldo-text-subtle);
+	}
+
 	.caldo-quick-add {
 		@apply max-w-3xl;
 	}

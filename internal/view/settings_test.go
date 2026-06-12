@@ -3,8 +3,10 @@ package view
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"strings"
 	"testing"
+	"time"
 
 	"caldo/internal/caldav"
 	"caldo/internal/db"
@@ -14,6 +16,7 @@ func TestSettingsPageContentRendersCalDAVCalendarSyncUIAndSecuritySettings(t *te
 	t.Parallel()
 
 	ctx := WithCSRFToken(context.Background(), "token-123")
+	lastSync := time.Date(2026, time.January, 2, 3, 4, 0, 0, time.Local)
 	component := SettingsPageContent(SettingsPageView{
 		Settings: db.AppSettings{
 			SyncIntervalMinutes: 15,
@@ -27,6 +30,12 @@ func TestSettingsPageContentRendersCalDAVCalendarSyncUIAndSecuritySettings(t *te
 			Projects: []db.SettingsProject{
 				{ID: "project-1", CalendarHref: "/cal/work/", DisplayName: "Work", IsDefault: true, OpenTaskCount: 2, TaskCount: 3},
 			},
+		},
+		SyncStatus: db.SyncStatus{
+			State:         "idle",
+			LastFinished:  sql.NullTime{Time: lastSync, Valid: true},
+			LastSuccessAt: sql.NullTime{Time: lastSync, Valid: true},
+			LastErrorCode: sql.NullString{String: "sync_failed", Valid: true},
 		},
 		Available: []caldav.Calendar{
 			{Href: "/cal/work/", DisplayName: "Work"},
@@ -52,6 +61,7 @@ func TestSettingsPageContentRendersCalDAVCalendarSyncUIAndSecuritySettings(t *te
 		`name="caldav_username"`,
 		`value="alice"`,
 		`name="caldav_password"`,
+		`data-caldav-test-result="success"`,
 		`caldo-alert-success`,
 		`verbindungstest erfolgreich`,
 		`name="caldav_action" value="test"`,
@@ -63,6 +73,11 @@ func TestSettingsPageContentRendersCalDAVCalendarSyncUIAndSecuritySettings(t *te
 		`name="calendar_href" value="/cal/work/" checked`,
 		`name="default_calendar_href" value="/cal/work/" checked`,
 		`Projekt: Work`,
+		`data-settings-sync-state="idle"`,
+		`Letzter erfolgreicher Sync`,
+		`02.01.2026 03:04`,
+		`data-settings-sync-error`,
+		`sync fehlgeschlagen`,
 		`name="sync_interval_minutes" value="15"`,
 		`action="/sync/manual"`,
 		`name="show_completed" checked`,
@@ -78,5 +93,8 @@ func TestSettingsPageContentRendersCalDAVCalendarSyncUIAndSecuritySettings(t *te
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected settings page to include %q in %s", want, output)
 		}
+	}
+	if strings.Contains(output, `value="secret"`) {
+		t.Fatalf("settings page must not render plaintext caldav password: %s", output)
 	}
 }

@@ -2,6 +2,7 @@ package view
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"html"
 	"io"
@@ -15,6 +16,7 @@ import (
 // SettingsPageView contains all normal-operation settings page state.
 type SettingsPageView struct {
 	Settings         db.AppSettings
+	SyncStatus       db.SyncStatus
 	Available        []caldav.Calendar
 	CalDAVError      string
 	CalDAVSuccess    string
@@ -42,7 +44,7 @@ func SettingsPageContent(model SettingsPageView) templ.Component {
 		if err := renderCalendarSettings(w, csrfToken, model, text); err != nil {
 			return err
 		}
-		if err := renderSyncSettings(w, csrfToken, model.Settings, text); err != nil {
+		if err := renderSyncSettings(w, csrfToken, model.Settings, model.SyncStatus, text); err != nil {
 			return err
 		}
 		if err := renderUISettings(w, csrfToken, model.Settings, text); err != nil {
@@ -58,18 +60,18 @@ func SettingsPageContent(model SettingsPageView) templ.Component {
 }
 
 func renderCalDAVSettings(w io.Writer, csrfToken string, model SettingsPageView, text Texts) error {
-	if _, err := fmt.Fprintf(w, `<div class="caldo-card">
+	if _, err := fmt.Fprintf(w, `<div class="caldo-card" data-settings-caldav>
 <h3 class="font-medium">CalDAV</h3>
 <p class="caldo-muted mt-1">%s</p>`, html.EscapeString(text.SettingsCalDAVHelp)); err != nil {
 		return err
 	}
 	if model.CalDAVError != "" {
-		if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-error mt-3">%s</p>`, html.EscapeString(model.CalDAVError)); err != nil {
+		if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-error mt-3" data-caldav-test-result="error">%s</p>`, html.EscapeString(model.CalDAVError)); err != nil {
 			return err
 		}
 	}
 	if model.CalDAVSuccess != "" {
-		if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-success mt-3">%s</p>`, html.EscapeString(model.CalDAVSuccess)); err != nil {
+		if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-success mt-3" data-caldav-test-result="success">%s</p>`, html.EscapeString(model.CalDAVSuccess)); err != nil {
 			return err
 		}
 	}
@@ -189,9 +191,15 @@ func renderCalendarSettings(w io.Writer, csrfToken string, model SettingsPageVie
 	return err
 }
 
-func renderSyncSettings(w io.Writer, csrfToken string, settings db.AppSettings, text Texts) error {
-	_, err := fmt.Fprintf(w, `<div class="caldo-card">
-<h3 class="font-medium">%s</h3>
+func renderSyncSettings(w io.Writer, csrfToken string, settings db.AppSettings, syncStatus db.SyncStatus, text Texts) error {
+	if _, err := fmt.Fprintf(w, `<div class="caldo-card">
+<h3 class="font-medium">%s</h3>`, html.EscapeString(text.SettingsSyncTitle)); err != nil {
+		return err
+	}
+	if err := renderSettingsSyncSummary(w, syncStatus, text); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintf(w, `
 <form class="mt-3 space-y-2" method="post" action="/settings/sync" hx-post="/settings/sync" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
 <label class="caldo-label">%s
 <input class="caldo-input w-32" type="number" min="5" name="sync_interval_minutes" value="%d">
@@ -203,7 +211,34 @@ func renderSyncSettings(w io.Writer, csrfToken string, settings db.AppSettings, 
 <button type="submit" class="caldo-button caldo-button-primary">%s</button>
 <span class="htmx-indicator caldo-meta ml-2" aria-live="polite">%s</span>
 </form>
-</div>`, html.EscapeString(text.SettingsSyncTitle), csrfToken, html.EscapeString(text.SettingsIntervalMinutes), settings.SyncIntervalMinutes, html.EscapeString(text.SettingsSaveSync), html.EscapeString(text.SettingsSyncPending), csrfToken, html.EscapeString(text.SettingsManualSync), html.EscapeString(text.SettingsManualPending))
+</div>`, csrfToken, html.EscapeString(text.SettingsIntervalMinutes), settings.SyncIntervalMinutes, html.EscapeString(text.SettingsSaveSync), html.EscapeString(text.SettingsSyncPending), csrfToken, html.EscapeString(text.SettingsManualSync), html.EscapeString(text.SettingsManualPending))
+	return err
+}
+
+func renderSettingsSyncSummary(w io.Writer, syncStatus db.SyncStatus, text Texts) error {
+	if _, err := fmt.Fprintf(w, `<div class="caldo-settings-sync-summary" data-settings-sync-state="%s">
+<div><span class="caldo-settings-sync-label">%s</span><strong>%s</strong></div>
+<div><span class="caldo-settings-sync-label">%s</span><span>%s</span></div>
+<div><span class="caldo-settings-sync-label">%s</span><span>%s</span></div>`,
+		html.EscapeString(settingsSyncStateValue(syncStatus.State)),
+		html.EscapeString(text.SettingsSyncStatus),
+		html.EscapeString(settingsSyncStateLabel(syncStatus.State, text)),
+		html.EscapeString(text.SettingsSyncLastOK),
+		html.EscapeString(settingsSyncTimeLabel(syncStatus.LastSuccessAt, text)),
+		html.EscapeString(text.SettingsSyncLastDone),
+		html.EscapeString(settingsSyncTimeLabel(syncStatus.LastFinished, text)),
+	); err != nil {
+		return err
+	}
+	if syncStatus.LastErrorCode.Valid && strings.TrimSpace(syncStatus.LastErrorCode.String) != "" {
+		if _, err := fmt.Fprintf(w, `<div data-settings-sync-error><span class="caldo-settings-sync-label">%s</span><span>%s</span></div>`,
+			html.EscapeString(text.SettingsSyncLastErr),
+			html.EscapeString(settingsSyncErrorLabel(syncStatus.LastErrorCode.String, text)),
+		); err != nil {
+			return err
+		}
+	}
+	_, err := fmt.Fprint(w, `</div>`)
 	return err
 }
 
@@ -293,6 +328,46 @@ func passwordHelp(configured bool, text Texts) string {
 		return html.EscapeString(text.SettingsPasswordKeepHelp)
 	}
 	return html.EscapeString(text.SettingsPasswordNewHelp)
+}
+
+func settingsSyncStateValue(state string) string {
+	switch strings.TrimSpace(state) {
+	case "running":
+		return "running"
+	case "error":
+		return "error"
+	default:
+		return "idle"
+	}
+}
+
+func settingsSyncStateLabel(state string, text Texts) string {
+	switch settingsSyncStateValue(state) {
+	case "running":
+		return text.SettingsSyncRunning
+	case "error":
+		return text.SettingsSyncError
+	default:
+		return text.SettingsSyncIdle
+	}
+}
+
+func settingsSyncTimeLabel(ts sql.NullTime, text Texts) string {
+	if !ts.Valid {
+		return text.SettingsSyncNever
+	}
+	return ts.Time.Local().Format("02.01.2006 15:04")
+}
+
+func settingsSyncErrorLabel(errorCode string, text Texts) string {
+	switch strings.TrimSpace(errorCode) {
+	case "sync_failed":
+		return text.SettingsSyncErrFailed
+	case "sync_unavailable":
+		return text.SettingsSyncErrOffline
+	default:
+		return text.SettingsSyncErrUnknown
+	}
 }
 
 func selectedCalendarSet(model SettingsPageView) map[string]bool {

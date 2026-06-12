@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -27,6 +28,41 @@ func (f *fakeSettingsConnectionTester) TestConnection(_ context.Context, credent
 		return caldav.ServerCapabilities{}, f.err
 	}
 	return f.capabilities, nil
+}
+
+func TestSettingsPageShowsSavedCalDAVMessageAndSyncState(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if err := database.FinishManualSyncError(context.Background(), "sync_unavailable"); err != nil {
+		t.Fatalf("finish sync error: %v", err)
+	}
+
+	handler := SettingsPage(settingsDependencies{database: database})
+	request := httptest.NewRequest(http.MethodGet, "/settings?caldav=saved", nil)
+	responseRecorder := httptest.NewRecorder()
+
+	handler(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status: got %d want %d body %s", responseRecorder.Code, http.StatusOK, responseRecorder.Body.String())
+	}
+	body := responseRecorder.Body.String()
+	for _, want := range []string{
+		`caldav-einstellungen gespeichert`,
+		`data-caldav-test-result="success"`,
+		`data-settings-sync-state="idle"`,
+		`Letzte Fehlerklasse`,
+		`sync nicht verfügbar`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected settings page to include %q in %s", want, body)
+		}
+	}
 }
 
 func TestSettingsCalDAVUpdateTestsThenStoresCredentials(t *testing.T) {
@@ -64,7 +100,7 @@ func TestSettingsCalDAVUpdateTestsThenStoresCredentials(t *testing.T) {
 	if responseRecorder.Code != http.StatusSeeOther {
 		t.Fatalf("unexpected status: got %d want %d", responseRecorder.Code, http.StatusSeeOther)
 	}
-	if got := responseRecorder.Header().Get("Location"); got != "/settings" {
+	if got := responseRecorder.Header().Get("Location"); got != "/settings?caldav=saved" {
 		t.Fatalf("unexpected redirect: got %q", got)
 	}
 	if tester.credentials.URL != "https://nextcloud.example/remote.php/dav" || tester.credentials.Username != "alice" || tester.credentials.Password != "secret" {
@@ -76,6 +112,13 @@ func TestSettingsCalDAVUpdateTestsThenStoresCredentials(t *testing.T) {
 	}
 	if credentials.URL != "https://nextcloud.example/remote.php/dav" || credentials.Username != "alice" || credentials.Password != "secret" {
 		t.Fatalf("unexpected stored credentials: %#v", credentials)
+	}
+	var encryptedPassword string
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT caldav_password_enc FROM settings WHERE id = 'default';`).Scan(&encryptedPassword); err != nil {
+		t.Fatalf("query encrypted password: %v", err)
+	}
+	if encryptedPassword == "" || strings.Contains(encryptedPassword, "secret") {
+		t.Fatalf("password must be stored encrypted, got %q", encryptedPassword)
 	}
 	capabilities, err := database.LoadCalDAVServerCapabilities(context.Background())
 	if err != nil {
@@ -124,6 +167,48 @@ func TestSettingsCalDAVUpdateCanTestConnectionWithoutStoringCredentials(t *testi
 	}
 	if !strings.Contains(responseRecorder.Body.String(), "verbindungstest erfolgreich") {
 		t.Fatalf("expected success message in settings page: %s", responseRecorder.Body.String())
+	}
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM settings WHERE id = 'default' AND caldav_password_enc IS NULL;`, 1)
+}
+
+func TestSettingsCalDAVUpdateFailureDoesNotLeakSensitiveErrorDetails(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	tester := &fakeSettingsConnectionTester{err: errors.New("upstream rejected password super-secret-token for alice")}
+	handler := SettingsCalDAVUpdate(settingsDependencies{
+		database:      database,
+		encryptionKey: []byte("12345678901234567890123456789012"),
+		tester:        tester,
+	})
+
+	form := url.Values{}
+	form.Set("caldav_url", "https://nextcloud.example/remote.php/dav")
+	form.Set("caldav_username", "alice")
+	form.Set("caldav_password", "super-secret-token")
+	form.Set("caldav_action", "test")
+	request := httptest.NewRequest(http.MethodPost, "/settings/caldav", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	responseRecorder := httptest.NewRecorder()
+
+	handler(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status: got %d want %d body %s", responseRecorder.Code, http.StatusOK, responseRecorder.Body.String())
+	}
+	body := responseRecorder.Body.String()
+	if !strings.Contains(body, `data-caldav-test-result="error"`) || !strings.Contains(body, "verbindungstest fehlgeschlagen") {
+		t.Fatalf("expected sanitized connection error class, got body %s", body)
+	}
+	for _, leaked := range []string{"super-secret-token", "upstream rejected"} {
+		if strings.Contains(body, leaked) {
+			t.Fatalf("connection test failure leaked %q in body %s", leaked, body)
+		}
 	}
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM settings WHERE id = 'default' AND caldav_password_enc IS NULL;`, 1)
 }

@@ -108,54 +108,7 @@ templ ConflictDetailPage(conflict db.ConflictDetail, projectOptions []TaskProjec
 				if conflictCanSplit(conflict) {
 					@ConflictSplitResolution(conflict)
 				}
-				<form
-					method="post"
-					action={ conflictResolvePath(conflict) }
-					hx-post={ conflictResolvePath(conflict) }
-					hx-swap="none"
-					hx-disabled-elt="find button"
-					hx-headers={ conflictResolveCSRFHeaders(ctx) }
-					class="caldo-conflict-manual-form"
-					data-conflict-manual-form
-				>
-					<input type="hidden" name="resolution" value="manual"/>
-					<div class="caldo-conflict-manual-grid">
-						for _, field := range conflictManualFields(conflict) {
-							<fieldset class="caldo-conflict-manual-field" data-conflict-field-source={ field.Name }>
-								<legend>{ field.Label }</legend>
-								<div class="caldo-conflict-manual-options">
-									for _, option := range field.Options {
-										<label class={ conflictManualOptionClass(option) } data-conflict-source-option={ option.Value }>
-											<span class="caldo-conflict-manual-choice">
-												<input class="caldo-check" type="radio" name={ field.Name + "_source" } value={ option.Value } checked?={ option.Selected }/>
-												<span>{ option.Label }</span>
-												if option.Changed {
-													<span class="caldo-conflict-change-marker">Geändert</span>
-												}
-											</span>
-											<span class="caldo-conflict-manual-value">{ option.DisplayValue }</span>
-										</label>
-									}
-								</div>
-							</fieldset>
-						}
-						if len(projectOptions) > 0 {
-							<label class="caldo-conflict-manual-field">
-								<span>Projekt</span>
-								<select class="caldo-select" name="project_id">
-									for _, project := range projectOptions {
-										<option value={ project.ID } selected?={ conflictProjectSelected(conflict, project) }>{ project.Name }</option>
-									}
-								</select>
-							</label>
-						}
-					</div>
-					<p class="caldo-alert caldo-alert-error caldo-conflict-resolution-error" data-conflict-resolution-error aria-live="polite" hidden>Konflikt konnte nicht gespeichert werden.</p>
-					<div class="caldo-conflict-manual-actions">
-						<button type="submit" class="caldo-button caldo-button-primary">Ausgewählte Felder speichern</button>
-						<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
-					</div>
-				</form>
+				@ConflictManualResolutionForm(conflict, projectOptions, conflictManualFields(conflict))
 			</section>
 		} else {
 			<p class="caldo-alert caldo-alert-warning" data-conflict-resolution-unavailable>Dieser Konflikt hat keine lokale Aufgabe, die sicher überschrieben werden kann.</p>
@@ -172,6 +125,113 @@ templ ConflictDetailPage(conflict db.ConflictDetail, projectOptions []TaskProjec
 			</details>
 		}
 	</section>
+}
+
+templ ConflictManualResolutionForm(conflict db.ConflictDetail, projectOptions []TaskProjectOption, fields []conflictManualField) {
+	<form
+		method="post"
+		action={ conflictResolvePath(conflict) }
+		hx-post={ conflictResolvePath(conflict) }
+		hx-swap="none"
+		hx-disabled-elt="find button"
+		hx-headers={ conflictResolveCSRFHeaders(ctx) }
+		class="caldo-conflict-manual-form"
+		data-conflict-manual-form
+	>
+		<input type="hidden" name="resolution" value="manual"/>
+		<div class="caldo-conflict-manual-grid">
+			for _, field := range fields {
+				<fieldset class="caldo-conflict-manual-field" data-conflict-field-source={ field.Name }>
+					<legend>{ field.Label }</legend>
+					<div class="caldo-conflict-manual-options">
+						for _, option := range field.Options {
+							<label class={ conflictManualOptionClass(option) } data-conflict-source-option={ option.Value } data-conflict-option-display={ option.DisplayValue }>
+								<span class="caldo-conflict-manual-choice">
+									<input class="caldo-check" type="radio" name={ field.Name + "_source" } value={ option.Value } checked?={ option.Selected }/>
+									<span>{ option.Label }</span>
+									if option.Changed {
+										<span class="caldo-conflict-change-marker">Geändert</span>
+									}
+								</span>
+								<span class="caldo-conflict-manual-value">{ option.DisplayValue }</span>
+							</label>
+						}
+						<label class="caldo-conflict-manual-option caldo-conflict-manual-option-custom" data-conflict-source-option="manual">
+							<span class="caldo-conflict-manual-choice">
+								<input class="caldo-check" type="radio" name={ field.Name + "_source" } value="manual"/>
+								<span>Manuell</span>
+							</span>
+							@ConflictManualControl(field)
+						</label>
+					</div>
+				</fieldset>
+			}
+			if len(projectOptions) > 0 {
+				<label class="caldo-conflict-manual-field">
+					<span>Projekt</span>
+					<select class="caldo-select" name="project_id" data-conflict-project-select>
+						for _, project := range projectOptions {
+							<option value={ project.ID } selected?={ conflictProjectSelected(conflict, project) }>{ project.Name }</option>
+						}
+					</select>
+				</label>
+			}
+		</div>
+		<section class="caldo-conflict-manual-preview" data-conflict-manual-preview aria-live="polite">
+			<h4>Vorschau</h4>
+			<dl class="caldo-conflict-manual-preview-grid">
+				for _, row := range conflictManualPreviewRows(fields) {
+					<div data-conflict-preview-row={ row.Name }>
+						<dt>{ row.Label }</dt>
+						<dd data-conflict-preview-value={ row.Name }>{ row.Value }</dd>
+					</div>
+				}
+				if len(projectOptions) > 0 {
+					<div data-conflict-preview-row="project">
+						<dt>Projekt</dt>
+						<dd data-conflict-preview-value="project">{ conflictProjectPreviewValue(conflict, projectOptions) }</dd>
+					</div>
+				}
+			</dl>
+		</section>
+		<p class="caldo-alert caldo-alert-error caldo-conflict-resolution-error" data-conflict-resolution-error aria-live="polite" hidden>Konflikt konnte nicht gespeichert werden.</p>
+		<div class="caldo-conflict-manual-actions">
+			<button type="submit" class="caldo-button caldo-button-primary">Ausgewählte Felder speichern</button>
+			<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
+		</div>
+	</form>
+}
+
+templ ConflictManualControl(field conflictManualField) {
+	if field.Manual.Kind == "textarea" {
+		<textarea
+			class="caldo-input caldo-conflict-manual-input"
+			name={ field.Name + "_manual" }
+			rows="3"
+			data-conflict-manual-input={ field.Name }
+			data-conflict-manual-empty={ field.Manual.EmptyLabel }
+		>{ field.Manual.Value }</textarea>
+	} else if field.Manual.Kind == "select" {
+		<select
+			class="caldo-select caldo-conflict-manual-input"
+			name={ field.Name + "_manual" }
+			data-conflict-manual-input={ field.Name }
+			data-conflict-manual-empty={ field.Manual.EmptyLabel }
+		>
+			for _, option := range field.Manual.Options {
+				<option value={ option.Value } selected?={ option.Selected }>{ option.Label }</option>
+			}
+		</select>
+	} else {
+		<input
+			class="caldo-input caldo-conflict-manual-input"
+			type="text"
+			name={ field.Name + "_manual" }
+			value={ field.Manual.Value }
+			data-conflict-manual-input={ field.Name }
+			data-conflict-manual-empty={ field.Manual.EmptyLabel }
+		/>
+	}
 }
 
 templ ConflictResolveAction(conflict db.ConflictDetail, resolution string, label string, hint string) {

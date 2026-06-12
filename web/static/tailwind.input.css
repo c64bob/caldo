@@ -1675,6 +1675,10 @@
 		color: var(--caldo-text-subtle);
 	}
 
+	.caldo-conflict-manual-option-custom {
+		background: var(--caldo-surface);
+	}
+
 	.caldo-conflict-manual-choice {
 		@apply flex min-w-0 flex-wrap items-center gap-2 font-medium;
 	}
@@ -1686,6 +1690,43 @@
 	.caldo-conflict-manual-value {
 		@apply block text-sm leading-5;
 		color: var(--caldo-text-muted);
+		overflow-wrap: anywhere;
+		white-space: pre-wrap;
+	}
+
+	.caldo-conflict-manual-input {
+		@apply mt-0 w-full;
+	}
+
+	.caldo-conflict-manual-preview {
+		@apply mt-4 rounded-md border p-3;
+		background: var(--caldo-surface-muted);
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-conflict-manual-preview h4 {
+		@apply text-sm font-semibold;
+		color: var(--caldo-text);
+	}
+
+	.caldo-conflict-manual-preview-grid {
+		@apply mt-3 grid gap-2 text-sm sm:grid-cols-2;
+	}
+
+	.caldo-conflict-manual-preview-grid div {
+		@apply min-w-0 rounded border px-3 py-2;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-conflict-manual-preview-grid dt {
+		@apply text-xs font-medium uppercase tracking-normal;
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-conflict-manual-preview-grid dd {
+		@apply mt-1;
+		color: var(--caldo-text);
 		overflow-wrap: anywhere;
 		white-space: pre-wrap;
 	}

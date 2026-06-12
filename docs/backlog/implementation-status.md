@@ -7,7 +7,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 ## Zusammenfassung
 
 - Bestehende Stories: 89 `Umgesetzt`, 0 `Teilweise umgesetzt`, 0 `Offen`.
-- Neue Planungsstories: 27 `Umgesetzt`, 12 `Offen`.
+- Neue Planungsstories: 30 `Umgesetzt`, 9 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
 ## Legende
@@ -145,7 +145,7 @@ Die neuen Epics 23 bis 28 brechen die verbleibende UI- und QA-Arbeit in kleinere
 | 26.6 | Umgesetzt | Projekt-Drop-Ziele in Sidebar und Projektuebersicht sowie draggable Task-Zeilen rufen `POST /tasks/{taskID}/move` auf; Handler- und View-Tests decken Endpunkt, Pflicht-`project_id` und Markup fuer Drag-and-Drop ab. |
 | 27.1 | Umgesetzt | `internal/db/conflicts_view.go`, `internal/view/conflicts.templ`, `web/static/tailwind.input.css` und `tests/e2e/mvp-flow.spec.js` rendern eine priorisierte Konflikt-Arbeitsliste mit verstaendlichen Konflikttypen, betroffener Aufgabe, Projekt, Erkennungszeit, naechster Aktion, direktem Loesungslink, Empty State und ohne rohe VTODO-Inhalte. |
 | 27.2 | Umgesetzt | `internal/view/conflicts.go`, `internal/view/conflicts.templ`, `web/static/tailwind.input.css` und `tests/e2e/mvp-flow.spec.js` zeigen Titel, Beschreibung, Projekt, Faelligkeit, Status, Labels, Prioritaet, Wiederholung und weitere sichere Fachfelder als lokale/Remote-Vergleichstabelle, markieren veraenderte Felder deutlich, stellen unveraenderte Felder zurueck und halten rohe VTODO-Daten ausserhalb der primaeren Entscheidungsflaeche. |
-| 27.3 | Offen | Feldweise Konfliktloesung ist nicht als sichtbarer UI-Fluss umgesetzt. |
+| 27.3 | Umgesetzt | `internal/view/conflicts.templ`, `internal/view/conflicts.go`, `internal/handler/conflicts_resolve.go`, `web/assets/app.js`, `web/static/tailwind.input.css` und `tests/e2e/mvp-flow.spec.js` bieten je konfliktfaehigem Feld lokale, Remote- und manuelle Auswahl mit sichtbarer Vorschau, schreiben gemischte manuelle Werte zu CalDAV, halten 412-Folgekonflikte sichtbar ohne Retry und bewahren nicht betroffene VTODO-Daten. |
 | 27.4 | Offen | Split-Konflikt ist backendseitig vorbereitet, aber nicht sichtbar produktiv ausfuehrbar. |
 | 27.5 | Offen | CalDAV-Einstellungen sind nicht vollstaendig verwaltbar. |
 | 27.6 | Offen | Kalenderauswahl und Default-Projekt nach Setup sind nicht als produktive Settings-UI umgesetzt. |

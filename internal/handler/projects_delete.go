@@ -122,7 +122,7 @@ func ProjectDelete(deps projectDeleteDependencies) http.HandlerFunc {
 			deps.broker.publish(appEvent{Type: "project", Resource: projectID, Version: base.ReservedVersion, OriginConnection: strings.TrimSpace(r.Header.Get("X-Tab-ID"))})
 		}
 
-		renderProjectsPage(w, r, deps.database, projectsPageState{}, http.StatusOK)
+		renderProjectsPage(w, r, deps.database, projectsPageState{PageSuccess: "projekt wurde gelöscht"}, http.StatusOK)
 	}
 }
 

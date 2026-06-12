@@ -78,6 +78,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await ensureBrowserCSRFCookie(page);
   await projectCreateForm.locator('[name="display_name"]').fill('E2E Empty Project');
   await projectCreateForm.getByRole('button', { name: 'Projekt anlegen' }).click();
+  await expect(page.locator('[data-project-create-success]')).toContainText('projekt wurde angelegt');
   await expect(page.locator('[data-navigation-overview]').filter({ hasText: 'E2E Empty Project' })).toBeVisible();
   await expect.poll(async () => {
     const remoteState = await stageState();

@@ -37,11 +37,20 @@ type NavigationOverviewItem struct {
 	Active          bool
 	Meta            string
 	ServerVersion   int
+	RenameSuccess   string
 	RenameError     string
 	RenameValue     string
 	DeleteTaskCount int
 	DeleteError     string
 	DeleteValue     string
+}
+
+// ProjectFeedback contains visible project management status messages.
+type ProjectFeedback struct {
+	PageSuccess   string
+	CreateSuccess string
+	CreateError   string
+	CreateValue   string
 }
 
 // WithNavigation stores app-shell navigation data in request context.
@@ -252,7 +261,7 @@ func projectDeleteValue(item NavigationOverviewItem) string {
 }
 
 func projectDeleteConfirmationText(item NavigationOverviewItem) string {
-	return "Zum Löschen " + item.Name + " eingeben. " + projectDeleteTaskCountText(item.DeleteTaskCount) + " betroffen."
+	return "Dieses Projekt wird auf dem CalDAV-Server gelöscht. " + projectDeleteLocalRemovalText(item.DeleteTaskCount) + " Zum Löschen " + item.Name + " eingeben."
 }
 
 func projectDeleteTaskCountText(count int) string {
@@ -260,4 +269,11 @@ func projectDeleteTaskCountText(count int) string {
 		return "1 Aufgabe"
 	}
 	return strconv.Itoa(count) + " Aufgaben"
+}
+
+func projectDeleteLocalRemovalText(count int) string {
+	if count == 1 {
+		return "1 Aufgabe wird lokal entfernt."
+	}
+	return strconv.Itoa(count) + " Aufgaben werden lokal entfernt."
 }

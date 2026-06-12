@@ -81,9 +81,12 @@ func ProjectTasksPage(deps dateViewDependencies) http.HandlerFunc {
 }
 
 type projectsPageState struct {
+	PageSuccess     string
+	CreateSuccess   string
 	CreateError     string
 	CreateValue     string
 	RenameProjectID string
+	RenameSuccess   string
 	RenameError     string
 	RenameValue     string
 	DeleteProjectID string
@@ -111,6 +114,7 @@ func renderProjectsPage(w http.ResponseWriter, r *http.Request, database *db.Dat
 	projects := navigationProjectsView(snapshot.Projects)
 	for index := range projects {
 		if projects[index].ID == pageState.RenameProjectID {
+			projects[index].RenameSuccess = pageState.RenameSuccess
 			projects[index].RenameError = pageState.RenameError
 			projects[index].RenameValue = pageState.RenameValue
 		}
@@ -119,7 +123,13 @@ func renderProjectsPage(w http.ResponseWriter, r *http.Request, database *db.Dat
 			projects[index].DeleteValue = pageState.DeleteValue
 		}
 	}
-	if err := view.BaseLayout("Projekte", view.ProjectsOverviewPage(projects, pageState.CreateError, pageState.CreateValue)).Render(ctx, w); err != nil {
+	feedback := view.ProjectFeedback{
+		PageSuccess:   pageState.PageSuccess,
+		CreateSuccess: pageState.CreateSuccess,
+		CreateError:   pageState.CreateError,
+		CreateValue:   pageState.CreateValue,
+	}
+	if err := view.BaseLayout("Projekte", view.ProjectsOverviewPage(projects, feedback)).Render(ctx, w); err != nil {
 		http.Error(w, "render page", http.StatusInternalServerError)
 	}
 }

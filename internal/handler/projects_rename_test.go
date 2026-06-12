@@ -84,7 +84,7 @@ INSERT INTO tasks (
 	if calendar.href != "/cal/work/" || calendar.displayName != "Renamed Work" {
 		t.Fatalf("unexpected remote rename request: href=%q displayName=%q", calendar.href, calendar.displayName)
 	}
-	if body := responseRecorder.Body.String(); !strings.Contains(body, `data-project-rename-form`) || !strings.Contains(body, "Renamed Work") {
+	if body := responseRecorder.Body.String(); !strings.Contains(body, `data-project-rename-form`) || !strings.Contains(body, `data-project-rename-success`) || !strings.Contains(body, `projekt wurde umbenannt`) || !strings.Contains(body, "Renamed Work") {
 		t.Fatalf("expected refreshed projects page with renamed project, got %q", body)
 	}
 

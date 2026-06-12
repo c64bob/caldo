@@ -1,9 +1,12 @@
 package view
 
-templ ProjectsOverviewPage(items []NavigationOverviewItem, createError string, createValue string) {
+templ ProjectsOverviewPage(items []NavigationOverviewItem, feedback ProjectFeedback) {
 	<section class="caldo-page">
 		<h2 class="caldo-page-title">Projekte</h2>
-		@ProjectCreateForm(createError, createValue)
+		if feedback.PageSuccess != "" {
+			<p class="caldo-alert caldo-alert-success" data-project-page-success aria-live="polite">{ feedback.PageSuccess }</p>
+		}
+		@ProjectCreateForm(feedback)
 		if len(items) == 0 {
 			@EmptyState("Keine Projekte", "Die Gruppe ist eingerichtet, enthält aber noch keine Einträge.")
 		} else {
@@ -12,7 +15,7 @@ templ ProjectsOverviewPage(items []NavigationOverviewItem, createError string, c
 	</section>
 }
 
-templ ProjectCreateForm(errorMessage string, displayName string) {
+templ ProjectCreateForm(feedback ProjectFeedback) {
 	<form
 		class="caldo-card space-y-3"
 		method="post"
@@ -26,12 +29,15 @@ templ ProjectCreateForm(errorMessage string, displayName string) {
 		data-project-create-form
 	>
 		<h3 class="font-medium">Neues Projekt</h3>
-		if errorMessage != "" {
-			<p class="caldo-alert caldo-alert-error" data-project-create-error aria-live="polite">{ errorMessage }</p>
+		if feedback.CreateSuccess != "" {
+			<p class="caldo-alert caldo-alert-success" data-project-create-success aria-live="polite">{ feedback.CreateSuccess }</p>
+		}
+		if feedback.CreateError != "" {
+			<p class="caldo-alert caldo-alert-error" data-project-create-error aria-live="polite">{ feedback.CreateError }</p>
 		}
 		<label class="caldo-label" for="project-create-display-name">Projektname</label>
 		<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-			<input id="project-create-display-name" class="caldo-input sm:max-w-sm" type="text" name="display_name" value={ displayName } autocomplete="off" required data-project-create-name/>
+			<input id="project-create-display-name" class="caldo-input sm:max-w-sm" type="text" name="display_name" value={ feedback.CreateValue } autocomplete="off" required data-project-create-name/>
 			<button type="submit" class="caldo-button caldo-button-primary">Projekt anlegen</button>
 			<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
 		</div>
@@ -92,6 +98,9 @@ templ ProjectRenameForm(item NavigationOverviewItem) {
 		data-project-rename-form
 	>
 		<input type="hidden" name="expected_version" value={ projectExpectedVersion(item) }/>
+		if item.RenameSuccess != "" {
+			<p class="caldo-alert caldo-alert-success" data-project-rename-success aria-live="polite">{ item.RenameSuccess }</p>
+		}
 		if item.RenameError != "" {
 			<p class="caldo-alert caldo-alert-error" data-project-rename-error aria-live="polite">{ item.RenameError }</p>
 		}

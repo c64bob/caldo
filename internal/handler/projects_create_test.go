@@ -67,7 +67,7 @@ func TestProjectCreatePersistsAfterRemoteSuccess(t *testing.T) {
 	if calendar.displayName != "New Project" {
 		t.Fatalf("unexpected remote calendar display name: %q", calendar.displayName)
 	}
-	if body := responseRecorder.Body.String(); !strings.Contains(body, `data-project-create-form`) || !strings.Contains(body, `New Project`) || !strings.Contains(body, `0 offen`) {
+	if body := responseRecorder.Body.String(); !strings.Contains(body, `data-project-create-form`) || !strings.Contains(body, `data-project-create-success`) || !strings.Contains(body, `projekt wurde angelegt`) || !strings.Contains(body, `New Project`) || !strings.Contains(body, `0 offen`) {
 		t.Fatalf("expected refreshed projects page with empty project, got %q", body)
 	}
 

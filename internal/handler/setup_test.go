@@ -622,6 +622,78 @@ func TestSetupCompleteMarksSetupCompleteStartsSchedulerAndRedirects(t *testing.T
 	}
 }
 
+func TestSetupCompleteRejectsIncompleteImportRun(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	if err := database.SaveSetupCalendars(context.Background(), []db.SelectedCalendar{{Href: "/cal/work/", DisplayName: "Work"}}, "/cal/work/", "fullscan"); err != nil {
+		t.Fatalf("save setup calendars: %v", err)
+	}
+
+	broker := newSetupImportEventBroker()
+	if !broker.StartRun() {
+		t.Fatal("expected import run to start")
+	}
+	h := SetupComplete(setupDependencies{
+		database:     database,
+		importBroker: broker,
+		setupState:   NewSetupState(false),
+	})
+
+	request := httptest.NewRequest(http.MethodPost, "/setup/complete", nil)
+	responseRecorder := httptest.NewRecorder()
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusConflict {
+		t.Fatalf("unexpected status: got %d want %d", responseRecorder.Code, http.StatusConflict)
+	}
+	status, err := database.LoadSetupStatus(context.Background())
+	if err != nil {
+		t.Fatalf("load setup status: %v", err)
+	}
+	if status.Complete || status.Step == "complete" {
+		t.Fatalf("setup must remain incomplete while import is running, got %#v", status)
+	}
+}
+
+func TestSetupCompleteAllowsSuccessfulImportRun(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	if err := database.SaveSetupCalendars(context.Background(), []db.SelectedCalendar{{Href: "/cal/work/", DisplayName: "Work"}}, "/cal/work/", "fullscan"); err != nil {
+		t.Fatalf("save setup calendars: %v", err)
+	}
+
+	broker := newSetupImportEventBroker()
+	if !broker.StartRun() {
+		t.Fatal("expected import run to start")
+	}
+	broker.Publish(setupImportEvent{Event: "done", Data: `{"phase":"done"}`})
+	h := SetupComplete(setupDependencies{
+		database:     database,
+		importBroker: broker,
+		setupState:   NewSetupState(false),
+	})
+
+	request := httptest.NewRequest(http.MethodPost, "/setup/complete", nil)
+	responseRecorder := httptest.NewRecorder()
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusFound {
+		t.Fatalf("unexpected status: got %d want %d", responseRecorder.Code, http.StatusFound)
+	}
+}
+
 func TestSetupCompleteSchedulerStartFailureDoesNotRollbackSetup(t *testing.T) {
 	t.Parallel()
 

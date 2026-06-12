@@ -7,6 +7,7 @@
   var tabID = ensureTabID(tabState);
   var undoExpiryTimer = 0;
   var focusRefreshState = { inFlight: false, pending: false, lastRun: 0 };
+  var taskMoveDragState = null;
 
   function generateTabID() {
     if (window.crypto && typeof window.crypto.randomUUID === 'function') {
@@ -269,6 +270,22 @@
     var expectedVersion = row ? row.querySelector('input[name="expected_version"]') : null;
     version = expectedVersion ? parseInt(expectedVersion.value || '', 10) : 0;
     return Number.isFinite(version) ? version : 0;
+  }
+
+  function taskProjectID(row) {
+    return row ? row.getAttribute('data-task-project-id') || '' : '';
+  }
+
+  function taskMovePath(row) {
+    var path = row ? row.getAttribute('data-task-move-path') || '' : '';
+    if (path) {
+      return path;
+    }
+    return '/tasks/' + encodeURIComponent(taskRowID(row)) + '/move';
+  }
+
+  function taskCanDragMove(row) {
+    return !!(row && row.hasAttribute('data-task-drag-move') && taskRowID(row) && taskRowVersion(row) > 0 && taskProjectID(row));
   }
 
   function controlIsDirty(control) {
@@ -829,6 +846,110 @@
     return 'Aufgabe konnte nicht gelöscht werden.';
   }
 
+  function taskMoveFailureMessage(status) {
+    if (status === 409) {
+      return 'Aufgabe konnte nicht verschoben werden. Aufgabe prüfen.';
+    }
+    if (status === 400) {
+      return 'Aufgabe konnte nicht in dieses Projekt verschoben werden.';
+    }
+    if (status === 424 || status === 502) {
+      return 'Aufgabe konnte nicht auf dem CalDAV-Server verschoben werden.';
+    }
+    return 'Aufgabe konnte nicht verschoben werden.';
+  }
+
+  function projectDropTargetFrom(target) {
+    return closestElement(target, '[data-project-drop-target]');
+  }
+
+  function projectDropTargetID(target) {
+    return target ? target.getAttribute('data-project-id') || '' : '';
+  }
+
+  function clearProjectDropTargets() {
+    document.querySelectorAll('[data-project-drop-target]').forEach(function (target) {
+      target.classList.remove('caldo-project-drop-active', 'caldo-project-drop-blocked');
+    });
+  }
+
+  function markProjectDropTarget(target, blocked) {
+    clearProjectDropTargets();
+    if (!target) return;
+    target.classList.add(blocked ? 'caldo-project-drop-blocked' : 'caldo-project-drop-active');
+  }
+
+  function clearTaskMoveDragState() {
+    if (taskMoveDragState && taskMoveDragState.row) {
+      taskMoveDragState.row.classList.remove('caldo-task-row-dragging');
+    }
+    taskMoveDragState = null;
+    clearProjectDropTargets();
+  }
+
+  function isProjectScopedSearchView() {
+    if (window.location.pathname !== '/search') return false;
+    var query = '';
+    try {
+      query = new URLSearchParams(window.location.search).get('q') || '';
+    } catch (_) {
+      return false;
+    }
+    return query.trim().charAt(0) === '#';
+  }
+
+  function updateMovedTaskRow(row) {
+    if (!row || !document.contains(row)) return;
+    if (isProjectScopedSearchView()) {
+      removeTaskRow(row);
+      return;
+    }
+    fetchTaskFragment(row);
+  }
+
+  function submitTaskMove(row, targetProjectID) {
+    if (!taskCanDragMove(row) || !targetProjectID || targetProjectID === taskProjectID(row)) return;
+
+    var form = new URLSearchParams();
+    form.set('project_id', targetProjectID);
+    form.set('expected_version', String(taskRowVersion(row)));
+
+    setTaskActionError(row, '');
+    row.classList.add('caldo-task-row-moving');
+    beginWriteRequest('Verschieben ...');
+
+    window.fetch(taskMovePath(row), {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'text/plain',
+        'X-CSRF-Token': csrfToken(),
+        'X-Tab-ID': tabID
+      },
+      body: form.toString()
+    }).then(function (response) {
+      if (!response.ok) {
+        throw response;
+      }
+      return response.text();
+    }).then(function () {
+      row.classList.remove('caldo-task-row-moving');
+      finishWriteRequest();
+      setWriteStatus('saved', 'Gespeichert');
+      clearSavedStatusSoon();
+      refreshUndoNotification();
+      updateMovedTaskRow(row);
+    }).catch(function (response) {
+      var status = response && response.status ? response.status : 0;
+      var message = taskMoveFailureMessage(status);
+      row.classList.remove('caldo-task-row-moving');
+      finishWriteRequest();
+      setWriteStatus('error', message);
+      setTaskActionError(row, message);
+    });
+  }
+
   function visibleDirectSubtaskRows(parentID) {
     if (!parentID) return [];
     if (window.CSS && typeof window.CSS.escape === 'function') {
@@ -1235,6 +1356,61 @@
 
   document.addEventListener('input', handleTaskRecurrenceControlEvent, true);
   document.addEventListener('change', handleTaskRecurrenceControlEvent, true);
+
+  document.addEventListener('dragstart', function (event) {
+    var row = closestElement(event.target, '[data-task-drag-move]');
+    if (!taskCanDragMove(row)) return;
+
+    taskMoveDragState = { row: row, projectID: taskProjectID(row) };
+    row.classList.add('caldo-task-row-dragging');
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', taskRowID(row));
+    }
+  });
+
+  document.addEventListener('dragover', function (event) {
+    if (!taskMoveDragState) return;
+    var target = projectDropTargetFrom(event.target);
+    if (!target) {
+      clearProjectDropTargets();
+      return;
+    }
+
+    var targetProjectID = projectDropTargetID(target);
+    var blocked = !targetProjectID || targetProjectID === taskMoveDragState.projectID;
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = blocked ? 'none' : 'move';
+    }
+    markProjectDropTarget(target, blocked);
+  });
+
+  document.addEventListener('dragleave', function (event) {
+    if (!taskMoveDragState) return;
+    var target = projectDropTargetFrom(event.target);
+    if (!target) return;
+    var related = event.relatedTarget instanceof Element ? event.relatedTarget : null;
+    if (related && target.contains(related)) return;
+    target.classList.remove('caldo-project-drop-active', 'caldo-project-drop-blocked');
+  });
+
+  document.addEventListener('drop', function (event) {
+    if (!taskMoveDragState) return;
+    var target = projectDropTargetFrom(event.target);
+    if (!target) {
+      clearTaskMoveDragState();
+      return;
+    }
+
+    event.preventDefault();
+    var row = taskMoveDragState.row;
+    var targetProjectID = projectDropTargetID(target);
+    clearTaskMoveDragState();
+    submitTaskMove(row, targetProjectID);
+  });
+
+  document.addEventListener('dragend', clearTaskMoveDragState);
 
   document.addEventListener('click', function (event) {
     var themeToggle = closestElement(event.target, '[data-theme-toggle]');

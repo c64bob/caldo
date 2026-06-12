@@ -64,6 +64,9 @@ func TestProjectsOverviewPageRendersRenameForm(t *testing.T) {
 
 	body := output.String()
 	for _, want := range []string{
+		`data-project-drop-target`,
+		`data-project-id="project-1"`,
+		`data-project-name="Work"`,
 		`data-project-rename-form`,
 		`action="/projects/project-1"`,
 		`hx-patch="/projects/project-1"`,

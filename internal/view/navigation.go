@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/url"
 	"strconv"
+
+	"github.com/a-h/templ"
 )
 
 // NavigationSnapshot contains app-shell navigation entries.
@@ -20,6 +22,7 @@ type NavigationItem struct {
 	Href         string
 	Count        int
 	HasCount     bool
+	ProjectID    string
 	ActiveTitles []string
 }
 
@@ -62,7 +65,7 @@ func StaticNavigation() NavigationSnapshot {
 func BuildNavigationSnapshot(todayCount, upcomingCount, favoriteCount, overdueCount, noDateCount, completedCount, conflictCount int, projects, labels, savedFilters []NavigationOverviewItem) NavigationSnapshot {
 	return NavigationSnapshot{
 		System:       systemNavigationItems(todayCount, upcomingCount, favoriteCount, overdueCount, noDateCount, completedCount, conflictCount, true),
-		Projects:     overviewItemsToNavigationItems(projects),
+		Projects:     projectOverviewItemsToNavigationItems(projects),
 		Labels:       overviewItemsToNavigationItems(labels),
 		SavedFilters: overviewItemsToNavigationItems(savedFilters),
 	}
@@ -162,11 +165,36 @@ func overviewItemsToNavigationItems(items []NavigationOverviewItem) []Navigation
 	return result
 }
 
+func projectOverviewItemsToNavigationItems(items []NavigationOverviewItem) []NavigationItem {
+	result := make([]NavigationItem, 0, len(items))
+	for _, item := range items {
+		result = append(result, NavigationItem{
+			Label:     item.Name,
+			Href:      item.Href,
+			Count:     item.Count,
+			HasCount:  item.HasCount,
+			ProjectID: item.ID,
+		})
+	}
+	return result
+}
+
 func navCountText(count int) string {
 	if count > 99 {
 		return "99+"
 	}
 	return strconv.Itoa(count)
+}
+
+func navProjectDropAttributes(item NavigationItem) templ.Attributes {
+	if item.ProjectID == "" {
+		return nil
+	}
+	return templ.Attributes{
+		"data-project-drop-target": "",
+		"data-project-id":          item.ProjectID,
+		"data-project-name":        item.Label,
+	}
 }
 
 func projectCanRename(item NavigationOverviewItem) bool {
@@ -190,6 +218,21 @@ func projectRenameValue(item NavigationOverviewItem) string {
 
 func projectCanDelete(item NavigationOverviewItem) bool {
 	return item.ID != "" && item.ServerVersion > 0
+}
+
+func projectCanAcceptTaskDrop(item NavigationOverviewItem) bool {
+	return projectCanRename(item)
+}
+
+func projectDropAttributes(item NavigationOverviewItem) templ.Attributes {
+	if !projectCanAcceptTaskDrop(item) {
+		return nil
+	}
+	return templ.Attributes{
+		"data-project-drop-target": "",
+		"data-project-id":          item.ID,
+		"data-project-name":        item.Name,
+	}
 }
 
 func projectDeletePath(item NavigationOverviewItem) string {

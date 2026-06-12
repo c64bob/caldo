@@ -52,7 +52,10 @@ templ NavigationOverviewPage(heading string, emptyTitle string, items []Navigati
 templ NavigationOverviewList(items []NavigationOverviewItem) {
 	<ul class="caldo-list" data-navigation-overview>
 		for _, item := range items {
-			<li class="caldo-list-row">
+			<li
+				class="caldo-list-row"
+				{ projectDropAttributes(item)... }
+			>
 				<div class="space-y-3">
 					<div>
 						<a class="caldo-list-link" href={ templ.URL(item.Href) }>{ item.Name }</a>

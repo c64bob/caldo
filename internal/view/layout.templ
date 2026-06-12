@@ -28,7 +28,12 @@ func navCurrentAttributes(title string, activeTitles ...string) templ.Attributes
 }
 
 templ navLink(title string, item NavigationItem) {
-	<a class={ navLinkClass(title, item.ActiveTitles...) } href={ templ.URL(item.Href) } { navCurrentAttributes(title, item.ActiveTitles...)... }>
+	<a
+		class={ navLinkClass(title, item.ActiveTitles...) }
+		href={ templ.URL(item.Href) }
+		{ navProjectDropAttributes(item)... }
+		{ navCurrentAttributes(title, item.ActiveTitles...)... }
+	>
 		<span class="caldo-nav-label">{ item.Label }</span>
 		if item.HasCount {
 			<span class="caldo-nav-count" aria-label={ navCountText(item.Count) + " " + Text(ctx).OpenItemsAria }>{ navCountText(item.Count) }</span>

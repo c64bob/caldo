@@ -6,8 +6,8 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Zusammenfassung
 
-- Bestehende Stories: 86 `Umgesetzt`, 0 `Teilweise umgesetzt`, 3 `Offen`.
-- Neue Planungsstories: 15 `Umgesetzt`, 24 `Offen`.
+- Bestehende Stories: 87 `Umgesetzt`, 0 `Teilweise umgesetzt`, 2 `Offen`.
+- Neue Planungsstories: 16 `Umgesetzt`, 23 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
 ## Legende
@@ -102,7 +102,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 20.3 | Umgesetzt | Compose-Referenzdateien sind vorhanden und statisch pruefbar. |
 | 21.1 | Umgesetzt | `playwright.config.js`, `package.json`, CI-Browser-QA und `docs/qa/playwright.md` verankern denselben MVP-Smoke fuer Chromium und Playwright WebKit; die Browserlaeufe nutzen jeweils frische lokale Caldo-/Staging-CalDAV-Instanzen und decken Setup, Navigation, Suche, Tastaturkuerzel, Write-through-Aufgabenaktionen, Fokus-Refresh, Undo, Sync/SSE-Statuspfade und Konflikte ab. |
 | 21.2 | Umgesetzt | `tests/e2e/mvp-flow.spec.js` und `docs/qa/playwright.md` pruefen/dokumentieren Tablet-QA bei 834x1112 fuer Heute, Demnaechst, Projekte, Suche und Einstellungen inklusive horizontalem Overflow, erreichbarer Navigation/Topbar-Aktionen sowie Task-Detail-, Erledigen- und Loeschdialogen. |
-| 21.3 | Offen | Keine produktive Drag-and-Drop-Verschiebung oder QA-Abdeckung gefunden. |
+| 21.3 | Umgesetzt | `internal/view/task_rows.templ`, `internal/view/layout.templ`, `internal/view/navigation_pages.templ`, `web/assets/app.js` und `internal/handler/tasks_update.go` markieren verschiebbare Aufgaben und Projektziele, senden `POST /tasks/{taskID}/move` mit `project_id`, `expected_version`, CSRF und Tab-ID und nutzen den bestehenden CalDAV-Write-through-Pfad mit sichtbarer Fehleranzeige ohne optimistische finale DOM-Verschiebung. |
 | 21.4 | Offen | Suche-zu-gespeichertem-Filter-Flow ist noch nicht umgesetzt. |
 | 21.5 | Offen | Beschreibungstext-Linkifizierung ist nicht als fertiger UI-Flow vorhanden. |
 | 21.6 | Umgesetzt | `docs/qa/performance.md` dokumentiert wiederholbare QA-Messpunkte mit PRD-Zielwerten fuer Startzeit ohne Migrationen, erste UI-Ansicht mit 10.000 lokalen Tasks, Initialimport mit 400 Remote-Tasks und inkrementellen Sync mit 400 Tasks; `docs/qa/playwright.md` verweist auf den separaten Performance-QA-Prozess. |
@@ -142,7 +142,7 @@ Die neuen Epics 23 bis 28 brechen die verbleibende UI- und QA-Arbeit in kleinere
 | 26.3 | Offen | Label-Seite existiert nur als Navigationsuebersicht; Label-Bearbeitung ist offen. |
 | 26.4 | Offen | Gespeicherte Filter koennen nicht produktiv in der UI verwaltet werden. |
 | 26.5 | Offen | Suche kann noch nicht als gespeicherter Filter gesichert werden. |
-| 26.6 | Offen | Kein Drag-and-Drop zwischen Projekten umgesetzt. |
+| 26.6 | Umgesetzt | Projekt-Drop-Ziele in Sidebar und Projektuebersicht sowie draggable Task-Zeilen rufen `POST /tasks/{taskID}/move` auf; Handler- und View-Tests decken Endpunkt, Pflicht-`project_id` und Markup fuer Drag-and-Drop ab. |
 | 27.1 | Offen | Konfliktliste existiert, aber nicht als ausgearbeitete Arbeitsansicht. |
 | 27.2 | Offen | Konfliktdetail zeigt Basisinformationen, aber keinen produktiven Feldvergleich. |
 | 27.3 | Offen | Feldweise Konfliktloesung ist nicht als sichtbarer UI-Fluss umgesetzt. |

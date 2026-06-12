@@ -279,7 +279,7 @@ func TestBaseLayoutRendersNavigationCountsAndDynamicGroups(t *testing.T) {
 	})
 	ctx = WithNavigation(ctx, BuildNavigationSnapshot(
 		3, 4, 1, 2, 5, 0, 1,
-		[]NavigationOverviewItem{{ID: "project-1", Name: "Inbox mit sehr langem Namen", Href: "/search?q=%23Inbox", Count: 7, HasCount: true}},
+		[]NavigationOverviewItem{{ID: "project-1", Name: "Inbox mit sehr langem Namen", Href: "/projects/project-1", Count: 7, HasCount: true, Active: true}},
 		[]NavigationOverviewItem{{Name: "Büro", Href: "/search?q=%40B%C3%BCro", Count: 2, HasCount: true}},
 		[]NavigationOverviewItem{{Name: "Heute Fokus", Href: "/filters/filter-1"}},
 	))
@@ -298,9 +298,11 @@ func TestBaseLayoutRendersNavigationCountsAndDynamicGroups(t *testing.T) {
 		`data-project-drop-target`,
 		`data-project-id="project-1"`,
 		`data-project-name="Inbox mit sehr langem Namen"`,
+		`caldo-sidebar-project-list`,
+		`tabindex="0"`,
 		`Büro`,
 		`Heute Fokus`,
-		`href="/search?q=%23Inbox"`,
+		`href="/projects/project-1"`,
 		`href="/search?q=%40B%C3%BCro"`,
 		`href="/filters/filter-1"`,
 		`Abgeschlossen`,

@@ -146,6 +146,7 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 
 	router.Route("/projects", func(projectRouter chi.Router) {
 		projectRouter.Get("/", ProjectsPage(database))
+		projectRouter.Get("/{projectID}", ProjectTasksPage(dateViewDependencies{database: database}))
 		projectRouter.Group(func(mutatingProjectRouter chi.Router) {
 			mutatingProjectRouter.Use(SetupCSRFMiddleware(csrfSecret))
 			mutatingProjectRouter.Post("/", ProjectCreate(projectCreateDependencies{

@@ -23,6 +23,7 @@ type NavigationItem struct {
 	Count        int
 	HasCount     bool
 	ProjectID    string
+	Active       bool
 	ActiveTitles []string
 }
 
@@ -33,6 +34,7 @@ type NavigationOverviewItem struct {
 	Href            string
 	Count           int
 	HasCount        bool
+	Active          bool
 	Meta            string
 	ServerVersion   int
 	RenameError     string
@@ -74,6 +76,11 @@ func BuildNavigationSnapshot(todayCount, upcomingCount, favoriteCount, overdueCo
 // ProjectSearchHref returns the existing search route scoped to a project token.
 func ProjectSearchHref(name string) string {
 	return "/search?q=" + url.QueryEscape("#"+name)
+}
+
+// ProjectHref returns the canonical project task view route.
+func ProjectHref(projectID string) string {
+	return "/projects/" + url.PathEscape(projectID)
 }
 
 // LabelSearchHref returns the existing search route scoped to a label token.
@@ -174,6 +181,7 @@ func projectOverviewItemsToNavigationItems(items []NavigationOverviewItem) []Nav
 			Count:     item.Count,
 			HasCount:  item.HasCount,
 			ProjectID: item.ID,
+			Active:    item.Active,
 		})
 	}
 	return result

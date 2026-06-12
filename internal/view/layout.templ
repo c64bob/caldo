@@ -1,16 +1,19 @@
 package view
 
-func navLinkClass(title string, activeTitles ...string) string {
+func navLinkClass(title string, item NavigationItem) string {
 	base := "caldo-nav-link"
-	if navLinkActive(title, activeTitles...) {
+	if navLinkActive(title, item) {
 		return base + " caldo-nav-link-active"
 	}
 
 	return base
 }
 
-func navLinkActive(title string, activeTitles ...string) bool {
-	for _, candidate := range activeTitles {
+func navLinkActive(title string, item NavigationItem) bool {
+	if item.Active {
+		return true
+	}
+	for _, candidate := range item.ActiveTitles {
 		if title == candidate {
 			return true
 		}
@@ -19,8 +22,8 @@ func navLinkActive(title string, activeTitles ...string) bool {
 	return false
 }
 
-func navCurrentAttributes(title string, activeTitles ...string) templ.Attributes {
-	if navLinkActive(title, activeTitles...) {
+func navCurrentAttributes(title string, item NavigationItem) templ.Attributes {
+	if navLinkActive(title, item) {
 		return templ.Attributes{"aria-current": "page"}
 	}
 
@@ -29,10 +32,10 @@ func navCurrentAttributes(title string, activeTitles ...string) templ.Attributes
 
 templ navLink(title string, item NavigationItem) {
 	<a
-		class={ navLinkClass(title, item.ActiveTitles...) }
+		class={ navLinkClass(title, item) }
 		href={ templ.URL(item.Href) }
 		{ navProjectDropAttributes(item)... }
-		{ navCurrentAttributes(title, item.ActiveTitles...)... }
+		{ navCurrentAttributes(title, item)... }
 	>
 		<span class="caldo-nav-label">{ item.Label }</span>
 		if item.HasCount {
@@ -82,7 +85,7 @@ templ shellNavSections(title string, nav NavigationSnapshot) {
 	</section>
 	<section class="caldo-sidebar-section">
 		<h2 class="caldo-section-title mb-2">{ Text(ctx).Projects }</h2>
-		<ul class="space-y-1" data-nav-projects>
+		<ul class="caldo-sidebar-project-list space-y-1" data-nav-projects tabindex="0" aria-label={ Text(ctx).Projects }>
 			<li>@navLink(title, NavigationItem{Label: Text(ctx).AllProjects, Href: "/projects", ActiveTitles: []string{"Projekte", Text(ctx).Projects}})</li>
 			if len(nav.Projects) == 0 {
 				<li>@navEmpty(Text(ctx).NoProjects)</li>

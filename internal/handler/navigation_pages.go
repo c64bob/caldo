@@ -10,12 +10,73 @@ import (
 	"caldo/internal/caldav"
 	"caldo/internal/db"
 	"caldo/internal/view"
+	"github.com/go-chi/chi/v5"
 )
 
 // ProjectsPage renders the projects navigation page.
 func ProjectsPage(database *db.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		renderProjectsPage(w, r, database, projectsPageState{}, http.StatusOK)
+	}
+}
+
+// ProjectTasksPage renders the task list for one project.
+func ProjectTasksPage(deps dateViewDependencies) http.HandlerFunc {
+	nowFn := withDefaultNow(deps.now)
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if deps.database == nil {
+			renderPageError(w, r, "Projekt", "Projekt laden", http.StatusInternalServerError)
+			return
+		}
+
+		projectID := strings.TrimSpace(chi.URLParam(r, "projectID"))
+		if projectID == "" {
+			http.Error(w, "project id is required", http.StatusBadRequest)
+			return
+		}
+
+		project, err := deps.database.ResolveTaskProject(r.Context(), projectID)
+		if err != nil {
+			if errors.Is(err, db.ErrTaskProjectNotFound) {
+				renderPageError(w, r, "Projekt", "Projekt laden", http.StatusNotFound)
+				return
+			}
+			renderPageError(w, r, "Projekt", "Projekt laden", http.StatusInternalServerError)
+			return
+		}
+
+		reference := nowFn()
+		tasks, err := deps.database.ListProjectTasks(r.Context(), project.ID, 200)
+		if err != nil {
+			renderPageError(w, r, project.DisplayName, "Projekt laden", http.StatusInternalServerError)
+			return
+		}
+
+		projectOptions, err := taskEditProjectOptions(r.Context(), deps.database)
+		if err != nil {
+			renderPageError(w, r, project.DisplayName, "Projekt laden", http.StatusInternalServerError)
+			return
+		}
+
+		snapshot, err := deps.database.LoadNavigationSnapshot(r.Context(), reference)
+		if err != nil {
+			renderPageError(w, r, project.DisplayName, "Projekt laden", http.StatusInternalServerError)
+			return
+		}
+
+		ctx := view.WithNavigation(r.Context(), navigationSnapshotViewWithActiveProject(snapshot, project.ID))
+		create := view.InlineTaskCreateView{
+			Enabled:     true,
+			ProjectID:   project.ID,
+			ProjectName: project.DisplayName,
+			Placeholder: "Aufgabe in " + project.DisplayName + " hinzufügen",
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := view.BaseLayout(project.DisplayName, view.DateScopedTasksPage(project.DisplayName, "Keine offenen Aufgaben in diesem Projekt.", datedTaskRows(tasks, projectOptions, reference), create)).Render(ctx, w); err != nil {
+			http.Error(w, "render page", http.StatusInternalServerError)
+		}
 	}
 }
 

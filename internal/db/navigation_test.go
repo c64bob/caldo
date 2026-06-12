@@ -52,6 +52,52 @@ func TestLoadNavigationSnapshotReturnsCountsAndEntries(t *testing.T) {
 	}
 }
 
+func TestLoadNavigationSnapshotOrdersProjectsStably(t *testing.T) {
+	t.Parallel()
+
+	database := openViewTestDB(t)
+	if _, err := database.Conn.Exec(`
+INSERT INTO projects (
+	id, calendar_href, display_name, sync_strategy, server_version, is_default, created_at, updated_at
+) VALUES
+	('project-b', '/calendars/b', 'Same', 'fullscan', 1, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+	('project-default', '/calendars/default', 'Zulu', 'fullscan', 1, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+	('project-a', '/calendars/a', 'Same', 'fullscan', 1, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+	('project-alpha', '/calendars/alpha', 'Alpha', 'fullscan', 1, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+INSERT INTO tasks (
+	id, project_id, uid, href, etag, server_version, title, status, raw_vtodo, base_vtodo,
+	project_name, sync_status, created_at, updated_at
+) VALUES
+	('task-open', 'project-a', 'uid-open', '/calendars/a/open.ics', '"etag-open"', 1,
+		'Open', 'needs-action', 'BEGIN:VTODO\nUID:uid-open\nEND:VTODO',
+		'BEGIN:VTODO\nUID:uid-open\nEND:VTODO', 'Same', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+	('task-completed', 'project-a', 'uid-completed', '/calendars/a/completed.ics', '"etag-completed"', 1,
+		'Done', 'COMPLETED', 'BEGIN:VTODO\nUID:uid-completed\nEND:VTODO',
+		'BEGIN:VTODO\nUID:uid-completed\nEND:VTODO', 'Same', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+`); err != nil {
+		t.Fatalf("seed projects: %v", err)
+	}
+
+	snapshot, err := database.LoadNavigationSnapshot(context.Background(), time.Date(2026, 4, 28, 12, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("load navigation snapshot: %v", err)
+	}
+
+	wantOrder := []string{"project-default", "project-alpha", "project-a", "project-b"}
+	if len(snapshot.Projects) != len(wantOrder) {
+		t.Fatalf("unexpected project count: got %d want %d: %#v", len(snapshot.Projects), len(wantOrder), snapshot.Projects)
+	}
+	for index, wantID := range wantOrder {
+		if snapshot.Projects[index].ID != wantID {
+			t.Fatalf("project order at %d: got %q want %q: %#v", index, snapshot.Projects[index].ID, wantID, snapshot.Projects)
+		}
+	}
+	if snapshot.Projects[2].OpenTaskCount != 1 || snapshot.Projects[2].TaskCount != 2 {
+		t.Fatalf("project open/task counts should exclude completed only from open count: %#v", snapshot.Projects[2])
+	}
+}
+
 func seedNavigationData(t *testing.T, database *Database) {
 	t.Helper()
 

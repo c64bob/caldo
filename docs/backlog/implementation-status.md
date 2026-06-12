@@ -6,8 +6,8 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Zusammenfassung
 
-- Bestehende Stories: 87 `Umgesetzt`, 0 `Teilweise umgesetzt`, 2 `Offen`.
-- Neue Planungsstories: 16 `Umgesetzt`, 23 `Offen`.
+- Bestehende Stories: 88 `Umgesetzt`, 0 `Teilweise umgesetzt`, 1 `Offen`.
+- Neue Planungsstories: 17 `Umgesetzt`, 22 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
 ## Legende
@@ -103,7 +103,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 | 21.1 | Umgesetzt | `playwright.config.js`, `package.json`, CI-Browser-QA und `docs/qa/playwright.md` verankern denselben MVP-Smoke fuer Chromium und Playwright WebKit; die Browserlaeufe nutzen jeweils frische lokale Caldo-/Staging-CalDAV-Instanzen und decken Setup, Navigation, Suche, Tastaturkuerzel, Write-through-Aufgabenaktionen, Fokus-Refresh, Undo, Sync/SSE-Statuspfade und Konflikte ab. |
 | 21.2 | Umgesetzt | `tests/e2e/mvp-flow.spec.js` und `docs/qa/playwright.md` pruefen/dokumentieren Tablet-QA bei 834x1112 fuer Heute, Demnaechst, Projekte, Suche und Einstellungen inklusive horizontalem Overflow, erreichbarer Navigation/Topbar-Aktionen sowie Task-Detail-, Erledigen- und Loeschdialogen. |
 | 21.3 | Umgesetzt | `internal/view/task_rows.templ`, `internal/view/layout.templ`, `internal/view/navigation_pages.templ`, `web/assets/app.js` und `internal/handler/tasks_update.go` markieren verschiebbare Aufgaben und Projektziele, senden `POST /tasks/{taskID}/move` mit `project_id`, `expected_version`, CSRF und Tab-ID und nutzen den bestehenden CalDAV-Write-through-Pfad mit sichtbarer Fehleranzeige ohne optimistische finale DOM-Verschiebung. |
-| 21.4 | Offen | Suche-zu-gespeichertem-Filter-Flow ist noch nicht umgesetzt. |
+| 21.4 | Umgesetzt | `internal/handler/search.go` prueft Suchanfragen per Filter-Lexer/-Parser/-Compiler auf eindeutige gespeicherte-Filter-Syntax; `internal/view/search.templ` bietet nur dann ein `POST /filters`-Formular mit uebernommener Query und Name an, und Browser-QA speichert einen Filter aus der Suche heraus. |
 | 21.5 | Offen | Beschreibungstext-Linkifizierung ist nicht als fertiger UI-Flow vorhanden. |
 | 21.6 | Umgesetzt | `docs/qa/performance.md` dokumentiert wiederholbare QA-Messpunkte mit PRD-Zielwerten fuer Startzeit ohne Migrationen, erste UI-Ansicht mit 10.000 lokalen Tasks, Initialimport mit 400 Remote-Tasks und inkrementellen Sync mit 400 Tasks; `docs/qa/playwright.md` verweist auf den separaten Performance-QA-Prozess. |
 | 22.1 | Umgesetzt | `internal/view/conflicts.templ`, `internal/view/conflicts.go`, `web/static/tailwind.input.css` und Konflikt-View-/Handler-Tests zeigen je Konfliktfeld explizite Base-/Lokal-/Remote-Quellen mit den zugehoerigen Werten als Radio-Auswahl und behalten den bestehenden `ResolveConflict`-Pfad fuer feldweise Aufloesung bei. |
@@ -141,7 +141,7 @@ Die neuen Epics 23 bis 28 brechen die verbleibende UI- und QA-Arbeit in kleinere
 | 26.2 | Offen | Projektverwaltung ist backendseitig vorhanden, aber keine vollstaendige produktive UI. |
 | 26.3 | Offen | Label-Seite existiert nur als Navigationsuebersicht; Label-Bearbeitung ist offen. |
 | 26.4 | Offen | Gespeicherte Filter koennen nicht produktiv in der UI verwaltet werden. |
-| 26.5 | Offen | Suche kann noch nicht als gespeicherter Filter gesichert werden. |
+| 26.5 | Umgesetzt | Die Suche uebernimmt valide Filterqueries in ein benanntes Speichern-Formular, validiert die Ueberfuehrbarkeit vor Anzeige, erstellt favorisierte gespeicherte Filter ueber die bestehende Filter-Route und zeigt sie danach in Filterverwaltung und Navigation. |
 | 26.6 | Umgesetzt | Projekt-Drop-Ziele in Sidebar und Projektuebersicht sowie draggable Task-Zeilen rufen `POST /tasks/{taskID}/move` auf; Handler- und View-Tests decken Endpunkt, Pflicht-`project_id` und Markup fuer Drag-and-Drop ab. |
 | 27.1 | Offen | Konfliktliste existiert, aber nicht als ausgearbeitete Arbeitsansicht. |
 | 27.2 | Offen | Konfliktdetail zeigt Basisinformationen, aber keinen produktiven Feldvergleich. |

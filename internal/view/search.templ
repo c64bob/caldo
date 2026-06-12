@@ -2,7 +2,7 @@ package view
 
 import "strings"
 
-templ SearchPage(query string, results []TaskRowView, create InlineTaskCreateView) {
+templ SearchPage(query string, results []TaskRowView, create InlineTaskCreateView, saveFilter SearchSaveFilterView) {
 	<section class="caldo-page">
 		<h2 class="caldo-page-title">Globale Suche</h2>
 		<form method="get" action="/search" class="space-y-2" role="search" aria-label="Globale Suche">
@@ -19,6 +19,9 @@ templ SearchPage(query string, results []TaskRowView, create InlineTaskCreateVie
 			/>
 			<p class="caldo-muted">Tastaturkürzel: Alt+Shift+K (Browser-Standard für accesskey).</p>
 		</form>
+		if saveFilter.Enabled {
+			@SearchSaveFilterForm(saveFilter)
+		}
 		if strings.TrimSpace(query) == "" {
 			@EmptyState("Noch keine Suche", "Gib einen Suchbegriff ein.")
 		} else if len(results) == 0 {
@@ -32,4 +35,37 @@ templ SearchPage(query string, results []TaskRowView, create InlineTaskCreateVie
 		}
 		@InlineTaskCreate(create)
 	</section>
+}
+
+templ SearchSaveFilterForm(saveFilter SearchSaveFilterView) {
+	<form
+		class="caldo-card space-y-3"
+		method="post"
+		action="/filters"
+		hx-post="/filters"
+		hx-target="body"
+		hx-swap="outerHTML"
+		hx-push-url="false"
+		hx-disabled-elt="find button"
+		hx-headers={ "{\"X-CSRF-Token\":\"" + CSRFToken(ctx) + "\"}" }
+		data-search-save-filter-form
+	>
+		<h3 class="font-medium">Als Filter speichern</h3>
+		<input type="hidden" name="query" value={ saveFilter.Query }/>
+		<div class="grid gap-3 lg:grid-cols-[minmax(12rem,18rem)_1fr_auto] lg:items-end">
+			<div class="space-y-1">
+				<label class="caldo-label" for="search-save-filter-name">Name</label>
+				<input id="search-save-filter-name" class="caldo-input" type="text" name="name" autocomplete="off" required data-search-save-filter-name/>
+			</div>
+			<div class="space-y-1">
+				<p class="caldo-label">Query</p>
+				<p class="caldo-input" data-search-save-filter-query>{ saveFilter.Query }</p>
+			</div>
+			<button type="submit" class="caldo-button caldo-button-primary">Filter anlegen</button>
+		</div>
+		<label class="inline-flex items-center gap-2 text-sm">
+			<input class="caldo-check" type="checkbox" name="favorite" value="1" checked?={ saveFilter.IsFavorite }/>
+			<span>Favorisieren</span>
+		</label>
+	</form>
 }

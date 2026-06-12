@@ -74,6 +74,9 @@ func TestSearchRouteReturnsActiveTasksOnly(t *testing.T) {
 			t.Fatalf("response body missing task row detail %q: %q", want, body)
 		}
 	}
+	if strings.Contains(body, `data-search-save-filter-form`) {
+		t.Fatalf("freetext search must not offer saved filter creation: %q", body)
+	}
 	if !strings.Contains(body, `rel="noopener noreferrer"`) {
 		t.Fatalf("response body missing secure external attachment rel attribute: %q", body)
 	}
@@ -114,10 +117,51 @@ func TestSearchRouteRendersInlineCreateForProjectContext(t *testing.T) {
 		`Aufgabe in Finanzen hinzufügen`,
 		`name="project_id" value="project-1"`,
 		`hx-post="/tasks/"`,
+		`data-search-save-filter-form`,
+		`hx-post="/filters"`,
+		`name="query" value="#Finanzen"`,
+		`data-search-save-filter-name`,
+		`data-search-save-filter-query`,
+		`Favorisieren`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("response body missing project inline create detail %q: %q", want, body)
 		}
+	}
+}
+
+func TestSaveFilterForSearchQueryOnlyAllowsValidFilterSyntax(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		query string
+		want  bool
+	}{
+		{name: "empty", query: " ", want: false},
+		{name: "freetext", query: "rechnung", want: false},
+		{name: "implicit search combination", query: "rechnung #Finanzen", want: false},
+		{name: "project", query: "#Finanzen", want: true},
+		{name: "label", query: "@Büro", want: true},
+		{name: "text", query: "text:rechnung", want: true},
+		{name: "boolean", query: "today AND @Büro", want: true},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := saveFilterForSearchQuery(tt.query)
+			if got.Enabled != tt.want {
+				t.Fatalf("Enabled=%v want %v for query %q", got.Enabled, tt.want, tt.query)
+			}
+			if got.Enabled {
+				if got.Query != strings.TrimSpace(tt.query) || !got.IsFavorite {
+					t.Fatalf("unexpected save filter view: %#v", got)
+				}
+			}
+		})
 	}
 }
 

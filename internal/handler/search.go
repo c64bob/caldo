@@ -64,9 +64,26 @@ func Search(deps searchDependencies) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		create := inlineCreateForSearch(r.Context(), deps.database, query)
-		if err := view.BaseLayout("Suche", view.SearchPage(query, items, create)).Render(r.Context(), w); err != nil {
+		saveFilter := saveFilterForSearchQuery(query)
+		if err := view.BaseLayout("Suche", view.SearchPage(query, items, create, saveFilter)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
+	}
+}
+
+func saveFilterForSearchQuery(rawQuery string) view.SearchSaveFilterView {
+	filterQuery := strings.TrimSpace(rawQuery)
+	if filterQuery == "" {
+		return view.SearchSaveFilterView{}
+	}
+	_, _, ok, err := db.EvaluateSavedFilter(filterQuery, 7)
+	if err != nil || !ok {
+		return view.SearchSaveFilterView{}
+	}
+	return view.SearchSaveFilterView{
+		Enabled:    true,
+		Query:      filterQuery,
+		IsFavorite: true,
 	}
 }
 

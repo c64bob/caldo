@@ -17,6 +17,7 @@ type SettingsPageView struct {
 	Settings         db.AppSettings
 	Available        []caldav.Calendar
 	CalDAVError      string
+	CalDAVSuccess    string
 	CalendarsError   string
 	SelectedHrefs    []string
 	DefaultHref      string
@@ -67,6 +68,11 @@ func renderCalDAVSettings(w io.Writer, csrfToken string, model SettingsPageView,
 			return err
 		}
 	}
+	if model.CalDAVSuccess != "" {
+		if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-success mt-3">%s</p>`, html.EscapeString(model.CalDAVSuccess)); err != nil {
+			return err
+		}
+	}
 
 	_, err := fmt.Fprintf(w, `<form class="mt-4 space-y-3" method="post" action="/settings/caldav" hx-post="/settings/caldav" hx-target="body" hx-swap="outerHTML" hx-push-url="false" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
 <div>
@@ -82,8 +88,11 @@ func renderCalDAVSettings(w io.Writer, csrfToken string, model SettingsPageView,
 <input id="settings_caldav_password" name="caldav_password" type="password" class="caldo-input" autocomplete="new-password" placeholder="%s"/>
 <p class="caldo-meta mt-1">%s</p>
 </div>
-<button type="submit" class="caldo-button caldo-button-primary">%s</button>
+<div class="flex flex-wrap items-center gap-2">
+<button type="submit" name="caldav_action" value="test" class="caldo-button caldo-button-secondary">%s</button>
+<button type="submit" name="caldav_action" value="save" class="caldo-button caldo-button-primary">%s</button>
 <span class="htmx-indicator caldo-meta ml-2" aria-live="polite">%s</span>
+</div>
 </form>
 </div>`,
 		csrfToken,
@@ -94,6 +103,7 @@ func renderCalDAVSettings(w io.Writer, csrfToken string, model SettingsPageView,
 		html.EscapeString(text.SettingsCalDAVPassword),
 		passwordPlaceholder(model.Settings.CalDAVConfigured, text),
 		passwordHelp(model.Settings.CalDAVConfigured, text),
+		html.EscapeString(text.SettingsCalDAVTest),
 		html.EscapeString(text.SettingsCalDAVSubmit),
 		html.EscapeString(text.SettingsCalDAVPending),
 	)

@@ -131,6 +131,7 @@ func renderSettingsPage(w http.ResponseWriter, r *http.Request, deps settingsDep
 		Settings:         settings,
 		Available:        available,
 		CalDAVError:      pageState.CalDAVError,
+		CalDAVSuccess:    pageState.CalDAVSuccess,
 		CalendarsError:   calendarLoadError,
 		SelectedHrefs:    pageState.SelectedHrefs,
 		DefaultHref:      pageState.DefaultHref,

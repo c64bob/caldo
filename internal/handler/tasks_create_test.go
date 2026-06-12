@@ -280,14 +280,81 @@ func TestTaskCreateRejectsRecurrenceWithCRLF(t *testing.T) {
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "recurrence is invalid") {
+		t.Fatalf("expected recurrence validation error, got %q", rr.Body.String())
+	}
+	if stub.raw != "" || stub.href != "" {
+		t.Fatalf("invalid recurrence must not call caldav: href=%q raw=%q", stub.href, stub.raw)
+	}
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM tasks;`, 0)
+}
+
+func TestTaskCreateRejectsMalformedRecurrence(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskCreateHandlerTest(t)
+	seedTaskCreateHandlerProject(t, database)
+
+	key := bytes.Repeat([]byte{0x56}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	stub := &stubTaskCreateTodoClient{etag: `"etag-1"`}
+	h := TaskCreate(taskCreateDependencies{database: database, encryptionKey: key, todos: stub})
+
+	form := url.Values{"title": {"Buy milk"}, "recurrence": {"COUNT=2"}}
+	req := httptest.NewRequest(http.MethodPost, "/tasks", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "recurrence is invalid") {
+		t.Fatalf("expected recurrence validation error, got %q", rr.Body.String())
+	}
+	if stub.raw != "" || stub.href != "" {
+		t.Fatalf("invalid recurrence must not call caldav: href=%q raw=%q", stub.href, stub.raw)
+	}
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM tasks;`, 0)
+}
+
+func TestTaskCreatePreservesComplexQuickAddRecurrence(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskCreateHandlerTest(t)
+	seedTaskCreateHandlerProject(t, database)
+
+	key := bytes.Repeat([]byte{0x57}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	stub := &stubTaskCreateTodoClient{etag: `"etag-1"`}
+	h := TaskCreate(taskCreateDependencies{database: database, encryptionKey: key, todos: stub})
+
+	complexRRule := "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=1"
+	form := url.Values{"title": {"Review reports"}, "recurrence": {complexRRule}}
+	req := httptest.NewRequest(http.MethodPost, "/tasks", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
 	}
-	if strings.Contains(stub.raw, "RRULE:") {
-		t.Fatalf("expected recurrence to be rejected from raw payload: %q", stub.raw)
+	if !strings.Contains(stub.raw, "RRULE:"+complexRRule) {
+		t.Fatalf("expected complex recurrence preserved in raw payload: %q", stub.raw)
 	}
-	if strings.Contains(stub.raw, "ATTENDEE:") {
-		t.Fatalf("expected injected line to be rejected from raw payload: %q", stub.raw)
+	var rrule string
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT rrule FROM tasks WHERE title = 'Review reports';`).Scan(&rrule); err != nil {
+		t.Fatalf("query recurrence: %v", err)
+	}
+	if rrule != complexRRule {
+		t.Fatalf("unexpected stored recurrence: got %q want %q", rrule, complexRRule)
 	}
 }
 

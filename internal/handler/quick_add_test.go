@@ -260,6 +260,7 @@ INSERT INTO labels (id, name, created_at) VALUES
 		`value="urgent, backend"`,
 		`name="priority"`,
 		`value="medium" selected`,
+		`P2 Mittel`,
 		`data-quick-add-label-suggestions`,
 		`data-quick-add-append-label="review"`,
 		`data-quick-add-remove-label="urgent"`,

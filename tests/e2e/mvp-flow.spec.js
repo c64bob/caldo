@@ -588,14 +588,17 @@ async function exerciseQuickAddOverlay(page) {
   await expect(input).toHaveValue('E2E Overlay Failed');
   await expect(page).toHaveURL(searchURL);
 
-  await input.fill('E2E Overlay Chips #Work @urgent morgen !2');
+  await input.fill('E2E Overlay Chips #Work @urgent morgen wöchentlich !2');
   await previewForm.getByRole('button', { name: 'Vorschau' }).click();
   saveForm = overlay.locator('[data-quick-add-overlay-save-form]');
   await expect(overlay.locator('[data-quick-add-chips]')).toContainText('Work');
   await expect(overlay.locator('[data-quick-add-chips]')).toContainText('urgent');
+  await expect(overlay.locator('[data-quick-add-chips]')).toContainText('Wöchentlich');
+  await expect(overlay.locator('[data-quick-add-chips]')).toContainText('P2 Mittel');
   await expect(saveForm.locator('input[name="title"]')).toHaveValue('E2E Overlay Chips');
   await expect(saveForm.locator('input[name="labels"]')).toHaveValue('urgent');
   await expect(saveForm.locator('input[name="due_date"]')).toHaveValue(/\d{4}-\d{2}-\d{2}/);
+  await expect(saveForm.locator('input[name="recurrence"]')).toHaveValue('FREQ=WEEKLY');
   await expect(overlay.locator('[data-quick-add-date-resolution]')).toContainText('morgen');
   const dateChip = overlay.locator(`[data-quick-add-chips] button[data-quick-add-clear="[name='due_date']"]`);
   await dateChip.click();
@@ -608,6 +611,14 @@ async function exerciseQuickAddOverlay(page) {
   await priorityChip.click();
   await expect(saveForm.locator('select[name="priority"]')).toHaveValue('');
   await expect(priorityChip).toBeHidden();
+  const recurrenceInput = saveForm.locator('input[name="recurrence"]');
+  await recurrenceInput.fill('COUNT=2');
+  await saveForm.getByRole('button', { name: 'Speichern' }).click();
+  await expect(overlay).toBeVisible();
+  await expect(overlay.locator('[data-quick-add-recurrence-error]')).toBeVisible();
+  await expect(overlay.locator('[data-quick-add-recurrence-error]')).toContainText('Wiederholung prüfen');
+  await recurrenceInput.fill('FREQ=WEEKLY');
+  await expect(overlay.locator('[data-quick-add-recurrence-error]')).toBeHidden();
   await saveForm.locator('input[name="title"]').fill('E2E Overlay Corrected');
   await saveForm.locator('input[name="labels"]').fill('reviewed');
   await saveForm.locator('select[name="priority"]').selectOption('low');
@@ -618,6 +629,7 @@ async function exerciseQuickAddOverlay(page) {
   const correctedRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Overlay Corrected' }).first();
   await expect(correctedRow).toContainText('reviewed');
   await expect(correctedRow).toContainText('P3');
+  await expect(correctedRow).toContainText('Wöchentlich');
   await expect(correctedRow).toContainText('Fällig 2099-06-30');
 
   await page.locator('.caldo-topbar [data-quick-add-open]').click();

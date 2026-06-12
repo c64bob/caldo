@@ -38,6 +38,7 @@ var (
 	errQuickAddProjectCreateClient  = errors.New("quick add project create client unavailable")
 	errQuickAddProjectCreateFailed  = errors.New("quick add project create failed")
 	errQuickAddProjectPersistFailed = errors.New("quick add project persist failed")
+	errQuickAddRecurrenceInvalid    = errors.New("quick add recurrence invalid")
 )
 
 // TaskCreate creates a new task and performs synchronous CalDAV write-through.
@@ -78,6 +79,11 @@ func createTask(w http.ResponseWriter, r *http.Request, deps taskCreateDependenc
 	title := strings.TrimSpace(r.FormValue("title"))
 	if title == "" {
 		http.Error(w, "title is required", http.StatusBadRequest)
+		return
+	}
+	recurrence, err := parseQuickAddRecurrence(r.FormValue("recurrence"))
+	if err != nil {
+		http.Error(w, "recurrence is invalid", http.StatusBadRequest)
 		return
 	}
 
@@ -126,7 +132,7 @@ func createTask(w http.ResponseWriter, r *http.Request, deps taskCreateDependenc
 		Priority:   parseQuickAddPriority(r.FormValue("priority")),
 		DueDate:    parseOptionalDate(r.FormValue("due_date")),
 		Categories: parseQuickAddLabels(r.FormValue("labels")),
-		RRule:      parseQuickAddRecurrence(r.FormValue("recurrence")),
+		RRule:      recurrence,
 	})
 	parsed := model.ParseVTODOFields(rawVTODO)
 
@@ -303,15 +309,59 @@ func parseQuickAddLabels(value string) []string {
 	return labels
 }
 
-func parseQuickAddRecurrence(value string) *string {
+func parseQuickAddRecurrence(value string) (*string, error) {
 	recurrence := strings.TrimSpace(value)
 	if recurrence == "" {
-		return nil
+		return nil, nil
 	}
+	if !validQuickAddRecurrence(recurrence) {
+		return nil, errQuickAddRecurrenceInvalid
+	}
+	return &recurrence, nil
+}
+
+func validQuickAddRecurrence(recurrence string) bool {
 	if strings.ContainsAny(recurrence, "\r\n") {
-		return nil
+		return false
 	}
-	return &recurrence
+
+	parts := strings.Split(recurrence, ";")
+	hasFreq := false
+	seen := make(map[string]struct{}, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			return false
+		}
+		key, value, ok := strings.Cut(part, "=")
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		if !ok || key == "" || value == "" {
+			return false
+		}
+		normalizedKey := strings.ToUpper(key)
+		if _, ok := seen[normalizedKey]; ok {
+			return false
+		}
+		seen[normalizedKey] = struct{}{}
+		if !validQuickAddRecurrenceKey(key) || strings.ContainsAny(value, "\r\n:;") {
+			return false
+		}
+		if normalizedKey == "FREQ" {
+			hasFreq = true
+		}
+	}
+	return hasFreq
+}
+
+func validQuickAddRecurrenceKey(key string) bool {
+	for _, r := range key {
+		if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func taskHref(calendarHref string, uid string) string {

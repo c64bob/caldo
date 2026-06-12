@@ -134,7 +134,7 @@ templ TaskRow(task TaskRowView) {
 					}
 				</div>
 				if taskRowDescription(task) != "" {
-					<p class="caldo-task-description">{ taskRowDescription(task) }</p>
+					<p class="caldo-task-description">@TaskDescriptionText(taskRowDescription(task))</p>
 				}
 				<div class="caldo-task-meta-line">
 					for _, chip := range taskRelationshipChips(task) {
@@ -290,6 +290,16 @@ templ TaskRow(task TaskRowView) {
 			@TaskDeleteDialog(task)
 		}
 	</li>
+}
+
+templ TaskDescriptionText(description string) {
+	for _, segment := range taskDescriptionSegments(description) {
+		if segment.URL != "" {
+			<a href={ templ.SafeURL(segment.URL) } target="_blank" rel="noopener noreferrer" class="caldo-task-description-link">{ segment.Text }</a>
+		} else {
+			{ segment.Text }
+		}
+	}
 }
 
 templ SubtaskCreate(task TaskRowView) {

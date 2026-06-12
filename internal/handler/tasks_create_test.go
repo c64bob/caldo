@@ -236,6 +236,31 @@ VALUES ('project-work', '/cal/work/', 'Work', 'fullscan', CURRENT_TIMESTAMP, CUR
 	}
 }
 
+func TestTaskCreateQuickAddRequiresExplicitUnknownProjectSelection(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskCreateHandlerTest(t)
+	seedTaskCreateHandlerProject(t, database)
+
+	h := TaskCreate(taskCreateDependencies{database: database})
+
+	form := url.Values{
+		"title":            {"Plan release"},
+		"project_new_name": {"Wrok"},
+	}
+	req := httptest.NewRequest(http.MethodPost, "/tasks", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "project selection is required") {
+		t.Fatalf("expected project selection error, got %q", rr.Body.String())
+	}
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM tasks WHERE title = 'Plan release';`, 0)
+}
+
 func TestTaskCreateRejectsRecurrenceWithCRLF(t *testing.T) {
 	t.Parallel()
 	database := openSQLiteForTaskCreateHandlerTest(t)

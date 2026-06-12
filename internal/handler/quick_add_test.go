@@ -161,11 +161,21 @@ func TestQuickAddPreviewMarksUnknownProjectTokenAsNew(t *testing.T) {
 	if strings.Contains(body, `name="create_project"`) {
 		t.Fatalf("expected project selection radios instead of legacy create checkbox, got body: %s", body)
 	}
+	if strings.Contains(body, `value="create" checked`) {
+		t.Fatalf("expected new project creation to require explicit selection, got body: %s", body)
+	}
 }
 
 func TestQuickAddPreviewShowsLabelsAndPriorityTokens(t *testing.T) {
 	database := openSQLiteForTaskCreateHandlerTest(t)
 	seedTaskCreateHandlerProject(t, database)
+	if _, err := database.Conn.Exec(`
+INSERT INTO labels (id, name, created_at) VALUES
+('label-urgent', 'urgent', CURRENT_TIMESTAMP),
+('label-review', 'review', CURRENT_TIMESTAMP);
+`); err != nil {
+		t.Fatalf("seed labels: %v", err)
+	}
 	h := QuickAddPreview(quickAddDependencies{database: database})
 
 	form := url.Values{}
@@ -179,7 +189,16 @@ func TestQuickAddPreviewShowsLabelsAndPriorityTokens(t *testing.T) {
 		t.Fatalf("unexpected status: %d", w.Code)
 	}
 	body := w.Body.String()
-	for _, want := range []string{`urgent, backend`, `value="urgent, backend"`, `name="priority"`, `value="medium" selected`} {
+	for _, want := range []string{
+		`urgent, backend`,
+		`value="urgent, backend"`,
+		`name="priority"`,
+		`value="medium" selected`,
+		`data-quick-add-label-suggestions`,
+		`data-quick-add-append-label="review"`,
+		`data-quick-add-remove-label="urgent"`,
+		`>Neu<`,
+	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("expected quick add token preview to include %q in %s", want, body)
 		}

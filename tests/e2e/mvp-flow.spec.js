@@ -597,6 +597,7 @@ async function exerciseQuickAddOverlay(page) {
   await expect(saveForm.locator('input[name="labels"]')).toHaveValue('urgent');
   await expect(saveForm.locator('input[name="due_date"]')).toHaveValue(/\d{4}-\d{2}-\d{2}/);
   await expect(saveForm.locator('select[name="priority"]')).toHaveValue('medium');
+  await expect(overlay.locator('[data-quick-add-chips]')).toContainText('Neu');
   const priorityChip = overlay.locator(`[data-quick-add-chips] button[data-quick-add-clear="[name='priority']"]`);
   await priorityChip.click();
   await expect(saveForm.locator('select[name="priority"]')).toHaveValue('');
@@ -611,6 +612,20 @@ async function exerciseQuickAddOverlay(page) {
   const correctedRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Overlay Corrected' }).first();
   await expect(correctedRow).toContainText('reviewed');
   await expect(correctedRow).toContainText('P3');
+
+  await page.locator('.caldo-topbar [data-quick-add-open]').click();
+  await input.fill('E2E Overlay Suggested #Work');
+  await previewForm.getByRole('button', { name: 'Vorschau' }).click();
+  saveForm = overlay.locator('[data-quick-add-overlay-save-form]');
+  const reviewedSuggestion = overlay.locator('[data-quick-add-label-suggestions] button[data-quick-add-append-label="reviewed"]');
+  await expect(reviewedSuggestion).toBeVisible();
+  await reviewedSuggestion.click();
+  await expect(saveForm.locator('input[name="labels"]')).toHaveValue('reviewed');
+  await saveForm.getByRole('button', { name: 'Speichern' }).click();
+  await expect(overlay).toBeHidden();
+  await waitForSearchResult(page, 'E2E Overlay Suggested');
+  const suggestedRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Overlay Suggested' }).first();
+  await expect(suggestedRow).toContainText('reviewed');
 
   await page.setViewportSize(mobileViewport);
   await gotoApp(page, '/search?q=Stage');

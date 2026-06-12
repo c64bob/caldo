@@ -43,6 +43,9 @@ func QuickAddPreview(deps quickAddDependencies) http.HandlerFunc {
 		if projectOptionsErr == nil {
 			draft.ProjectOptions = quickAddProjectOptions(projectOptions)
 		}
+		if labelOptions, err := deps.database.ListLabelOptions(r.Context()); err == nil {
+			draft.LabelOptions = quickAddLabelOptions(labelOptions)
+		}
 		if draft.Title == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			if err := view.ErrorState("Vorschau erstellen", "validierungsfehler", false).Render(ctx, w); err != nil {
@@ -130,6 +133,24 @@ func quickAddProjectOptions(projects []db.ProjectOption) []parser.QuickAddProjec
 		}
 		seen[id] = struct{}{}
 		options = append(options, parser.QuickAddProjectSuggestion{ID: id, Name: name})
+	}
+	return options
+}
+
+func quickAddLabelOptions(labels []db.LabelOption) []parser.QuickAddLabelSuggestion {
+	options := make([]parser.QuickAddLabelSuggestion, 0, len(labels))
+	seen := make(map[string]struct{}, len(labels))
+	for _, label := range labels {
+		name := strings.TrimSpace(label.Name)
+		if name == "" {
+			continue
+		}
+		key := strings.ToLower(name)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		options = append(options, parser.QuickAddLabelSuggestion{Name: name})
 	}
 	return options
 }

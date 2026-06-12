@@ -329,6 +329,77 @@
     }
   }
 
+  function quickAddSaveFormFor(element) {
+    if (!element) return null;
+    var form = element.closest('[data-quick-add-save-form]');
+    if (form) return form;
+    var preview = element.closest('[data-quick-add-preview]');
+    return preview ? preview.querySelector('[data-quick-add-save-form]') : null;
+  }
+
+  function quickAddLabelsInputFor(element) {
+    var form = quickAddSaveFormFor(element);
+    if (!form) return null;
+    return form.querySelector('[data-quick-add-labels-input], [name="labels"]');
+  }
+
+  function quickAddLabelValues(value) {
+    return String(value || '').split(',').map(function (part) {
+      return part.trim();
+    }).filter(Boolean);
+  }
+
+  function setQuickAddLabelValues(input, labels) {
+    if (!input) return;
+    input.value = labels.join(', ');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    if (typeof input.focus === 'function') {
+      input.focus();
+    }
+  }
+
+  function appendQuickAddLabel(button) {
+    if (!button) return;
+    var label = (button.getAttribute('data-quick-add-append-label') || '').trim();
+    if (!label) return;
+    var input = quickAddLabelsInputFor(button);
+    if (!input) return;
+    var labels = quickAddLabelValues(input.value);
+    var exists = labels.some(function (existing) {
+      return existing.toLowerCase() === label.toLowerCase();
+    });
+    if (!exists) {
+      labels.push(label);
+    }
+    setQuickAddLabelValues(input, labels);
+    button.hidden = true;
+    button.style.display = 'none';
+  }
+
+  function removeQuickAddLabel(button) {
+    if (!button) return;
+    var label = (button.getAttribute('data-quick-add-remove-label') || '').trim();
+    if (!label) return;
+    var input = quickAddLabelsInputFor(button);
+    if (!input) return;
+    var labels = quickAddLabelValues(input.value).filter(function (existing) {
+      return existing.toLowerCase() !== label.toLowerCase();
+    });
+    setQuickAddLabelValues(input, labels);
+
+    var chip = button.closest('.caldo-quick-add-chip');
+    if (chip && chip.closest('[data-quick-add-chips]')) {
+      chip.hidden = true;
+      chip.style.display = 'none';
+      var chipList = chip.closest('[data-quick-add-chips]');
+      if (chipList && !chipList.querySelector('.caldo-quick-add-chip:not([hidden])')) {
+        chipList.hidden = true;
+        chipList.style.display = 'none';
+      }
+    }
+  }
+
   function inlineCreateError(root) {
     return root ? root.querySelector('[data-inline-task-create-error]') : null;
   }
@@ -1587,6 +1658,20 @@
   document.addEventListener('dragend', clearTaskMoveDragState);
 
   document.addEventListener('click', function (event) {
+    var quickAddAppendLabel = closestElement(event.target, '[data-quick-add-append-label]');
+    if (quickAddAppendLabel) {
+      event.preventDefault();
+      appendQuickAddLabel(quickAddAppendLabel);
+      return;
+    }
+
+    var quickAddRemoveLabel = closestElement(event.target, '[data-quick-add-remove-label]');
+    if (quickAddRemoveLabel) {
+      event.preventDefault();
+      removeQuickAddLabel(quickAddRemoveLabel);
+      return;
+    }
+
     var quickAddClear = closestElement(event.target, '[data-quick-add-clear]');
     if (quickAddClear) {
       event.preventDefault();

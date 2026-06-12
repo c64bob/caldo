@@ -109,6 +109,11 @@ func TestQuickAddPreviewRendersCorrectionChipsAndEditableFields(t *testing.T) {
 			{ID: "project-default", Name: "Inbox"},
 			{ID: "project-work", Name: "Work"},
 		},
+		LabelOptions: []parser.QuickAddLabelSuggestion{
+			{Name: "backend"},
+			{Name: "review"},
+			{Name: "urgent"},
+		},
 		Labels:     []string{"urgent", "backend"},
 		Due:        "2026-06-13",
 		Recurrence: "FREQ=WEEKLY",
@@ -130,6 +135,10 @@ func TestQuickAddPreviewRendersCorrectionChipsAndEditableFields(t *testing.T) {
 		`name="project_selection"`,
 		`value="existing:project-work" selected`,
 		`name="labels" value="urgent, backend"`,
+		`data-quick-add-remove-label="urgent"`,
+		`data-quick-add-label-suggestions`,
+		`data-quick-add-append-label="review"`,
+		`id="quick-add-preview-label-options"`,
 		`name="due_date" value="2026-06-13"`,
 		`name="recurrence" value="FREQ=WEEKLY"`,
 		`value="medium" selected`,
@@ -166,15 +175,17 @@ func TestQuickAddPreviewRendersUnknownProjectSuggestionsAndCreateOption(t *testi
 		`data-quick-add-project-suggestions`,
 		`data-quick-add-project-suggestion`,
 		`name="project_new_name" value="Work"`,
-		`name="project_selection" value="existing:project-work"`,
+		`name="project_selection" value="existing:project-work" required`,
 		`Work Inbox`,
-		`name="project_selection" value="create"`,
+		`name="project_selection" value="create" required`,
 		`Neu anlegen`,
-		`checked`,
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected quick add project create option %q in %s", want, output)
 		}
+	}
+	if strings.Contains(output, `value="create" checked`) {
+		t.Fatalf("expected project creation to require explicit selection: %s", output)
 	}
 	if strings.Contains(output, `name="create_project"`) {
 		t.Fatalf("expected project selection radios instead of legacy create checkbox: %s", output)

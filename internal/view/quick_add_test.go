@@ -32,6 +32,62 @@ func TestQuickAddPreviewIncludesCSRFHeaderForSaveForm(t *testing.T) {
 	}
 }
 
+func TestQuickAddOverlayUsesDistinctPreviewTarget(t *testing.T) {
+	t.Parallel()
+
+	component := QuickAddOverlay()
+
+	var rendered bytes.Buffer
+	if err := component.Render(context.Background(), &rendered); err != nil {
+		t.Fatalf("render quick add overlay: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`id="quick-add-overlay"`,
+		`data-quick-add-overlay`,
+		`data-quick-add-overlay-form`,
+		`id="quick-add-overlay-text"`,
+		`hx-target="#quick-add-overlay-preview"`,
+		`name="surface" value="overlay"`,
+		`data-quick-add-overlay-error hidden`,
+		`id="quick-add-overlay-preview"`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected quick add overlay to include %q in %s", want, output)
+		}
+	}
+}
+
+func TestQuickAddOverlayPreviewUsesOverlayTargetAndSaveHook(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	component := QuickAddOverlayPreview(parser.QuickAddDraft{Title: "Overlay Task", ProjectID: "project-1"}, "")
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render quick add overlay preview: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`id="quick-add-overlay-preview"`,
+		`data-quick-add-overlay-save-form`,
+		`hx-post="/tasks"`,
+		`X-CSRF-Token`,
+		`token-123`,
+		`name="title" value="Overlay Task"`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected quick add overlay preview to include %q in %s", want, output)
+		}
+	}
+	if strings.Contains(output, `id="quick-add-preview"`) {
+		t.Fatalf("expected overlay preview to avoid page preview id: %s", output)
+	}
+}
+
 func TestQuickAddPreviewRendersUnknownProjectSuggestionsAndCreateOption(t *testing.T) {
 	t.Parallel()
 

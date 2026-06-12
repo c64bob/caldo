@@ -7,7 +7,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 ## Zusammenfassung
 
 - Bestehende Stories: 89 `Umgesetzt`, 0 `Teilweise umgesetzt`, 0 `Offen`.
-- Neue Planungsstories: 17 `Umgesetzt`, 22 `Offen`.
+- Neue Planungsstories: 18 `Umgesetzt`, 21 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
 ## Legende
@@ -131,7 +131,7 @@ Die neuen Epics 23 bis 28 brechen die verbleibende UI- und QA-Arbeit in kleinere
 | 24.6 | Umgesetzt | `internal/view/task_rows.templ`, `internal/handler/tasks_update.go`, `internal/handler/tasks_favorite.go` und zugehoerige Tests machen Prioritaet, Labels, Favorit und Faelligkeit in der Aufgabenzeile sichtbar und direkt bearbeitbar. |
 | 24.7 | Umgesetzt | `internal/view/task_rows.templ`, `internal/view/task_rows.go`, `internal/handler/tasks_create.go` und Browser-Tests gruppieren Unteraufgaben visuell und ermoeglichen Erstellung direkt an der passenden Elternaufgabe. |
 | 24.8 | Umgesetzt | `internal/view/undo.templ`, `internal/handler/tasks_undo.go`, `internal/db/tasks_undo.go` und `web/assets/app.js` liefern tabbezogene Undo-Statusanzeige mit Wiederherstellung, Fehler- und Ablaufzustaenden. |
-| 25.1 | Offen | Kein globales Quick-Add-Overlay umgesetzt. |
+| 25.1 | Umgesetzt | `internal/view/layout.templ`, `internal/view/quick_add.templ`, `web/assets/app.js` und `web/static/tailwind.input.css` stellen ein globales Quick-Add-Overlay mit sichtbaren Shell-Aktionen, Tastaturstart, Kontextverbleib, responsivem Dialog und sichtbaren Fehlern bei fehlgeschlagenem Speichern bereit; `tests/e2e/mvp-flow.spec.js` prueft den Browserfluss. |
 | 25.2 | Offen | Keine Live-Parsing-Chips mit Korrekturinteraktion umgesetzt. |
 | 25.3 | Offen | Projekt- und Labelvorschlaege fuer Quick Add sind nicht produktiv umgesetzt. |
 | 25.4 | Offen | Datumsauswahl und natuerliche Eingabevorschau sind nur teilweise ueber bestehende Quick-Add-Preview abgedeckt. |

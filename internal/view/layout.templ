@@ -113,7 +113,7 @@ templ BaseLayout(title string, content templ.Component) {
 						<a href="/today" class="caldo-brand">Caldo</a>
 						<p class="caldo-meta mt-1">{ Text(ctx).AppSubtitle }</p>
 					</div>
-					<a href="/quick-add" class="caldo-button caldo-button-primary w-full">{ Text(ctx).NewTask }</a>
+					<a href="/quick-add" class="caldo-button caldo-button-primary w-full" data-quick-add-open aria-controls="quick-add-overlay" aria-haspopup="dialog">{ Text(ctx).NewTask }</a>
 					<nav class="caldo-sidebar-nav" aria-label={ Text(ctx).MainNavigation }>
 						@shellNavSections(title, Navigation(ctx))
 					</nav>
@@ -131,7 +131,7 @@ templ BaseLayout(title string, content templ.Component) {
 						</div>
 						<div class="caldo-topbar-actions">
 							<a href="/search" class="caldo-button caldo-button-secondary">{ Text(ctx).Search }</a>
-							<a href="/quick-add" class="caldo-button caldo-button-primary">{ Text(ctx).NewTask }</a>
+							<a href="/quick-add" class="caldo-button caldo-button-primary" data-quick-add-open aria-controls="quick-add-overlay" aria-haspopup="dialog">{ Text(ctx).NewTask }</a>
 							@SyncStatusBadge("idle", "nie")
 							<button
 								type="button"
@@ -164,12 +164,13 @@ templ BaseLayout(title string, content templ.Component) {
 						</div>
 						<button type="button" data-mobile-nav-close class="caldo-button caldo-button-ghost">{ Text(ctx).Close }</button>
 					</div>
-					<a href="/quick-add" class="caldo-button caldo-button-primary w-full">{ Text(ctx).NewTask }</a>
+					<a href="/quick-add" class="caldo-button caldo-button-primary w-full" data-quick-add-open aria-controls="quick-add-overlay" aria-haspopup="dialog">{ Text(ctx).NewTask }</a>
 					<nav class="caldo-mobile-nav" aria-label={ Text(ctx).MobileMainNavigation }>
 						@shellNavSections(title, Navigation(ctx))
 					</nav>
 				</div>
 			</dialog>
+			@QuickAddOverlay()
 			<div id="write-status" data-write-status class="hidden caldo-toast" role="status" aria-live="polite"></div>
 			<div id="notifications" aria-live="polite"></div>
 			<dialog data-shortcut-help-dialog class="caldo-dialog">

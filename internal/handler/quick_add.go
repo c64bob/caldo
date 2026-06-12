@@ -65,7 +65,11 @@ func QuickAddPreview(deps quickAddDependencies) http.HandlerFunc {
 			}
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.QuickAddPreview(draft, text).Render(ctx, w); err != nil {
+		component := view.QuickAddPreview(draft, text)
+		if strings.TrimSpace(r.FormValue("surface")) == "overlay" {
+			component = view.QuickAddOverlayPreview(draft, text)
+		}
+		if err := component.Render(ctx, w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}

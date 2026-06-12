@@ -491,6 +491,50 @@
 		@apply max-w-3xl;
 	}
 
+	.caldo-quick-add-overlay {
+		@apply max-w-2xl overflow-hidden rounded-md border p-0;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border-strong);
+		color: var(--caldo-text);
+		max-height: calc(100dvh - 1rem);
+		width: calc(100vw - 1rem);
+	}
+
+	@media (min-width: 640px) {
+		.caldo-quick-add-overlay {
+			max-height: calc(100dvh - 2rem);
+			width: min(42rem, calc(100vw - 2rem));
+		}
+	}
+
+	.caldo-quick-add-overlay::backdrop {
+		background: rgba(32, 32, 29, 0.38);
+	}
+
+	.caldo-quick-add-overlay-panel {
+		@apply flex min-h-0 flex-col;
+		max-height: inherit;
+	}
+
+	.caldo-quick-add-overlay-header {
+		@apply flex shrink-0 items-center justify-between gap-3 border-b p-4;
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-quick-add-overlay-body {
+		@apply min-h-0 space-y-4 overflow-y-auto p-4;
+	}
+
+	@media (max-width: 639px) {
+		.caldo-quick-add-overlay {
+			@apply rounded-none border-0;
+			height: 100dvh;
+			margin: 0;
+			max-height: 100dvh;
+			width: 100vw;
+		}
+	}
+
 	.caldo-quick-add-form {
 		@apply space-y-3;
 	}

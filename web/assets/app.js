@@ -185,6 +185,99 @@
     dialog.close();
   }
 
+  function quickAddOverlay() {
+    return document.querySelector('[data-quick-add-overlay]');
+  }
+
+  function quickAddOverlayError(dialog) {
+    return dialog ? dialog.querySelector('[data-quick-add-overlay-error]') : null;
+  }
+
+  function setQuickAddOverlayError(dialog, message) {
+    var error = quickAddOverlayError(dialog);
+    if (!error) return;
+    if (!message) {
+      error.textContent = '';
+      error.hidden = true;
+      return;
+    }
+    error.textContent = message;
+    error.hidden = false;
+  }
+
+  function resetQuickAddOverlay(dialog) {
+    if (!dialog) return;
+    var form = dialog.querySelector('[data-quick-add-overlay-form]');
+    var preview = dialog.querySelector('#quick-add-overlay-preview');
+    if (form) {
+      form.reset();
+    }
+    if (preview) {
+      preview.outerHTML = '<div id="quick-add-overlay-preview" class="caldo-quick-add-preview-shell"></div>';
+    }
+    setQuickAddOverlayError(dialog, '');
+  }
+
+  function openQuickAddOverlay(trigger) {
+    var dialog = quickAddOverlay();
+    if (!dialog) {
+      goTo('/quick-add');
+      return;
+    }
+    dialog.__caldoReturnFocus = trigger || document.activeElement;
+    setQuickAddOverlayError(dialog, '');
+    if (typeof dialog.showModal === 'function') {
+      if (!dialog.open) {
+        dialog.showModal();
+      }
+    } else {
+      dialog.setAttribute('open', '');
+    }
+    var input = dialog.querySelector('[data-quick-add-overlay-input]');
+    window.setTimeout(function () {
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }, 0);
+  }
+
+  function closeQuickAddOverlay(dialog, reset) {
+    if (!dialog) return;
+    if (reset) {
+      resetQuickAddOverlay(dialog);
+    }
+    if (typeof dialog.close === 'function' && dialog.open) {
+      dialog.close();
+      return;
+    }
+    dialog.removeAttribute('open');
+    var trigger = dialog.__caldoReturnFocus;
+    dialog.__caldoReturnFocus = null;
+    if (trigger && document.contains(trigger)) {
+      trigger.focus();
+    }
+  }
+
+  function bindQuickAddOverlay() {
+    var dialog = quickAddOverlay();
+    if (!dialog || dialog.dataset.quickAddOverlayBound === 'true') return;
+    dialog.dataset.quickAddOverlayBound = 'true';
+    dialog.addEventListener('close', function () {
+      resetQuickAddOverlay(dialog);
+      var trigger = dialog.__caldoReturnFocus;
+      dialog.__caldoReturnFocus = null;
+      if (trigger && document.contains(trigger)) {
+        trigger.focus();
+      }
+    });
+    dialog.addEventListener('click', function (event) {
+      if (event.target === dialog) {
+        closeQuickAddOverlay(dialog, true);
+      }
+    });
+  }
+
   function inlineCreateError(root) {
     return root ? root.querySelector('[data-inline-task-create-error]') : null;
   }
@@ -1238,10 +1331,23 @@
     }
   });
 
+  document.body.addEventListener('htmx:beforeSwap', function (event) {
+    var overlaySave = closestElement(event.detail && event.detail.elt, '[data-quick-add-overlay-save-form]');
+    if (!overlaySave || !event.detail || !event.detail.xhr) return;
+    var status = event.detail.xhr.status;
+    if (status >= 200 && status < 300) {
+      event.detail.shouldSwap = false;
+    }
+  });
+
   document.body.addEventListener('htmx:beforeRequest', function (event) {
     var method = ((event.detail && event.detail.requestConfig && event.detail.requestConfig.verb) || '').toUpperCase();
     if (!method || method === 'GET') return;
     beginWriteRequest('Speichern ...');
+    var quickAddOverlayRequest = closestElement(event.detail && event.detail.elt, '[data-quick-add-overlay]');
+    if (quickAddOverlayRequest) {
+      setQuickAddOverlayError(quickAddOverlayRequest, '');
+    }
     var inlineCreate = closestElement(event.detail && event.detail.elt, '[data-inline-task-create]');
     if (inlineCreate) {
       setInlineCreateError(inlineCreate, '');
@@ -1280,6 +1386,16 @@
     var successful = !!(event.detail && event.detail.successful);
     if (!successful) {
       setWriteStatus('error', 'Speichern fehlgeschlagen. Änderungen prüfen.');
+      var failedQuickAddOverlaySave = closestElement(event.detail && event.detail.elt, '[data-quick-add-overlay-save-form]');
+      if (failedQuickAddOverlaySave) {
+        setQuickAddOverlayError(failedQuickAddOverlaySave.closest('[data-quick-add-overlay]'), 'Aufgabe konnte nicht gespeichert werden.');
+        return;
+      }
+      var failedQuickAddOverlayPreview = closestElement(event.detail && event.detail.elt, '[data-quick-add-overlay-form]');
+      if (failedQuickAddOverlayPreview) {
+        setQuickAddOverlayError(failedQuickAddOverlayPreview.closest('[data-quick-add-overlay]'), 'Vorschau konnte nicht erstellt werden.');
+        return;
+      }
       var failedInlineCreate = closestElement(event.detail && event.detail.elt, '[data-inline-task-create]');
       if (failedInlineCreate) {
         setInlineCreateError(failedInlineCreate, 'Aufgabe konnte nicht gespeichert werden.');
@@ -1322,6 +1438,13 @@
     if (writeState.pendingRequests === 0) {
       setWriteStatus('saved', 'Gespeichert');
       clearSavedStatusSoon();
+    }
+
+    var successfulQuickAddOverlaySave = closestElement(event.detail && event.detail.elt, '[data-quick-add-overlay-save-form]');
+    if (successfulQuickAddOverlaySave) {
+      closeQuickAddOverlay(successfulQuickAddOverlaySave.closest('[data-quick-add-overlay]'), true);
+      refreshUndoNotification();
+      return;
     }
 
     var successfulTaskComplete = closestElement(event.detail && event.detail.elt, '[data-task-complete-form]');
@@ -1413,6 +1536,21 @@
   document.addEventListener('dragend', clearTaskMoveDragState);
 
   document.addEventListener('click', function (event) {
+    var quickAddOpen = closestElement(event.target, '[data-quick-add-open]');
+    if (quickAddOpen) {
+      event.preventDefault();
+      closeMobileNav();
+      openQuickAddOverlay(quickAddOpen);
+      return;
+    }
+
+    var quickAddClose = closestElement(event.target, '[data-quick-add-close]');
+    if (quickAddClose) {
+      event.preventDefault();
+      closeQuickAddOverlay(quickAddClose.closest('[data-quick-add-overlay]'), true);
+      return;
+    }
+
     var themeToggle = closestElement(event.target, '[data-theme-toggle]');
     if (themeToggle) {
       event.preventDefault();
@@ -1575,6 +1713,13 @@
       return;
     }
 
+    var quickAddDialog = closestElement(event.target, '[data-quick-add-overlay]');
+    if (quickAddDialog && quickAddDialog.open && event.key === 'Escape' && typeof quickAddDialog.close !== 'function') {
+      event.preventDefault();
+      closeQuickAddOverlay(quickAddDialog, true);
+      return;
+    }
+
     if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey) return;
     if (isTypingTarget(event.target)) {
       navState.pendingView = null;
@@ -1600,7 +1745,7 @@
 
     if (key === 'n') {
       event.preventDefault();
-      goTo('/quick-add');
+      openQuickAddOverlay(null);
       return;
     }
 
@@ -1617,6 +1762,7 @@
   });
 
   consumeRememberedWriteStatus();
+  bindQuickAddOverlay();
   initializeThemeController();
   initializeUndoSurface();
 })();

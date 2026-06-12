@@ -4,7 +4,7 @@
 Story 25.1 — Globales Quick-Add-Overlay
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Quick Add wird von jeder Kernansicht aus schnell erreichbar.

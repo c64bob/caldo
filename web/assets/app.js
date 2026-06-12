@@ -1614,6 +1614,106 @@
     refreshUndoNotification();
   }
 
+  function conflictResolutionFormFor(element) {
+    return closestElement(element, '[data-conflict-resolve-form], [data-conflict-split-form], [data-conflict-manual-form]');
+  }
+
+  function conflictResolutionErrorFor(element) {
+    var region = closestElement(element, '[data-conflict-resolution]');
+    return region ? region.querySelector('[data-conflict-resolution-error]') : null;
+  }
+
+  function setConflictResolutionError(element, message) {
+    var error = conflictResolutionErrorFor(element);
+    if (!error) return;
+    if (!message) {
+      error.textContent = '';
+      error.hidden = true;
+      return;
+    }
+    error.textContent = message;
+    error.hidden = false;
+  }
+
+  function conflictResolutionFailureMessage(status) {
+    if (status === 409) {
+      return 'Konflikt wurde remote erneut geändert. Bitte erneut prüfen.';
+    }
+    if (status === 400) {
+      return 'Konflikt konnte mit diesen Feldwerten nicht gespeichert werden.';
+    }
+    if (status === 502 || status === 424) {
+      return 'Konflikt konnte nicht auf dem CalDAV-Server gespeichert werden.';
+    }
+    return 'Konflikt konnte nicht gespeichert werden.';
+  }
+
+  function conflictManualInputDisplay(input) {
+    if (!input) return '';
+    var emptyLabel = input.getAttribute('data-conflict-manual-empty') || '';
+    if (input.tagName === 'SELECT') {
+      var selected = input.options[input.selectedIndex];
+      return selected && selected.textContent ? selected.textContent.trim() : emptyLabel;
+    }
+    var value = String(input.value || '').trim();
+    return value || emptyLabel;
+  }
+
+  function updateConflictManualPreview(form) {
+    if (!form) return;
+    var preview = form.querySelector('[data-conflict-manual-preview]');
+    if (!preview) return;
+
+    Array.prototype.forEach.call(preview.querySelectorAll('[data-conflict-preview-value]'), function (target) {
+      var field = target.getAttribute('data-conflict-preview-value') || '';
+      if (!field || field === 'project') return;
+      var checked = form.querySelector('input[name="' + field + '_source"]:checked');
+      if (!checked) return;
+      if (checked.value === 'manual') {
+        target.textContent = conflictManualInputDisplay(form.querySelector('[data-conflict-manual-input="' + field + '"]'));
+        return;
+      }
+      var option = closestElement(checked, '[data-conflict-source-option]');
+      target.textContent = option ? option.getAttribute('data-conflict-option-display') || option.textContent.trim() : '';
+    });
+
+    var projectTarget = preview.querySelector('[data-conflict-preview-value="project"]');
+    var projectSelect = form.querySelector('[data-conflict-project-select]');
+    if (projectTarget && projectSelect) {
+      var projectOption = projectSelect.options[projectSelect.selectedIndex];
+      projectTarget.textContent = projectOption && projectOption.textContent ? projectOption.textContent.trim() : '';
+    }
+  }
+
+  function initializeConflictManualPreviews(root) {
+    Array.prototype.forEach.call((root || document).querySelectorAll('[data-conflict-manual-form]'), updateConflictManualPreview);
+  }
+
+  function handleConflictManualControlEvent(event) {
+    var manualInput = closestElement(event.target, '[data-conflict-manual-input]');
+    if (manualInput) {
+      var field = manualInput.getAttribute('data-conflict-manual-input') || '';
+      var fieldset = closestElement(manualInput, '[data-conflict-field-source]');
+      var manualRadio = fieldset ? fieldset.querySelector('input[name="' + field + '_source"][value="manual"]') : null;
+      if (manualRadio) {
+        manualRadio.checked = true;
+      }
+      updateConflictManualPreview(closestElement(manualInput, '[data-conflict-manual-form]'));
+      return;
+    }
+
+    var sourceControl = closestElement(event.target, '[data-conflict-field-source] input[type="radio"]');
+    if (sourceControl) {
+      updateConflictManualPreview(closestElement(sourceControl, '[data-conflict-manual-form]'));
+      return;
+    }
+
+    var projectSelect = closestElement(event.target, '[data-conflict-project-select]');
+    if (projectSelect) {
+      updateConflictManualPreview(closestElement(projectSelect, '[data-conflict-manual-form]'));
+    }
+  }
+
   document.body.addEventListener('htmx:configRequest', function (event) {
     if (!event.detail || !event.detail.headers) return;
     event.detail.headers['X-Tab-ID'] = tabID;
@@ -1668,12 +1768,17 @@
       setTaskDeleteError(deleteDialog, '');
       setTaskActionError(taskDelete.closest('[data-task-id]'), '');
     }
+    var conflictResolution = conflictResolutionFormFor(event.detail && event.detail.elt);
+    if (conflictResolution) {
+      setConflictResolutionError(conflictResolution, '');
+    }
   });
 
   document.body.addEventListener('htmx:afterSwap', function (event) {
     var requestElement = event.detail && event.detail.elt;
     var targetElement = event.detail && event.detail.target instanceof Element ? event.detail.target : null;
     focusQuickAddPreviewResult(requestElement, targetElement);
+    initializeConflictManualPreviews(targetElement || document);
   });
 
   document.body.addEventListener('htmx:afterSettle', function (event) {
@@ -1732,6 +1837,12 @@
         setTaskActionError(failedTaskAction.closest('[data-task-id]'), taskActionFailureMessage(actionStatus));
         return;
       }
+      var failedConflictResolution = conflictResolutionFormFor(event.detail && event.detail.elt);
+      if (failedConflictResolution) {
+        var conflictStatus = event.detail && event.detail.xhr ? event.detail.xhr.status : 0;
+        setConflictResolutionError(failedConflictResolution, conflictResolutionFailureMessage(conflictStatus));
+        return;
+      }
       var failedInlineEdit = closestElement(event.detail && event.detail.elt, '[data-task-id]');
       if (failedInlineEdit && failedInlineEdit.querySelector('[data-inline-task-edit-form]')) {
         setInlineEditError(failedInlineEdit, 'Aufgabe konnte nicht gespeichert werden.');
@@ -1785,6 +1896,8 @@
   document.addEventListener('change', handleTaskRecurrenceControlEvent, true);
   document.addEventListener('input', handleQuickAddRecurrenceInputEvent, true);
   document.addEventListener('change', handleQuickAddRecurrenceInputEvent, true);
+  document.addEventListener('input', handleConflictManualControlEvent, true);
+  document.addEventListener('change', handleConflictManualControlEvent, true);
   document.addEventListener('submit', handleQuickAddSaveSubmit, true);
 
   document.addEventListener('dragstart', function (event) {
@@ -2104,4 +2217,5 @@
   bindQuickAddOverlay();
   initializeThemeController();
   initializeUndoSurface();
+  initializeConflictManualPreviews();
 })();

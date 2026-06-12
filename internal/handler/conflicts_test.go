@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"caldo/internal/caldav"
 	"caldo/internal/db"
 	"caldo/internal/logging"
 	"github.com/go-chi/chi/v5"
@@ -139,8 +140,13 @@ WHERE id='open-1';
 		`data-conflict-manual-form`,
 		`data-conflict-field-source="title"`,
 		`data-conflict-source-option="local"`,
+		`data-conflict-source-option="manual"`,
 		`type="radio" name="title_source" value="local"`,
+		`type="radio" name="title_source" value="manual"`,
 		`caldo-conflict-manual-value`,
+		`name="title_manual"`,
+		`data-conflict-manual-preview`,
+		`data-conflict-preview-value="title"`,
 		`name="project_id"`,
 	} {
 		if !strings.Contains(body, want) {
@@ -205,6 +211,80 @@ func TestResolveConflictManualSelectsFieldSourcesAndParent(t *testing.T) {
 		"PRIORITY:9",
 		"CATEGORIES:local,shared",
 		"RELATED-TO;RELTYPE=PARENT:parent-local",
+	} {
+		if !strings.Contains(resolved, want) {
+			t.Fatalf("expected resolved payload to contain %q: %s", want, resolved)
+		}
+	}
+	for _, unwanted := range []string{"SUMMARY:Remote title", "DUE;VALUE=DATE:20260612", "RELATED-TO;RELTYPE=PARENT:parent-remote"} {
+		if strings.Contains(resolved, unwanted) {
+			t.Fatalf("resolved payload kept unwanted field %q: %s", unwanted, resolved)
+		}
+	}
+}
+
+func TestResolveConflictManualUsesManualValuesAndPreservesUnknownData(t *testing.T) {
+	t.Parallel()
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	seedConflictData(t, database)
+	key := bytes.Repeat([]byte{0x58}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "a", Password: "b"}); err != nil {
+		t.Fatal(err)
+	}
+	remote := "BEGIN:VCALENDAR\r\nBEGIN:VTODO\r\nUID:uid-1\r\nSUMMARY:Remote title\r\nDESCRIPTION:Remote desc\r\nSTATUS:NEEDS-ACTION\r\nDUE;VALUE=DATE:20260612\r\nPRIORITY:9\r\nCATEGORIES:remote,STARRED\r\nRELATED-TO;RELTYPE=PARENT:parent-remote\r\nRELATED-TO;RELTYPE=SIBLING:sibling-remote\r\nX-CALDO-KEEP:remote-extension\r\nATTACH:https://example.com/spec.pdf\r\nBEGIN:VALARM\r\nTRIGGER:-PT15M\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder\r\nEND:VALARM\r\nEND:VTODO\r\nEND:VCALENDAR\r\n"
+	if _, err := database.Conn.Exec(`UPDATE conflicts SET remote_vtodo=? WHERE id='open-1'`, remote); err != nil {
+		t.Fatal(err)
+	}
+	todos := &stubTaskUpdateTodoClient{updateETag: `"etag-new"`}
+	h := ResolveConflict(taskUpdateDependencies{database: database, encryptionKey: key, todos: todos})
+	form := url.Values{
+		"resolution":         {"manual"},
+		"title_source":       {"manual"},
+		"title_manual":       {"Manual title"},
+		"description_source": {"manual"},
+		"description_manual": {"Manual desc"},
+		"due_source":         {"manual"},
+		"due_manual":         {"2026-06-15"},
+		"priority_source":    {"manual"},
+		"priority_manual":    {"2"},
+		"labels_source":      {"manual"},
+		"labels_manual":      {"manual, shared"},
+		"status_source":      {"manual"},
+		"status_manual":      {"needs-action"},
+		"parent_source":      {"manual"},
+		"parent_manual":      {"parent-manual"},
+	}
+	req := httptest.NewRequest(http.MethodPost, "/conflicts/open-1/resolve", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("conflictID", "open-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var resolved string
+	if err := database.Conn.QueryRow(`SELECT resolved_vtodo FROM conflicts WHERE id='open-1'`).Scan(&resolved); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"SUMMARY:Manual title",
+		"DESCRIPTION:Manual desc",
+		"STATUS:NEEDS-ACTION",
+		"DUE;VALUE=DATE:20260615",
+		"PRIORITY:2",
+		"CATEGORIES:manual,shared,STARRED",
+		"RELATED-TO;RELTYPE=PARENT:parent-manual",
+		"RELATED-TO;RELTYPE=SIBLING:sibling-remote",
+		"X-CALDO-KEEP:remote-extension",
+		"ATTACH:https://example.com/spec.pdf",
+		"BEGIN:VALARM",
+		"TRIGGER:-PT15M",
 	} {
 		if !strings.Contains(resolved, want) {
 			t.Fatalf("expected resolved payload to contain %q: %s", want, resolved)
@@ -476,6 +556,43 @@ func TestResolveConflictKeepsUnresolvedOnWriteFailure(t *testing.T) {
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusBadGateway {
 		t.Fatalf("status=%d", rr.Code)
+	}
+	var count int
+	if err := database.Conn.QueryRow(`SELECT COUNT(*) FROM conflicts WHERE id='open-1' AND resolved_at IS NULL`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("count=%d", count)
+	}
+}
+
+func TestResolveConflictPreconditionFailureKeepsUnresolvedWithoutRetry(t *testing.T) {
+	t.Parallel()
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	seedConflictData(t, database)
+	key := bytes.Repeat([]byte{0x59}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "a", Password: "b"}); err != nil {
+		t.Fatal(err)
+	}
+
+	todos := &stubTaskUpdateTodoClient{updateErr: caldav.ErrPreconditionFailed}
+	h := ResolveConflict(taskUpdateDependencies{database: database, encryptionKey: key, todos: todos})
+	req := httptest.NewRequest(http.MethodPost, "/conflicts/open-1/resolve", strings.NewReader("resolution=remote"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("conflictID", "open-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if todos.updateCalls != 1 || todos.createCalls != 0 || todos.deleteCalls != 0 {
+		t.Fatalf("expected one update attempt and no retry, update=%d create=%d delete=%d", todos.updateCalls, todos.createCalls, todos.deleteCalls)
 	}
 	var count int
 	if err := database.Conn.QueryRow(`SELECT COUNT(*) FROM conflicts WHERE id='open-1' AND resolved_at IS NULL`).Scan(&count); err != nil {

@@ -476,15 +476,23 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(conflictManualForm.locator('[data-conflict-field-source="title"] [data-conflict-source-option="local"]')).toContainText('E2E Local Conflict Edit');
   await expect(conflictManualForm.locator('[data-conflict-field-source="title"] [data-conflict-source-option="remote"]')).toContainText('E2E Remote Conflict Edit');
   await expect(conflictManualForm.locator('[name="title_source"][value="remote"]')).toBeChecked();
+  await expect(conflictManualForm.locator('[data-conflict-field-source="title"] [data-conflict-source-option="manual"]')).toBeVisible();
+  const conflictPreviewTitle = conflictManualForm.locator('[data-conflict-preview-value="title"]');
+  await expect(conflictPreviewTitle).toContainText('E2E Remote Conflict Edit');
+  await conflictManualForm.locator('[name="title_source"][value="local"]').check();
+  await expect(conflictPreviewTitle).toContainText('E2E Local Conflict Edit');
+  await conflictManualForm.locator('[name="title_source"][value="manual"]').check();
+  await conflictManualForm.locator('[name="title_manual"]').fill('E2E Manual Conflict Resolution');
+  await expect(conflictPreviewTitle).toContainText('E2E Manual Conflict Resolution');
 
-  response = await appFormRequest(page, 'POST', `${conflictHref}/resolve`, {
-    resolution: 'remote'
-  }, { tabID: 'e2e-resolve' });
-  expect(response.status()).toBe(200);
+  await Promise.all([
+    page.waitForURL(/\/conflicts$/),
+    conflictManualForm.getByRole('button', { name: 'Ausgewählte Felder speichern' }).click()
+  ]);
 
   await gotoApp(page, '/conflicts');
   await expect(page.getByText('Keine ungelösten Konflikte')).toBeVisible();
-  await expectSearchResult(page, 'E2E Remote Conflict Edit');
+  await expectSearchResult(page, 'E2E Manual Conflict Resolution');
 });
 
 async function dragTaskRowToProject(page, row, projectName) {

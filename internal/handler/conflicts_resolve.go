@@ -52,7 +52,11 @@ func ResolveConflict(deps taskUpdateDependencies) http.HandlerFunc {
 			}
 			resolved = loaded.RemoteVTODO
 		case "manual":
-			resolved = buildManualConflictVTODO(loaded, r.PostForm)
+			resolved, err = buildManualConflictVTODO(loaded, r.PostForm)
+			if err != nil {
+				http.Error(w, "invalid manual conflict resolution", http.StatusBadRequest)
+				return
+			}
 		case "split":
 			if strings.TrimSpace(loaded.RemoteVTODO) == "" {
 				http.Error(w, "remote version is unavailable", http.StatusBadRequest)
@@ -82,6 +86,10 @@ func ResolveConflict(deps taskUpdateDependencies) http.HandlerFunc {
 			splitHref := joinCalendarTaskHref(loaded.PreviousHref, splitUID)
 			newETag, err := deps.todos.PutVTODOCreate(r.Context(), todoCredentials, splitHref, splitVTODO)
 			if err != nil {
+				if errors.Is(err, caldav.ErrPreconditionFailed) {
+					http.Error(w, "conflict changed on caldav server", http.StatusConflict)
+					return
+				}
 				http.Error(w, "failed to resolve conflict on caldav server", http.StatusBadGateway)
 				return
 			}
@@ -107,6 +115,10 @@ func ResolveConflict(deps taskUpdateDependencies) http.HandlerFunc {
 				newETag, err = deps.todos.PutVTODOUpdate(r.Context(), todoCredentials, loaded.PreviousHref, resolved, loaded.PreviousETag)
 			}
 			if err != nil {
+				if errors.Is(err, caldav.ErrPreconditionFailed) {
+					http.Error(w, "conflict changed on caldav server", http.StatusConflict)
+					return
+				}
 				http.Error(w, "failed to resolve conflict on caldav server", http.StatusBadGateway)
 				return
 			}
@@ -142,7 +154,7 @@ type conflictVersionFields struct {
 	present bool
 }
 
-func buildManualConflictVTODO(loaded db.ConflictResolutionBase, form map[string][]string) string {
+func buildManualConflictVTODO(loaded db.ConflictResolutionBase, form map[string][]string) (string, error) {
 	base := conflictVersionFromRaw(loaded.BaseVTODO)
 	local := conflictVersionFromRaw(loaded.LocalVTODO)
 	remote := conflictVersionFromRaw(loaded.RemoteVTODO)
@@ -154,19 +166,37 @@ func buildManualConflictVTODO(loaded db.ConflictResolutionBase, form map[string]
 		target = base
 	}
 	if !target.present {
-		return loaded.RemoteVTODO
+		return loaded.RemoteVTODO, nil
 	}
 
 	patch := model.VTODOPatch{}
-	if selected, ok := selectedConflictVersion(form, "title", base, local, remote); ok {
+	if conflictFieldSource(form, "title") == "manual" {
+		title := strings.TrimSpace(firstFormValue(form, "title_manual"))
+		patch.Summary = &title
+	} else if selected, ok := selectedConflictVersion(form, "title", base, local, remote); ok {
 		title := strings.TrimSpace(selected.fields.Title)
 		patch.Summary = &title
 	}
-	if selected, ok := selectedConflictVersion(form, "description", base, local, remote); ok {
+	if conflictFieldSource(form, "description") == "manual" {
+		description := strings.TrimSpace(firstFormValue(form, "description_manual"))
+		patch.Description = &description
+	} else if selected, ok := selectedConflictVersion(form, "description", base, local, remote); ok {
 		description := strings.TrimSpace(selected.fields.Description)
 		patch.Description = &description
 	}
-	if selected, ok := selectedConflictVersion(form, "status", base, local, remote); ok {
+	if conflictFieldSource(form, "status") == "manual" {
+		status, ok := manualConflictStatus(firstFormValue(form, "status_manual"))
+		if !ok {
+			return "", fmt.Errorf("invalid manual status")
+		}
+		patch.Status = &status
+		if status == "completed" && target.fields.CompletedAt != nil {
+			patch.CompletedAt = target.fields.CompletedAt
+		}
+		if status != "completed" {
+			patch.ClearCompleted = true
+		}
+	} else if selected, ok := selectedConflictVersion(form, "status", base, local, remote); ok {
 		status := strings.ToLower(strings.TrimSpace(selected.fields.Status))
 		if status == "" {
 			status = "needs-action"
@@ -179,7 +209,11 @@ func buildManualConflictVTODO(loaded db.ConflictResolutionBase, form map[string]
 			patch.ClearCompleted = true
 		}
 	}
-	if selected, ok := selectedConflictVersion(form, "due", base, local, remote); ok {
+	if conflictFieldSource(form, "due") == "manual" {
+		if err := applyManualConflictDuePatch(firstFormValue(form, "due_manual"), &patch); err != nil {
+			return "", err
+		}
+	} else if selected, ok := selectedConflictVersion(form, "due", base, local, remote); ok {
 		switch {
 		case selected.fields.DueDate != nil:
 			dueDate := strings.TrimSpace(*selected.fields.DueDate)
@@ -190,17 +224,32 @@ func buildManualConflictVTODO(loaded db.ConflictResolutionBase, form map[string]
 			patch.ClearDue = true
 		}
 	}
-	if selected, ok := selectedConflictVersion(form, "priority", base, local, remote); ok {
+	if conflictFieldSource(form, "priority") == "manual" {
+		if err := applyManualConflictPriorityPatch(firstFormValue(form, "priority_manual"), &patch); err != nil {
+			return "", err
+		}
+	} else if selected, ok := selectedConflictVersion(form, "priority", base, local, remote); ok {
 		if selected.fields.Priority != nil {
 			patch.Priority = selected.fields.Priority
 		} else {
 			patch.ClearPriority = true
 		}
 	}
-	if selected, ok := selectedConflictVersion(form, "labels", base, local, remote); ok {
+	if conflictFieldSource(form, "labels") == "manual" {
+		if err := applyManualConflictLabelsPatch(firstFormValue(form, "labels_manual"), target.fields, &patch); err != nil {
+			return "", err
+		}
+	} else if selected, ok := selectedConflictVersion(form, "labels", base, local, remote); ok {
 		patch.Categories = append([]string(nil), selected.fields.Categories...)
 	}
-	if selected, ok := selectedConflictVersion(form, "parent", base, local, remote); ok {
+	if conflictFieldSource(form, "parent") == "manual" {
+		parentUID := strings.TrimSpace(firstFormValue(form, "parent_manual"))
+		if parentUID == "" {
+			patch.ClearParent = true
+		} else {
+			patch.ParentUID = &parentUID
+		}
+	} else if selected, ok := selectedConflictVersion(form, "parent", base, local, remote); ok {
 		parentUID := strings.TrimSpace(selected.fields.ParentUID)
 		if parentUID == "" {
 			patch.ClearParent = true
@@ -209,7 +258,7 @@ func buildManualConflictVTODO(loaded db.ConflictResolutionBase, form map[string]
 		}
 	}
 
-	return model.PatchVTODO(target.raw, patch)
+	return model.PatchVTODO(target.raw, patch), nil
 }
 
 func conflictVersionFromRaw(raw string) conflictVersionFields {
@@ -224,7 +273,7 @@ func conflictVersionFromRaw(raw string) conflictVersionFields {
 }
 
 func selectedConflictVersion(form map[string][]string, field string, base conflictVersionFields, local conflictVersionFields, remote conflictVersionFields) (conflictVersionFields, bool) {
-	switch strings.ToLower(strings.TrimSpace(firstFormValue(form, field+"_source"))) {
+	switch conflictFieldSource(form, field) {
 	case "base":
 		return base, base.present
 	case "local":
@@ -234,6 +283,71 @@ func selectedConflictVersion(form map[string][]string, field string, base confli
 	default:
 		return conflictVersionFields{}, false
 	}
+}
+
+func conflictFieldSource(form map[string][]string, field string) string {
+	switch strings.ToLower(strings.TrimSpace(firstFormValue(form, field+"_source"))) {
+	case "base", "local", "remote", "manual":
+		return strings.ToLower(strings.TrimSpace(firstFormValue(form, field+"_source")))
+	default:
+		return "remote"
+	}
+}
+
+func manualConflictStatus(raw string) (string, bool) {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "", "needs-action":
+		return "needs-action", true
+	case "in-process":
+		return "in-process", true
+	case "completed":
+		return "completed", true
+	case "cancelled":
+		return "cancelled", true
+	default:
+		return "", false
+	}
+}
+
+func applyManualConflictDuePatch(raw string, patch *model.VTODOPatch) error {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		patch.ClearDue = true
+		return nil
+	}
+	if dueDate := parseOptionalDate(value); dueDate != nil {
+		patch.DueDate = dueDate
+		return nil
+	}
+	if dueAt := parseOptionalDateTime(value); dueAt != nil {
+		patch.DueAt = dueAt
+		return nil
+	}
+	return fmt.Errorf("invalid manual due")
+}
+
+func applyManualConflictPriorityPatch(raw string, patch *model.VTODOPatch) error {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		patch.ClearPriority = true
+		return nil
+	}
+	priority := parseOptionalInt(value)
+	if priority == nil || *priority < 1 || *priority > 9 {
+		return fmt.Errorf("invalid manual priority")
+	}
+	patch.Priority = priority
+	return nil
+}
+
+func applyManualConflictLabelsPatch(raw string, targetFields model.VTODOFields, patch *model.VTODOPatch) error {
+	_, isFavorite := model.CategoriesToLabelsAndFavorite(targetFields.Categories)
+	categories, err := model.LabelsAndFavoriteToCategories(parseLabels(raw), isFavorite)
+	if err != nil {
+		return fmt.Errorf("invalid manual labels: %w", err)
+	}
+	patch.Categories = categories
+	return nil
 }
 
 func conflictRemoteWasDeleted(loaded db.ConflictResolutionBase) bool {

@@ -37,6 +37,7 @@ type conflictManualField struct {
 	Name    string
 	Label   string
 	Options []conflictManualOption
+	Manual  conflictManualInput
 }
 
 type conflictManualOption struct {
@@ -46,6 +47,26 @@ type conflictManualOption struct {
 	Present      bool
 	Changed      bool
 	Selected     bool
+}
+
+type conflictManualInput struct {
+	Kind         string
+	Value        string
+	DisplayValue string
+	EmptyLabel   string
+	Options      []conflictManualInputOption
+}
+
+type conflictManualInputOption struct {
+	Value    string
+	Label    string
+	Selected bool
+}
+
+type conflictManualPreviewRow struct {
+	Name  string
+	Label string
+	Value string
 }
 
 type conflictSplitPreview struct {
@@ -254,13 +275,14 @@ func conflictCanSplit(conflict db.ConflictDetail) bool {
 }
 
 func conflictManualFields(conflict db.ConflictDetail) []conflictManualField {
-	basePresent := conflictHasBase(conflict)
-	localPresent := conflictHasLocalVersion(conflict)
-	remotePresent := conflictHasRemoteVersion(conflict)
+	baseFields, basePresent := conflictParsedFields(conflict.BaseVTODO)
+	localFields, localPresent := conflictParsedFields(conflict.LocalVTODO)
+	remoteFields, remotePresent := conflictParsedFields(conflict.RemoteVTODO)
 	rowsByField := make(map[string]conflictComparisonRow)
 	for _, row := range conflictComparisonRows(conflict) {
 		rowsByField[row.Field] = row
 	}
+	manualDefaults := conflictManualDefaultFields(baseFields, basePresent, localFields, localPresent, remoteFields, remotePresent)
 	fields := []conflictManualField{}
 	for _, field := range []struct {
 		name  string
@@ -282,9 +304,171 @@ func conflictManualFields(conflict db.ConflictDetail) []conflictManualField {
 		if len(options) == 0 {
 			continue
 		}
-		fields = append(fields, conflictManualField{Name: field.name, Label: field.label, Options: options})
+		fields = append(fields, conflictManualField{
+			Name:    field.name,
+			Label:   field.label,
+			Options: options,
+			Manual:  conflictManualInputForField(field.name, manualDefaults),
+		})
 	}
 	return fields
+}
+
+func conflictManualDefaultFields(baseFields model.VTODOFields, basePresent bool, localFields model.VTODOFields, localPresent bool, remoteFields model.VTODOFields, remotePresent bool) model.VTODOFields {
+	if remotePresent {
+		return remoteFields
+	}
+	if localPresent {
+		return localFields
+	}
+	if basePresent {
+		return baseFields
+	}
+	return model.VTODOFields{}
+}
+
+func conflictManualInputForField(field string, fields model.VTODOFields) conflictManualInput {
+	input := conflictManualInput{
+		Kind:         "text",
+		Value:        conflictManualInputValue(field, fields),
+		DisplayValue: conflictManualDisplayValue(field, fields),
+		EmptyLabel:   conflictManualEmptyLabel(field),
+	}
+	switch field {
+	case "description":
+		input.Kind = "textarea"
+	case "status":
+		input.Kind = "select"
+		input.Options = conflictManualStatusOptions(input.Value)
+	case "priority":
+		input.Kind = "select"
+		input.Options = conflictManualPriorityOptions(input.Value)
+	}
+	return input
+}
+
+func conflictManualInputValue(field string, fields model.VTODOFields) string {
+	switch field {
+	case "title":
+		return strings.TrimSpace(fields.Title)
+	case "description":
+		return strings.TrimSpace(fields.Description)
+	case "due":
+		if fields.DueDate != nil {
+			return strings.TrimSpace(*fields.DueDate)
+		}
+		if fields.DueAt != nil && !fields.DueAt.IsZero() {
+			return fields.DueAt.UTC().Format(time.RFC3339)
+		}
+	case "priority":
+		if fields.Priority != nil && *fields.Priority > 0 {
+			return strconv.Itoa(*fields.Priority)
+		}
+	case "labels":
+		return strings.Join(conflictUserLabels(fields.Categories), ", ")
+	case "status":
+		status := strings.ToLower(strings.TrimSpace(fields.Status))
+		if status == "" {
+			return "needs-action"
+		}
+		return status
+	case "parent":
+		return strings.TrimSpace(fields.ParentUID)
+	}
+	return ""
+}
+
+func conflictManualDisplayValue(field string, fields model.VTODOFields) string {
+	switch field {
+	case "title":
+		return conflictTitleValue(fields)
+	case "description":
+		return conflictDescriptionValue(fields)
+	case "due":
+		return conflictDueValue(fields)
+	case "priority":
+		return conflictPriorityValue(fields)
+	case "labels":
+		return conflictLabelsValue(fields)
+	case "status":
+		return conflictStatusValue(fields)
+	case "parent":
+		return conflictParentValue(fields)
+	default:
+		return ""
+	}
+}
+
+func conflictManualEmptyLabel(field string) string {
+	switch field {
+	case "title":
+		return "Ohne Titel"
+	case "description":
+		return "Keine Beschreibung"
+	case "due":
+		return "Keine Fälligkeit"
+	case "priority":
+		return "Keine Priorität"
+	case "labels":
+		return "Keine Labels"
+	case "parent":
+		return "Keine Unteraufgaben-Beziehung"
+	default:
+		return ""
+	}
+}
+
+func conflictManualStatusOptions(selected string) []conflictManualInputOption {
+	selected = strings.ToLower(strings.TrimSpace(selected))
+	if selected == "" {
+		selected = "needs-action"
+	}
+	options := []conflictManualInputOption{
+		{Value: "needs-action", Label: "Offen"},
+		{Value: "in-process", Label: "In Arbeit"},
+		{Value: "completed", Label: "Erledigt"},
+		{Value: "cancelled", Label: "Abgebrochen"},
+	}
+	for i := range options {
+		options[i].Selected = options[i].Value == selected
+	}
+	return options
+}
+
+func conflictManualPriorityOptions(selected string) []conflictManualInputOption {
+	options := make([]conflictManualInputOption, 0, len(taskPriorityOptions()))
+	for _, option := range taskPriorityOptions() {
+		options = append(options, conflictManualInputOption{
+			Value:    option.Value,
+			Label:    option.Label,
+			Selected: option.Value == selected,
+		})
+	}
+	return options
+}
+
+func conflictManualPreviewRows(fields []conflictManualField) []conflictManualPreviewRow {
+	rows := make([]conflictManualPreviewRow, 0, len(fields))
+	for _, field := range fields {
+		value := field.Manual.DisplayValue
+		for _, option := range field.Options {
+			if option.Selected {
+				value = option.DisplayValue
+				break
+			}
+		}
+		rows = append(rows, conflictManualPreviewRow{Name: field.Name, Label: field.Label, Value: value})
+	}
+	return rows
+}
+
+func conflictProjectPreviewValue(conflict db.ConflictDetail, projectOptions []TaskProjectOption) string {
+	for _, project := range projectOptions {
+		if conflictProjectSelected(conflict, project) {
+			return project.Name
+		}
+	}
+	return conflictProjectLabel(conflict.ProjectName)
 }
 
 func conflictManualOptions(row conflictComparisonRow, basePresent bool, localPresent bool, remotePresent bool) []conflictManualOption {

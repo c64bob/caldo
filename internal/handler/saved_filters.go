@@ -95,6 +95,10 @@ func SavedFilterCreate(deps savedFilterDependencies) http.HandlerFunc {
 			renderSavedFiltersPage(w, r, deps.database, savedFiltersPageState{CreateError: "filterquery ist erforderlich", CreateName: name, CreateQuery: r.FormValue("query"), CreateFavorite: favorite}, http.StatusOK)
 			return
 		}
+		if !savedFilterQueryValid(filterQuery) {
+			renderSavedFiltersPage(w, r, deps.database, savedFiltersPageState{CreateError: "filterquery ist ungültig", CreateName: name, CreateQuery: filterQuery, CreateFavorite: favorite}, http.StatusOK)
+			return
+		}
 
 		if _, err := deps.database.CreateSavedFilter(r.Context(), name, filterQuery, favorite); err != nil {
 			renderSavedFiltersPage(w, r, deps.database, savedFiltersPageState{CreateError: "filter konnte nicht gespeichert werden", CreateName: name, CreateQuery: filterQuery, CreateFavorite: favorite}, http.StatusOK)
@@ -132,6 +136,10 @@ func SavedFilterUpdate(deps savedFilterDependencies) http.HandlerFunc {
 		}
 		if filterQuery == "" {
 			renderSavedFiltersPage(w, r, deps.database, editFilterPageState(filterID, "filterquery ist erforderlich", name, r.FormValue("query"), favorite, true), http.StatusOK)
+			return
+		}
+		if !savedFilterQueryValid(filterQuery) {
+			renderSavedFiltersPage(w, r, deps.database, editFilterPageState(filterID, "filterquery ist ungültig", name, filterQuery, favorite, true), http.StatusOK)
 			return
 		}
 
@@ -184,6 +192,11 @@ func SavedFilterDelete(deps savedFilterDependencies) http.HandlerFunc {
 
 		renderSavedFiltersPage(w, r, deps.database, savedFiltersPageState{}, http.StatusOK)
 	}
+}
+
+func savedFilterQueryValid(filterQuery string) bool {
+	_, _, ok, err := db.EvaluateSavedFilter(filterQuery, 7)
+	return err == nil && ok
 }
 
 func renderSavedFiltersPage(w http.ResponseWriter, r *http.Request, database *db.Database, pageState savedFiltersPageState, status int) {

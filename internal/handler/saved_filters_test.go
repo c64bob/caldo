@@ -65,6 +65,43 @@ func TestSavedFilterCreateRejectsMissingFields(t *testing.T) {
 	}
 }
 
+func TestSavedFilterCreateRejectsInvalidQuery(t *testing.T) {
+	t.Parallel()
+
+	database := openSavedFilterHandlerTestDB(t)
+	h := SavedFilterCreate(savedFilterDependencies{database: database})
+
+	form := url.Values{"name": {"Broken"}, "query": {"today AND ("}, "favorite": {"1"}}
+	request := httptest.NewRequest(http.MethodPost, "/filters", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	responseRecorder := httptest.NewRecorder()
+
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	body := responseRecorder.Body.String()
+	for _, want := range []string{
+		`data-saved-filter-create-error`,
+		"filterquery ist ungültig",
+		`value="Broken"`,
+		`value="today AND ("`,
+		`checked`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected invalid query create state %q in %q", want, body)
+		}
+	}
+	var count int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM saved_filters;`).Scan(&count); err != nil {
+		t.Fatalf("count saved filters: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("invalid filter should not be persisted, got %d rows", count)
+	}
+}
+
 func TestSavedFilterUpdateUsesExpectedVersion(t *testing.T) {
 	t.Parallel()
 
@@ -89,6 +126,44 @@ func TestSavedFilterUpdateUsesExpectedVersion(t *testing.T) {
 	}
 	if name != "Heute Fokus" || filterQuery != "today AND @urgent" || favorite != 1 || version != 2 {
 		t.Fatalf("unexpected saved filter row: name=%q query=%q favorite=%d version=%d", name, filterQuery, favorite, version)
+	}
+}
+
+func TestSavedFilterUpdateRejectsInvalidQuery(t *testing.T) {
+	t.Parallel()
+
+	database := openSavedFilterHandlerTestDB(t)
+	filter := seedSavedFilter(t, database, "filter-1", "Heute", "today", true, 1)
+	h := SavedFilterUpdate(savedFilterDependencies{database: database})
+
+	form := url.Values{"expected_version": {"1"}, "name": {"Broken"}, "query": {"today AND ("}}
+	request := httptest.NewRequest(http.MethodPatch, "/filters/"+filter.ID, strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	responseRecorder := httptest.NewRecorder()
+
+	h(responseRecorder, request.WithContext(withFilterID(request.Context(), filter.ID)))
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	body := responseRecorder.Body.String()
+	for _, want := range []string{
+		`data-saved-filter-edit-error`,
+		"filterquery ist ungültig",
+		`value="Broken"`,
+		`value="today AND ("`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected invalid query edit state %q in %q", want, body)
+		}
+	}
+	var name, filterQuery string
+	var favorite, version int
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT name, query, is_favorite, server_version FROM saved_filters WHERE id = ?;`, filter.ID).Scan(&name, &filterQuery, &favorite, &version); err != nil {
+		t.Fatalf("load saved filter: %v", err)
+	}
+	if name != "Heute" || filterQuery != "today" || favorite != 1 || version != 1 {
+		t.Fatalf("invalid update should not persist: name=%q query=%q favorite=%d version=%d", name, filterQuery, favorite, version)
 	}
 }
 

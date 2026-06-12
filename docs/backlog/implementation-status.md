@@ -7,7 +7,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 ## Zusammenfassung
 
 - Bestehende Stories: 89 `Umgesetzt`, 0 `Teilweise umgesetzt`, 0 `Offen`.
-- Neue Planungsstories: 25 `Umgesetzt`, 14 `Offen`.
+- Neue Planungsstories: 26 `Umgesetzt`, 13 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
 
 ## Legende
@@ -143,7 +143,7 @@ Die neuen Epics 23 bis 28 brechen die verbleibende UI- und QA-Arbeit in kleinere
 | 26.4 | Umgesetzt | `internal/handler/saved_filters.go`, `internal/db/navigation.go`, `internal/view/saved_filters.templ` und `tests/e2e/mvp-flow.spec.js` bieten Filteranlage, Umbenennen, Loeschen und Favorisieren mit sichtbarer Queryvalidierung vor dem Speichern; gueltige favorisierte Filter erscheinen in der Navigation, ungueltige neue oder bestehende Favoriten nicht. |
 | 26.5 | Umgesetzt | Die Suche uebernimmt valide Filterqueries in ein benanntes Speichern-Formular, validiert die Ueberfuehrbarkeit vor Anzeige, erstellt favorisierte gespeicherte Filter ueber die bestehende Filter-Route und zeigt sie danach in Filterverwaltung und Navigation. |
 | 26.6 | Umgesetzt | Projekt-Drop-Ziele in Sidebar und Projektuebersicht sowie draggable Task-Zeilen rufen `POST /tasks/{taskID}/move` auf; Handler- und View-Tests decken Endpunkt, Pflicht-`project_id` und Markup fuer Drag-and-Drop ab. |
-| 27.1 | Offen | Konfliktliste existiert, aber nicht als ausgearbeitete Arbeitsansicht. |
+| 27.1 | Umgesetzt | `internal/db/conflicts_view.go`, `internal/view/conflicts.templ`, `web/static/tailwind.input.css` und `tests/e2e/mvp-flow.spec.js` rendern eine priorisierte Konflikt-Arbeitsliste mit verstaendlichen Konflikttypen, betroffener Aufgabe, Projekt, Erkennungszeit, naechster Aktion, direktem Loesungslink, Empty State und ohne rohe VTODO-Inhalte. |
 | 27.2 | Offen | Konfliktdetail zeigt Basisinformationen, aber keinen produktiven Feldvergleich. |
 | 27.3 | Offen | Feldweise Konfliktloesung ist nicht als sichtbarer UI-Fluss umgesetzt. |
 | 27.4 | Offen | Split-Konflikt ist backendseitig vorbereitet, aber nicht sichtbar produktiv ausfuehrbar. |

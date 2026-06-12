@@ -11,6 +11,70 @@ import (
 	"caldo/internal/db"
 )
 
+func TestConflictListPageRendersWorklistRowsWithoutRawVTODO(t *testing.T) {
+	t.Parallel()
+
+	component := ConflictListPage([]db.ConflictListRow{
+		{
+			ID:           "conflict-delete",
+			ProjectName:  "Inbox",
+			ConflictType: "edit_delete",
+			CreatedAt:    time.Date(2026, 6, 11, 8, 30, 0, 0, time.UTC),
+			TaskTitle:    "Local changed task",
+		},
+		{
+			ID:           "conflict-field",
+			ProjectName:  "Work",
+			ConflictType: "field_conflict",
+			CreatedAt:    time.Date(2026, 6, 11, 9, 30, 0, 0, time.UTC),
+			TaskTitle:    "Field changed task",
+		},
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(context.Background(), &rendered); err != nil {
+		t.Fatalf("render conflict list: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`data-conflict-list-summary`,
+		`2 offene Konflikte`,
+		`data-conflict-list-row`,
+		`data-conflict-type="edit_delete"`,
+		`Lokal geändert, remote gelöscht`,
+		`Lokale Änderung prüfen oder Remote-Löschung übernehmen`,
+		`data-conflict-type="field_conflict"`,
+		`Feldkonflikt`,
+		`Felder vergleichen und Zielversion wählen`,
+		`Erkannt 2026-06-11 08:30 UTC`,
+		`Projekt: Inbox`,
+		`href="/conflicts/conflict-delete"`,
+		`Konflikt lösen`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected conflict list to include %q in %s", want, output)
+		}
+	}
+	if strings.Contains(output, "BEGIN:VTODO") || strings.Contains(output, "BEGIN:VCALENDAR") {
+		t.Fatalf("conflict list must not render raw vtodo data: %s", output)
+	}
+}
+
+func TestConflictListPageRendersEmptyState(t *testing.T) {
+	t.Parallel()
+
+	var rendered bytes.Buffer
+	if err := ConflictListPage(nil).Render(context.Background(), &rendered); err != nil {
+		t.Fatalf("render conflict list: %v", err)
+	}
+
+	output := rendered.String()
+	if !strings.Contains(output, "Keine ungelösten Konflikte") || strings.Contains(output, `data-conflict-list-row`) {
+		t.Fatalf("expected clear empty conflict list state, got %s", output)
+	}
+}
+
 func TestConflictDetailPageRendersReadableComparison(t *testing.T) {
 	t.Parallel()
 

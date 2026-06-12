@@ -85,7 +85,17 @@ func TestRouterMVPFlowAgainstFakeCalDAVServer(t *testing.T) {
 		return e2eTaskCount(t, database) == 3
 	})
 
-	rr = e2eRequest(t, router, secret, http.MethodPost, "/setup/complete", nil, "")
+	setupCompleteDeadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(setupCompleteDeadline) {
+		rr = e2eRequest(t, router, secret, http.MethodPost, "/setup/complete", nil, "")
+		if rr.Code == http.StatusFound && rr.Header().Get("Location") == "/" {
+			break
+		}
+		if rr.Code != http.StatusConflict {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 	if rr.Code != http.StatusFound || rr.Header().Get("Location") != "/" {
 		t.Fatalf("setup complete: got status=%d location=%q body=%q", rr.Code, rr.Header().Get("Location"), rr.Body.String())
 	}

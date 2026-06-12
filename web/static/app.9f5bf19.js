@@ -259,6 +259,45 @@
     }
   }
 
+  function quickAddFocusableControls(root) {
+    if (!root) return [];
+    return Array.prototype.slice.call(root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')).filter(function (element) {
+      return !element.disabled && !element.hidden && element.offsetParent !== null;
+    });
+  }
+
+  function focusQuickAddSaveStart(root) {
+    if (!root) return false;
+    var firstCorrection = root.querySelector('[data-quick-add-correction]');
+    var target = firstCorrection || quickAddFocusableControls(root)[0];
+    if (!target || typeof target.focus !== 'function') return false;
+    window.setTimeout(function () {
+      if (!document.contains(target)) return;
+      target.focus();
+      if (typeof target.select === 'function' && target.tagName === 'INPUT' && target.type !== 'date') {
+        target.select();
+      }
+    }, 0);
+    return true;
+  }
+
+  function focusQuickAddPreviewResult(requestElement, targetElement) {
+    var targetID = targetElement && targetElement.id ? targetElement.id : '';
+    var overlayRequest = closestElement(requestElement, '[data-quick-add-overlay]');
+    if (overlayRequest && (targetID === 'quick-add-overlay-preview' || closestElement(requestElement, '[data-quick-add-overlay-form]'))) {
+      if (overlayRequest.open) {
+        return focusQuickAddSaveStart(overlayRequest.querySelector('[data-quick-add-save-form]'));
+      }
+      return false;
+    }
+
+    var pagePreviewForm = closestElement(requestElement, '.caldo-quick-add-form');
+    if (pagePreviewForm && (targetID === 'quick-add-preview' || pagePreviewForm.getAttribute('hx-target') === '#quick-add-preview')) {
+      return focusQuickAddSaveStart(document.querySelector('#quick-add-preview [data-quick-add-save-form]'));
+    }
+    return false;
+  }
+
   function bindQuickAddOverlay() {
     var dialog = quickAddOverlay();
     if (!dialog || dialog.dataset.quickAddOverlayBound === 'true') return;
@@ -335,6 +374,64 @@
     if (form) return form;
     var preview = element.closest('[data-quick-add-preview]');
     return preview ? preview.querySelector('[data-quick-add-save-form]') : null;
+  }
+
+  function requestQuickAddSubmit(form) {
+    if (!form) return false;
+    if (typeof form.requestSubmit === 'function') {
+      form.requestSubmit();
+      return true;
+    }
+    var submit = form.querySelector('button[type="submit"], input[type="submit"]');
+    if (submit && typeof submit.click === 'function') {
+      submit.click();
+      return true;
+    }
+    return false;
+  }
+
+  function submitQuickAddKeyboardStep(dialog) {
+    if (!dialog) return false;
+    var saveForm = dialog.querySelector('[data-quick-add-save-form]');
+    if (saveForm) {
+      return requestQuickAddSubmit(saveForm);
+    }
+    return requestQuickAddSubmit(dialog.querySelector('[data-quick-add-overlay-form]'));
+  }
+
+  function quickAddTokenListFor(target) {
+    return closestElement(target, '[data-quick-add-chips], [data-quick-add-label-suggestions]');
+  }
+
+  function quickAddTokenButtons(list) {
+    if (!list) return [];
+    return Array.prototype.slice.call(list.querySelectorAll('button')).filter(function (button) {
+      return !button.disabled && !button.hidden && button.offsetParent !== null;
+    });
+  }
+
+  function moveQuickAddTokenFocus(target, key) {
+    var list = quickAddTokenListFor(target);
+    var buttons = quickAddTokenButtons(list);
+    if (!buttons.length) return false;
+    var currentIndex = buttons.indexOf(target);
+    if (currentIndex < 0) return false;
+
+    var nextIndex = currentIndex;
+    if (key === 'ArrowRight' || key === 'ArrowDown') {
+      nextIndex = (currentIndex + 1) % buttons.length;
+    } else if (key === 'ArrowLeft' || key === 'ArrowUp') {
+      nextIndex = (currentIndex - 1 + buttons.length) % buttons.length;
+    } else if (key === 'Home') {
+      nextIndex = 0;
+    } else if (key === 'End') {
+      nextIndex = buttons.length - 1;
+    } else {
+      return false;
+    }
+
+    buttons[nextIndex].focus();
+    return true;
   }
 
   function quickAddLabelsInputFor(element) {
@@ -1573,6 +1670,18 @@
     }
   });
 
+  document.body.addEventListener('htmx:afterSwap', function (event) {
+    var requestElement = event.detail && event.detail.elt;
+    var targetElement = event.detail && event.detail.target instanceof Element ? event.detail.target : null;
+    focusQuickAddPreviewResult(requestElement, targetElement);
+  });
+
+  document.body.addEventListener('htmx:afterSettle', function (event) {
+    var requestElement = event.detail && event.detail.elt;
+    var targetElement = event.detail && event.detail.target instanceof Element ? event.detail.target : null;
+    focusQuickAddPreviewResult(requestElement, targetElement);
+  });
+
   document.body.addEventListener('htmx:afterRequest', function (event) {
     var method = ((event.detail && event.detail.requestConfig && event.detail.requestConfig.verb) || '').toUpperCase();
     if (!method || method === 'GET') return;
@@ -1897,6 +2006,24 @@
   });
 
   document.addEventListener('keydown', function (event) {
+    var quickAddDialog = closestElement(event.target, '[data-quick-add-overlay]');
+    if (quickAddDialog && quickAddDialog.open) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeQuickAddOverlay(quickAddDialog, true);
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault();
+        submitQuickAddKeyboardStep(quickAddDialog);
+        return;
+      }
+      if (moveQuickAddTokenFocus(event.target, event.key)) {
+        event.preventDefault();
+        return;
+      }
+    }
+
     var inlineCreate = closestElement(event.target, '[data-inline-task-create]');
     if (inlineCreate && event.key === 'Escape') {
       event.preventDefault();
@@ -1929,13 +2056,6 @@
     if (taskDeleteDialog && taskDeleteDialog.open && event.key === 'Escape' && typeof taskDeleteDialog.close !== 'function') {
       event.preventDefault();
       closeTaskDelete(taskDeleteDialog);
-      return;
-    }
-
-    var quickAddDialog = closestElement(event.target, '[data-quick-add-overlay]');
-    if (quickAddDialog && quickAddDialog.open && event.key === 'Escape' && typeof quickAddDialog.close !== 'function') {
-      event.preventDefault();
-      closeQuickAddOverlay(quickAddDialog, true);
       return;
     }
 

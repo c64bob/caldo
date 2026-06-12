@@ -93,7 +93,7 @@ func SettingsCalDAVUpdate(deps settingsDependencies) http.HandlerFunc {
 			return
 		}
 
-		http.Redirect(w, r, "/settings", http.StatusSeeOther)
+		http.Redirect(w, r, "/settings?caldav=saved", http.StatusSeeOther)
 	}
 }
 

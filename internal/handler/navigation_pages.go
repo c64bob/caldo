@@ -217,7 +217,11 @@ func FiltersPage(database *db.Database) http.HandlerFunc {
 // SettingsPage renders the settings page for normal operation.
 func SettingsPage(deps settingsDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		renderSettingsPage(w, r, deps, settingsPageState{}, http.StatusOK)
+		state := settingsPageState{}
+		if strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("caldav")), "saved") {
+			state.CalDAVSuccess = "caldav-einstellungen gespeichert"
+		}
+		renderSettingsPage(w, r, deps, state, http.StatusOK)
 	}
 }
 
@@ -228,6 +232,11 @@ func renderSettingsPage(w http.ResponseWriter, r *http.Request, deps settingsDep
 	}
 
 	settings, err := deps.database.LoadAppSettings(r.Context())
+	if err != nil {
+		renderPageError(w, r, "Einstellungen", "Einstellungen laden", http.StatusInternalServerError)
+		return
+	}
+	syncStatus, err := deps.database.LoadSyncStatus(r.Context())
 	if err != nil {
 		renderPageError(w, r, "Einstellungen", "Einstellungen laden", http.StatusInternalServerError)
 		return
@@ -255,6 +264,7 @@ func renderSettingsPage(w http.ResponseWriter, r *http.Request, deps settingsDep
 	proxyUserPresent := strings.TrimSpace(r.Header.Get(deps.proxyUserHeader)) != ""
 	settingsView := view.SettingsPageView{
 		Settings:         settings,
+		SyncStatus:       syncStatus,
 		Available:        available,
 		CalDAVError:      pageState.CalDAVError,
 		CalDAVSuccess:    pageState.CalDAVSuccess,

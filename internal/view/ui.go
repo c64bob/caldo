@@ -175,6 +175,17 @@ type Texts struct {
 	SettingsLocalOnlyTitle   string
 	SettingsTasks            string
 	SettingsSyncTitle        string
+	SettingsSyncStatus       string
+	SettingsSyncLastOK       string
+	SettingsSyncLastDone     string
+	SettingsSyncLastErr      string
+	SettingsSyncNever        string
+	SettingsSyncIdle         string
+	SettingsSyncRunning      string
+	SettingsSyncError        string
+	SettingsSyncErrFailed    string
+	SettingsSyncErrOffline   string
+	SettingsSyncErrUnknown   string
 	SettingsIntervalMinutes  string
 	SettingsSaveSync         string
 	SettingsSyncPending      string
@@ -294,6 +305,17 @@ var germanTexts = Texts{
 	SettingsLocalOnlyTitle:   "Lokale Projekte ohne aktuell geladenen CalDAV-Kalender",
 	SettingsTasks:            "Aufgaben",
 	SettingsSyncTitle:        "Sync",
+	SettingsSyncStatus:       "Status",
+	SettingsSyncLastOK:       "Letzter erfolgreicher Sync",
+	SettingsSyncLastDone:     "Letzter Abschluss",
+	SettingsSyncLastErr:      "Letzte Fehlerklasse",
+	SettingsSyncNever:        "nie",
+	SettingsSyncIdle:         "bereit",
+	SettingsSyncRunning:      "läuft",
+	SettingsSyncError:        "fehler",
+	SettingsSyncErrFailed:    "sync fehlgeschlagen",
+	SettingsSyncErrOffline:   "sync nicht verfügbar",
+	SettingsSyncErrUnknown:   "unbekannte fehlerklasse",
 	SettingsIntervalMinutes:  "Intervall (Minuten)",
 	SettingsSaveSync:         "Sync-Einstellungen speichern",
 	SettingsSyncPending:      "Speichern ...",
@@ -413,6 +435,17 @@ var englishTexts = Texts{
 	SettingsLocalOnlyTitle:   "Local projects without a currently loaded CalDAV calendar",
 	SettingsTasks:            "tasks",
 	SettingsSyncTitle:        "Sync",
+	SettingsSyncStatus:       "Status",
+	SettingsSyncLastOK:       "Last successful sync",
+	SettingsSyncLastDone:     "Last finished run",
+	SettingsSyncLastErr:      "Last error class",
+	SettingsSyncNever:        "never",
+	SettingsSyncIdle:         "ready",
+	SettingsSyncRunning:      "running",
+	SettingsSyncError:        "error",
+	SettingsSyncErrFailed:    "sync failed",
+	SettingsSyncErrOffline:   "sync unavailable",
+	SettingsSyncErrUnknown:   "unknown error class",
 	SettingsIntervalMinutes:  "Interval (minutes)",
 	SettingsSaveSync:         "Save sync settings",
 	SettingsSyncPending:      "Saving ...",

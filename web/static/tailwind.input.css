@@ -584,6 +584,24 @@
 		@apply ml-1 shrink-0;
 	}
 
+	.caldo-quick-add-priority-p1 {
+		background: var(--caldo-danger-muted);
+		border-color: var(--caldo-danger);
+		color: var(--caldo-danger);
+	}
+
+	.caldo-quick-add-priority-p2 {
+		background: var(--caldo-warning-muted);
+		border-color: var(--caldo-warning);
+		color: var(--caldo-warning);
+	}
+
+	.caldo-quick-add-priority-p3 {
+		background: var(--caldo-surface-muted);
+		border-color: var(--caldo-border-strong);
+		color: var(--caldo-text-muted);
+	}
+
 	.caldo-quick-add-preview-grid {
 		@apply mt-3 grid gap-3 text-sm sm:grid-cols-2;
 	}
@@ -627,6 +645,11 @@
 
 	.caldo-quick-add-correction-row .caldo-button {
 		@apply mt-1 shrink-0;
+	}
+
+	.caldo-quick-add-field-error {
+		@apply mt-2 text-xs font-medium;
+		color: var(--caldo-danger);
 	}
 
 	.caldo-quick-add-date-preview {

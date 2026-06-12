@@ -400,6 +400,79 @@
     }
   }
 
+  function quickAddRecurrenceIsValid(value) {
+    var recurrence = String(value || '').trim();
+    if (!recurrence) return true;
+    if (/[\r\n]/.test(recurrence)) return false;
+
+    var hasFreq = false;
+    var parts = recurrence.split(';');
+    for (var i = 0; i < parts.length; i += 1) {
+      var part = parts[i].trim();
+      if (!part) return false;
+      var index = part.indexOf('=');
+      if (index <= 0 || index === part.length - 1) return false;
+      var key = part.slice(0, index).trim();
+      var partValue = part.slice(index + 1).trim();
+      if (!key || !partValue) return false;
+      if (!/^[A-Za-z0-9-]+$/.test(key)) return false;
+      if (/[\r\n:;]/.test(partValue)) return false;
+      if (key.toUpperCase() === 'FREQ') {
+        hasFreq = true;
+      }
+    }
+    return hasFreq;
+  }
+
+  function quickAddRecurrenceErrorFor(input) {
+    var form = quickAddSaveFormFor(input);
+    return form ? form.querySelector('[data-quick-add-recurrence-error]') : null;
+  }
+
+  function updateQuickAddRecurrenceValidity(input) {
+    if (!input) return true;
+    var valid = quickAddRecurrenceIsValid(input.value);
+    var error = quickAddRecurrenceErrorFor(input);
+    var message = error ? error.textContent || '' : '';
+    input.setAttribute('aria-invalid', valid ? 'false' : 'true');
+    if (typeof input.setCustomValidity === 'function') {
+      input.setCustomValidity(valid ? '' : message);
+    }
+    if (error) {
+      error.hidden = valid;
+    }
+    return valid;
+  }
+
+  function validateQuickAddSaveForm(form) {
+    if (!form) return true;
+    var recurrenceInput = form.querySelector('[data-quick-add-recurrence-input]');
+    if (!recurrenceInput || updateQuickAddRecurrenceValidity(recurrenceInput)) {
+      return true;
+    }
+    if (typeof recurrenceInput.reportValidity === 'function') {
+      recurrenceInput.reportValidity();
+    }
+    if (typeof recurrenceInput.focus === 'function') {
+      recurrenceInput.focus();
+    }
+    return false;
+  }
+
+  function handleQuickAddRecurrenceInputEvent(event) {
+    var input = closestElement(event.target, '[data-quick-add-recurrence-input]');
+    if (!input) return;
+    updateQuickAddRecurrenceValidity(input);
+  }
+
+  function handleQuickAddSaveSubmit(event) {
+    var form = closestElement(event.target, '[data-quick-add-save-form]');
+    if (!form) return;
+    if (validateQuickAddSaveForm(form)) return;
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
   function inlineCreateError(root) {
     return root ? root.querySelector('[data-inline-task-create-error]') : null;
   }
@@ -1601,6 +1674,9 @@
 
   document.addEventListener('input', handleTaskRecurrenceControlEvent, true);
   document.addEventListener('change', handleTaskRecurrenceControlEvent, true);
+  document.addEventListener('input', handleQuickAddRecurrenceInputEvent, true);
+  document.addEventListener('change', handleQuickAddRecurrenceInputEvent, true);
+  document.addEventListener('submit', handleQuickAddSaveSubmit, true);
 
   document.addEventListener('dragstart', function (event) {
     var row = closestElement(event.target, '[data-task-drag-move]');

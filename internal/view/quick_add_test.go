@@ -143,7 +143,13 @@ func TestQuickAddPreviewRendersCorrectionChipsAndEditableFields(t *testing.T) {
 		`data-quick-add-date-resolution`,
 		`morgen`,
 		`name="due_date" value="2026-06-13"`,
+		`Wöchentlich`,
 		`name="recurrence" value="FREQ=WEEKLY"`,
+		`data-quick-add-recurrence-input`,
+		`data-quick-add-recurrence-error hidden`,
+		`Wiederholung prüfen`,
+		`P2 Mittel`,
+		`caldo-quick-add-priority-p2`,
 		`value="medium" selected`,
 		`data-quick-add-clear="[name='labels']"`,
 		`data-quick-add-clear="[name='due_date']"`,
@@ -152,6 +158,46 @@ func TestQuickAddPreviewRendersCorrectionChipsAndEditableFields(t *testing.T) {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected correction preview to include %q in %s", want, output)
 		}
+	}
+}
+
+func TestQuickAddRecurrenceLabelHumanizesSimplePatterns(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	tests := []struct {
+		name string
+		rule string
+		want string
+	}{
+		{name: "daily", rule: "FREQ=DAILY", want: "Täglich"},
+		{name: "weekly", rule: "FREQ=WEEKLY", want: "Wöchentlich"},
+		{name: "monthly", rule: "FREQ=MONTHLY", want: "Monatlich"},
+		{name: "yearly", rule: "FREQ=YEARLY", want: "Jährlich"},
+		{name: "weekdays", rule: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", want: "Werktags"},
+		{name: "weekday", rule: "FREQ=WEEKLY;BYDAY=MO", want: "Jeden Montag"},
+		{name: "interval", rule: "FREQ=DAILY;INTERVAL=3", want: "Alle 3 Tage"},
+		{name: "complex", rule: "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=1", want: "RRULE: FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := quickAddRecurrenceLabel(ctx, tt.rule); got != tt.want {
+				t.Fatalf("recurrence label: got %q want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestQuickAddRecurrenceLabelUsesEnglishLanguage(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithUIPreferences(context.Background(), "en", "system")
+	if got := quickAddRecurrenceLabel(ctx, "FREQ=WEEKLY;BYDAY=FR"); got != "Every Friday" {
+		t.Fatalf("english weekday recurrence label: got %q", got)
+	}
+	if got := quickAddRecurrenceLabel(ctx, "FREQ=MONTHLY;INTERVAL=2"); got != "Every 2 months" {
+		t.Fatalf("english interval recurrence label: got %q", got)
 	}
 }
 

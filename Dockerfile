@@ -19,6 +19,7 @@ WORKDIR /app
 RUN adduser -D -u 1000 caldo && apk add --no-cache wget
 COPY --from=builder /out/caldo /app/caldo
 COPY web/static /app/web/static
+RUN chmod -R a+rX /app/web/static
 USER caldo
 VOLUME ["/data"]
 EXPOSE 8080

@@ -9,6 +9,13 @@ hash_file() {
 	sha256sum "$1" | awk '{ print substr($1, 1, 7) }'
 }
 
+publish_static_file() {
+	source_path=$1
+	target_path=$2
+	chmod 0644 "$source_path"
+	mv "$source_path" "$target_path"
+}
+
 find_one() {
 	pattern=$1
 	result=$(find "$STATIC_DIR" -maxdepth 1 -type f -name "$pattern" | sort | head -n 1)
@@ -36,7 +43,7 @@ rehash_static_asset() {
 	tmp_path=$(mktemp "${TMPDIR:-/tmp}/caldo-asset.XXXXXX")
 	cp "$source_path" "$tmp_path"
 	rm -f "$STATIC_DIR"/$pattern
-	mv "$tmp_path" "$target_path"
+	publish_static_file "$tmp_path" "$target_path"
 	echo "$target_name"
 }
 
@@ -53,7 +60,7 @@ build_css() {
 	hash=$(hash_file "$tmp_css")
 	target_name="app.${hash}.css"
 	rm -f "$STATIC_DIR"/app.*.css
-	mv "$tmp_css" "$STATIC_DIR/$target_name"
+	publish_static_file "$tmp_css" "$STATIC_DIR/$target_name"
 	echo "$target_name"
 }
 
@@ -68,6 +75,7 @@ build_app_js() {
 	target_name="app.${hash}.js"
 	rm -f "$STATIC_DIR"/app.*.js
 	cp "$source_path" "$STATIC_DIR/$target_name"
+	chmod 0644 "$STATIC_DIR/$target_name"
 	echo "$target_name"
 }
 
@@ -89,7 +97,7 @@ write_manifest() {
 		printf '}\n'
 	} > "$tmp_manifest"
 
-	mv "$tmp_manifest" "$STATIC_DIR/manifest.json"
+	publish_static_file "$tmp_manifest" "$STATIC_DIR/manifest.json"
 }
 
 css_name=$(build_css)

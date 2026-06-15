@@ -128,7 +128,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await page.getByRole('button', { name: 'Navigation öffnen' }).click();
   await expect(page.getByRole('navigation', { name: 'Mobile Hauptnavigation' })).toBeVisible();
   await expect(page.locator('[data-mobile-nav-dialog] nav[aria-label="Mobile Hauptnavigation"] a[href="/today"]')).toBeVisible();
-  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/search-mobile.png`, fullPage: true });
+  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/search-mobile.png`, fullPage: true, caret: 'initial' });
   await page.getByRole('button', { name: 'Schließen' }).click();
   await expect(page.locator('.caldo-topbar a[href="/search"]')).toBeVisible();
   await expect(page.locator('.caldo-topbar a[href="/quick-add"]')).toBeVisible();
@@ -395,7 +395,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(undoNotifications.getByRole('button', { name: 'Rückgängig' })).toBeVisible();
   await expect(undoNotifications).toContainText('Noch');
-  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/undo-available.png`, fullPage: true });
+  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/undo-available.png`, fullPage: true, caret: 'initial' });
   const secondPage = await page.context().newPage();
   await gotoApp(secondPage, `/search?q=${encodeURIComponent(currentLocalTitle)}`);
   await expect(secondPage.locator('#notifications').getByRole('button', { name: 'Rückgängig' })).toHaveCount(0);
@@ -884,7 +884,7 @@ async function captureBaselineSet(page, testInfo, name) {
 
 async function captureBaseline(page, testInfo, name, viewport) {
   await page.setViewportSize(viewport);
-  await page.screenshot({ path: `${browserBaselineDir(testInfo)}/${name}.png`, fullPage: true });
+  await page.screenshot({ path: `${browserBaselineDir(testInfo)}/${name}.png`, fullPage: true, caret: 'initial' });
 }
 
 async function expectNoHorizontalOverflow(page) {

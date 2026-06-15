@@ -136,3 +136,32 @@ func SetupCalendarsContent(calendars []caldav.Calendar, errorMessage string, sel
 		return nil
 	})
 }
+
+// SetupImportContent renders the setup import step.
+func SetupImportContent(errorMessage string) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		if _, err := fmt.Fprint(w, `<section class="caldo-page max-w-xl" data-setup-import data-setup-import-start-url="/setup/import" data-setup-import-complete-url="/setup/complete">
+		<h2 class="caldo-page-title">Initialimport</h2>
+		<p class="caldo-muted mt-2">Bestehende CalDAV-Aufgaben werden importiert.</p>`); err != nil {
+			return err
+		}
+
+		if errorMessage != "" {
+			if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-error mt-4">%s</p>`, html.EscapeString(errorMessage)); err != nil {
+				return err
+			}
+		}
+
+		_, err := fmt.Fprint(w, `<div class="caldo-card mt-6 space-y-4">
+			<div>
+				<p class="caldo-state-title" data-setup-import-status>Import wird vorbereitet ...</p>
+				<p class="caldo-meta mt-1" data-setup-import-detail>Der Wizard wechselt nach erfolgreichem Import automatisch zur App.</p>
+			</div>
+			<progress class="h-2 w-full accent-[var(--caldo-accent)]" data-setup-import-progress-bar max="100" value="0" aria-label="Importfortschritt"></progress>
+			<p class="caldo-alert caldo-alert-error" data-setup-import-error hidden></p>
+			<button type="button" class="caldo-button caldo-button-secondary" data-setup-import-retry hidden>Import erneut starten</button>
+		</div>
+	</section>`)
+		return err
+	})
+}

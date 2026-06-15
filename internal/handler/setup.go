@@ -54,6 +54,40 @@ func SetupPage(w http.ResponseWriter, r *http.Request) {
 	renderSetupCalDAVPage(w, r, "")
 }
 
+// SetupCurrentPage renders the current setup step from persisted server-side setup state.
+func SetupCurrentPage(deps setupDependencies) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if deps.database == nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		status, err := deps.database.LoadSetupStatus(r.Context())
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		if status.Complete {
+			http.Redirect(w, r, "/", http.StatusFound)
+			return
+		}
+
+		switch status.Step {
+		case "calendars":
+			calendars, err := loadCalendars(r.Context(), deps)
+			if err != nil {
+				renderSetupCalDAVPage(w, r, "kalender konnten nicht geladen werden")
+				return
+			}
+			renderSetupCalendarsPage(w, r, calendars, "", nil)
+		case "import":
+			renderSetupImportPage(w, r, "")
+		default:
+			renderSetupCalDAVPage(w, r, "")
+		}
+	}
+}
+
 // SetupCalDAV stores encrypted credentials, executes a live CalDAV connection test, and advances the setup step on success.
 func SetupCalDAV(deps setupDependencies) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -100,6 +134,12 @@ func SetupCalDAV(deps setupDependencies) http.HandlerFunc {
 
 		if err := deps.database.SaveSetupStep(r.Context(), "calendars"); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		if isHTMXRequest(r) {
+			w.Header().Set("HX-Redirect", "/setup/calendars")
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 
@@ -221,6 +261,11 @@ func SetupCalendars(deps setupDependencies) http.HandlerFunc {
 			return
 		}
 
+		if isHTMXRequest(r) {
+			renderSetupImportPage(w, r, "")
+			return
+		}
+
 		http.Redirect(w, r, "/setup/import", http.StatusFound)
 	}
 }
@@ -278,6 +323,10 @@ func SetupImportEvents(deps setupDependencies) http.HandlerFunc {
 
 		subscriber := deps.importBroker.Subscribe()
 		defer deps.importBroker.Unsubscribe(subscriber.id)
+		if _, err := fmt.Fprint(w, "event: ready\ndata: {}\n\n"); err != nil {
+			return
+		}
+		flusher.Flush()
 
 		for {
 			select {
@@ -404,6 +453,17 @@ func renderSetupCalendarsPage(w http.ResponseWriter, r *http.Request, calendars 
 	if err := view.BaseLayout("Caldo Setup", view.SetupCalendarsContent(calendars, errorMessage, selectedHrefs)).Render(r.Context(), w); err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
+}
+
+func renderSetupImportPage(w http.ResponseWriter, r *http.Request, errorMessage string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := view.BaseLayout("Caldo Setup", view.SetupImportContent(errorMessage)).Render(r.Context(), w); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+}
+
+func isHTMXRequest(r *http.Request) bool {
+	return strings.EqualFold(r.Header.Get("HX-Request"), "true")
 }
 
 func initialSyncStrategy(capabilities db.CalDAVServerCapabilities) string {

@@ -106,7 +106,7 @@ templ BaseLayout(title string, content templ.Component) {
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>{ DisplayTitle(ctx, title) }</title>
 			<meta name="csrf-token" content={ CSRFToken(ctx) }/>
-			<meta name="htmx-config" content='{"includeIndicatorStyles":false}'/>
+			<meta name="htmx-config" content='{"includeIndicatorStyles":false,"attributesToSettle":["class","width","height"]}'/>
 			<link rel="stylesheet" href={ AssetPath(ctx, "app.css") }/>
 		</head>
 		<body class="min-h-screen">

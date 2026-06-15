@@ -218,6 +218,12 @@
     setQuickAddOverlayError(dialog, '');
   }
 
+  function hideElement(element) {
+    if (!element) return;
+    element.hidden = true;
+    element.classList.add('hidden');
+  }
+
   function openQuickAddOverlay(trigger) {
     var dialog = quickAddOverlay();
     if (!dialog) {
@@ -354,12 +360,10 @@
 
     var chip = button.closest('.caldo-quick-add-chip');
     if (chip && chip.closest('[data-quick-add-chips]')) {
-      chip.hidden = true;
-      chip.style.display = 'none';
+      hideElement(chip);
       var chipList = chip.closest('[data-quick-add-chips]');
       if (chipList && !chipList.querySelector('.caldo-quick-add-chip:not([hidden])')) {
-        chipList.hidden = true;
-        chipList.style.display = 'none';
+        hideElement(chipList);
       }
     }
 
@@ -470,8 +474,7 @@
       labels.push(label);
     }
     setQuickAddLabelValues(input, labels);
-    button.hidden = true;
-    button.style.display = 'none';
+    hideElement(button);
   }
 
   function removeQuickAddLabel(button) {
@@ -487,12 +490,10 @@
 
     var chip = button.closest('.caldo-quick-add-chip');
     if (chip && chip.closest('[data-quick-add-chips]')) {
-      chip.hidden = true;
-      chip.style.display = 'none';
+      hideElement(chip);
       var chipList = chip.closest('[data-quick-add-chips]');
       if (chipList && !chipList.querySelector('.caldo-quick-add-chip:not([hidden])')) {
-        chipList.hidden = true;
-        chipList.style.display = 'none';
+        hideElement(chipList);
       }
     }
   }
@@ -1603,6 +1604,166 @@
     return meta ? meta.getAttribute('content') || '' : '';
   }
 
+  function setupPost(path) {
+    return fetch(path, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'X-CSRF-Token': csrfToken(),
+        'X-Tab-ID': tabID
+      }
+    });
+  }
+
+  function setupImportRoots(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    var roots = [];
+    if (scope instanceof Element && scope.matches('[data-setup-import]')) {
+      roots.push(scope);
+    }
+    Array.prototype.forEach.call(scope.querySelectorAll('[data-setup-import]'), function (element) {
+      roots.push(element);
+    });
+    return roots;
+  }
+
+  function setupImportElement(root, selector) {
+    return root ? root.querySelector(selector) : null;
+  }
+
+  function setSetupImportMessage(root, status, detail) {
+    var statusElement = setupImportElement(root, '[data-setup-import-status]');
+    var detailElement = setupImportElement(root, '[data-setup-import-detail]');
+    if (statusElement && status) {
+      statusElement.textContent = status;
+    }
+    if (detailElement && detail) {
+      detailElement.textContent = detail;
+    }
+  }
+
+  function setSetupImportProgress(root, percent) {
+    var bar = setupImportElement(root, '[data-setup-import-progress-bar]');
+    if (!bar) return;
+    var clamped = Math.max(0, Math.min(100, percent || 0));
+    bar.value = clamped;
+  }
+
+  function setSetupImportError(root, message) {
+    var error = setupImportElement(root, '[data-setup-import-error]');
+    var retry = setupImportElement(root, '[data-setup-import-retry]');
+    if (error) {
+      error.textContent = message || '';
+      error.hidden = !message;
+    }
+    if (retry) {
+      retry.hidden = !message;
+    }
+  }
+
+  function parseSetupImportEvent(data) {
+    if (!data) return {};
+    try {
+      return JSON.parse(data);
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function updateSetupImportProgress(root, event) {
+    var payload = parseSetupImportEvent(event && event.data);
+    if (payload.total && payload.completed) {
+      setSetupImportProgress(root, (payload.completed / payload.total) * 100);
+      setSetupImportMessage(root, 'Import läuft ...', 'Kalender ' + payload.completed + ' von ' + payload.total + ' wurde importiert.');
+      return;
+    }
+    setSetupImportProgress(root, 15);
+    setSetupImportMessage(root, 'Import läuft ...', 'Aufgaben werden vom CalDAV-Server geladen.');
+  }
+
+  function completeSetupImport(root) {
+    var completeURL = root.getAttribute('data-setup-import-complete-url') || '/setup/complete';
+    setSetupImportProgress(root, 100);
+    setSetupImportMessage(root, 'Import abgeschlossen', 'Setup wird abgeschlossen ...');
+    setupPost(completeURL).then(function (response) {
+      if (response.redirected && response.url) {
+        window.location.assign(response.url);
+        return;
+      }
+      if (response.ok) {
+        window.location.assign('/');
+        return;
+      }
+      throw new Error('setup complete failed with status ' + response.status);
+    }).catch(function () {
+      setSetupImportError(root, 'Setup konnte nach dem Import nicht abgeschlossen werden.');
+    });
+  }
+
+  function startSetupImport(root) {
+    if (!root || root.dataset.setupImportRunning === 'true') return;
+    var startURL = root.getAttribute('data-setup-import-start-url') || '/setup/import';
+    root.dataset.setupImportRunning = 'true';
+    root.dataset.setupImportDone = 'false';
+    setSetupImportError(root, '');
+    setSetupImportProgress(root, 5);
+    setSetupImportMessage(root, 'Import startet ...', 'Verbindung zum Setup-Import wird vorbereitet.');
+
+    var source = new EventSource('/setup/import/events');
+    var importStarted = false;
+    root.__caldoSetupImportSource = source;
+    var requestImportStart = function () {
+      if (importStarted) return;
+      importStarted = true;
+      setupPost(startURL).then(function (response) {
+        if (response.status === 202 || response.status === 409) {
+          return;
+        }
+        throw new Error('setup import failed with status ' + response.status);
+      }).catch(function () {
+        root.dataset.setupImportRunning = 'false';
+        source.close();
+        setSetupImportError(root, 'Initialimport konnte nicht gestartet werden.');
+      });
+    };
+    source.addEventListener('ready', function () {
+      requestImportStart();
+    });
+    source.addEventListener('progress', function (event) {
+      updateSetupImportProgress(root, event);
+    });
+    source.addEventListener('done', function () {
+      root.dataset.setupImportDone = 'true';
+      root.dataset.setupImportRunning = 'false';
+      source.close();
+      completeSetupImport(root);
+    });
+    source.addEventListener('error', function (event) {
+      if (event && typeof event.data === 'string' && event.data) {
+        root.dataset.setupImportRunning = 'false';
+        source.close();
+        setSetupImportError(root, 'Initialimport ist fehlgeschlagen.');
+        return;
+      }
+      if (root.dataset.setupImportDone === 'true') return;
+      setSetupImportMessage(root, 'Import wartet ...', 'Die Fortschrittsverbindung wird erneut aufgebaut.');
+    });
+  }
+
+  function initializeSetupImport(root) {
+    Array.prototype.forEach.call(setupImportRoots(root), function (importRoot) {
+      if (importRoot.dataset.setupImportBound === 'true') return;
+      importRoot.dataset.setupImportBound = 'true';
+      var retry = setupImportElement(importRoot, '[data-setup-import-retry]');
+      if (retry) {
+        retry.addEventListener('click', function () {
+          startSetupImport(importRoot);
+        });
+      }
+      startSetupImport(importRoot);
+    });
+  }
+
   function undoStatusEnabled() {
     return window.location.pathname.indexOf('/setup') !== 0;
   }
@@ -1796,6 +1957,7 @@
     var requestElement = event.detail && event.detail.elt;
     var targetElement = event.detail && event.detail.target instanceof Element ? event.detail.target : null;
     focusQuickAddPreviewResult(requestElement, targetElement);
+    initializeSetupImport(targetElement || document);
     initializeConflictManualPreviews(targetElement || document);
     initializeConflictSplitConfirmations(targetElement || document);
   });
@@ -2236,6 +2398,7 @@
   consumeRememberedWriteStatus();
   bindQuickAddOverlay();
   initializeThemeController();
+  initializeSetupImport();
   initializeUndoSurface();
   initializeConflictManualPreviews();
   initializeConflictSplitConfirmations();

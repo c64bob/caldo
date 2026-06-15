@@ -22,6 +22,16 @@ const mobileViewport = { width: 390, height: 844 };
 test('MVP setup, sync, write-through, and conflict flow works in a browser session', async ({ page }, testInfo) => {
   fs.mkdirSync(browserBaselineDir(testInfo), { recursive: true });
   const state = readState();
+  let response;
+  const browserErrors = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') {
+      browserErrors.push(message.text());
+    }
+  });
+  page.on('pageerror', (error) => {
+    browserErrors.push(error.message);
+  });
 
   const health = await page.request.get(appURL('/health'));
   expect(health.status()).toBe(200);
@@ -32,33 +42,24 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await captureBaselineSet(page, testInfo, 'setup');
   await page.setViewportSize(desktopViewport);
 
-  let response = await appFormRequest(page, 'POST', '/setup/caldav', {
-    caldav_url: state.stageBaseURL,
-    caldav_username: state.stageUsername,
-    caldav_password: state.stagePassword
-  });
-  expect(response.status()).toBe(302);
-  expect(response.headers().location).toBe('/setup/calendars');
-
-  await gotoApp(page, '/setup/calendars');
+  await ensureBrowserCSRFCookie(page);
+  await page.locator('[name="caldav_url"]').fill(state.stageBaseURL);
+  await page.locator('[name="caldav_username"]').fill(state.stageUsername);
+  await page.locator('[name="caldav_password"]').fill(state.stagePassword);
+  await page.getByRole('button', { name: 'Verbindung testen' }).click();
+  await expect(page).toHaveURL(/\/setup\/calendars$/);
   await expect(page.getByRole('heading', { name: 'Kalender auswählen' }).first()).toBeVisible();
   await expect(page.getByText('Work')).toBeVisible();
 
-  response = await appFormRequest(page, 'POST', '/setup/calendars', {
-    calendar_href: '/cal/work/',
-    default_calendar_href: '/cal/work/',
-    new_default_project_name: ''
-  });
-  expect(response.status()).toBe(302);
-  expect(response.headers().location).toBe('/setup/import');
-
-  response = await appFormRequest(page, 'POST', '/setup/import');
-  expect(response.status()).toBe(202);
-
+  await ensureBrowserCSRFCookie(page);
+  await page.locator('[name="new_default_project_name"]').fill('E2E Setup Inbox');
+  await page.getByRole('button', { name: 'Weiter zum Import' }).click();
+  await expect(page.locator('[data-setup-import]')).toBeVisible();
+  await expect(page).toHaveURL(/\/$/, { timeout: 30_000 });
   await expect.poll(async () => {
-    const complete = await appFormRequest(page, 'POST', '/setup/complete');
-    return complete.status();
-  }).toBe(302);
+    const remoteState = await stageState();
+    return remoteState.calendars.some((calendar) => calendar.display_name === 'E2E Setup Inbox');
+  }).toBe(true);
 
   await gotoApp(page, '/search?q=Stage');
   await expect(page.getByRole('heading', { name: 'Globale Suche' })).toBeVisible();
@@ -127,7 +128,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await page.getByRole('button', { name: 'Navigation öffnen' }).click();
   await expect(page.getByRole('navigation', { name: 'Mobile Hauptnavigation' })).toBeVisible();
   await expect(page.locator('[data-mobile-nav-dialog] nav[aria-label="Mobile Hauptnavigation"] a[href="/today"]')).toBeVisible();
-  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/search-mobile.png`, fullPage: true });
+  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/search-mobile.png`, fullPage: true, caret: 'initial' });
   await page.getByRole('button', { name: 'Schließen' }).click();
   await expect(page.locator('.caldo-topbar a[href="/search"]')).toBeVisible();
   await expect(page.locator('.caldo-topbar a[href="/quick-add"]')).toBeVisible();
@@ -394,7 +395,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(undoNotifications.getByRole('button', { name: 'Rückgängig' })).toBeVisible();
   await expect(undoNotifications).toContainText('Noch');
-  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/undo-available.png`, fullPage: true });
+  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/undo-available.png`, fullPage: true, caret: 'initial' });
   const secondPage = await page.context().newPage();
   await gotoApp(secondPage, `/search?q=${encodeURIComponent(currentLocalTitle)}`);
   await expect(secondPage.locator('#notifications').getByRole('button', { name: 'Rückgängig' })).toHaveCount(0);
@@ -501,7 +502,24 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await gotoApp(page, '/conflicts');
   await expect(page.getByText('Keine ungelösten Konflikte')).toBeVisible();
   await expectSearchResult(page, 'E2E Manual Conflict Resolution');
+  expect(browserErrors.filter((message) => !expectedBrowserConsoleError(message, testInfo.project.name))).toEqual([]);
 });
+
+function expectedBrowserConsoleError(message, projectName) {
+  if (
+    projectName === 'webkit' &&
+    message === "Refused to apply a stylesheet because its hash, its nonce, or 'unsafe-inline' does not appear in the style-src directive of the Content Security Policy."
+  ) {
+    return true;
+  }
+
+  return [
+    'Failed to load resource: the server responded with a status of 400 (Bad Request)',
+    'Response Status Error Code 400 from /tasks',
+    'Failed to load resource: the server responded with a status of 502 (Bad Gateway)',
+    'Response Status Error Code 502 from /tasks/'
+  ].includes(message);
+}
 
 async function dragTaskRowToProject(page, row, projectName) {
   const target = page.locator('.caldo-sidebar [data-nav-projects] [data-project-drop-target]').filter({ hasText: projectName }).first();
@@ -873,7 +891,7 @@ async function captureBaselineSet(page, testInfo, name) {
 
 async function captureBaseline(page, testInfo, name, viewport) {
   await page.setViewportSize(viewport);
-  await page.screenshot({ path: `${browserBaselineDir(testInfo)}/${name}.png`, fullPage: true });
+  await page.screenshot({ path: `${browserBaselineDir(testInfo)}/${name}.png`, fullPage: true, caret: 'initial' });
 }
 
 async function expectNoHorizontalOverflow(page) {

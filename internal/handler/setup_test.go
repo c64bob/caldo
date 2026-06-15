@@ -78,6 +78,34 @@ func TestSetupPageRendersCalDAVForm(t *testing.T) {
 	}
 }
 
+func TestSetupCurrentPageRendersImportStepWhenConfigured(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if err := database.SaveSetupCalendars(context.Background(), []db.SelectedCalendar{{Href: "/cal/work/", DisplayName: "Work"}}, "/cal/work/", "fullscan"); err != nil {
+		t.Fatalf("save setup calendars: %v", err)
+	}
+
+	h := SetupCurrentPage(setupDependencies{database: database})
+	request := httptest.NewRequest(http.MethodGet, "/setup", nil)
+	request = request.WithContext(view.WithAssetManifest(request.Context(), map[string]string{"app.css": "app.css", "app.js": "app.js", "htmx.min.js": "htmx.min.js", "htmx-sse.js": "htmx-sse.js", "alpine.min.js": "alpine.min.js"}))
+	responseRecorder := httptest.NewRecorder()
+
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	body := responseRecorder.Body.String()
+	if !strings.Contains(body, "Initialimport") || !strings.Contains(body, "data-setup-import") {
+		t.Fatalf("expected setup import step, got %q", body)
+	}
+}
+
 func TestSetupCalDAVSuccessStoresCredentialsCapabilitiesAndAdvancesStep(t *testing.T) {
 	t.Parallel()
 
@@ -308,6 +336,63 @@ func TestSetupCalendarsSuccessStoresProjectsAndAdvancesToImport(t *testing.T) {
 	}
 	if got := responseRecorder.Header().Get("Location"); got != "/setup/import" {
 		t.Fatalf("unexpected location: got %q want %q", got, "/setup/import")
+	}
+
+	status, err := database.LoadSetupStatus(context.Background())
+	if err != nil {
+		t.Fatalf("load setup status: %v", err)
+	}
+	if status.Step != "import" {
+		t.Fatalf("unexpected setup step: got %q want %q", status.Step, "import")
+	}
+}
+
+func TestSetupCalendarsHTMXSuccessRendersImportStep(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if err := database.SaveCalDAVCredentials(context.Background(), []byte("12345678901234567890123456789012"), db.CalDAVCredentials{
+		URL: "https://example.test/caldav", Username: "alice", Password: "secret",
+	}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+	if err := database.SaveCalDAVServerCapabilities(context.Background(), db.CalDAVServerCapabilities{FullScan: true}); err != nil {
+		t.Fatalf("save capabilities: %v", err)
+	}
+
+	h := SetupCalendars(setupDependencies{
+		database:      database,
+		encryptionKey: []byte("12345678901234567890123456789012"),
+		calendar: fakeCalendarClient{
+			calendars: []caldav.Calendar{{Href: "/cal/work/", DisplayName: "Work"}},
+			created:   caldav.Calendar{Href: "/cal/inbox/", DisplayName: "Inbox"},
+		},
+	})
+
+	form := url.Values{}
+	form.Add("calendar_href", "/cal/work/")
+	form.Set("new_default_project_name", "Inbox")
+	request := httptest.NewRequest(http.MethodPost, "/setup/calendars", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("HX-Request", "true")
+	request = request.WithContext(view.WithAssetManifest(request.Context(), map[string]string{"app.css": "app.css", "app.js": "app.js", "htmx.min.js": "htmx.min.js", "htmx-sse.js": "htmx-sse.js", "alpine.min.js": "alpine.min.js"}))
+	responseRecorder := httptest.NewRecorder()
+
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	if location := responseRecorder.Header().Get("Location"); location != "" {
+		t.Fatalf("htmx response must not redirect, got location %q", location)
+	}
+	body := responseRecorder.Body.String()
+	if !strings.Contains(body, "Initialimport") || !strings.Contains(body, "data-setup-import") {
+		t.Fatalf("expected setup import step, got %q", body)
 	}
 
 	status, err := database.LoadSetupStatus(context.Background())

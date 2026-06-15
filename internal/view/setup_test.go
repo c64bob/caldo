@@ -55,3 +55,27 @@ func TestSetupCalendarsContentIncludesSelectionAndDefaultControls(t *testing.T) 
 		}
 	}
 }
+
+func TestSetupImportContentIncludesControllerHooks(t *testing.T) {
+	t.Parallel()
+
+	component := SetupImportContent("")
+
+	var rendered bytes.Buffer
+	if err := component.Render(context.Background(), &rendered); err != nil {
+		t.Fatalf("render setup import content: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`data-setup-import`,
+		`data-setup-import-start-url="/setup/import"`,
+		`data-setup-import-complete-url="/setup/complete"`,
+		`data-setup-import-status`,
+		`data-setup-import-progress-bar`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected setup import content to include %q", want)
+		}
+	}
+}

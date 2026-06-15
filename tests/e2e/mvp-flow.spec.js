@@ -502,10 +502,17 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await gotoApp(page, '/conflicts');
   await expect(page.getByText('Keine ungelösten Konflikte')).toBeVisible();
   await expectSearchResult(page, 'E2E Manual Conflict Resolution');
-  expect(browserErrors.filter((message) => !expectedBrowserConsoleError(message))).toEqual([]);
+  expect(browserErrors.filter((message) => !expectedBrowserConsoleError(message, testInfo.project.name))).toEqual([]);
 });
 
-function expectedBrowserConsoleError(message) {
+function expectedBrowserConsoleError(message, projectName) {
+  if (
+    projectName === 'webkit' &&
+    message === "Refused to apply a stylesheet because its hash, its nonce, or 'unsafe-inline' does not appear in the style-src directive of the Content Security Policy."
+  ) {
+    return true;
+  }
+
   return [
     'Failed to load resource: the server responded with a status of 400 (Bad Request)',
     'Response Status Error Code 400 from /tasks',

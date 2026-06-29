@@ -226,14 +226,14 @@ func renderSyncSettings(w io.Writer, csrfToken string, settings db.AppSettings, 
 		return err
 	}
 	_, err := fmt.Fprintf(w, `
-<form class="mt-3 space-y-2" method="post" action="/settings/sync" hx-post="/settings/sync" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
+	<form class="mt-3 space-y-2" method="post" action="/settings/sync" hx-post="/settings/sync" hx-target="body" hx-swap="outerHTML" hx-push-url="false" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
 <label class="caldo-label">%s
 <input class="caldo-input w-32" type="number" min="5" name="sync_interval_minutes" value="%d">
 </label>
 <button type="submit" class="caldo-button caldo-button-secondary">%s</button>
 <span class="htmx-indicator caldo-meta ml-2" aria-live="polite">%s</span>
 </form>
-<form class="mt-3" method="post" action="/sync/manual" hx-post="/sync/manual" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
+	<form class="mt-3" method="post" action="/sync/manual" hx-post="/sync/manual" hx-target="#sync-status" hx-swap="outerHTML" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
 <button type="submit" class="caldo-button caldo-button-primary">%s</button>
 <span class="htmx-indicator caldo-meta ml-2" aria-live="polite">%s</span>
 </form>
@@ -271,7 +271,7 @@ func renderSettingsSyncSummary(w io.Writer, syncStatus db.SyncStatus, text Texts
 func renderUISettings(w io.Writer, csrfToken string, settings db.AppSettings, text Texts) error {
 	_, err := fmt.Fprintf(w, `<div id="ui-settings" class="caldo-card">
 <h3 class="font-medium">%s</h3>
-<form class="mt-3 space-y-3 text-sm" method="post" action="/settings/ui" hx-post="/settings/ui" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
+	<form class="mt-3 space-y-3 text-sm" method="post" action="/settings/ui" hx-post="/settings/ui" hx-target="body" hx-swap="outerHTML" hx-push-url="false" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
 <label class="flex items-center gap-2"><input class="caldo-check" type="checkbox" name="show_completed" %s> %s</label>
 <label class="caldo-label">%s
 <input class="caldo-input w-32" type="number" min="1" name="upcoming_days" value="%d">

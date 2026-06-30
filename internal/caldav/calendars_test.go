@@ -94,6 +94,29 @@ func TestCalendarClientCreateCalendar(t *testing.T) {
 	}
 }
 
+func TestCalendarClientCreateCalendarExposesSafeHTTPStatus(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}))
+	t.Cleanup(server.Close)
+
+	client := NewCalendarClient(server.Client())
+	_, err := client.CreateCalendar(context.Background(), Credentials{
+		URL:      server.URL + "/calendars",
+		Username: "alice",
+		Password: "secret",
+	}, "New Project")
+	if !errors.Is(err, ErrCalendarCreateFailed) {
+		t.Fatalf("expected ErrCalendarCreateFailed, got %v", err)
+	}
+	statusCode, ok := HTTPStatusCode(err)
+	if !ok || statusCode != http.StatusMethodNotAllowed {
+		t.Fatalf("unexpected status from error: got %d ok=%v err=%v", statusCode, ok, err)
+	}
+}
+
 func TestCalendarClientRenameCalendar(t *testing.T) {
 	t.Parallel()
 

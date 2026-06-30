@@ -84,10 +84,11 @@ func SettingsCalDAVUpdate(deps settingsDependencies) http.HandlerFunc {
 			return
 		}
 		if err := deps.database.SaveCalDAVServerCapabilities(r.Context(), db.CalDAVServerCapabilities{
-			WebDAVSync: capabilities.WebDAVSync,
-			CTag:       capabilities.CTag,
-			ETag:       capabilities.ETag,
-			FullScan:   capabilities.FullScan,
+			WebDAVSync:      capabilities.WebDAVSync,
+			CTag:            capabilities.CTag,
+			ETag:            capabilities.ETag,
+			FullScan:        capabilities.FullScan,
+			CalendarHomeSet: capabilities.CalendarHomeSet,
 		}); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return

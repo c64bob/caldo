@@ -18,11 +18,13 @@ type fakeProjectCreateCalendarClient struct {
 	created     caldav.Calendar
 	createErr   error
 	createCalls int
+	credentials caldav.Credentials
 	displayName string
 }
 
-func (f *fakeProjectCreateCalendarClient) CreateCalendar(_ context.Context, _ caldav.Credentials, displayName string) (caldav.Calendar, error) {
+func (f *fakeProjectCreateCalendarClient) CreateCalendar(_ context.Context, credentials caldav.Credentials, displayName string) (caldav.Calendar, error) {
 	f.createCalls++
+	f.credentials = credentials
 	f.displayName = displayName
 	if f.createErr != nil {
 		return caldav.Calendar{}, f.createErr
@@ -80,6 +82,45 @@ func TestProjectCreatePersistsAfterRemoteSuccess(t *testing.T) {
 	}
 }
 
+func TestProjectCreateUsesDiscoveredCalendarHomeSet(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	if err := database.SaveCalDAVCredentials(context.Background(), []byte("12345678901234567890123456789012"), db.CalDAVCredentials{
+		URL: "https://nextcloud.example/remote.php/dav", Username: "alice", Password: "secret",
+	}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+	if err := database.SaveCalDAVServerCapabilities(context.Background(), db.CalDAVServerCapabilities{
+		FullScan:        true,
+		CalendarHomeSet: "/remote.php/dav/calendars/alice/",
+	}); err != nil {
+		t.Fatalf("save capabilities: %v", err)
+	}
+
+	calendar := &fakeProjectCreateCalendarClient{created: caldav.Calendar{Href: "/remote.php/dav/calendars/alice/new-project/", DisplayName: "New Project"}}
+	h := ProjectCreate(projectCreateDependencies{database: database, encryptionKey: []byte("12345678901234567890123456789012"), calendar: calendar})
+
+	form := url.Values{"display_name": {"New Project"}}
+	request := httptest.NewRequest(http.MethodPost, "/projects", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	responseRecorder := httptest.NewRecorder()
+
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusCreated {
+		t.Fatalf("unexpected status code: got %d want %d body %s", responseRecorder.Code, http.StatusCreated, responseRecorder.Body.String())
+	}
+	if calendar.credentials.URL != "https://nextcloud.example/remote.php/dav/calendars/alice/" {
+		t.Fatalf("unexpected create base url: %#v", calendar.credentials)
+	}
+}
+
 func TestProjectCreateDoesNotPersistWhenRemoteCreateFails(t *testing.T) {
 	t.Parallel()
 
@@ -122,6 +163,48 @@ func TestProjectCreateDoesNotPersistWhenRemoteCreateFails(t *testing.T) {
 	}
 	if count != 0 {
 		t.Fatalf("expected no local project persisted, got %d", count)
+	}
+}
+
+func TestProjectCreateShowsSafeStatusSpecificRemoteError(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	if err := database.SaveCalDAVCredentials(context.Background(), []byte("12345678901234567890123456789012"), db.CalDAVCredentials{
+		URL: "https://example.test/caldav", Username: "alice", Password: "secret",
+	}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+	if err := database.SaveCalDAVServerCapabilities(context.Background(), db.CalDAVServerCapabilities{FullScan: true}); err != nil {
+		t.Fatalf("save capabilities: %v", err)
+	}
+
+	calendar := &fakeProjectCreateCalendarClient{createErr: errors.Join(caldav.ErrCalendarCreateFailed, &caldav.HTTPStatusError{StatusCode: http.StatusMethodNotAllowed})}
+	h := ProjectCreate(projectCreateDependencies{database: database, encryptionKey: []byte("12345678901234567890123456789012"), calendar: calendar})
+
+	form := url.Values{"display_name": {"New Project"}}
+	request := httptest.NewRequest(http.MethodPost, "/projects", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	responseRecorder := httptest.NewRecorder()
+
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	body := responseRecorder.Body.String()
+	if !strings.Contains(body, "caldav-server unterstützt kalenderanlage hier nicht (status 405)") {
+		t.Fatalf("expected safe status-specific create error, got %q", body)
+	}
+	for _, leaked := range []string{"https://example.test/caldav", "alice", "secret"} {
+		if strings.Contains(body, leaked) {
+			t.Fatalf("project create error leaked %q in body %q", leaked, body)
+		}
 	}
 }
 

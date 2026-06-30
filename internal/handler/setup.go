@@ -123,10 +123,11 @@ func SetupCalDAV(deps setupDependencies) http.HandlerFunc {
 		}
 
 		if err := deps.database.SaveCalDAVServerCapabilities(r.Context(), db.CalDAVServerCapabilities{
-			WebDAVSync: capabilities.WebDAVSync,
-			CTag:       capabilities.CTag,
-			ETag:       capabilities.ETag,
-			FullScan:   capabilities.FullScan,
+			WebDAVSync:      capabilities.WebDAVSync,
+			CTag:            capabilities.CTag,
+			ETag:            capabilities.ETag,
+			FullScan:        capabilities.FullScan,
+			CalendarHomeSet: capabilities.CalendarHomeSet,
 		}); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
@@ -222,12 +223,13 @@ func SetupCalendars(deps setupDependencies) http.HandlerFunc {
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
+			capabilities, err := deps.database.LoadCalDAVServerCapabilities(r.Context())
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
 
-			createdCalendar, err := deps.calendar.CreateCalendar(r.Context(), caldav.Credentials{
-				URL:      credentials.URL,
-				Username: credentials.Username,
-				Password: credentials.Password,
-			}, newDefaultName)
+			createdCalendar, err := deps.calendar.CreateCalendar(r.Context(), calendarOperationCredentials(credentials, capabilities), newDefaultName)
 			if err != nil {
 				renderSetupCalendarsPage(w, r, calendars, "neues default-projekt konnte nicht angelegt werden", selectedHrefs)
 				return
@@ -440,12 +442,12 @@ func loadCalendars(ctx context.Context, deps setupDependencies) ([]caldav.Calend
 	if err != nil {
 		return nil, err
 	}
+	capabilities, err := deps.database.LoadCalDAVServerCapabilities(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	return deps.calendar.ListCalendars(ctx, caldav.Credentials{
-		URL:      credentials.URL,
-		Username: credentials.Username,
-		Password: credentials.Password,
-	})
+	return deps.calendar.ListCalendars(ctx, calendarOperationCredentials(credentials, capabilities))
 }
 
 func renderSetupCalendarsPage(w http.ResponseWriter, r *http.Request, calendars []caldav.Calendar, errorMessage string, selectedHrefs []string) {

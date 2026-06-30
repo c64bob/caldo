@@ -3,6 +3,7 @@ package caldav
 import (
 	"bytes"
 	"context"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -28,10 +29,11 @@ type Credentials struct {
 
 // ServerCapabilities describes globally detected CalDAV/WebDAV capabilities.
 type ServerCapabilities struct {
-	WebDAVSync bool `json:"webdav_sync"`
-	CTag       bool `json:"ctag"`
-	ETag       bool `json:"etag"`
-	FullScan   bool `json:"fullscan"`
+	WebDAVSync      bool   `json:"webdav_sync"`
+	CTag            bool   `json:"ctag"`
+	ETag            bool   `json:"etag"`
+	FullScan        bool   `json:"fullscan"`
+	CalendarHomeSet string `json:"calendar_home_set,omitempty"`
 }
 
 // ConnectionTester executes a live WebDAV request to verify connectivity and detect capabilities.
@@ -120,11 +122,49 @@ func detectCapabilities(davHeader string, responseBody string) ServerCapabilitie
 	lowerBody := strings.ToLower(responseBody)
 
 	return ServerCapabilities{
-		WebDAVSync: strings.Contains(lowerDAV, "sync-collection"),
-		CTag:       strings.Contains(lowerBody, "getctag"),
-		ETag:       strings.Contains(lowerBody, "getetag"),
-		FullScan:   true,
+		WebDAVSync:      strings.Contains(lowerDAV, "sync-collection"),
+		CTag:            strings.Contains(lowerBody, "getctag"),
+		ETag:            strings.Contains(lowerBody, "getetag"),
+		FullScan:        true,
+		CalendarHomeSet: firstCalendarHomeSet(responseBody),
 	}
+}
+
+func firstCalendarHomeSet(responseBody string) string {
+	var multistatus capabilityMultistatus
+	if err := xml.Unmarshal([]byte(responseBody), &multistatus); err != nil {
+		return ""
+	}
+	for _, response := range multistatus.Responses {
+		for _, propstat := range response.Propstats {
+			for _, href := range propstat.Prop.CalendarHomeSet.Hrefs {
+				if trimmed := strings.TrimSpace(href); trimmed != "" {
+					return trimmed
+				}
+			}
+		}
+	}
+	return ""
+}
+
+type capabilityMultistatus struct {
+	Responses []capabilityResponse `xml:"response"`
+}
+
+type capabilityResponse struct {
+	Propstats []capabilityPropstat `xml:"propstat"`
+}
+
+type capabilityPropstat struct {
+	Prop capabilityProp `xml:"prop"`
+}
+
+type capabilityProp struct {
+	CalendarHomeSet capabilityHrefSet `xml:"calendar-home-set"`
+}
+
+type capabilityHrefSet struct {
+	Hrefs []string `xml:"href"`
 }
 
 const capabilityProbeBody = `<?xml version="1.0" encoding="utf-8"?>

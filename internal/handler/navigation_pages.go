@@ -297,12 +297,12 @@ func loadSettingsCalendars(ctx context.Context, deps settingsDependencies) ([]ca
 	if err != nil {
 		return nil, err
 	}
+	capabilities, err := deps.database.LoadCalDAVServerCapabilities(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	return deps.calendar.ListCalendars(ctx, caldav.Credentials{
-		URL:      credentials.URL,
-		Username: credentials.Username,
-		Password: credentials.Password,
-	})
+	return deps.calendar.ListCalendars(ctx, calendarOperationCredentials(credentials, capabilities))
 }
 
 func renderPageError(w http.ResponseWriter, r *http.Request, title string, action string, status int) {

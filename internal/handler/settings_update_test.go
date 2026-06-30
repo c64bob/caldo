@@ -75,10 +75,11 @@ func TestSettingsCalDAVUpdateTestsThenStoresCredentials(t *testing.T) {
 	t.Cleanup(func() { _ = database.Close() })
 
 	tester := &fakeSettingsConnectionTester{capabilities: caldav.ServerCapabilities{
-		WebDAVSync: true,
-		CTag:       true,
-		ETag:       true,
-		FullScan:   true,
+		WebDAVSync:      true,
+		CTag:            true,
+		ETag:            true,
+		FullScan:        true,
+		CalendarHomeSet: "/remote.php/dav/calendars/alice/",
 	}}
 	handler := SettingsCalDAVUpdate(settingsDependencies{
 		database:      database,
@@ -124,7 +125,7 @@ func TestSettingsCalDAVUpdateTestsThenStoresCredentials(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load capabilities: %v", err)
 	}
-	if !capabilities.WebDAVSync || !capabilities.CTag || !capabilities.ETag || !capabilities.FullScan {
+	if !capabilities.WebDAVSync || !capabilities.CTag || !capabilities.ETag || !capabilities.FullScan || capabilities.CalendarHomeSet != "/remote.php/dav/calendars/alice/" {
 		t.Fatalf("unexpected capabilities: %#v", capabilities)
 	}
 }

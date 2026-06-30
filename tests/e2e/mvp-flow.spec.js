@@ -260,6 +260,8 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
 
   const panelTaskID = await detailRow.getAttribute('data-task-id');
   await ensureBrowserCSRFCookie(page);
+  await expect(detailRow.getByRole('button', { name: 'Unteraufgabe hinzufügen' })).toHaveCount(0);
+  await openTaskRowEdit(detailRow);
   await detailRow.getByRole('button', { name: 'Unteraufgabe hinzufügen' }).click();
   const subtaskForm = detailRow.locator('[data-subtask-create-form]');
   await expect(subtaskForm).toBeVisible();
@@ -303,7 +305,9 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await gotoApp(page, '/search?q=E2E%20Panel%20Edited');
   detailRow = page.locator(`[data-task-id="${panelTaskID}"]`);
   const parentDeleteDialog = detailRow.locator('[data-task-delete-dialog]');
-  await detailRow.locator('[data-task-delete-open]').click();
+  await expect(detailRow.getByRole('button', { name: 'Löschen' })).toHaveCount(0);
+  await openTaskRowEdit(detailRow);
+  await detailRow.getByRole('button', { name: 'Löschen' }).click();
   await expect(parentDeleteDialog).toBeVisible();
   await expect(parentDeleteDialog).toContainText('1 Unteraufgabe');
   await parentDeleteDialog.getByRole('button', { name: 'Aufgabe und Unteraufgaben löschen' }).click();
@@ -384,14 +388,16 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   let deleteRow = page.locator('[data-task-id]').filter({ hasText: currentLocalTitle }).first();
   let deleteDialog = deleteRow.locator('[data-task-delete-dialog]');
   await expect(deleteDialog).toBeHidden();
-  await deleteRow.locator('[data-task-delete-open]').click();
+  await expect(deleteRow.getByRole('button', { name: 'Löschen' })).toHaveCount(0);
+  await openTaskRowEdit(deleteRow);
+  await deleteRow.getByRole('button', { name: 'Löschen' }).click();
   await expect(deleteDialog).toBeVisible();
   await expect(deleteDialog.locator('[data-task-delete-cancel]')).toBeFocused();
   await deleteDialog.locator('[data-task-delete-cancel]').click();
   await expect(deleteDialog).toBeHidden();
   await expect(deleteRow).toBeVisible();
 
-  await deleteRow.locator('[data-task-delete-open]').click();
+  await deleteRow.getByRole('button', { name: 'Löschen' }).click();
   await expect(deleteDialog).toBeVisible();
   await deleteDialog.getByRole('button', { name: 'Endgültig löschen' }).click();
   await expect(page.locator('[data-task-id]').filter({ hasText: currentLocalTitle })).toHaveCount(0);
@@ -412,7 +418,8 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
 
   deleteRow = page.locator('[data-task-id]').filter({ hasText: currentLocalTitle }).first();
   deleteDialog = deleteRow.locator('[data-task-delete-dialog]');
-  await deleteRow.locator('[data-task-delete-open]').click();
+  await openTaskRowEdit(deleteRow);
+  await deleteRow.getByRole('button', { name: 'Löschen' }).click();
   await expect(deleteDialog).toBeVisible();
   await deleteDialog.getByRole('button', { name: 'Endgültig löschen' }).click();
   await waitForNoSearchResult(page, currentLocalTitle);
@@ -599,13 +606,28 @@ async function exerciseTabletTaskActions(page, panelTaskID) {
 
   row = page.locator(`[data-task-id="${panelTaskID}"]`);
   const deleteDialog = row.locator('[data-task-delete-dialog]');
-  await row.locator('[data-task-delete-open]').click();
+  await expect(row.getByRole('button', { name: 'Löschen' })).toHaveCount(0);
+  await openTaskRowEdit(row);
+  await row.getByRole('button', { name: 'Löschen' }).click();
   await expect(deleteDialog).toBeVisible();
   await expectElementWithinViewport(deleteDialog, tabletViewport);
   await expect(deleteDialog.getByRole('button', { name: 'Aufgabe und Unteraufgaben löschen' })).toBeVisible();
   await deleteDialog.getByRole('button', { name: 'Abbrechen', exact: true }).click();
   await expect(deleteDialog).toBeHidden();
+  await closeTaskRowEdit(row);
   await page.setViewportSize(desktopViewport);
+}
+
+async function openTaskRowEdit(row) {
+  await row.getByRole('button', { name: 'Bearbeiten' }).click();
+  await expect(row.locator('[data-inline-task-edit-form]')).toBeVisible();
+  await expect(row.locator('[data-inline-task-edit-extra]')).toBeVisible();
+}
+
+async function closeTaskRowEdit(row) {
+  await row.getByRole('button', { name: 'Abbrechen' }).click();
+  await expect(row.locator('[data-inline-task-edit-form]')).toBeHidden();
+  await expect(row.getByRole('button', { name: 'Details' })).toBeVisible();
 }
 
 async function exerciseKeyboardShortcuts(page) {

@@ -197,6 +197,7 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 		`draggable="true"`,
 		`data-inline-task-edit-open`,
 		`data-inline-task-edit-form`,
+		`data-inline-task-edit-extra`,
 		`data-task-favorite-form`,
 		`aria-label="Favorit entfernen"`,
 		`aria-pressed="true"`,
@@ -244,6 +245,12 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 	}
 	if strings.Contains(output, `>Aufgabe erledigen<`) {
 		t.Fatalf("completion must be available only through the checkbox control: %s", output)
+	}
+	editExtraIndex := strings.Index(output, `data-inline-task-edit-extra`)
+	deleteIndex := strings.Index(output, `data-task-delete-open`)
+	subtaskIndex := strings.Index(output, `data-subtask-create`)
+	if editExtraIndex < 0 || deleteIndex < editExtraIndex || subtaskIndex < editExtraIndex {
+		t.Fatalf("delete and subtask actions must render inside edit-only controls: %s", output)
 	}
 }
 
@@ -478,7 +485,7 @@ func TestTaskRowRendersDueStateChips(t *testing.T) {
 	}
 }
 
-func TestTaskRowRendersVisibleReopenActionForCompletedSyncedTask(t *testing.T) {
+func TestTaskRowRendersCompletedCheckboxAndEditOnlyDeleteAction(t *testing.T) {
 	t.Parallel()
 
 	ctx := WithCSRFToken(context.Background(), "token-123")
@@ -503,6 +510,7 @@ func TestTaskRowRendersVisibleReopenActionForCompletedSyncedTask(t *testing.T) {
 		`checked`,
 		`Speichern ...`,
 		`data-task-action-error`,
+		`data-inline-task-edit-extra`,
 		`data-task-delete-open`,
 	} {
 		if !strings.Contains(output, want) {

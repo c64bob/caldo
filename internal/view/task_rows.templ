@@ -171,22 +171,7 @@ templ TaskRow(task TaskRowView) {
 						}
 					</div>
 				}
-				if taskCanDelete(task) {
-					<div class="caldo-task-actions" data-task-actions>
-						if taskCanDelete(task) {
-							<button
-								type="button"
-								class="caldo-button caldo-button-ghost caldo-button-danger"
-								data-task-delete-open
-								aria-haspopup="dialog"
-								aria-controls={ taskDOMID("task-delete", task) }
-							>
-								Löschen
-							</button>
-						}
-					</div>
-					<p class="caldo-alert caldo-alert-error caldo-task-action-error" data-task-action-error aria-live="polite" hidden>Aktion konnte nicht ausgeführt werden.</p>
-				}
+				<p class="caldo-alert caldo-alert-error caldo-task-action-error" data-task-action-error aria-live="polite" hidden>Aktion konnte nicht ausgeführt werden.</p>
 			</div>
 			if taskCanInlineEdit(task) {
 				<form
@@ -259,8 +244,25 @@ templ TaskRow(task TaskRowView) {
 					</div>
 				</form>
 			}
-			if taskCanCreateSubtask(task) {
-				@SubtaskCreate(task)
+			if taskCanInlineEdit(task) && (taskCanCreateSubtask(task) || taskCanDelete(task)) {
+				<div class="caldo-task-edit-extra" data-inline-task-edit-extra hidden>
+					if taskCanCreateSubtask(task) {
+						@SubtaskCreate(task)
+					}
+					if taskCanDelete(task) {
+						<div class="caldo-task-actions" data-task-actions>
+							<button
+								type="button"
+								class="caldo-button caldo-button-ghost caldo-button-danger"
+								data-task-delete-open
+								aria-haspopup="dialog"
+								aria-controls={ taskDOMID("task-delete", task) }
+							>
+								Löschen
+							</button>
+						</div>
+					}
+				</div>
 			}
 		</div>
 		if taskNeedsCompletionDecision(task) {

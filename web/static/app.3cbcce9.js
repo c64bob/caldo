@@ -88,6 +88,15 @@
     return !!closestElement(target, '[data-sync-request]');
   }
 
+  function submitForm(form) {
+    if (!form) return;
+    if (typeof form.requestSubmit === 'function') {
+      form.requestSubmit();
+      return;
+    }
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  }
+
   function normalizeThemeMode(mode) {
     return mode === 'light' || mode === 'dark' || mode === 'system' ? mode : 'system';
   }
@@ -911,10 +920,14 @@
     var display = root.querySelector('[data-inline-task-display]');
     var form = root.querySelector('[data-inline-task-edit-form]');
     var trigger = root.querySelector('[data-inline-task-edit-open]');
+    var extra = root.querySelector('[data-inline-task-edit-extra]');
     if (!form || !display) return;
-    root.dataset.inlineTaskEditOpen = 'true';
+    root.dataset.inlineTaskEditState = 'open';
     display.hidden = true;
     form.hidden = false;
+    if (extra) {
+      extra.hidden = false;
+    }
     if (trigger) {
       trigger.setAttribute('aria-expanded', 'true');
     }
@@ -933,11 +946,16 @@
     var display = root.querySelector('[data-inline-task-display]');
     var form = root.querySelector('[data-inline-task-edit-form]');
     var trigger = root.querySelector('[data-inline-task-edit-open]');
+    var extra = root.querySelector('[data-inline-task-edit-extra]');
     if (!form || !display) return;
     form.reset();
     form.hidden = true;
+    if (extra) {
+      closeInlineCreate(extra.querySelector('[data-subtask-create]'));
+      extra.hidden = true;
+    }
     display.hidden = false;
-    root.dataset.inlineTaskEditOpen = 'false';
+    root.dataset.inlineTaskEditState = 'closed';
     setInlineEditError(root, '');
     if (trigger) {
       trigger.setAttribute('aria-expanded', 'false');
@@ -2137,12 +2155,7 @@
     var checkbox = closestElement(event.target, '[data-task-completion-checkbox]');
     if (!checkbox) return;
     var form = checkbox.closest('[data-task-action-form]');
-    if (!form) return;
-    if (typeof form.requestSubmit === 'function') {
-      form.requestSubmit();
-      return;
-    }
-    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    submitForm(form);
   }, true);
   document.addEventListener('submit', handleQuickAddSaveSubmit, true);
 
@@ -2384,14 +2397,21 @@
     }
 
     var inlineCreate = closestElement(event.target, '[data-inline-task-create]');
-    if (inlineCreate && event.key === 'Escape') {
-      event.preventDefault();
-      closeInlineCreate(inlineCreate);
-      return;
+    if (inlineCreate) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeInlineCreate(inlineCreate);
+        return;
+      }
+      if (event.key === 'Enter' && closestElement(event.target, '[data-inline-task-create-title]')) {
+        event.preventDefault();
+        submitForm(closestElement(event.target, '[data-inline-task-create-form]'));
+        return;
+      }
     }
 
     var inlineEdit = closestElement(event.target, '[data-task-id]');
-    if (inlineEdit && inlineEdit.dataset.inlineTaskEditOpen === 'true' && event.key === 'Escape') {
+    if (inlineEdit && inlineEdit.dataset.inlineTaskEditState === 'open' && event.key === 'Escape') {
       event.preventDefault();
       closeInlineEdit(inlineEdit);
       return;

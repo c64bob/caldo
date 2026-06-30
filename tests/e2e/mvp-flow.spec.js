@@ -652,6 +652,9 @@ async function exerciseKeyboardShortcuts(page) {
 
   const searchInput = page.locator('#global-search');
   await expect(searchInput).toBeFocused();
+  await searchInput.fill('Stage');
+  await expect(page.locator('[data-search-results]').filter({ hasText: 'Stage Seed Task' })).toBeVisible();
+  await expect(page).toHaveURL(/\/search$/);
   await searchInput.fill('typing');
   await page.keyboard.press('n');
   await expect(page).toHaveURL(/\/search$/);

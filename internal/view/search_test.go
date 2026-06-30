@@ -25,6 +25,16 @@ func TestSearchPageRendersSaveFilterFormForEligibleQuery(t *testing.T) {
 	output := rendered.String()
 	for _, want := range []string{
 		`data-search-save-filter-form`,
+		`id="global-search"`,
+		`hx-get="/search/results"`,
+		`hx-trigger="input changed delay:350ms, search"`,
+		`hx-target="#search-live-results"`,
+		`hx-swap="outerHTML"`,
+		`hx-push-url="false"`,
+		`data-live-search-input`,
+		`id="search-live-results"`,
+		`data-search-live-results`,
+		`aria-live="polite"`,
 		`method="post"`,
 		`action="/filters"`,
 		`hx-post="/filters"`,

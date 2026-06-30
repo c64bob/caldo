@@ -47,6 +47,7 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 	router.Get("/favorites", Favorites(dateViewDependencies{database: database}))
 	router.Get("/no-date", NoDate(dateViewDependencies{database: database}))
 	router.Get("/completed", Completed(dateViewDependencies{database: database}))
+	router.Get("/search/results", SearchResults(searchDependencies{database: database}))
 	router.Get("/search", Search(searchDependencies{database: database}))
 	router.Get("/labels", LabelsPage(database))
 	router.Get("/labels/{labelID}", LabelTasksPage(dateViewDependencies{database: database}))

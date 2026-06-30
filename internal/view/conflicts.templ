@@ -6,7 +6,6 @@ templ ConflictListPage(conflicts []db.ConflictListRow) {
 	<section class="caldo-page">
 		<div class="caldo-conflict-header">
 			<div>
-				<h2 class="caldo-page-title">Konflikte</h2>
 				<p class="caldo-muted">Offene Konflikte, priorisiert nach notwendiger Entscheidung.</p>
 			</div>
 			if len(conflicts) > 0 {
@@ -47,7 +46,6 @@ templ ConflictDetailPage(conflict db.ConflictDetail, projectOptions []TaskProjec
 	<section class="caldo-page">
 		<div class="caldo-conflict-header">
 			<div>
-				<h2 class="caldo-page-title">Konfliktdetail</h2>
 				<p class="caldo-muted">Vergleiche die gespeicherten Versionen, bevor du eine Auflösung wählst.</p>
 			</div>
 			<a class="caldo-button caldo-button-secondary" href="/conflicts">Zur Konfliktliste</a>

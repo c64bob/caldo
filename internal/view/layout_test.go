@@ -89,6 +89,34 @@ func TestBaseLayoutUsesComponentFoundationClasses(t *testing.T) {
 	}
 }
 
+func TestBaseLayoutUsesSemanticTopbarHeading(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	ctx = WithAssetManifest(ctx, assets.Manifest{
+		"app.css":       "app.hash.css",
+		"htmx.min.js":   "htmx.hash.js",
+		"htmx-sse.js":   "htmx-sse.hash.js",
+		"alpine.min.js": "alpine.hash.js",
+		"app.js":        "app.hash.js",
+	})
+
+	component := BaseLayout("Heute", EmptyContent())
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render layout: %v", err)
+	}
+
+	output := rendered.String()
+	if !strings.Contains(output, `<h1 class="caldo-topbar-heading">Heute</h1>`) {
+		t.Fatalf("expected topbar title to be the semantic page heading: %s", output)
+	}
+	if strings.Contains(output, `<p class="caldo-topbar-heading">`) {
+		t.Fatalf("topbar heading must not render as a paragraph: %s", output)
+	}
+}
+
 func TestBaseLayoutUsesSyncStatusFromContext(t *testing.T) {
 	t.Parallel()
 

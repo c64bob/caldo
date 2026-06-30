@@ -349,6 +349,7 @@ func TestBaseLayoutRendersShortcutHelp(t *testing.T) {
 		`Filter`,
 		`Konflikte`,
 		`Einstellungen`,
+		`Mehrfachbearbeitung ist nicht verfügbar`,
 		`Hilfe öffnen`,
 	} {
 		if !strings.Contains(output, want) {

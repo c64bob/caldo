@@ -115,6 +115,7 @@ type Texts struct {
 	ShortcutConflicts        string
 	ShortcutSettings         string
 	ShortcutOpenHelp         string
+	MultiEditUnavailable     string
 	Or                       string
 	Then                     string
 	OpenItemsAria            string
@@ -254,6 +255,7 @@ var germanTexts = Texts{
 	ShortcutConflicts:        "Konflikte",
 	ShortcutSettings:         "Einstellungen",
 	ShortcutOpenHelp:         "Hilfe öffnen",
+	MultiEditUnavailable:     "Mehrfachbearbeitung ist nicht verfügbar",
 	Or:                       "oder",
 	Then:                     "dann",
 	OpenItemsAria:            "offene Einträge",
@@ -393,6 +395,7 @@ var englishTexts = Texts{
 	ShortcutConflicts:        "Conflicts",
 	ShortcutSettings:         "Settings",
 	ShortcutOpenHelp:         "Open help",
+	MultiEditUnavailable:     "Multi-edit is not available",
 	Or:                       "or",
 	Then:                     "then",
 	OpenItemsAria:            "open items",

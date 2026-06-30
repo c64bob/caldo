@@ -675,6 +675,7 @@ async function exerciseKeyboardShortcuts(page) {
   const helpDialog = page.locator('[data-shortcut-help-dialog]');
   await expect(helpDialog).toBeVisible();
   await expect(helpDialog).toContainText('Tastaturkürzel');
+  await expect(helpDialog).toContainText('Mehrfachbearbeitung ist nicht verfügbar');
   await expect(helpDialog).toContainText('G');
   await helpDialog.getByRole('button', { name: 'Schließen' }).click();
   await expect(helpDialog).toBeHidden();

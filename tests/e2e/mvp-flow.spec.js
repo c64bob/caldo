@@ -54,7 +54,12 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await ensureBrowserCSRFCookie(page);
   await page.locator('[name="new_default_project_name"]').fill('E2E Setup Inbox');
   await page.getByRole('button', { name: 'Weiter zum Import' }).click();
-  await expect(page.locator('[data-setup-import]')).toBeVisible();
+  await expect.poll(async () => {
+    if (await page.locator('[data-setup-import]').count()) {
+      return 'import';
+    }
+    return new URL(page.url()).pathname === '/' ? 'complete' : 'pending';
+  }, { timeout: 30_000 }).not.toBe('pending');
   await expect(page).toHaveURL(/\/$/, { timeout: 30_000 });
   await expect.poll(async () => {
     const remoteState = await stageState();

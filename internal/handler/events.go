@@ -139,7 +139,7 @@ func syncStatusBadgeHTML(ctx context.Context, database *db.Database) (string, bo
 		return "", false
 	}
 	var rendered bytes.Buffer
-	if err := view.SyncStatusBadge(status.State, formatSyncTime(status.LastSuccessAt)).Render(ctx, &rendered); err != nil {
+	if err := view.SyncStatusBadge(status.State, syncTimeView(status.LastSuccessAt)).Render(ctx, &rendered); err != nil {
 		return "", false
 	}
 	return rendered.String(), true

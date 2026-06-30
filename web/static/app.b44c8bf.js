@@ -308,6 +308,31 @@
     return false;
   }
 
+  function pad2(value) {
+    return String(value).padStart(2, '0');
+  }
+
+  function formatBrowserDateTimeFromISO(isoValue) {
+    var date = new Date(isoValue || '');
+    if (Number.isNaN(date.getTime())) return '';
+    return pad2(date.getDate()) + '.' + pad2(date.getMonth() + 1) + '.' + date.getFullYear() + ' ' + pad2(date.getHours()) + ':' + pad2(date.getMinutes());
+  }
+
+  function initializeLocalDateTimes(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    var nodes = [];
+    if (scope instanceof Element && scope.matches('[data-local-date-time]')) {
+      nodes.push(scope);
+    }
+    Array.prototype.push.apply(nodes, scope.querySelectorAll('[data-local-date-time]'));
+    Array.prototype.forEach.call(nodes, function (node) {
+      var formatted = formatBrowserDateTimeFromISO(node.getAttribute('datetime') || '');
+      if (formatted) {
+        node.textContent = formatted;
+      }
+    });
+  }
+
   function bindQuickAddOverlay() {
     var dialog = quickAddOverlay();
     if (!dialog || dialog.dataset.quickAddOverlayBound === 'true') return;
@@ -1836,10 +1861,23 @@
       if (!checked) return;
       if (checked.value === 'manual') {
         target.textContent = conflictManualInputDisplay(form.querySelector('[data-conflict-manual-input="' + field + '"]'));
+        target.removeAttribute('data-conflict-preview-iso');
         return;
       }
       var option = closestElement(checked, '[data-conflict-source-option]');
-      target.textContent = option ? option.getAttribute('data-conflict-option-display') || option.textContent.trim() : '';
+      if (!option) {
+        target.textContent = '';
+        target.removeAttribute('data-conflict-preview-iso');
+        return;
+      }
+      var optionISO = option.getAttribute('data-conflict-option-display-iso') || '';
+      var optionDisplay = option.getAttribute('data-conflict-option-display') || option.textContent.trim();
+      target.textContent = optionISO ? formatBrowserDateTimeFromISO(optionISO) || optionDisplay : optionDisplay;
+      if (optionISO) {
+        target.setAttribute('data-conflict-preview-iso', optionISO);
+      } else {
+        target.removeAttribute('data-conflict-preview-iso');
+      }
     });
 
     var projectTarget = preview.querySelector('[data-conflict-preview-value="project"]');
@@ -1965,6 +2003,7 @@
     var requestElement = event.detail && event.detail.elt;
     var targetElement = event.detail && event.detail.target instanceof Element ? event.detail.target : null;
     focusQuickAddPreviewResult(requestElement, targetElement);
+    initializeLocalDateTimes(targetElement || document);
     initializeSetupImport(targetElement || document);
     initializeConflictManualPreviews(targetElement || document);
     initializeConflictSplitConfirmations(targetElement || document);
@@ -2414,6 +2453,7 @@
   initializeThemeController();
   initializeSetupImport();
   initializeUndoSurface();
+  initializeLocalDateTimes();
   initializeConflictManualPreviews();
   initializeConflictSplitConfirmations();
 })();

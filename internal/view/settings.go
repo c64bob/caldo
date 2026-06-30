@@ -250,9 +250,9 @@ func renderSettingsSyncSummary(w io.Writer, syncStatus db.SyncStatus, text Texts
 		html.EscapeString(text.SettingsSyncStatus),
 		html.EscapeString(settingsSyncStateLabel(syncStatus.State, text)),
 		html.EscapeString(text.SettingsSyncLastOK),
-		html.EscapeString(settingsSyncTimeLabel(syncStatus.LastSuccessAt, text)),
+		localDateTimeHTML(settingsSyncTimeView(syncStatus.LastSuccessAt, text)),
 		html.EscapeString(text.SettingsSyncLastDone),
-		html.EscapeString(settingsSyncTimeLabel(syncStatus.LastFinished, text)),
+		localDateTimeHTML(settingsSyncTimeView(syncStatus.LastFinished, text)),
 	); err != nil {
 		return err
 	}
@@ -426,11 +426,8 @@ func settingsSyncStateLabel(state string, text Texts) string {
 	}
 }
 
-func settingsSyncTimeLabel(ts sql.NullTime, text Texts) string {
-	if !ts.Valid {
-		return text.SettingsSyncNever
-	}
-	return ts.Time.Local().Format("02.01.2006 15:04")
+func settingsSyncTimeView(ts sql.NullTime, text Texts) LocalDateTimeView {
+	return LocalDateTimeFromNull(ts, text.SettingsSyncNever)
 }
 
 func settingsSyncErrorLabel(errorCode string, text Texts) string {

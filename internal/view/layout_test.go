@@ -100,7 +100,7 @@ func TestBaseLayoutUsesSyncStatusFromContext(t *testing.T) {
 		"alpine.min.js": "alpine.hash.js",
 		"app.js":        "app.hash.js",
 	})
-	ctx = WithSyncStatus(ctx, SyncStatusView{State: "idle", LastSuccess: "02.01.2026 03:04"})
+	ctx = WithSyncStatus(ctx, SyncStatusView{State: "idle", LastSuccess: LocalDateTimeView{Text: "02.01.2026 03:04", ISO: "2026-01-02T03:04:00Z"}})
 
 	component := BaseLayout("Heute", EmptyContent())
 
@@ -112,7 +112,10 @@ func TestBaseLayoutUsesSyncStatusFromContext(t *testing.T) {
 	output := rendered.String()
 	for _, want := range []string{
 		`Status: idle`,
-		`Letzter Sync: 02.01.2026 03:04`,
+		`Letzter Sync:`,
+		`02.01.2026 03:04`,
+		`datetime="2026-01-02T03:04:00Z"`,
+		`data-local-date-time`,
 		`id="sync-status"`,
 	} {
 		if !strings.Contains(output, want) {

@@ -27,7 +27,7 @@ func SyncStatus(deps syncDependencies) http.HandlerFunc {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
-		_ = view.SyncStatusBadge(status.State, formatSyncTime(status.LastSuccessAt)).Render(r.Context(), w)
+		_ = view.SyncStatusBadge(status.State, syncTimeView(status.LastSuccessAt)).Render(r.Context(), w)
 	}
 }
 
@@ -53,7 +53,7 @@ func ManualSync(deps syncDependencies) http.HandlerFunc {
 			}
 		}
 		status, _ := deps.database.LoadSyncStatus(r.Context())
-		_ = view.SyncStatusBadge(status.State, formatSyncTime(status.LastSuccessAt)).Render(r.Context(), w)
+		_ = view.SyncStatusBadge(status.State, syncTimeView(status.LastSuccessAt)).Render(r.Context(), w)
 	}
 }
 
@@ -74,9 +74,6 @@ func publishSyncStatusEvent(broker *eventBroker) {
 	broker.publish(appEvent{Type: "sync", Resource: "sync_status", Version: 0, OriginConnection: "server"})
 }
 
-func formatSyncTime(ts sql.NullTime) string {
-	if !ts.Valid {
-		return "nie"
-	}
-	return ts.Time.Local().Format("02.01.2006 15:04")
+func syncTimeView(ts sql.NullTime) view.LocalDateTimeView {
+	return view.LocalDateTimeFromNull(ts, "nie")
 }

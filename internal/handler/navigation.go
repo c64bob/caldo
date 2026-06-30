@@ -28,7 +28,7 @@ func navigationMiddleware(database *db.Database, setupState *SetupState) func(ht
 			if err == nil {
 				ctx = view.WithSyncStatus(ctx, view.SyncStatusView{
 					State:       syncStatus.State,
-					LastSuccess: formatSyncTime(syncStatus.LastSuccessAt),
+					LastSuccess: syncTimeView(syncStatus.LastSuccessAt),
 				})
 			}
 

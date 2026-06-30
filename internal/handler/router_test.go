@@ -196,8 +196,8 @@ func TestNewRouterRendersPersistedSyncStatusInBaseLayout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load sync status: %v", err)
 	}
-	lastSuccess := formatSyncTime(status.LastSuccessAt)
-	if lastSuccess == "nie" {
+	lastSuccess := syncTimeView(status.LastSuccessAt)
+	if lastSuccess.ISO == "" {
 		t.Fatal("expected seeded sync status to have last success time")
 	}
 
@@ -212,8 +212,11 @@ func TestNewRouterRendersPersistedSyncStatusInBaseLayout(t *testing.T) {
 		t.Fatalf("unexpected status code: got %d want %d body=%q", responseRecorder.Code, http.StatusOK, responseRecorder.Body.String())
 	}
 	body := responseRecorder.Body.String()
-	if !strings.Contains(body, "Letzter Sync: "+lastSuccess) {
-		t.Fatalf("expected base layout to include persisted last sync %q in %s", lastSuccess, body)
+	if !strings.Contains(body, "Letzter Sync:") || !strings.Contains(body, lastSuccess.Text) {
+		t.Fatalf("expected base layout to include persisted last sync %q in %s", lastSuccess.Text, body)
+	}
+	if !strings.Contains(body, `datetime="`+lastSuccess.ISO+`"`) || !strings.Contains(body, `data-local-date-time`) {
+		t.Fatalf("expected base layout to include local timestamp metadata for %q in %s", lastSuccess.ISO, body)
 	}
 	if strings.Contains(body, "Letzter Sync: nie") {
 		t.Fatalf("expected base layout not to render fallback last sync: %s", body)

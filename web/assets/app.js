@@ -2133,6 +2133,17 @@
   document.addEventListener('input', handleConflictManualControlEvent, true);
   document.addEventListener('change', handleConflictManualControlEvent, true);
   document.addEventListener('change', handleConflictSplitConfirmationEvent, true);
+  document.addEventListener('change', function (event) {
+    var checkbox = closestElement(event.target, '[data-task-completion-checkbox]');
+    if (!checkbox) return;
+    var form = checkbox.closest('[data-task-action-form]');
+    if (!form) return;
+    if (typeof form.requestSubmit === 'function') {
+      form.requestSubmit();
+      return;
+    }
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  }, true);
   document.addEventListener('submit', handleQuickAddSaveSubmit, true);
 
   document.addEventListener('dragstart', function (event) {

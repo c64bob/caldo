@@ -147,7 +147,8 @@ func TestTaskRowRendersCompletedReopenControlAndConflictState(t *testing.T) {
 		`caldo-task-row-completed`,
 		`caldo-task-row-subtask`,
 		`hx-post="/tasks/task-2/reopen"`,
-		`aria-pressed="true"`,
+		`type="checkbox"`,
+		`checked`,
 		`Konflikt`,
 		`Erledigt`,
 		`disabled`,
@@ -201,7 +202,6 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 		`aria-pressed="true"`,
 		`data-task-actions`,
 		`data-task-action-form`,
-		`>Aufgabe erledigen<`,
 		`data-task-action-error`,
 		`data-task-delete-open`,
 		`aria-controls="task-delete-task-1"`,
@@ -241,6 +241,9 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 	}
 	if strings.Contains(output, `name="labels" value="Büro, urgent, STARRED"`) {
 		t.Fatalf("reserved favorite category must not render in the label editor: %s", output)
+	}
+	if strings.Contains(output, `>Aufgabe erledigen<`) {
+		t.Fatalf("completion must be available only through the checkbox control: %s", output)
 	}
 }
 
@@ -374,7 +377,8 @@ func TestTaskRowRendersSubtaskRelationshipWithoutCreateAction(t *testing.T) {
 		`Unteraufgabe von Hauptaufgabe`,
 		`hx-post="/tasks/child-1/complete"`,
 		`name="expected_version" value="7"`,
-		`>Aufgabe erledigen<`,
+		`type="checkbox"`,
+		`aria-label="Aufgabe erledigen"`,
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected subtask row to include %q in %s", want, output)
@@ -416,7 +420,8 @@ func TestTaskRowRendersFaultySubtaskRelationshipWithoutParentTitle(t *testing.T)
 		`caldo-task-chip-subtask`,
 		`>Unteraufgabe<`,
 		`hx-post="/tasks/child-missing-parent/reopen"`,
-		`aria-pressed="true"`,
+		`type="checkbox"`,
+		`checked`,
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected faulty subtask row to include %q in %s", want, output)
@@ -493,7 +498,9 @@ func TestTaskRowRendersVisibleReopenActionForCompletedSyncedTask(t *testing.T) {
 	output := rendered.String()
 	for _, want := range []string{
 		`hx-post="/tasks/task-done/reopen"`,
-		`>Aufgabe wieder öffnen<`,
+		`type="checkbox"`,
+		`aria-label="Aufgabe wieder öffnen"`,
+		`checked`,
 		`Speichern ...`,
 		`data-task-action-error`,
 		`data-task-delete-open`,
@@ -501,6 +508,9 @@ func TestTaskRowRendersVisibleReopenActionForCompletedSyncedTask(t *testing.T) {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected completed synced task row to include %q in %s", want, output)
 		}
+	}
+	if strings.Contains(output, `>Aufgabe wieder öffnen<`) {
+		t.Fatalf("reopen must be available only through the checkbox control: %s", output)
 	}
 }
 

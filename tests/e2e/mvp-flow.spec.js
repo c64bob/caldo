@@ -270,7 +270,8 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   const subtaskRow = page.locator('[data-task-id].caldo-task-row-subtask').filter({ hasText: 'E2E Browser Subtask' }).first();
   await expect(subtaskRow).toBeVisible();
   await expect(subtaskRow).toContainText('Unteraufgabe von E2E Panel Edited');
-  await expect(subtaskRow.locator('.caldo-task-checkbox[aria-label="Aufgabe erledigen"]')).toBeVisible();
+  await expect(subtaskRow.locator('.caldo-task-checkbox-label[aria-label="Aufgabe erledigen"]')).toBeVisible();
+  await expect(subtaskRow.getByRole('checkbox', { name: 'Aufgabe erledigen' })).toBeAttached();
   await expect(subtaskRow.getByRole('button', { name: 'Unteraufgabe hinzufügen' })).toHaveCount(0);
   detailRow = page.locator(`[data-task-id="${panelTaskID}"]`);
   await expect(detailRow).toContainText('1 Unteraufgabe');

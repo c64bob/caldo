@@ -835,6 +835,14 @@
 		@apply pt-0.5;
 	}
 
+	.caldo-task-checkbox-label {
+		@apply inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center;
+	}
+
+	.caldo-task-checkbox-input {
+		@apply sr-only;
+	}
+
 	.caldo-task-checkbox {
 		@apply flex h-5 w-5 items-center justify-center rounded-full border transition;
 		background: var(--caldo-surface);
@@ -842,21 +850,21 @@
 		color: var(--caldo-accent);
 	}
 
-	.caldo-task-checkbox:hover,
-	.caldo-task-checkbox:focus-visible {
+	.caldo-task-checkbox-label:hover .caldo-task-checkbox,
+	.caldo-task-checkbox-input:focus-visible + .caldo-task-checkbox {
 		border-color: var(--caldo-accent);
-		outline: 2px solid transparent;
+	}
+
+	.caldo-task-checkbox-input:focus-visible + .caldo-task-checkbox {
+		outline: 2px solid var(--caldo-focus);
 		outline-offset: 2px;
 	}
 
-	.caldo-task-checkbox:focus-visible {
-		outline-color: var(--caldo-focus);
-	}
-
-	.caldo-task-checkbox:disabled {
+	.caldo-task-checkbox-input:disabled + .caldo-task-checkbox {
 		@apply cursor-not-allowed opacity-50;
 	}
 
+	.caldo-task-checkbox-input:checked + .caldo-task-checkbox,
 	.caldo-task-row-completed .caldo-task-checkbox {
 		background: var(--caldo-accent);
 		border-color: var(--caldo-accent);
@@ -868,6 +876,7 @@
 		border-color: currentColor;
 	}
 
+	.caldo-task-checkbox-input:checked + .caldo-task-checkbox .caldo-task-checkbox-mark,
 	.caldo-task-row-completed .caldo-task-checkbox-mark {
 		@apply block;
 	}

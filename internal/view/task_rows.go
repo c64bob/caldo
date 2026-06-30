@@ -200,13 +200,6 @@ func taskIsCompleted(task TaskRowView) bool {
 	return strings.EqualFold(strings.TrimSpace(task.Status), "completed")
 }
 
-func taskCompletionPressed(task TaskRowView) string {
-	if taskIsCompleted(task) {
-		return "true"
-	}
-	return "false"
-}
-
 func taskCompletionLabel(task TaskRowView) string {
 	if taskIsCompleted(task) {
 		return "Aufgabe wieder öffnen"

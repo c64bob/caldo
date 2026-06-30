@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -44,13 +45,9 @@ func ProjectCreate(deps projectCreateDependencies) http.HandlerFunc {
 			return
 		}
 
-		createdCalendar, err := deps.calendar.CreateCalendar(r.Context(), caldav.Credentials{
-			URL:      credentials.URL,
-			Username: credentials.Username,
-			Password: credentials.Password,
-		}, projectName)
+		createdCalendar, err := deps.calendar.CreateCalendar(r.Context(), calendarOperationCredentials(credentials, capabilities), projectName)
 		if err != nil {
-			renderProjectsPage(w, r, deps.database, projectsPageState{CreateError: "projekt konnte nicht auf dem caldav-server angelegt werden", CreateValue: projectName}, http.StatusOK)
+			renderProjectsPage(w, r, deps.database, projectsPageState{CreateError: projectCreateRemoteErrorMessage(err), CreateValue: projectName}, http.StatusOK)
 			return
 		}
 
@@ -72,5 +69,28 @@ func ProjectCreate(deps projectCreateDependencies) http.HandlerFunc {
 		}
 
 		renderProjectsPage(w, r, deps.database, projectsPageState{CreateSuccess: "projekt wurde angelegt"}, http.StatusCreated)
+	}
+}
+
+func projectCreateRemoteErrorMessage(err error) string {
+	statusCode, ok := caldav.HTTPStatusCode(err)
+	if !ok {
+		return "projekt konnte nicht auf dem caldav-server angelegt werden"
+	}
+	statusText := strconv.Itoa(statusCode)
+
+	switch {
+	case statusCode == http.StatusUnauthorized || statusCode == http.StatusForbidden:
+		return "caldav-server hat die kalenderanlage verweigert (status " + statusText + ")"
+	case statusCode == http.StatusNotFound:
+		return "caldav-kalenderziel wurde nicht gefunden (status 404)"
+	case statusCode == http.StatusMethodNotAllowed || statusCode == http.StatusNotImplemented:
+		return "caldav-server unterstützt kalenderanlage hier nicht (status " + statusText + ")"
+	case statusCode == http.StatusConflict:
+		return "projekt konnte wegen eines kalenderpfad-konflikts nicht angelegt werden (status 409)"
+	case statusCode >= http.StatusInternalServerError:
+		return "caldav-serverfehler beim anlegen des projekts (status " + statusText + ")"
+	default:
+		return "projekt konnte nicht auf dem caldav-server angelegt werden (status " + statusText + ")"
 	}
 }

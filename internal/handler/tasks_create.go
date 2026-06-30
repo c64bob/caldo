@@ -242,11 +242,7 @@ func createQuickAddProject(ctx context.Context, r *http.Request, deps taskCreate
 	if err != nil {
 		return db.TaskProject{}, fmt.Errorf("create quick add project: load caldav capabilities: %w", err)
 	}
-	createdCalendar, err := deps.calendar.CreateCalendar(ctx, caldav.Credentials{
-		URL:      credentials.URL,
-		Username: credentials.Username,
-		Password: credentials.Password,
-	}, projectName)
+	createdCalendar, err := deps.calendar.CreateCalendar(ctx, calendarOperationCredentials(credentials, capabilities), projectName)
 	if err != nil {
 		return db.TaskProject{}, fmt.Errorf("%w: %w", errQuickAddProjectCreateFailed, err)
 	}

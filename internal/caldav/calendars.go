@@ -41,6 +41,24 @@ type CalendarClient struct {
 	executor *retryExecutor
 }
 
+// HTTPStatusError records a safe upstream HTTP status from a CalDAV response.
+type HTTPStatusError struct {
+	StatusCode int
+}
+
+func (e *HTTPStatusError) Error() string {
+	return fmt.Sprintf("unexpected status %d", e.StatusCode)
+}
+
+// HTTPStatusCode returns a safe upstream HTTP status found in an error chain.
+func HTTPStatusCode(err error) (int, bool) {
+	var statusErr *HTTPStatusError
+	if errors.As(err, &statusErr) {
+		return statusErr.StatusCode, true
+	}
+	return 0, false
+}
+
 // NewCalendarClient constructs a calendar client with default timeout settings.
 func NewCalendarClient(httpClient *http.Client) *CalendarClient {
 	if httpClient == nil {
@@ -140,7 +158,7 @@ func (c *CalendarClient) CreateCalendar(ctx context.Context, credentials Credent
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusCreated && response.StatusCode != http.StatusOK {
-		return Calendar{}, fmt.Errorf("%w: unexpected status %d", ErrCalendarCreateFailed, response.StatusCode)
+		return Calendar{}, fmt.Errorf("%w: %w", ErrCalendarCreateFailed, &HTTPStatusError{StatusCode: response.StatusCode})
 	}
 
 	return Calendar{

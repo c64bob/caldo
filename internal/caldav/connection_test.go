@@ -30,9 +30,9 @@ func TestConnectionTesterDetectsCapabilities(t *testing.T) {
 		w.Header().Set("DAV", "1, 2, calendar-access, sync-collection")
 		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 		w.WriteHeader(http.StatusMultiStatus)
-		_, _ = w.Write([]byte(`<d:multistatus xmlns:d="DAV:" xmlns:cs="http://calendarserver.org/ns/">
+		_, _ = w.Write([]byte(`<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav" xmlns:cs="http://calendarserver.org/ns/">
 <d:response>
-<d:propstat><d:prop><d:getetag>\"123\"</d:getetag><cs:getctag>ctag-1</cs:getctag></d:prop></d:propstat>
+<d:propstat><d:prop><d:getetag>\"123\"</d:getetag><cs:getctag>ctag-1</cs:getctag><c:calendar-home-set><d:href>/remote.php/dav/calendars/alice/</d:href></c:calendar-home-set></d:prop></d:propstat>
 </d:response></d:multistatus>`))
 	}))
 	defer server.Close()
@@ -49,6 +49,9 @@ func TestConnectionTesterDetectsCapabilities(t *testing.T) {
 
 	if !capabilities.WebDAVSync || !capabilities.CTag || !capabilities.ETag || !capabilities.FullScan {
 		t.Fatalf("unexpected capabilities: %#v", capabilities)
+	}
+	if capabilities.CalendarHomeSet != "/remote.php/dav/calendars/alice/" {
+		t.Fatalf("unexpected calendar home set: %#v", capabilities)
 	}
 }
 

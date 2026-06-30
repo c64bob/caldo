@@ -8,10 +8,11 @@ import (
 
 // CalDAVServerCapabilities stores globally detected account/server capabilities.
 type CalDAVServerCapabilities struct {
-	WebDAVSync bool `json:"webdav_sync"`
-	CTag       bool `json:"ctag"`
-	ETag       bool `json:"etag"`
-	FullScan   bool `json:"fullscan"`
+	WebDAVSync      bool   `json:"webdav_sync"`
+	CTag            bool   `json:"ctag"`
+	ETag            bool   `json:"etag"`
+	FullScan        bool   `json:"fullscan"`
+	CalendarHomeSet string `json:"calendar_home_set,omitempty"`
 }
 
 // SaveCalDAVServerCapabilities persists detected CalDAV server capabilities in the settings singleton.

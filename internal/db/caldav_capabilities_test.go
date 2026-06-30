@@ -16,10 +16,11 @@ func TestSaveCalDAVServerCapabilitiesPersistsJSON(t *testing.T) {
 	})
 
 	capabilities := CalDAVServerCapabilities{
-		WebDAVSync: true,
-		CTag:       true,
-		ETag:       false,
-		FullScan:   true,
+		WebDAVSync:      true,
+		CTag:            true,
+		ETag:            false,
+		FullScan:        true,
+		CalendarHomeSet: "/remote.php/dav/calendars/alice/",
 	}
 	if err := database.SaveCalDAVServerCapabilities(context.Background(), capabilities); err != nil {
 		t.Fatalf("save caldav server capabilities: %v", err)

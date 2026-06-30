@@ -266,3 +266,78 @@ func TestNavigationOverviewPageRendersLabelLinksAndCounters(t *testing.T) {
 		}
 	}
 }
+
+func TestLabelsOverviewPageRendersManagementForms(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	var output bytes.Buffer
+	err := LabelsOverviewPage([]NavigationOverviewItem{{
+		ID:              "label-1",
+		Name:            "Büro",
+		Href:            "/labels/label-1",
+		Count:           1,
+		HasCount:        true,
+		Meta:            "2 Aufgaben gesamt",
+		DeleteTaskCount: 2,
+	}}, LabelFeedback{}).Render(ctx, &output)
+	if err != nil {
+		t.Fatalf("render labels page: %v", err)
+	}
+
+	body := output.String()
+	for _, want := range []string{
+		`data-label-management-list`,
+		`data-label-rename-form`,
+		`action="/labels/label-1"`,
+		`hx-patch="/labels/label-1"`,
+		`name="name" value="Büro"`,
+		`Label umbenennen`,
+		`data-label-delete-form`,
+		`hx-delete="/labels/label-1"`,
+		`name="confirmation_name"`,
+		`Dieses Label wird aus 2 Aufgaben entfernt. Zum Löschen Büro eingeben.`,
+		`Endgültig löschen`,
+		`X-CSRF-Token&#34;:&#34;token-123`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("labels page missing %q in %s", want, body)
+		}
+	}
+}
+
+func TestLabelsOverviewPageRendersFeedback(t *testing.T) {
+	t.Parallel()
+
+	var output bytes.Buffer
+	err := LabelsOverviewPage([]NavigationOverviewItem{{
+		ID:              "label-1",
+		Name:            "Büro",
+		Href:            "/labels/label-1",
+		Meta:            "1 Aufgabe gesamt",
+		DeleteTaskCount: 1,
+		RenameError:     "label konnte nicht umbenannt werden",
+		RenameValue:     "Buro",
+		DeleteError:     "bestätigung stimmt nicht überein",
+		DeleteValue:     "Buro",
+	}}, LabelFeedback{PageSuccess: "label wurde gelöscht"}).Render(context.Background(), &output)
+	if err != nil {
+		t.Fatalf("render labels page: %v", err)
+	}
+
+	body := output.String()
+	for _, want := range []string{
+		`data-label-page-success`,
+		`label wurde gelöscht`,
+		`data-label-rename-error`,
+		`label konnte nicht umbenannt werden`,
+		`value="Buro"`,
+		`data-label-delete-error`,
+		`bestätigung stimmt nicht überein`,
+		`open`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("labels page missing %q in %s", want, body)
+		}
+	}
+}

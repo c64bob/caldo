@@ -514,6 +514,33 @@ func TestNewRouterFilterMutatingRoutesRequireCSRFToken(t *testing.T) {
 	}
 }
 
+func TestNewRouterLabelMutatingRoutesRequireCSRFToken(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		method string
+		path   string
+	}{
+		{method: http.MethodPatch, path: "/labels/label-1"},
+		{method: http.MethodDelete, path: "/labels/label-1"},
+	} {
+		t.Run(tc.method+" "+tc.path, func(t *testing.T) {
+			t.Parallel()
+
+			logger := logging.New(bytes.NewBuffer(nil), "production", "info")
+			responseRecorder := httptest.NewRecorder()
+			request := httptest.NewRequest(tc.method, tc.path, nil)
+			request.Header.Set("X-Forwarded-User", "alice")
+
+			NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
+
+			if responseRecorder.Code != http.StatusForbidden {
+				t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusForbidden)
+			}
+		})
+	}
+}
+
 func TestNewRouterTaskLabelsRouteRequiresCSRFToken(t *testing.T) {
 	t.Parallel()
 

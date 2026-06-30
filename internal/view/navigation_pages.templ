@@ -53,6 +53,19 @@ templ NavigationOverviewPage(heading string, emptyTitle string, items []Navigati
 	</section>
 }
 
+templ LabelsOverviewPage(items []NavigationOverviewItem, feedback LabelFeedback) {
+	<section class="caldo-page">
+		if feedback.PageSuccess != "" {
+			<p class="caldo-alert caldo-alert-success" data-label-page-success aria-live="polite">{ feedback.PageSuccess }</p>
+		}
+		if len(items) == 0 {
+			@EmptyState("Keine Labels", "Die Gruppe ist eingerichtet, enthält aber noch keine Einträge.")
+		} else {
+			@LabelsOverviewList(items)
+		}
+	</section>
+}
+
 templ NavigationOverviewList(items []NavigationOverviewItem) {
 	<ul class="caldo-list" data-navigation-overview>
 		for _, item := range items {
@@ -75,6 +88,30 @@ templ NavigationOverviewList(items []NavigationOverviewItem) {
 					}
 					if projectCanDelete(item) {
 						@ProjectDeleteForm(item)
+					}
+				</div>
+			</li>
+		}
+	</ul>
+}
+
+templ LabelsOverviewList(items []NavigationOverviewItem) {
+	<ul class="caldo-list" data-navigation-overview data-label-management-list>
+		for _, item := range items {
+			<li class="caldo-list-row">
+				<div class="space-y-3">
+					<div>
+						<a class="caldo-list-link" href={ templ.URL(item.Href) }>{ item.Name }</a>
+						<p class="caldo-meta mt-1">
+							{ item.Meta }
+							if item.HasCount {
+								 · { navCountText(item.Count) } offen
+							}
+						</p>
+					</div>
+					if labelCanManage(item) {
+						@LabelRenameForm(item)
+						@LabelDeleteForm(item)
 					}
 				</div>
 			</li>
@@ -134,6 +171,63 @@ templ ProjectDeleteForm(item NavigationOverviewItem) {
 			<label class="caldo-label" for={ "project-delete-" + item.ID }>Bestätigung</label>
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
 				<input id={ "project-delete-" + item.ID } class="caldo-input sm:max-w-sm" type="text" name="confirmation_name" value={ projectDeleteValue(item) } autocomplete="off" required data-project-delete-confirmation/>
+				<button type="submit" class="caldo-button caldo-button-danger-solid">Endgültig löschen</button>
+				<span class="htmx-indicator caldo-meta" aria-live="polite">Löscht ...</span>
+			</div>
+		</form>
+	</details>
+}
+
+templ LabelRenameForm(item NavigationOverviewItem) {
+	<form
+		class="space-y-2"
+		method="post"
+		action={ labelRenamePath(item) }
+		hx-patch={ labelRenamePath(item) }
+		hx-target="body"
+		hx-swap="outerHTML"
+		hx-push-url="false"
+		hx-disabled-elt="find button"
+		hx-headers={ "{\"X-CSRF-Token\":\"" + CSRFToken(ctx) + "\"}" }
+		data-label-rename-form
+	>
+		if item.RenameSuccess != "" {
+			<p class="caldo-alert caldo-alert-success" data-label-rename-success aria-live="polite">{ item.RenameSuccess }</p>
+		}
+		if item.RenameError != "" {
+			<p class="caldo-alert caldo-alert-error" data-label-rename-error aria-live="polite">{ item.RenameError }</p>
+		}
+		<label class="caldo-label" for={ "label-rename-" + item.ID }>Label umbenennen</label>
+		<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+			<input id={ "label-rename-" + item.ID } class="caldo-input sm:max-w-sm" type="text" name="name" value={ labelRenameValue(item) } autocomplete="off" required data-label-rename-name/>
+			<button type="submit" class="caldo-button caldo-button-secondary">Umbenennen</button>
+			<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
+		</div>
+	</form>
+}
+
+templ LabelDeleteForm(item NavigationOverviewItem) {
+	<details class="space-y-2" open?={ item.DeleteError != "" } data-label-delete-panel>
+		<summary class="caldo-button caldo-button-danger">Label löschen</summary>
+		<form
+			class="space-y-2"
+			method="post"
+			action={ labelDeletePath(item) }
+			hx-delete={ labelDeletePath(item) }
+			hx-target="body"
+			hx-swap="outerHTML"
+			hx-push-url="false"
+			hx-disabled-elt="find button"
+			hx-headers={ "{\"X-CSRF-Token\":\"" + CSRFToken(ctx) + "\"}" }
+			data-label-delete-form
+		>
+			if item.DeleteError != "" {
+				<p class="caldo-alert caldo-alert-error" data-label-delete-error aria-live="polite">{ item.DeleteError }</p>
+			}
+			<p class="caldo-meta" data-label-delete-summary>{ labelDeleteConfirmationText(item) }</p>
+			<label class="caldo-label" for={ "label-delete-" + item.ID }>Bestätigung</label>
+			<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+				<input id={ "label-delete-" + item.ID } class="caldo-input sm:max-w-sm" type="text" name="confirmation_name" value={ labelDeleteValue(item) } autocomplete="off" required data-label-delete-confirmation/>
 				<button type="submit" class="caldo-button caldo-button-danger-solid">Endgültig löschen</button>
 				<span class="htmx-indicator caldo-meta" aria-live="polite">Löscht ...</span>
 			</div>

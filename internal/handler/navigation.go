@@ -125,12 +125,13 @@ func navigationLabelsView(items []db.NavigationListItem) []view.NavigationOvervi
 	result := make([]view.NavigationOverviewItem, 0, len(items))
 	for _, item := range items {
 		result = append(result, view.NavigationOverviewItem{
-			ID:       item.ID,
-			Name:     item.Name,
-			Href:     view.LabelHref(item.ID),
-			Count:    item.OpenTaskCount,
-			HasCount: true,
-			Meta:     labelOverviewMeta(item.TaskCount),
+			ID:              item.ID,
+			Name:            item.Name,
+			Href:            view.LabelHref(item.ID),
+			Count:           item.OpenTaskCount,
+			HasCount:        true,
+			Meta:            labelOverviewMeta(item.TaskCount),
+			DeleteTaskCount: item.TaskCount,
 		})
 	}
 	return result

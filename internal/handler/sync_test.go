@@ -90,7 +90,7 @@ func TestManualSyncHandlerMarksErrorWhenSyncFails(t *testing.T) {
 	}
 
 	waitForSyncStatus(t, database, func(status db.SyncStatus) bool {
-		return status.State == "idle" && status.LastErrorCode.Valid && status.LastErrorCode.String == "sync_failed"
+		return status.State == "error" && status.LastErrorCode.Valid && status.LastErrorCode.String == "sync_failed"
 	})
 }
 

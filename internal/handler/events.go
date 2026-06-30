@@ -1,11 +1,16 @@
 package handler
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 
+	"caldo/internal/db"
+	"caldo/internal/view"
 	"github.com/google/uuid"
 )
 
@@ -75,7 +80,9 @@ func Events(deps syncDependencies) http.HandlerFunc {
 		defer deps.broker.unsubscribe(subscription)
 
 		connected, _ := json.Marshal(map[string]string{"connection_id": subscription.id})
-		fmt.Fprintf(w, "event: connected\ndata: %s\n\n", connected)
+		if err := writeSSEEvent(w, "connected", connected); err != nil {
+			return
+		}
 		flusher.Flush()
 
 		for {
@@ -87,9 +94,53 @@ func Events(deps syncDependencies) http.HandlerFunc {
 				if err != nil {
 					continue
 				}
-				fmt.Fprintf(w, "event: app-event\ndata: %s\n\n", encoded)
+				if err := writeSSEEvent(w, "app-event", encoded); err != nil {
+					return
+				}
+				if event.Type == "sync" && event.Resource == "sync_status" {
+					if html, ok := syncStatusBadgeHTML(r.Context(), deps.database); ok {
+						if err := writeSSEEvent(w, "sync-status", []byte(html)); err != nil {
+							return
+						}
+					}
+				}
 				flusher.Flush()
 			}
 		}
 	}
+}
+
+func writeSSEEvent(w io.Writer, eventName string, data []byte) error {
+	if _, err := fmt.Fprintf(w, "event: %s\n", eventName); err != nil {
+		return err
+	}
+	lines := bytes.Split(data, []byte("\n"))
+	if len(lines) > 0 && len(lines[len(lines)-1]) == 0 {
+		lines = lines[:len(lines)-1]
+	}
+	if len(lines) == 0 {
+		lines = [][]byte{{}}
+	}
+	for _, line := range lines {
+		if _, err := fmt.Fprintf(w, "data: %s\n", line); err != nil {
+			return err
+		}
+	}
+	_, err := fmt.Fprint(w, "\n")
+	return err
+}
+
+func syncStatusBadgeHTML(ctx context.Context, database *db.Database) (string, bool) {
+	if database == nil {
+		return "", false
+	}
+	status, err := database.LoadSyncStatus(ctx)
+	if err != nil {
+		return "", false
+	}
+	var rendered bytes.Buffer
+	if err := view.SyncStatusBadge(status.State, formatSyncTime(status.LastSuccessAt)).Render(ctx, &rendered); err != nil {
+		return "", false
+	}
+	return rendered.String(), true
 }

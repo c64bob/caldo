@@ -55,7 +55,7 @@ func TestSettingsPageShowsSavedCalDAVMessageAndSyncState(t *testing.T) {
 	for _, want := range []string{
 		`caldav-einstellungen gespeichert`,
 		`data-caldav-test-result="success"`,
-		`data-settings-sync-state="idle"`,
+		`data-settings-sync-state="error"`,
 		`Letzte Fehlerklasse`,
 		`sync nicht verfügbar`,
 	} {

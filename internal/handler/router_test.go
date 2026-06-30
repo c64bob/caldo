@@ -183,6 +183,43 @@ func TestNewRouterRendersBaseLayoutOnRoot(t *testing.T) {
 	}
 }
 
+func TestNewRouterRendersPersistedSyncStatusInBaseLayout(t *testing.T) {
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if err := database.FinishManualSyncSuccess(context.Background()); err != nil {
+		t.Fatalf("finish manual sync: %v", err)
+	}
+	status, err := database.LoadSyncStatus(context.Background())
+	if err != nil {
+		t.Fatalf("load sync status: %v", err)
+	}
+	lastSuccess := formatSyncTime(status.LastSuccessAt)
+	if lastSuccess == "nie" {
+		t.Fatal("expected seeded sync status to have last success time")
+	}
+
+	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
+	responseRecorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/today", nil)
+	request.Header.Set("X-Forwarded-User", "alice")
+
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil).ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d body=%q", responseRecorder.Code, http.StatusOK, responseRecorder.Body.String())
+	}
+	body := responseRecorder.Body.String()
+	if !strings.Contains(body, "Letzter Sync: "+lastSuccess) {
+		t.Fatalf("expected base layout to include persisted last sync %q in %s", lastSuccess, body)
+	}
+	if strings.Contains(body, "Letzter Sync: nie") {
+		t.Fatalf("expected base layout not to render fallback last sync: %s", body)
+	}
+}
+
 func findResponseCookie(rr *httptest.ResponseRecorder, name string) *http.Cookie {
 	for _, cookie := range rr.Result().Cookies() {
 		if cookie.Name == name {

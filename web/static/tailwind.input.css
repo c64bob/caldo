@@ -111,7 +111,7 @@
 	}
 
 	.caldo-page {
-		@apply w-full max-w-4xl space-y-4;
+		@apply w-full max-w-6xl space-y-4;
 	}
 
 	.caldo-app-shell {
@@ -278,13 +278,13 @@
 
 	@media (min-width: 768px) {
 		.caldo-content {
-			@apply max-w-3xl;
+			@apply max-w-5xl;
 		}
 	}
 
 	@media (min-width: 1280px) {
 		.caldo-content {
-			@apply max-w-4xl;
+			@apply max-w-6xl;
 		}
 	}
 
@@ -778,7 +778,7 @@
 	}
 
 	.caldo-task-row {
-		@apply border-b px-0 py-3 transition;
+		@apply border-b px-0 py-2 transition;
 		background: transparent;
 		border-color: var(--caldo-border);
 		overflow-wrap: anywhere;
@@ -810,6 +810,12 @@
 
 	.caldo-task-row-grid {
 		@apply grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] gap-2 px-1;
+	}
+
+	@media (min-width: 1024px) {
+		.caldo-task-row-grid {
+			@apply gap-2.5;
+		}
 	}
 
 	.caldo-task-row-subtask .caldo-task-row-grid {
@@ -867,11 +873,42 @@
 	}
 
 	.caldo-task-content {
-		@apply min-w-0 space-y-1;
+		@apply min-w-0 space-y-0.5;
+	}
+
+	@media (min-width: 1024px) {
+		.caldo-task-content {
+			@apply grid min-w-0 items-start gap-x-4 gap-y-1;
+			grid-template-columns: minmax(0, 1fr) minmax(13rem, 22rem);
+		}
+
+		.caldo-task-content > :not([hidden]) ~ :not([hidden]) {
+			margin-bottom: 0;
+			margin-top: 0;
+		}
+
+		.caldo-task-title-line,
+		.caldo-task-description {
+			grid-column: 1;
+		}
+
+		.caldo-task-meta-line {
+			align-self: start;
+			grid-column: 2;
+			grid-row: 1 / span 2;
+			justify-content: flex-end;
+			padding-top: 0.125rem;
+		}
+
+		.caldo-task-attachments,
+		.caldo-task-actions,
+		.caldo-task-action-error {
+			grid-column: 1 / -1;
+		}
 	}
 
 	.caldo-task-title-line {
-		@apply flex min-w-0 items-start gap-2;
+		@apply flex min-w-0 items-start gap-1.5;
 	}
 
 	.caldo-task-title {
@@ -940,7 +977,7 @@
 
 	.caldo-task-meta-line,
 	.caldo-task-attachments {
-		@apply flex min-w-0 flex-wrap items-center gap-1.5;
+		@apply flex min-w-0 flex-wrap items-center gap-1;
 	}
 
 	.caldo-task-chip,
@@ -1033,15 +1070,19 @@
 	}
 
 	.caldo-task-actions {
-		@apply mt-2 flex min-w-0 flex-wrap items-center gap-2;
+		@apply mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5;
 	}
 
 	.caldo-task-action-form {
-		@apply flex min-w-0 flex-wrap items-center gap-2;
+		@apply flex min-w-0 flex-wrap items-center gap-1.5;
+	}
+
+	.caldo-task-actions .caldo-button {
+		@apply min-h-7 px-2 py-1 text-xs leading-4;
 	}
 
 	.caldo-task-action-error {
-		@apply mt-2 py-2;
+		@apply mt-1.5 py-1.5;
 	}
 
 	.caldo-task-edit-open,

@@ -193,6 +193,7 @@ templ BaseLayout(title string, content templ.Component) {
 						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> { Text(ctx).Then } <kbd class="caldo-kbd">F</kbd> { Text(ctx).ShortcutFilters }</li>
 						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> { Text(ctx).Then } <kbd class="caldo-kbd">C</kbd> { Text(ctx).ShortcutConflicts }</li>
 						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> { Text(ctx).Then } <kbd class="caldo-kbd">E</kbd> { Text(ctx).ShortcutSettings }</li>
+						<li class="caldo-menu-item"><span class="caldo-kbd" aria-hidden="true">-</span> { Text(ctx).MultiEditUnavailable }</li>
 						<li class="caldo-menu-item"><kbd class="caldo-kbd">?</kbd> { Text(ctx).ShortcutOpenHelp }</li>
 					</ul>
 				</div>

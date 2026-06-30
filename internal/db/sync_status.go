@@ -64,7 +64,7 @@ func (d *Database) FinishManualSyncError(ctx context.Context, errorCode string) 
 	d.WriteMu.Lock()
 	defer d.WriteMu.Unlock()
 	now := time.Now().UTC()
-	if _, err := d.Conn.ExecContext(ctx, `UPDATE settings SET sync_state='idle', sync_last_finished_at=?, sync_last_error_code=?, updated_at=CURRENT_TIMESTAMP WHERE id='default'`, now, errorCode); err != nil {
+	if _, err := d.Conn.ExecContext(ctx, `UPDATE settings SET sync_state='error', sync_last_finished_at=?, sync_last_error_code=?, updated_at=CURRENT_TIMESTAMP WHERE id='default'`, now, errorCode); err != nil {
 		return fmt.Errorf("finish manual sync error: %w", err)
 	}
 	return nil

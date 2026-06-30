@@ -795,6 +795,8 @@ async function exerciseSSESyncStatus(page) {
 
   await gotoApp(page, '/today');
   try {
+    const syncStatus = page.locator('.caldo-topbar #sync-status');
+    await expect(syncStatus).toBeVisible();
     const eventPromise = page.evaluate(() => new Promise((resolve, reject) => {
       window.__caldoSSEConnected = false;
       const source = new EventSource('/events');
@@ -818,9 +820,20 @@ async function exerciseSSESyncStatus(page) {
     }));
 
     await expect.poll(() => page.evaluate(() => window.__caldoSSEConnected === true)).toBe(true);
-    await manualSync(page);
+    await ensureBrowserCSRFCookie(page);
+    await syncStatus.getByRole('button', { name: 'Jetzt synchronisieren' }).click();
     const event = await eventPromise;
     expect(event).toMatchObject({ type: 'sync', resource: 'sync_status' });
+    await expect.poll(async () => {
+      const response = await page.request.get(appURL('/sync/status'), {
+        headers: { [state.proxyUserHeader]: 'e2e-user' },
+        failOnStatusCode: false
+      });
+      if (response.status() !== 200) return '';
+      return response.text();
+    }, { timeout: 30_000 }).toMatch(/Status: idle[\s\S]*Letzter Sync: (?!nie)/);
+    await expect.poll(async () => (await syncStatus.textContent()) || '').toMatch(/Status: idle[\s\S]*Letzter Sync: (?!nie)/);
+    await expect(page.locator('[data-write-status]')).not.toContainText('Gespeichert');
   } finally {
     await page.unroute(eventsRoute);
   }

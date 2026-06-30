@@ -89,6 +89,66 @@ func TestBaseLayoutUsesComponentFoundationClasses(t *testing.T) {
 	}
 }
 
+func TestBaseLayoutUsesSyncStatusFromContext(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	ctx = WithAssetManifest(ctx, assets.Manifest{
+		"app.css":       "app.hash.css",
+		"htmx.min.js":   "htmx.hash.js",
+		"htmx-sse.js":   "htmx-sse.hash.js",
+		"alpine.min.js": "alpine.hash.js",
+		"app.js":        "app.hash.js",
+	})
+	ctx = WithSyncStatus(ctx, SyncStatusView{State: "idle", LastSuccess: "02.01.2026 03:04"})
+
+	component := BaseLayout("Heute", EmptyContent())
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render layout: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`Status: idle`,
+		`Letzter Sync: 02.01.2026 03:04`,
+		`id="sync-status"`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected layout sync status to include %q in %s", want, output)
+		}
+	}
+}
+
+func TestBaseLayoutDoesNotOpenNormalEventsStreamByDefault(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	ctx = WithAssetManifest(ctx, assets.Manifest{
+		"app.css":       "app.hash.css",
+		"htmx.min.js":   "htmx.hash.js",
+		"htmx-sse.js":   "htmx-sse.hash.js",
+		"alpine.min.js": "alpine.hash.js",
+		"app.js":        "app.hash.js",
+	})
+
+	component := BaseLayout("Caldo Setup", EmptyContent())
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render layout: %v", err)
+	}
+
+	output := rendered.String()
+	if strings.Contains(output, `sse-connect="/events"`) {
+		t.Fatalf("expected default layout not to open normal events stream: %s", output)
+	}
+	if !strings.Contains(output, `Letzter Sync: nie`) {
+		t.Fatalf("expected default layout to keep sync status fallback: %s", output)
+	}
+}
+
 func TestBaseLayoutUsesUIPreferences(t *testing.T) {
 	t.Parallel()
 

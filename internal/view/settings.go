@@ -233,7 +233,7 @@ func renderSyncSettings(w io.Writer, csrfToken string, settings db.AppSettings, 
 <button type="submit" class="caldo-button caldo-button-secondary">%s</button>
 <span class="htmx-indicator caldo-meta ml-2" aria-live="polite">%s</span>
 </form>
-	<form class="mt-3" method="post" action="/sync/manual" hx-post="/sync/manual" hx-target="#sync-status" hx-swap="outerHTML" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
+		<form class="mt-3" method="post" action="/sync/manual" data-sync-request hx-post="/sync/manual" hx-target="#sync-status" hx-swap="innerHTML" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
 <button type="submit" class="caldo-button caldo-button-primary">%s</button>
 <span class="htmx-indicator caldo-meta ml-2" aria-live="polite">%s</span>
 </form>

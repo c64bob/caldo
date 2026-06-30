@@ -12,7 +12,14 @@ const (
 	assetManifestKey contextKey = "asset_manifest"
 	csrfTokenKey     contextKey = "csrf_token"
 	navigationKey    contextKey = "navigation"
+	syncStatusKey    contextKey = "sync_status"
 )
+
+// SyncStatusView contains the compact sync status shown in the app shell.
+type SyncStatusView struct {
+	State       string
+	LastSuccess string
+}
 
 // WithAssetManifest stores the static asset manifest in request context.
 func WithAssetManifest(ctx context.Context, manifest assets.Manifest) context.Context {
@@ -43,4 +50,24 @@ func WithCSRFToken(ctx context.Context, token string) context.Context {
 func CSRFToken(ctx context.Context) string {
 	token, _ := ctx.Value(csrfTokenKey).(string)
 	return token
+}
+
+// WithSyncStatus stores the app-shell sync status in request context.
+func WithSyncStatus(ctx context.Context, status SyncStatusView) context.Context {
+	return context.WithValue(ctx, syncStatusKey, status)
+}
+
+// CurrentSyncStatus returns the app-shell sync status from request context.
+func CurrentSyncStatus(ctx context.Context) SyncStatusView {
+	status, ok := ctx.Value(syncStatusKey).(SyncStatusView)
+	if !ok {
+		return SyncStatusView{State: "idle", LastSuccess: "nie"}
+	}
+	if status.State == "" {
+		status.State = "idle"
+	}
+	if status.LastSuccess == "" {
+		status.LastSuccess = "nie"
+	}
+	return status
 }

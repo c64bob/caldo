@@ -84,6 +84,10 @@
     return element ? element.closest(selector) : null;
   }
 
+  function isSyncRequestElement(target) {
+    return !!closestElement(target, '[data-sync-request]');
+  }
+
   function normalizeThemeMode(mode) {
     return mode === 'light' || mode === 'dark' || mode === 'system' ? mode : 'system';
   }
@@ -1914,6 +1918,10 @@
   document.body.addEventListener('htmx:beforeRequest', function (event) {
     var method = ((event.detail && event.detail.requestConfig && event.detail.requestConfig.verb) || '').toUpperCase();
     if (!method || method === 'GET') return;
+    if (isSyncRequestElement(event.detail && event.detail.elt)) {
+      setWriteStatus(null, '');
+      return;
+    }
     beginWriteRequest('Speichern ...');
     var quickAddOverlayRequest = closestElement(event.detail && event.detail.elt, '[data-quick-add-overlay]');
     if (quickAddOverlayRequest) {
@@ -1971,9 +1979,15 @@
   document.body.addEventListener('htmx:afterRequest', function (event) {
     var method = ((event.detail && event.detail.requestConfig && event.detail.requestConfig.verb) || '').toUpperCase();
     if (!method || method === 'GET') return;
+    var successful = !!(event.detail && event.detail.successful);
+    if (isSyncRequestElement(event.detail && event.detail.elt)) {
+      if (!successful) {
+        setWriteStatus('error', 'Synchronisierung konnte nicht gestartet werden.');
+      }
+      return;
+    }
     finishWriteRequest();
 
-    var successful = !!(event.detail && event.detail.successful);
     if (!successful) {
       setWriteStatus('error', 'Speichern fehlgeschlagen. Änderungen prüfen.');
       var failedQuickAddOverlaySave = closestElement(event.detail && event.detail.elt, '[data-quick-add-overlay-save-form]');

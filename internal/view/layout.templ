@@ -135,7 +135,7 @@ templ BaseLayout(title string, content templ.Component) {
 						<div class="caldo-topbar-actions">
 							<a href="/search" class="caldo-button caldo-button-secondary">{ Text(ctx).Search }</a>
 							<a href="/quick-add" class="caldo-button caldo-button-primary" data-quick-add-open aria-controls="quick-add-overlay" aria-haspopup="dialog">{ Text(ctx).NewTask }</a>
-							@SyncStatusBadge("idle", "nie")
+							@SyncStatusFrame(CurrentSyncStatus(ctx).State, CurrentSyncStatus(ctx).LastSuccess)
 							<button
 								type="button"
 								data-theme-toggle

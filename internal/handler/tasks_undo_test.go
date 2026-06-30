@@ -20,7 +20,8 @@ func TestTaskUndoSuccessDeletesSnapshot(t *testing.T) {
 	key := bytes.Repeat([]byte{0x6a}, 32)
 	_ = database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"})
 
-	h := TaskUndo(taskUpdateDependencies{database: database, encryptionKey: key, todos: &stubTaskUpdateTodoClient{updateETag: `"etag-2"`}})
+	stub := &stubTaskUpdateTodoClient{updateETag: `"etag-3"`}
+	h := TaskUndo(taskUpdateDependencies{database: database, encryptionKey: key, todos: stub})
 	req := httptest.NewRequest(http.MethodPost, "/tasks/undo", nil)
 	req.Header.Set("X-Tab-ID", "tab-1")
 	req = requestWithSession(req, "session-1")
@@ -32,7 +33,11 @@ func TestTaskUndoSuccessDeletesSnapshot(t *testing.T) {
 	if !strings.Contains(rr.Body.String(), "Rückgängig ausgeführt.") {
 		t.Fatalf("response missing undo result fragment: %q", rr.Body.String())
 	}
+	if stub.updateCalls != 1 || stub.lastUpdateETag != `"etag-2"` {
+		t.Fatalf("undo should write once with current etag, calls=%d etag=%q", stub.updateCalls, stub.lastUpdateETag)
+	}
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE session_id='session-1' AND tab_id='tab-1';`, 0)
+	assertSingleTextResult(t, database, `SELECT etag FROM tasks WHERE id='task-1';`, `"etag-3"`)
 }
 
 func TestTaskUndoPreconditionFailedMarksConflictKeepsSnapshot(t *testing.T) {
@@ -42,7 +47,8 @@ func TestTaskUndoPreconditionFailedMarksConflictKeepsSnapshot(t *testing.T) {
 	key := bytes.Repeat([]byte{0x6b}, 32)
 	_ = database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"})
 
-	h := TaskUndo(taskUpdateDependencies{database: database, encryptionKey: key, todos: &stubTaskUpdateTodoClient{updateErr: caldav.ErrPreconditionFailed}})
+	stub := &stubTaskUpdateTodoClient{updateErr: caldav.ErrPreconditionFailed}
+	h := TaskUndo(taskUpdateDependencies{database: database, encryptionKey: key, todos: stub})
 	req := httptest.NewRequest(http.MethodPost, "/tasks/undo", nil)
 	req.Header.Set("X-Tab-ID", "tab-1")
 	req = requestWithSession(req, "session-1")
@@ -50,6 +56,9 @@ func TestTaskUndoPreconditionFailedMarksConflictKeepsSnapshot(t *testing.T) {
 	h.ServeHTTP(rr, req)
 	if rr.Code != http.StatusConflict {
 		t.Fatalf("status=%d body=%q", rr.Code, rr.Body.String())
+	}
+	if stub.updateCalls != 1 || stub.lastUpdateETag != `"etag-2"` {
+		t.Fatalf("undo conflict should be detected by caldav write with current etag, calls=%d etag=%q", stub.updateCalls, stub.lastUpdateETag)
 	}
 	assertSingleTextResult(t, database, `SELECT sync_status FROM tasks WHERE id='task-1';`, "conflict")
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE session_id='session-1' AND tab_id='tab-1';`, 1)
@@ -163,7 +172,7 @@ INSERT INTO tasks (
     id, project_id, uid, href, etag, server_version, title, status, raw_vtodo, base_vtodo,
     project_name, sync_status, created_at, updated_at
 ) VALUES (
-    'task-1', 'project-1', 'uid-1', '/cal/inbox/uid-1.ics', '"etag-1"', 2, 'new', 'needs-action',
+    'task-1', 'project-1', 'uid-1', '/cal/inbox/uid-1.ics', '"etag-2"', 2, 'new', 'needs-action',
     'BEGIN:VTODO\nUID:uid-1\nSUMMARY:new\nEND:VTODO', 'BEGIN:VTODO\nUID:uid-1\nSUMMARY:new\nEND:VTODO',
     'Inbox', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 );

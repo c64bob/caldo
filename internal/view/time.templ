@@ -1,0 +1,9 @@
+package view
+
+templ LocalDateTime(value LocalDateTimeView) {
+	if value.ISO == "" {
+		{ value.Text }
+	} else {
+		<time datetime={ value.ISO } data-local-date-time>{ value.Text }</time>
+	}
+}

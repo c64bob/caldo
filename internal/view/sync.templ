@@ -1,14 +1,20 @@
 package view
 
-templ SyncStatusFrame(state string, lastSuccess string) {
+templ SyncStatusFrame(state string, lastSuccess LocalDateTimeView) {
 	<div class="caldo-sync-status" id="sync-status">
 		@SyncStatusBadge(state, lastSuccess)
 	</div>
 }
 
-templ SyncStatusBadge(state string, lastSuccess string) {
+templ SyncStatusBadge(state string, lastSuccess LocalDateTimeView) {
 	<button type="button" class="caldo-button caldo-button-secondary" data-sync-request hx-post="/sync/manual" hx-target="#sync-status" hx-swap="innerHTML" hx-headers={ "{\"X-CSRF-Token\":\"" + CSRFToken(ctx) + "\"}" }>Jetzt synchronisieren</button>
-	<p class="caldo-sync-copy"><span class="caldo-badge caldo-badge-accent">Status: { state }</span><span class="caldo-sync-last">Letzter Sync: { lastSuccess }</span></p>
+	<p class="caldo-sync-copy">
+		<span class="caldo-badge caldo-badge-accent">Status: { state }</span>
+		<span class="caldo-sync-last">
+			Letzter Sync:{ " " }
+			@LocalDateTime(lastSuccess)
+		</span>
+	</p>
 	if state == "running" {
 		<span hidden aria-hidden="true" hx-get="/sync/status" hx-trigger="load delay:1s" hx-target="#sync-status" hx-swap="innerHTML"></span>
 	}

@@ -18,7 +18,7 @@ const (
 // SyncStatusView contains the compact sync status shown in the app shell.
 type SyncStatusView struct {
 	State       string
-	LastSuccess string
+	LastSuccess LocalDateTimeView
 }
 
 // WithAssetManifest stores the static asset manifest in request context.
@@ -61,13 +61,13 @@ func WithSyncStatus(ctx context.Context, status SyncStatusView) context.Context 
 func CurrentSyncStatus(ctx context.Context) SyncStatusView {
 	status, ok := ctx.Value(syncStatusKey).(SyncStatusView)
 	if !ok {
-		return SyncStatusView{State: "idle", LastSuccess: "nie"}
+		return SyncStatusView{State: "idle", LastSuccess: LocalDateTimeView{Text: "nie"}}
 	}
 	if status.State == "" {
 		status.State = "idle"
 	}
-	if status.LastSuccess == "" {
-		status.LastSuccess = "nie"
+	if status.LastSuccess.Text == "" {
+		status.LastSuccess.Text = "nie"
 	}
 	return status
 }

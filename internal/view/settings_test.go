@@ -90,6 +90,8 @@ func TestSettingsPageContentRendersCalDAVCalendarSyncUIAndSecuritySettings(t *te
 		`data-settings-sync-state="error"`,
 		`Letzter erfolgreicher Sync`,
 		`02.01.2026 03:04`,
+		`datetime="2026-01-02T03:04:00Z"`,
+		`data-local-date-time`,
 		`data-settings-sync-error`,
 		`sync fehlgeschlagen`,
 		`action="/settings/sync" hx-post="/settings/sync" hx-target="body" hx-swap="outerHTML" hx-push-url="false"`,

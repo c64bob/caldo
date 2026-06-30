@@ -22,10 +22,11 @@ type conflictComparisonRow struct {
 }
 
 type conflictComparisonCell struct {
-	Key     string
-	Value   string
-	Present bool
-	Changed bool
+	Key      string
+	Value    string
+	DateTime LocalDateTimeView
+	Present  bool
+	Changed  bool
 }
 
 type conflictRawVersion struct {
@@ -41,20 +42,22 @@ type conflictManualField struct {
 }
 
 type conflictManualOption struct {
-	Value        string
-	Label        string
-	DisplayValue string
-	Present      bool
-	Changed      bool
-	Selected     bool
+	Value           string
+	Label           string
+	DisplayValue    string
+	DisplayDateTime LocalDateTimeView
+	Present         bool
+	Changed         bool
+	Selected        bool
 }
 
 type conflictManualInput struct {
-	Kind         string
-	Value        string
-	DisplayValue string
-	EmptyLabel   string
-	Options      []conflictManualInputOption
+	Kind            string
+	Value           string
+	DisplayValue    string
+	DisplayDateTime LocalDateTimeView
+	EmptyLabel      string
+	Options         []conflictManualInputOption
 }
 
 type conflictManualInputOption struct {
@@ -64,9 +67,10 @@ type conflictManualInputOption struct {
 }
 
 type conflictManualPreviewRow struct {
-	Name  string
-	Label string
-	Value string
+	Name     string
+	Label    string
+	Value    string
+	DateTime LocalDateTimeView
 }
 
 type conflictSplitPreview struct {
@@ -78,6 +82,7 @@ type conflictSplitPreview struct {
 	Project     string
 	Status      string
 	Due         string
+	DueDateTime LocalDateTimeView
 	Labels      string
 	Parent      string
 }
@@ -117,11 +122,11 @@ func conflictListCountLabel(count int) string {
 	return strconv.Itoa(count) + " offene Konflikte"
 }
 
-func conflictCreatedAtLabel(createdAt time.Time) string {
+func conflictCreatedAtTime(createdAt time.Time) LocalDateTimeView {
 	if createdAt.IsZero() {
-		return "Erkannt unbekannt"
+		return LocalDateTimeView{Text: "unbekannt"}
 	}
-	return "Erkannt " + createdAt.UTC().Format("2006-01-02 15:04 UTC")
+	return LocalDateTimeFromTime(createdAt, "unbekannt")
 }
 
 func conflictNextActionLabel(conflictType string) string {
@@ -161,14 +166,15 @@ func conflictComparisonRows(conflict db.ConflictDetail) []conflictComparisonRow 
 	remoteFields, remotePresent := conflictParsedFields(conflict.RemoteVTODO)
 
 	specs := []struct {
-		key   string
-		label string
-		value func(model.VTODOFields) string
+		key      string
+		label    string
+		value    func(model.VTODOFields) string
+		dateTime func(model.VTODOFields) LocalDateTimeView
 	}{
 		{key: "title", label: "Titel", value: conflictTitleValue},
 		{key: "description", label: "Beschreibung", value: conflictDescriptionValue},
 		{key: "status", label: "Status", value: conflictStatusValue},
-		{key: "due", label: "Fälligkeit", value: conflictDueValue},
+		{key: "due", label: "Fälligkeit", value: conflictDueValue, dateTime: conflictDueDateTime},
 		{key: "priority", label: "Priorität", value: conflictPriorityValue},
 		{key: "labels", label: "Labels", value: conflictLabelsValue},
 		{key: "favorite", label: "Favorit", value: conflictFavoriteValue},
@@ -184,12 +190,19 @@ func conflictComparisonRows(conflict db.ConflictDetail) []conflictComparisonRow 
 		remoteValue := spec.value(remoteFields)
 		localChanged, remoteChanged := conflictComparisonChanged(basePresent, localPresent, remotePresent, baseValue, localValue, remoteValue)
 		base := conflictCell("base-"+spec.key, basePresent, baseValue, false)
+		local := conflictCell("local-"+spec.key, localPresent, localValue, localChanged)
+		remote := conflictCell("remote-"+spec.key, remotePresent, remoteValue, remoteChanged)
+		if spec.dateTime != nil {
+			base.DateTime = spec.dateTime(baseFields)
+			local.DateTime = spec.dateTime(localFields)
+			remote.DateTime = spec.dateTime(remoteFields)
+		}
 		rows = append(rows, conflictComparisonRow{
 			Field:  spec.key,
 			Label:  spec.label,
 			Base:   base,
-			Local:  conflictCell("local-"+spec.key, localPresent, localValue, localChanged),
-			Remote: conflictCell("remote-"+spec.key, remotePresent, remoteValue, remoteChanged),
+			Local:  local,
+			Remote: remote,
 		})
 	}
 	rows = append([]conflictComparisonRow{conflictProjectComparisonRow(conflict, basePresent, localPresent, remotePresent)}, rows...)
@@ -337,6 +350,9 @@ func conflictManualInputForField(field string, fields model.VTODOFields) conflic
 		DisplayValue: conflictManualDisplayValue(field, fields),
 		EmptyLabel:   conflictManualEmptyLabel(field),
 	}
+	if field == "due" {
+		input.DisplayDateTime = conflictDueDateTime(fields)
+	}
 	switch field {
 	case "description":
 		input.Kind = "textarea"
@@ -454,13 +470,15 @@ func conflictManualPreviewRows(fields []conflictManualField) []conflictManualPre
 	rows := make([]conflictManualPreviewRow, 0, len(fields))
 	for _, field := range fields {
 		value := field.Manual.DisplayValue
+		dateTime := field.Manual.DisplayDateTime
 		for _, option := range field.Options {
 			if option.Selected {
 				value = option.DisplayValue
+				dateTime = option.DisplayDateTime
 				break
 			}
 		}
-		rows = append(rows, conflictManualPreviewRow{Name: field.Name, Label: field.Label, Value: value})
+		rows = append(rows, conflictManualPreviewRow{Name: field.Name, Label: field.Label, Value: value, DateTime: dateTime})
 	}
 	return rows
 }
@@ -497,12 +515,13 @@ func conflictManualOptions(row conflictComparisonRow, basePresent bool, localPre
 
 func conflictManualOptionFromCell(value string, label string, cell conflictComparisonCell, selected bool) conflictManualOption {
 	return conflictManualOption{
-		Value:        value,
-		Label:        label,
-		DisplayValue: cell.Value,
-		Present:      cell.Present,
-		Changed:      cell.Changed,
-		Selected:     selected,
+		Value:           value,
+		Label:           label,
+		DisplayValue:    cell.Value,
+		DisplayDateTime: cell.DateTime,
+		Present:         cell.Present,
+		Changed:         cell.Changed,
+		Selected:        selected,
 	}
 }
 
@@ -524,6 +543,7 @@ func conflictSplitLocalPreview(conflict db.ConflictDetail) conflictSplitPreview 
 		Project:     conflictProjectLabel(conflict.ProjectName),
 		Status:      conflictStatusValue(fields),
 		Due:         conflictDueValue(fields),
+		DueDateTime: conflictDueDateTime(fields),
 		Labels:      conflictLabelsValue(fields),
 		Parent:      conflictSplitLocalParentLabel(fields),
 	}
@@ -540,6 +560,7 @@ func conflictSplitRemotePreview(conflict db.ConflictDetail) conflictSplitPreview
 		Project:     conflictProjectLabel(conflict.ProjectName),
 		Status:      conflictStatusValue(fields),
 		Due:         conflictDueValue(fields),
+		DueDateTime: conflictDueDateTime(fields),
 		Labels:      conflictLabelsValue(fields),
 		Parent:      conflictSplitRemoteParentLabel(fields),
 	}
@@ -646,9 +667,19 @@ func conflictDueValue(fields model.VTODOFields) string {
 		return strings.TrimSpace(*fields.DueDate)
 	}
 	if fields.DueAt != nil && !fields.DueAt.IsZero() {
-		return fields.DueAt.UTC().Format("2006-01-02 15:04 UTC")
+		return LocalDateTimeFromTime(*fields.DueAt, "").Text
 	}
 	return "Keine Fälligkeit"
+}
+
+func conflictDueDateTime(fields model.VTODOFields) LocalDateTimeView {
+	if fields.DueDate != nil {
+		return LocalDateTimeView{}
+	}
+	if fields.DueAt != nil && !fields.DueAt.IsZero() {
+		return LocalDateTimeFromTime(*fields.DueAt, "")
+	}
+	return LocalDateTimeView{}
 }
 
 func conflictPriorityValue(fields model.VTODOFields) string {

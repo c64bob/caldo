@@ -26,7 +26,10 @@ templ ConflictListPage(conflicts []db.ConflictListRow) {
 						<div class="caldo-conflict-list-main">
 							<div class="caldo-conflict-list-topline">
 								<span class={ conflictTypeBadgeClass(conflict.ConflictType) }>{ conflictTypeLabel(conflict.ConflictType) }</span>
-								<span class="caldo-meta">{ conflictCreatedAtLabel(conflict.CreatedAt) }</span>
+								<span class="caldo-meta">
+									Erkannt{ " " }
+									@LocalDateTime(conflictCreatedAtTime(conflict.CreatedAt))
+								</span>
 							</div>
 							<a class="caldo-list-link caldo-conflict-list-title" href={ templ.URL("/conflicts/" + conflict.ID) }>{ conflictTaskTitle(conflict.TaskTitle) }</a>
 							<p class="caldo-meta mt-1">Projekt: { conflictProjectLabel(conflict.ProjectName) }</p>
@@ -60,7 +63,9 @@ templ ConflictDetailPage(conflict db.ConflictDetail, projectOptions []TaskProjec
 			</div>
 			<div>
 				<p class="caldo-meta">Erkannt</p>
-				<p class="caldo-conflict-summary-value">{ conflict.CreatedAt.UTC().Format("2006-01-02 15:04 UTC") }</p>
+				<p class="caldo-conflict-summary-value">
+					@LocalDateTime(conflictCreatedAtTime(conflict.CreatedAt))
+				</p>
 			</div>
 		</div>
 		<div class="caldo-conflict-comparison" data-conflict-comparison>
@@ -145,7 +150,7 @@ templ ConflictManualResolutionForm(conflict db.ConflictDetail, projectOptions []
 					<legend>{ field.Label }</legend>
 					<div class="caldo-conflict-manual-options">
 						for _, option := range field.Options {
-							<label class={ conflictManualOptionClass(option) } data-conflict-source-option={ option.Value } data-conflict-option-display={ option.DisplayValue }>
+							<label class={ conflictManualOptionClass(option) } data-conflict-source-option={ option.Value } data-conflict-option-display={ option.DisplayValue } data-conflict-option-display-iso={ option.DisplayDateTime.ISO }>
 								<span class="caldo-conflict-manual-choice">
 									<input class="caldo-check" type="radio" name={ field.Name + "_source" } value={ option.Value } checked?={ option.Selected }/>
 									<span>{ option.Label }</span>
@@ -153,7 +158,13 @@ templ ConflictManualResolutionForm(conflict db.ConflictDetail, projectOptions []
 										<span class="caldo-conflict-change-marker">Geändert</span>
 									}
 								</span>
-								<span class="caldo-conflict-manual-value">{ option.DisplayValue }</span>
+								<span class="caldo-conflict-manual-value">
+									if option.DisplayDateTime.ISO != "" {
+										@LocalDateTime(option.DisplayDateTime)
+									} else {
+										{ option.DisplayValue }
+									}
+								</span>
 							</label>
 						}
 						<label class="caldo-conflict-manual-option caldo-conflict-manual-option-custom" data-conflict-source-option="manual">
@@ -183,7 +194,13 @@ templ ConflictManualResolutionForm(conflict db.ConflictDetail, projectOptions []
 				for _, row := range conflictManualPreviewRows(fields) {
 					<div data-conflict-preview-row={ row.Name }>
 						<dt>{ row.Label }</dt>
-						<dd data-conflict-preview-value={ row.Name }>{ row.Value }</dd>
+						<dd data-conflict-preview-value={ row.Name } data-conflict-preview-iso={ row.DateTime.ISO }>
+							if row.DateTime.ISO != "" {
+								@LocalDateTime(row.DateTime)
+							} else {
+								{ row.Value }
+							}
+						</dd>
 					</div>
 				}
 				if len(projectOptions) > 0 {
@@ -304,7 +321,13 @@ templ ConflictSplitPreview(preview conflictSplitPreview) {
 			</div>
 			<div>
 				<dt>Fälligkeit</dt>
-				<dd>{ preview.Due }</dd>
+				<dd>
+					if preview.DueDateTime.ISO != "" {
+						@LocalDateTime(preview.DueDateTime)
+					} else {
+						{ preview.Due }
+					}
+				</dd>
 			</div>
 			<div>
 				<dt>Labels</dt>
@@ -320,7 +343,13 @@ templ ConflictSplitPreview(preview conflictSplitPreview) {
 
 templ ConflictValueCell(cell conflictComparisonCell) {
 	<td class={ conflictCellClass(cell) } data-conflict-value={ cell.Key }>
-		<span>{ cell.Value }</span>
+		<span>
+			if cell.DateTime.ISO != "" {
+				@LocalDateTime(cell.DateTime)
+			} else {
+				{ cell.Value }
+			}
+		</span>
 		if cell.Changed {
 			<span class="caldo-conflict-change-marker">Geändert</span>
 		}

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"caldo/internal/db"
+	"caldo/internal/model"
 )
 
 func TestConflictListPageRendersWorklistRowsWithoutRawVTODO(t *testing.T) {
@@ -47,7 +48,9 @@ func TestConflictListPageRendersWorklistRowsWithoutRawVTODO(t *testing.T) {
 		`data-conflict-type="field_conflict"`,
 		`Feldkonflikt`,
 		`Felder vergleichen und Zielversion wählen`,
-		`Erkannt 2026-06-11 08:30 UTC`,
+		`Erkannt`,
+		`datetime="2026-06-11T08:30:00Z"`,
+		`data-local-date-time`,
 		`Projekt: Inbox`,
 		`href="/conflicts/conflict-delete"`,
 		`Konflikt lösen`,
@@ -204,5 +207,29 @@ func TestConflictDetailPageRendersDeletedSideAsMissing(t *testing.T) {
 	output := rendered.String()
 	if !strings.Contains(output, "Lokal geändert, remote gelöscht") || !strings.Contains(output, "Nicht vorhanden (gelöscht)") {
 		t.Fatalf("expected deletion conflict labels in %s", output)
+	}
+}
+
+func TestConflictDueDateTimeUsesBrowserLocalMetadata(t *testing.T) {
+	t.Parallel()
+
+	dueAt := time.Date(2026, time.June, 11, 8, 30, 0, 0, time.UTC)
+	fields := model.VTODOFields{DueAt: &dueAt}
+
+	if got := conflictDueValue(fields); got != "11.06.2026 08:30" {
+		t.Fatalf("unexpected due fallback label: %q", got)
+	}
+	dateTime := conflictDueDateTime(fields)
+	if dateTime.ISO != "2026-06-11T08:30:00Z" || dateTime.Text != "11.06.2026 08:30" {
+		t.Fatalf("unexpected due datetime metadata: %#v", dateTime)
+	}
+
+	dueDate := "20260611"
+	dateOnly := model.VTODOFields{DueDate: &dueDate, DueAt: &dueAt}
+	if got := conflictDueValue(dateOnly); got != dueDate {
+		t.Fatalf("expected date-only due value to win, got %q", got)
+	}
+	if got := conflictDueDateTime(dateOnly); got.ISO != "" {
+		t.Fatalf("expected date-only due value not to carry datetime metadata, got %#v", got)
 	}
 }

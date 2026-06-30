@@ -1171,6 +1171,16 @@
 		@apply flex min-w-0 flex-wrap items-center gap-2;
 	}
 
+	.caldo-task-edit-extra {
+		@apply min-w-0 space-y-2 px-1 pb-1;
+		grid-column: 2 / -1;
+	}
+
+	.caldo-task-edit-extra .caldo-subtask-create {
+		@apply mt-0 px-0;
+		grid-column: auto;
+	}
+
 	.caldo-subtask-create {
 		@apply mt-2 min-w-0 px-1;
 		grid-column: 2 / -1;

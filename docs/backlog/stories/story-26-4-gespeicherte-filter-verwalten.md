@@ -4,7 +4,7 @@
 Story 26.4 — Gespeicherte Filter verwalten
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Benutzerdefinierte Filter werden ueber die UI erstellbar, bearbeitbar und loeschbar.

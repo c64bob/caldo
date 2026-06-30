@@ -4,7 +4,7 @@
 Story 21.3 — Drag-and-drop zwischen Projekten
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Aufgaben können per Drag-and-drop zwischen Projekten verschoben werden.

@@ -4,7 +4,7 @@
 Story 26.3 — Label-Seite und Label-Bearbeitung
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Labels werden als eigene Arbeits- und Verwaltungsansicht nutzbar.

@@ -4,7 +4,7 @@
 Story 24.7 — Unteraufgaben visuell gruppieren
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Parent-Child-Beziehungen werden in Listen und Details verstaendlich dargestellt.

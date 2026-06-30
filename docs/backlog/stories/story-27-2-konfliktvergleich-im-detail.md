@@ -4,7 +4,7 @@
 Story 27.2 — Konfliktvergleich im Detail
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Lokale und entfernte Versionen werden so verglichen, dass Nutzer sichere Entscheidungen treffen koennen.

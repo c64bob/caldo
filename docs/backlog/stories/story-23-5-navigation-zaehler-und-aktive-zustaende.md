@@ -4,7 +4,7 @@
 Story 23.5 — Navigation, Zaehler und aktive Zustaende
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Navigationseintraege zeigen Kontext, Anzahl und aktuellen Ort klar an.

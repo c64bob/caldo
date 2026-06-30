@@ -4,7 +4,7 @@
 Story 14.2 — Projekt-, Label- und Prioritätstokens
 
 ## Status
-Teilweise umgesetzt
+Umgesetzt
 
 ## Ziel
 Todoist-nahe Schnellsyntax ist nutzbar.

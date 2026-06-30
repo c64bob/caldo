@@ -4,7 +4,7 @@
 Story 18.1 — Wiederholungseditor für MVP-Muster
 
 ## Status
-Teilweise umgesetzt
+Umgesetzt
 
 ## Ziel
 Der Nutzer kann einfache Wiederholungen bearbeiten.

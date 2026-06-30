@@ -4,7 +4,7 @@
 Story 21.2 — Tablet-Layout für Kernansichten
 
 ## Status
-Teilweise umgesetzt
+Umgesetzt
 
 ## Ziel
 Die Kernansichten sind auf Tablet-Auflösungen brauchbar bedienbar.

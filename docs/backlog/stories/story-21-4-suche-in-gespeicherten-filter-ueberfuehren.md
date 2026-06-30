@@ -4,7 +4,7 @@
 Story 21.4 — Suche in gespeicherten Filter überführen
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Eindeutig interpretierbare Suchanfragen können als gespeicherte Filter übernommen werden.

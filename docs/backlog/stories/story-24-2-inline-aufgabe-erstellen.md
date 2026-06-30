@@ -4,7 +4,7 @@
 Story 24.2 — Inline-Aufgabe erstellen
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Neue Aufgaben koennen direkt in der aktuellen Liste angelegt werden.

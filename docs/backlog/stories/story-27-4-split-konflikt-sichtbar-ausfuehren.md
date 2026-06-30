@@ -4,7 +4,7 @@
 Story 27.4 — Split-Konflikt sichtbar ausfuehren
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Split-Loesungen werden als bewusste Nutzerentscheidung in der UI abgebildet.

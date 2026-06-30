@@ -4,7 +4,7 @@
 Story 15.2 — Gespeicherte Filter verwalten
 
 ## Status
-Teilweise umgesetzt
+Umgesetzt
 
 ## Ziel
 Der Nutzer kann eigene Aufgabenansichten speichern.

@@ -4,7 +4,7 @@
 Story 21.5 — Beschreibungstexte: Links klickbar machen
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 URLs in Aufgabenbeschreibungen sind als klickbare Links nutzbar.

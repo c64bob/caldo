@@ -4,7 +4,7 @@
 Story 26.2 — Projektverwaltung in der UI
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Projektanlage, Umbenennung und Loeschung werden sichtbar und sicher bedienbar.

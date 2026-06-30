@@ -4,7 +4,7 @@
 Story 23.7 — Visuelle Browser-Baselines
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Die wichtigsten UI-Zustaende werden mit Browser-Screenshots als Review-Hilfe dokumentiert.

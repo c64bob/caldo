@@ -4,7 +4,7 @@
 Story 25.5 — Wiederholungs- und Prioritaetsvorschau
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Wiederholung und Prioritaet werden in Quick Add klar erkannt und vor dem Speichern bestaetigt.

@@ -1,14 +1,14 @@
 # Implementation Status Audit
 
-Stand: 2026-06-12
+Stand: 2026-06-30
 
 Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Story-Dateien selbst enthalten nur den knappen Status, damit sie Planungsdokumente bleiben.
 
 ## Zusammenfassung
 
 - Bestehende Stories: 89 `Umgesetzt`, 0 `Teilweise umgesetzt`, 0 `Offen`.
-- Neue Planungsstories: 33 `Umgesetzt`, 6 `Offen`.
-- Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance.
+- Neue Planungsstories: 33 `Umgesetzt`, 19 `Offen`.
+- Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance, 29 Production Readiness, 30 CalDAV Sync Maturity.
 
 ## Legende
 
@@ -112,7 +112,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 
 ## Neue Planungsstories
 
-Die neuen Epics 23 bis 28 brechen die verbleibende UI- und QA-Arbeit in kleinere Stories auf.
+Die neuen Epics 23 bis 30 brechen die verbleibende UI-, QA-, Production-Readiness- und Sync-Maturity-Arbeit in kleinere Stories auf.
 
 | Story | Status | Evidenzort |
 |---|---|---|
@@ -155,3 +155,16 @@ Die neuen Epics 23 bis 28 brechen die verbleibende UI- und QA-Arbeit in kleinere
 | 28.4 | Offen | Tastatur-, Fokus- und Accessibility-Abdeckung ist nicht vollstaendig umgesetzt. |
 | 28.5 | Offen | Performance-Szenarien und Messwerte sind nicht dokumentiert oder automatisiert. |
 | 28.6 | Offen | Visuelle Regression wird ueber Baseline-Screenshots vorbereitet, aber kein vollstaendiger Review-/Regression-Prozess ist umgesetzt. |
+| 29.1 | Offen | Ein verbindlicher Staging-Nextcloud-Smoke-Test-Prozess ist noch nicht dokumentiert und nachweisbar ausgefuehrt. |
+| 29.2 | Offen | Backup-, Restore- und Migrationsdrills sind noch nicht als Release-Kriterium dokumentiert. |
+| 29.3 | Offen | Release- und Rollback-Checkliste fehlt noch als zusammenhaengender Prozess. |
+| 29.4 | Offen | Deployment- und Betriebsrunbook ist noch nicht zusammenhaengend vorhanden. |
+| 29.5 | Offen | Security-, Privacy- und Logging-Audit ist noch nicht als Release-Prozess verankert. |
+| 29.6 | Offen | Dependency-, Lizenz- und Update-Review ist noch nicht als wiederholbarer Release-Schritt dokumentiert. |
+| 29.7 | Offen | Operational Health und Debugging Guide ist noch nicht operatororientiert dokumentiert. |
+| 30.1 | Offen | Real-Server-Kompatibilitaetsmatrix fuer CalDAV-Provider ist noch nicht vorhanden. |
+| 30.2 | Offen | Langlauf-Sync-Validierung mit Staging- oder Fake-CalDAV ist noch nicht definiert. |
+| 30.3 | Offen | Grosse Kalender und belastbare Grenzwerte sind noch nicht systematisch gemessen. |
+| 30.4 | Offen | WebDAV-Sync ist noch keine echte inkrementelle Sync-Strategie im normalen Sync. |
+| 30.5 | Offen | CTag-/ETag-Strategie ist noch keine vollwertige inkrementelle Sync-Strategie. |
+| 30.6 | Offen | Konflikt-Edge-Case-Testmatrix fuer komplexe CalDAV-/VTODO-Faelle ist noch nicht vorhanden. |

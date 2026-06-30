@@ -4,7 +4,7 @@
 Story 8.3 — Projekt löschen
 
 ## Status
-Teilweise umgesetzt
+Umgesetzt
 
 ## Ziel
 Ein Projekt kann nach starker Bestätigung endgültig gelöscht werden.

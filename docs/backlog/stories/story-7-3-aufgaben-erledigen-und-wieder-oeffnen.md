@@ -4,7 +4,7 @@
 Story 7.3 — Aufgaben erledigen und wieder öffnen
 
 ## Status
-Teilweise umgesetzt
+Umgesetzt
 
 ## Ziel
 Aufgabenstatus wird CalDAV-kompatibel geändert.

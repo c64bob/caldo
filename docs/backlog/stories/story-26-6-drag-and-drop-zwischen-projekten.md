@@ -4,7 +4,7 @@
 Story 26.6 — Drag-and-Drop zwischen Projekten
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Aufgaben koennen sichtbar zwischen Projekten verschoben werden.

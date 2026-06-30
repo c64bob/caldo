@@ -4,7 +4,7 @@
 Story 23.4 — Mobile- und Tablet-App-Shell
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Caldo wird auf kleinen und mittleren Viewports als echte App bedienbar.

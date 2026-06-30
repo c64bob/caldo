@@ -4,7 +4,7 @@
 Story 26.1 — Projektliste in der Sidebar
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Projekte werden als produktive Navigationsgruppe in der Sidebar angezeigt.

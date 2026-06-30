@@ -4,7 +4,7 @@
 Story 7.2 — Aufgaben bearbeiten
 
 ## Status
-Teilweise umgesetzt
+Umgesetzt
 
 ## Ziel
 Kernfelder einer Aufgabe können geändert werden.

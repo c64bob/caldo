@@ -4,7 +4,7 @@
 Story 24.4 — Aufgaben-Detailpanel
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Komplexere Aufgabenbearbeitung erfolgt in einem klaren Detailpanel.

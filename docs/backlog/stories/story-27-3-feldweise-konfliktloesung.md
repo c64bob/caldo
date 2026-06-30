@@ -4,7 +4,7 @@
 Story 27.3 — Feldweise Konfliktloesung
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Nutzer koennen pro Feld zwischen lokaler, entfernter oder manueller Version waehlen.

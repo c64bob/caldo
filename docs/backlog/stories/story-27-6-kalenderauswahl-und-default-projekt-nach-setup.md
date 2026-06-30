@@ -4,7 +4,7 @@
 Story 27.6 — Kalenderauswahl und Default-Projekt nach Setup
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Kalender- und Default-Projekt-Auswahl bleiben nach dem Setup verwaltbar.

@@ -4,7 +4,7 @@
 Story 24.5 — Sichtbare Aktionen fuer Erledigen, Wiedereroeffnen und Loeschen
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Kernaktionen an Aufgaben werden sichtbar, konsistent und fehlertolerant bedienbar.

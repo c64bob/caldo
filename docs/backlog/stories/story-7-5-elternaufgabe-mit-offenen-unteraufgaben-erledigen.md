@@ -4,7 +4,7 @@
 Story 7.5 — Elternaufgabe mit offenen Unteraufgaben erledigen
 
 ## Status
-Teilweise umgesetzt
+Umgesetzt
 
 ## Ziel
 Der Nutzer entscheidet explizit, wie offene Unteraufgaben behandelt werden.

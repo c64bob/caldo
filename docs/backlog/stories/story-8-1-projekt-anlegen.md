@@ -4,7 +4,7 @@
 Story 8.1 — Projekt anlegen
 
 ## Status
-Teilweise umgesetzt
+Umgesetzt
 
 ## Ziel
 Ein neues Projekt erstellt einen neuen CalDAV-Kalender.

@@ -4,7 +4,7 @@
 Story 17.3 — Elternaufgabe mit Unteraufgaben löschen
 
 ## Status
-Teilweise umgesetzt
+Umgesetzt
 
 ## Ziel
 Löschen einer Elternaufgabe behandelt direkte Unteraufgaben explizit.

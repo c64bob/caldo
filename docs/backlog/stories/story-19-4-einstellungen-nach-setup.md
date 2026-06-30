@@ -4,7 +4,7 @@
 Story 19.4 — Einstellungen nach Setup
 
 ## Status
-Teilweise umgesetzt
+Umgesetzt
 
 ## Ziel
 Konfiguration kann nach dem Erststart im Normalbetrieb geändert werden.

@@ -4,7 +4,7 @@
 Story 27.5 — Vollstaendige CalDAV-Einstellungen
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 CalDAV-Verbindung und Sync-Verhalten koennen nach Setup sicher verwaltet werden.

@@ -4,7 +4,7 @@
 Story 24.3 — Inline-Aufgabe bearbeiten
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Haeufige Aufgabenfelder koennen direkt in der Liste bearbeitet werden.

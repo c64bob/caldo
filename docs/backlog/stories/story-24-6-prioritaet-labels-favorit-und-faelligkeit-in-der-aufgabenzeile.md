@@ -4,7 +4,7 @@
 Story 24.6 — Prioritaet, Labels, Favorit und Faelligkeit in der Aufgabenzeile
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Wichtige Aufgabenattribute werden in Listen sichtbar und direkt bearbeitbar.

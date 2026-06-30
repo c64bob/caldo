@@ -4,7 +4,7 @@
 Story 24.8 — Undo- und Wiederherstellungs-UI
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Rueckgaengig-Funktionen werden fuer Nutzer sichtbar und zeitlich nachvollziehbar.

@@ -4,7 +4,7 @@
 Story 13.5 — Beide Versionen behalten
 
 ## Status
-Teilweise umgesetzt
+Umgesetzt
 
 ## Ziel
 Widersprüchliche Versionen können als separate Aufgaben erhalten bleiben.

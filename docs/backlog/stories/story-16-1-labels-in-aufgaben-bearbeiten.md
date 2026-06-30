@@ -4,7 +4,7 @@
 Story 16.1 — Labels in Aufgaben bearbeiten
 
 ## Status
-Teilweise umgesetzt
+Umgesetzt
 
 ## Ziel
 Aufgaben können projektübergreifend organisiert werden.

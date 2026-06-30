@@ -4,7 +4,7 @@
 Story 19.1 — Hauptnavigation
 
 ## Status
-Teilweise umgesetzt
+Umgesetzt
 
 ## Ziel
 Die App bietet die MVP-Navigationsstruktur.

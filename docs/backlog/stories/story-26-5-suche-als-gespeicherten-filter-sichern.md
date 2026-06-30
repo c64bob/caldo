@@ -4,7 +4,7 @@
 Story 26.5 — Suche als gespeicherten Filter sichern
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Eine aktuelle Suche kann in einen gespeicherten Filter ueberfuehrt werden.

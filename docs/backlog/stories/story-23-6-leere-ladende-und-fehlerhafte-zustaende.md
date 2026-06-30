@@ -4,7 +4,7 @@
 Story 23.6 — Leere, ladende und fehlerhafte Zustaende
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Alle Kernansichten zeigen klare Zustaende, wenn keine Daten, noch ladende Daten oder Fehler vorliegen.

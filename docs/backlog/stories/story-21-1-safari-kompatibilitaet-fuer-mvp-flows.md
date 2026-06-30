@@ -4,7 +4,7 @@
 Story 21.1 — Safari-Kompatibilität für MVP-Flows
 
 ## Status
-Teilweise umgesetzt
+Umgesetzt
 
 ## Ziel
 Die zentralen MVP-Flows funktionieren in Safari ohne funktionale Abweichungen.

@@ -4,7 +4,7 @@
 Story 24.1 — Todoist-nahe Aufgabenzeile
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Aufgaben werden als scanbare, ruhige Listenzeilen dargestellt.

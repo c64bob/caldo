@@ -4,7 +4,7 @@
 Story 25.6 — Tastaturfluss fuer Schnellanlage
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Quick Add laesst sich ohne Maus schnell und kontrolliert bedienen.

@@ -4,7 +4,7 @@
 Story 27.1 — Konfliktliste als Arbeitsansicht
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Konflikte werden als priorisierte, bearbeitbare Arbeitsliste dargestellt.

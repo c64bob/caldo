@@ -67,7 +67,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   }).toBe(true);
 
   await gotoApp(page, '/search?q=Stage');
-  await expect(page.getByRole('heading', { name: 'Globale Suche' })).toBeVisible();
+  await expectCurrentView(page, 'Suche');
   await expect(page.locator('[data-search-results]').filter({ hasText: 'Stage Seed Task' })).toBeVisible();
   await exerciseKeyboardShortcuts(page);
   await exerciseQuickAddOverlay(page);
@@ -96,7 +96,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(emptyProjectNav.locator('.caldo-nav-count')).toHaveText('0');
   await emptyProjectNav.click();
   await expect(page).toHaveURL(/\/projects\/[^/]+$/);
-  await expect(page.getByRole('heading', { name: 'E2E Empty Project' })).toBeVisible();
+  await expectCurrentView(page, 'E2E Empty Project');
   await expect(page.locator('.caldo-sidebar [data-nav-projects] a[aria-current="page"]').filter({ hasText: 'E2E Empty Project' })).toBeVisible();
   await expect(page.getByText('Keine offenen Aufgaben in diesem Projekt.')).toBeVisible();
   await gotoApp(page, '/search?q=%23Work');
@@ -477,7 +477,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   expect(conflictHref).toMatch(/^\/conflicts\//);
 
   await gotoApp(page, conflictHref);
-  await expect(page.getByRole('heading', { name: 'Konfliktdetail' })).toBeVisible();
+  await expectCurrentView(page, 'Konfliktdetail');
   await expect(page.locator('[data-conflict-comparison]').getByText('E2E Remote Conflict Edit', { exact: true })).toBeVisible();
   await expect(page.locator('[data-conflict-field="project"]')).toHaveAttribute('data-conflict-row-state', 'unchanged');
   await expect(page.locator('[data-conflict-field="title"]')).toHaveAttribute('data-conflict-row-state', 'changed');
@@ -542,12 +542,16 @@ async function dragTaskRowToProject(page, row, projectName) {
   await row.dragTo(target);
 }
 
+async function expectCurrentView(page, title) {
+  await expect(page.locator('.caldo-topbar-heading')).toHaveText(title);
+}
+
 async function openLabelDetail(page, labelName) {
   await gotoApp(page, '/labels');
   const link = page.locator('[data-navigation-overview] a[href^="/labels/"]').filter({ hasText: labelName }).first();
   await expect(link).toBeVisible();
   await link.click();
-  await expect(page.locator('main').getByRole('heading', { name: labelName })).toBeVisible();
+  await expectCurrentView(page, labelName);
   await expect(page).toHaveURL(/\/labels\/[^/]+$/);
 }
 
@@ -557,13 +561,14 @@ async function exerciseTabletCoreViews(page) {
     { pathname: '/today', heading: 'Heute' },
     { pathname: '/upcoming', heading: 'Demnächst' },
     { pathname: '/projects', heading: 'Projekte' },
-    { pathname: '/search?q=Stage', heading: 'Globale Suche', content: 'Stage Seed Task' },
+    { pathname: '/search?q=Stage', heading: 'Suche', content: 'Stage Seed Task' },
     { pathname: '/settings', heading: 'Einstellungen' }
   ];
 
   for (const view of coreViews) {
     await gotoApp(page, view.pathname);
-    await expect(page.locator('main').getByRole('heading', { name: view.heading })).toBeVisible();
+    await expectCurrentView(page, view.heading);
+    await expect(page.locator('main .caldo-page-title')).toHaveCount(0);
     if (view.content) {
       await expect(page.locator('main').filter({ hasText: view.content })).toBeVisible();
     }
@@ -643,7 +648,7 @@ async function exerciseKeyboardShortcuts(page) {
   await gotoApp(page, '/today');
   await page.keyboard.press('s');
   await expect(page).toHaveURL(/\/search$/);
-  await expect(page.getByRole('heading', { name: 'Globale Suche' })).toBeVisible();
+  await expectCurrentView(page, 'Suche');
 
   const searchInput = page.locator('#global-search');
   await expect(searchInput).toBeFocused();

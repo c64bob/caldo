@@ -34,8 +34,7 @@ func SettingsPageContent(model SettingsPageView) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		csrfToken := html.EscapeString(CSRFToken(ctx))
 		text := Text(ctx)
-		if _, err := fmt.Fprintf(w, `<section class="caldo-page max-w-3xl">
-<h2 class="caldo-page-title">%s</h2>`, html.EscapeString(text.SettingsPageTitle)); err != nil {
+		if _, err := fmt.Fprint(w, `<section class="caldo-page max-w-3xl">`); err != nil {
 			return err
 		}
 

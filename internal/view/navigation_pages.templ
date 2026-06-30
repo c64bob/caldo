@@ -2,7 +2,6 @@ package view
 
 templ ProjectsOverviewPage(items []NavigationOverviewItem, feedback ProjectFeedback) {
 	<section class="caldo-page">
-		<h2 class="caldo-page-title">Projekte</h2>
 		if feedback.PageSuccess != "" {
 			<p class="caldo-alert caldo-alert-success" data-project-page-success aria-live="polite">{ feedback.PageSuccess }</p>
 		}
@@ -46,7 +45,6 @@ templ ProjectCreateForm(feedback ProjectFeedback) {
 
 templ NavigationOverviewPage(heading string, emptyTitle string, items []NavigationOverviewItem) {
 	<section class="caldo-page">
-		<h2 class="caldo-page-title">{ heading }</h2>
 		if len(items) == 0 {
 			@EmptyState(emptyTitle, "Die Gruppe ist eingerichtet, enthält aber noch keine Einträge.")
 		} else {

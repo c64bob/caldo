@@ -29,7 +29,7 @@ func SavedFiltersPage(filters []SavedFilterItemView, create SavedFilterCreateFor
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"caldo-page\"><h2 class=\"caldo-page-title\">Filter</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"caldo-page\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -94,7 +94,7 @@ func SavedFilterCreateForm(create SavedFilterCreateFormView) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue("{\"X-CSRF-Token\":\"" + CSRFToken(ctx) + "\"}")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 29, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 28, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
@@ -112,7 +112,7 @@ func SavedFilterCreateForm(create SavedFilterCreateFormView) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(create.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 34, Col: 108}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 33, Col: 108}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -130,7 +130,7 @@ func SavedFilterCreateForm(create SavedFilterCreateFormView) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(create.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 39, Col: 104}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 38, Col: 104}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -143,7 +143,7 @@ func SavedFilterCreateForm(create SavedFilterCreateFormView) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(create.Query)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 43, Col: 107}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 42, Col: 107}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 		if templ_7745c5c3_Err != nil {
@@ -195,7 +195,7 @@ func SavedFilterRow(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue("filter-" + item.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 55, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 54, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
@@ -208,7 +208,7 @@ func SavedFilterRow(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var9 templ.SafeURL
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinURLErrs(templ.URL(savedFilterPath(item)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 58, Col: 70}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 57, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -221,7 +221,7 @@ func SavedFilterRow(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(item.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 58, Col: 84}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 57, Col: 84}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -234,7 +234,7 @@ func SavedFilterRow(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(savedFilterFavoriteLabel(item))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 60, Col: 37}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 59, Col: 37}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -247,7 +247,7 @@ func SavedFilterRow(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(item.Query)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 60, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 59, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -301,7 +301,7 @@ func SavedFilterEditForm(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var14 templ.SafeURL
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinURLErrs(savedFilterPath(item))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 73, Col: 32}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 72, Col: 32}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -314,7 +314,7 @@ func SavedFilterEditForm(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(savedFilterPath(item))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 74, Col: 34}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 73, Col: 34}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 		if templ_7745c5c3_Err != nil {
@@ -327,7 +327,7 @@ func SavedFilterEditForm(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue("{\"X-CSRF-Token\":\"" + CSRFToken(ctx) + "\"}")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 79, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 78, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 		if templ_7745c5c3_Err != nil {
@@ -340,7 +340,7 @@ func SavedFilterEditForm(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue(savedFilterExpectedVersion(item))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 82, Col: 87}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 81, Col: 87}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
 		if templ_7745c5c3_Err != nil {
@@ -358,7 +358,7 @@ func SavedFilterEditForm(item SavedFilterItemView) templ.Component {
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(item.EditError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 84, Col: 108}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 83, Col: 108}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -376,7 +376,7 @@ func SavedFilterEditForm(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue("saved-filter-name-" + item.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 88, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 87, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 		if templ_7745c5c3_Err != nil {
@@ -389,7 +389,7 @@ func SavedFilterEditForm(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue("saved-filter-name-" + item.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 89, Col: 46}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 88, Col: 46}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 		if templ_7745c5c3_Err != nil {
@@ -402,7 +402,7 @@ func SavedFilterEditForm(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.ResolveAttributeValue(savedFilterEditName(item))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 89, Col: 126}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 88, Col: 126}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var21)
 		if templ_7745c5c3_Err != nil {
@@ -415,7 +415,7 @@ func SavedFilterEditForm(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.ResolveAttributeValue("saved-filter-query-" + item.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 92, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 91, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var22)
 		if templ_7745c5c3_Err != nil {
@@ -428,7 +428,7 @@ func SavedFilterEditForm(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.ResolveAttributeValue("saved-filter-query-" + item.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 93, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 92, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var23)
 		if templ_7745c5c3_Err != nil {
@@ -441,7 +441,7 @@ func SavedFilterEditForm(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.ResolveAttributeValue(savedFilterEditQuery(item))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 93, Col: 129}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 92, Col: 129}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var24)
 		if templ_7745c5c3_Err != nil {
@@ -503,7 +503,7 @@ func SavedFilterDeleteForm(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var26 templ.SafeURL
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinURLErrs(savedFilterPath(item))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 110, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 109, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
@@ -516,7 +516,7 @@ func SavedFilterDeleteForm(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.ResolveAttributeValue(savedFilterPath(item))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 111, Col: 36}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 110, Col: 36}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var27)
 		if templ_7745c5c3_Err != nil {
@@ -529,7 +529,7 @@ func SavedFilterDeleteForm(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.ResolveAttributeValue("{\"X-CSRF-Token\":\"" + CSRFToken(ctx) + "\"}")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 116, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 115, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var28)
 		if templ_7745c5c3_Err != nil {
@@ -542,7 +542,7 @@ func SavedFilterDeleteForm(item SavedFilterItemView) templ.Component {
 		var templ_7745c5c3_Var29 string
 		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.ResolveAttributeValue(savedFilterExpectedVersion(item))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 119, Col: 88}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 118, Col: 88}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var29)
 		if templ_7745c5c3_Err != nil {
@@ -560,7 +560,7 @@ func SavedFilterDeleteForm(item SavedFilterItemView) templ.Component {
 			var templ_7745c5c3_Var30 string
 			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(item.DeleteError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 121, Col: 113}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 120, Col: 113}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 			if templ_7745c5c3_Err != nil {

@@ -4,7 +4,6 @@ import "strings"
 
 templ SearchPage(query string, results []TaskRowView, create InlineTaskCreateView, saveFilter SearchSaveFilterView) {
 	<section class="caldo-page">
-		<h2 class="caldo-page-title">Globale Suche</h2>
 		<form method="get" action="/search" class="space-y-2" role="search" aria-label="Globale Suche">
 			<label for="global-search" class="caldo-label">Suche nach Aufgaben, #Projekt oder @Label</label>
 			<input

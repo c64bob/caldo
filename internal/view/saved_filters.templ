@@ -2,7 +2,6 @@ package view
 
 templ SavedFiltersPage(filters []SavedFilterItemView, create SavedFilterCreateFormView) {
 	<section class="caldo-page">
-		<h2 class="caldo-page-title">Filter</h2>
 		@SavedFilterCreateForm(create)
 		if len(filters) == 0 {
 			@EmptyState("Keine gespeicherten Filter", "Die Gruppe ist eingerichtet, enthält aber noch keine Einträge.")

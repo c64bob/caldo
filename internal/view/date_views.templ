@@ -2,7 +2,6 @@ package view
 
 templ DateScopedTasksPage(heading string, emptyMessage string, tasks []TaskRowView, create InlineTaskCreateView) {
 	<section class="caldo-page">
-		<h2 class="caldo-page-title">{ heading }</h2>
 		if len(tasks) == 0 {
 			@EmptyState(emptyMessage, "Es gibt in dieser Ansicht gerade nichts zu bearbeiten.")
 		} else {

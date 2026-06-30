@@ -58,8 +58,6 @@ func TaskUndo(deps taskUpdateDependencies) http.HandlerFunc {
 				http.Error(w, "undo snapshot not found", http.StatusNotFound)
 			case errors.Is(err, db.ErrUndoSnapshotExpired):
 				http.Error(w, "undo snapshot expired", http.StatusConflict)
-			case errors.Is(err, db.ErrUndoETagMismatch):
-				http.Error(w, "task version conflict", http.StatusConflict)
 			case errors.Is(err, db.ErrUndoActionNotSupported):
 				http.Error(w, "undo action not supported", http.StatusBadRequest)
 			case errors.Is(err, db.ErrTaskNotFound):

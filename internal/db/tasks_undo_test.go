@@ -18,6 +18,9 @@ func TestPrepareTaskUndoLoadsSnapshotMarksPending(t *testing.T) {
 	if prepared.TaskID != "task-1" || prepared.PendingVersion != 4 {
 		t.Fatalf("unexpected prepared: %+v", prepared)
 	}
+	if prepared.ExpectedETag != `"etag-2"` {
+		t.Fatalf("undo should use current task etag, got %q", prepared.ExpectedETag)
+	}
 
 	assertSingleTextResult(t, db, `SELECT sync_status FROM tasks WHERE id='task-1';`, "pending")
 	assertSingleIntResult(t, db, `SELECT server_version FROM tasks WHERE id='task-1';`, 4)
@@ -43,16 +46,16 @@ func TestPrepareTaskUndoRejectsExpiredSnapshotAndDeletesIt(t *testing.T) {
 	assertSingleIntResult(t, db, `SELECT COUNT(*) FROM undo_snapshots WHERE session_id='session-exp' AND tab_id='tab-exp';`, 0)
 }
 
-func TestPrepareTaskUndoETagMismatchMarksConflict(t *testing.T) {
+func TestPrepareTaskUndoDoesNotTreatPostWriteETagAsConflict(t *testing.T) {
 	t.Parallel()
 	db := openTaskUndoTestDB(t)
 	seedTaskUndoData(t, db)
 
 	_, err := db.PrepareTaskUndo(context.Background(), "session-mm", "tab-mm")
-	if err != ErrUndoETagMismatch {
-		t.Fatalf("expected etag mismatch, got %v", err)
+	if err != nil {
+		t.Fatalf("prepare undo after successful write with newer etag: %v", err)
 	}
-	assertSingleTextResult(t, db, `SELECT sync_status FROM tasks WHERE id='task-1';`, "conflict")
+	assertSingleTextResult(t, db, `SELECT sync_status FROM tasks WHERE id='task-1';`, "pending")
 }
 
 func TestPrepareTaskUndoDeletedTaskInsertsPendingCreate(t *testing.T) {
@@ -135,7 +138,7 @@ INSERT INTO tasks (
     id, project_id, uid, href, etag, server_version, title, status, raw_vtodo, base_vtodo,
     project_name, sync_status, created_at, updated_at
 ) VALUES (
-    'task-1', 'project-1', 'uid-1', '/cal/inbox/uid-1.ics', '"etag-1"', 3, 'current', 'needs-action',
+    'task-1', 'project-1', 'uid-1', '/cal/inbox/uid-1.ics', '"etag-2"', 3, 'current', 'needs-action',
     'BEGIN:VTODO\nUID:uid-1\nSUMMARY:old\nEND:VTODO', 'BEGIN:VTODO\nUID:uid-1\nSUMMARY:old\nEND:VTODO',
     'Inbox', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 );

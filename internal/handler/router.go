@@ -51,6 +51,18 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 	router.Get("/search", Search(searchDependencies{database: database}))
 	router.Get("/labels", LabelsPage(database))
 	router.Get("/labels/{labelID}", LabelTasksPage(dateViewDependencies{database: database}))
+	router.With(SetupCSRFMiddleware(csrfSecret)).Patch("/labels/{labelID}", LabelRename(labelUpdateDependencies{
+		database:      database,
+		encryptionKey: csrfSecret,
+		todos:         caldav.NewTodoClient(nil),
+		broker:        syncBroker,
+	}))
+	router.With(SetupCSRFMiddleware(csrfSecret)).Delete("/labels/{labelID}", LabelDelete(labelUpdateDependencies{
+		database:      database,
+		encryptionKey: csrfSecret,
+		todos:         caldav.NewTodoClient(nil),
+		broker:        syncBroker,
+	}))
 	settingsDeps := settingsDependencies{
 		database:        database,
 		encryptionKey:   csrfSecret,

@@ -53,6 +53,11 @@ type ProjectFeedback struct {
 	CreateValue   string
 }
 
+// LabelFeedback contains visible label management status messages.
+type LabelFeedback struct {
+	PageSuccess string
+}
+
 // WithNavigation stores app-shell navigation data in request context.
 func WithNavigation(ctx context.Context, snapshot NavigationSnapshot) context.Context {
 	return context.WithValue(ctx, navigationKey, snapshot)
@@ -282,4 +287,34 @@ func projectDeleteLocalRemovalText(count int) string {
 		return "1 Aufgabe wird lokal entfernt."
 	}
 	return strconv.Itoa(count) + " Aufgaben werden lokal entfernt."
+}
+
+func labelCanManage(item NavigationOverviewItem) bool {
+	return item.ID != ""
+}
+
+func labelRenamePath(item NavigationOverviewItem) string {
+	return "/labels/" + url.PathEscape(item.ID)
+}
+
+func labelRenameValue(item NavigationOverviewItem) string {
+	if item.RenameValue != "" {
+		return item.RenameValue
+	}
+	return item.Name
+}
+
+func labelDeletePath(item NavigationOverviewItem) string {
+	return "/labels/" + url.PathEscape(item.ID)
+}
+
+func labelDeleteValue(item NavigationOverviewItem) string {
+	return item.DeleteValue
+}
+
+func labelDeleteConfirmationText(item NavigationOverviewItem) string {
+	if item.DeleteTaskCount == 1 {
+		return "Dieses Label wird aus 1 Aufgabe entfernt. Zum Löschen " + item.Name + " eingeben."
+	}
+	return "Dieses Label wird aus " + strconv.Itoa(item.DeleteTaskCount) + " Aufgaben entfernt. Zum Löschen " + item.Name + " eingeben."
 }

@@ -137,22 +137,41 @@ func renderProjectsPage(w http.ResponseWriter, r *http.Request, database *db.Dat
 // LabelsPage renders the labels navigation page.
 func LabelsPage(database *db.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if database == nil {
-			renderPageError(w, r, "Labels", "Labels laden", http.StatusInternalServerError)
-			return
-		}
+		renderLabelsPage(w, r, database, labelsPageState{}, http.StatusOK)
+	}
+}
 
-		snapshot, err := database.LoadNavigationSnapshot(r.Context(), time.Now())
-		if err != nil {
-			renderPageError(w, r, "Labels", "Labels laden", http.StatusInternalServerError)
-			return
-		}
+func renderLabelsPage(w http.ResponseWriter, r *http.Request, database *db.Database, pageState labelsPageState, status int) {
+	if database == nil {
+		renderPageError(w, r, "Labels", "Labels laden", http.StatusInternalServerError)
+		return
+	}
 
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		ctx := view.WithNavigation(r.Context(), navigationSnapshotView(snapshot))
-		if err := view.BaseLayout("Labels", view.NavigationOverviewPage("Labels", "Keine Labels", navigationLabelsView(snapshot.Labels))).Render(ctx, w); err != nil {
-			http.Error(w, "render page", http.StatusInternalServerError)
+	snapshot, err := database.LoadNavigationSnapshot(r.Context(), time.Now())
+	if err != nil {
+		renderPageError(w, r, "Labels", "Labels laden", http.StatusInternalServerError)
+		return
+	}
+
+	labels := navigationLabelsView(snapshot.Labels)
+	for index := range labels {
+		if labels[index].ID == pageState.RenameLabelID {
+			labels[index].RenameError = pageState.RenameError
+			labels[index].RenameValue = pageState.RenameValue
 		}
+		if labels[index].ID == pageState.DeleteLabelID {
+			labels[index].DeleteError = pageState.DeleteError
+			labels[index].DeleteValue = pageState.DeleteValue
+		}
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if status != http.StatusOK {
+		w.WriteHeader(status)
+	}
+	ctx := view.WithNavigation(r.Context(), navigationSnapshotView(snapshot))
+	if err := view.BaseLayout("Labels", view.LabelsOverviewPage(labels, view.LabelFeedback{PageSuccess: pageState.PageSuccess})).Render(ctx, w); err != nil {
+		http.Error(w, "render page", http.StatusInternalServerError)
 	}
 }
 

@@ -39,28 +39,41 @@ templ TaskRow(task TaskRowView) {
 			>
 				<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
 				if taskNeedsCompletionDecision(task) {
-					<button
-						type="button"
-						class="caldo-task-checkbox"
+					<label
+						class="caldo-task-checkbox-label"
 						aria-label={ taskCompletionLabel(task) }
-						aria-pressed={ taskCompletionPressed(task) }
 						aria-haspopup="dialog"
 						aria-controls={ taskDOMID("task-complete", task) }
 						aria-expanded="false"
 						data-task-complete-open
 					>
-						<span aria-hidden="true" class="caldo-task-checkbox-mark"></span>
-					</button>
+						<input
+							type="checkbox"
+							class="caldo-task-checkbox-input"
+							aria-label={ taskCompletionLabel(task) }
+							checked?={ taskIsCompleted(task) }
+						/>
+						<span class="caldo-task-checkbox" aria-hidden="true">
+							<span aria-hidden="true" class="caldo-task-checkbox-mark"></span>
+						</span>
+					</label>
 				} else {
-					<button
-						type="submit"
-						class="caldo-task-checkbox"
+					<label
+						class="caldo-task-checkbox-label"
 						aria-label={ taskCompletionLabel(task) }
-						aria-pressed={ taskCompletionPressed(task) }
-						disabled?={ !taskCanToggleCompletion(task) }
 					>
-						<span aria-hidden="true" class="caldo-task-checkbox-mark"></span>
-					</button>
+						<input
+							type="checkbox"
+							class="caldo-task-checkbox-input"
+							aria-label={ taskCompletionLabel(task) }
+							checked?={ taskIsCompleted(task) }
+							disabled?={ !taskCanToggleCompletion(task) }
+							data-task-completion-checkbox
+						/>
+						<span class="caldo-task-checkbox" aria-hidden="true">
+							<span aria-hidden="true" class="caldo-task-checkbox-mark"></span>
+						</span>
+					</label>
 				}
 			</form>
 			<div class="caldo-task-content" data-inline-task-display>
@@ -158,38 +171,8 @@ templ TaskRow(task TaskRowView) {
 						}
 					</div>
 				}
-				if taskCanToggleCompletion(task) || taskCanDelete(task) {
+				if taskCanDelete(task) {
 					<div class="caldo-task-actions" data-task-actions>
-						if taskCanToggleCompletion(task) {
-							if taskNeedsCompletionDecision(task) {
-								<button
-									type="button"
-									class="caldo-button caldo-button-secondary"
-									aria-haspopup="dialog"
-									aria-controls={ taskDOMID("task-complete", task) }
-									aria-expanded="false"
-									data-task-complete-open
-								>
-									{ taskCompletionLabel(task) }
-								</button>
-							} else {
-								<form
-									method="post"
-									action={ taskCompletionPath(task) }
-									hx-post={ taskCompletionPath(task) }
-									hx-swap="none"
-									hx-disabled-elt="find button"
-									hx-headers={ taskCSRFHeaders(ctx) }
-									data-refresh-after-write="true"
-									data-task-action-form
-									class="caldo-task-action-form"
-								>
-									<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
-									<button type="submit" class="caldo-button caldo-button-secondary">{ taskCompletionLabel(task) }</button>
-									<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
-								</form>
-							}
-						}
 						if taskCanDelete(task) {
 							<button
 								type="button"

@@ -117,8 +117,11 @@ func systemNavigationItems(todayCount, upcomingCount, favoriteCount, overdueCoun
 		{Label: "Abgeschlossen", Href: "/completed", Count: completedCount, HasCount: counted, ActiveTitles: []string{"Abgeschlossen", "Erledigt", "Erledigte Aufgaben"}},
 		{Label: "Suche", Href: "/search", ActiveTitles: []string{"Suche"}},
 		{Label: "Konflikte", Href: "/conflicts", Count: conflictCount, HasCount: counted, ActiveTitles: []string{"Konflikte", "Konfliktdetail"}},
-		{Label: "Einstellungen", Href: "/settings", ActiveTitles: []string{"Einstellungen"}},
 	}
+}
+
+func settingsNavigationItem(text Texts) NavigationItem {
+	return NavigationItem{Label: text.Settings, Href: "/settings", ActiveTitles: []string{"Einstellungen", text.Settings}}
 }
 
 func localizeNavigationSnapshot(snapshot NavigationSnapshot, text Texts) NavigationSnapshot {

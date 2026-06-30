@@ -85,6 +85,59 @@ func TestSearchRouteReturnsActiveTasksOnly(t *testing.T) {
 	}
 }
 
+func TestSearchResultsRouteRendersLivePartial(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := database.Close(); err != nil {
+			t.Fatalf("close sqlite: %v", err)
+		}
+	})
+
+	seedSearchRouteProjectAndTasks(t, database)
+
+	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
+	request := httptest.NewRequest(http.MethodGet, "/search/results?q=rechnung", nil)
+	request.Header.Set("X-Forwarded-User", "alice")
+	responseRecorder := httptest.NewRecorder()
+
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil).ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+
+	body := responseRecorder.Body.String()
+	for _, want := range []string{
+		`id="search-live-results"`,
+		`data-search-live-results`,
+		"Überweisung Rechnung",
+		`hx-post="/tasks/task-active/complete"`,
+		`name="expected_version" value="5"`,
+		"Finanzen",
+		"Büro",
+		"Rechnung Unteraufgabe",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("response body missing live search detail %q: %q", want, body)
+		}
+	}
+	for _, unwanted := range []string{
+		`class="caldo-app-shell"`,
+		`<main class="caldo-main"`,
+		`class="caldo-topbar-heading"`,
+		`id="global-search"`,
+	} {
+		if strings.Contains(body, unwanted) {
+			t.Fatalf("live search response unexpectedly contains full page detail %q: %q", unwanted, body)
+		}
+	}
+}
+
 func TestSearchRouteRendersInlineCreateForProjectContext(t *testing.T) {
 	t.Parallel()
 

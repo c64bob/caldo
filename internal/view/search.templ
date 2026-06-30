@@ -15,9 +15,21 @@ templ SearchPage(query string, results []TaskRowView, create InlineTaskCreateVie
 				placeholder="z. B. Rechnung #Finanzen @Büro"
 				autofocus
 				accesskey="k"
+				hx-get="/search/results"
+				hx-trigger="input changed delay:350ms, search"
+				hx-target="#search-live-results"
+				hx-swap="outerHTML"
+				hx-push-url="false"
+				data-live-search-input
 			/>
 			<p class="caldo-muted">Tastaturkürzel: Alt+Shift+K (Browser-Standard für accesskey).</p>
 		</form>
+		@SearchLiveResults(query, results, create, saveFilter)
+	</section>
+}
+
+templ SearchLiveResults(query string, results []TaskRowView, create InlineTaskCreateView, saveFilter SearchSaveFilterView) {
+	<div id="search-live-results" data-search-live-results aria-live="polite">
 		if saveFilter.Enabled {
 			@SearchSaveFilterForm(saveFilter)
 		}
@@ -33,7 +45,7 @@ templ SearchPage(query string, results []TaskRowView, create InlineTaskCreateVie
 			</ul>
 		}
 		@InlineTaskCreate(create)
-	</section>
+	</div>
 }
 
 templ SearchSaveFilterForm(saveFilter SearchSaveFilterView) {

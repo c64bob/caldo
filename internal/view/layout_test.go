@@ -284,6 +284,7 @@ func TestBaseLayoutRendersRequiredMainNavigation(t *testing.T) {
 	for _, want := range []string{
 		`aria-label="Hauptnavigation"`,
 		`aria-label="Mobile Hauptnavigation"`,
+		`data-nav-settings`,
 		`href="/today"`,
 		`>Heute<`,
 		`href="/upcoming"`,
@@ -310,8 +311,41 @@ func TestBaseLayoutRendersRequiredMainNavigation(t *testing.T) {
 	if count := strings.Count(output, `href="/search" aria-current="page"`); count != 2 {
 		t.Fatalf("expected desktop and mobile search links to be current, got %d in %s", count, output)
 	}
+	if count := strings.Count(output, `data-nav-settings`); count != 2 {
+		t.Fatalf("expected desktop and mobile settings nav blocks, got %d in %s", count, output)
+	}
+	assertSettingsOutsideSystemFilters(t, output)
 	if strings.Contains(output, `href="/settings" aria-current="page"`) {
 		t.Fatalf("expected inactive settings link not to be current: %s", output)
+	}
+}
+
+func TestBaseLayoutPinsSettingsNavigationToBottom(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	ctx = WithAssetManifest(ctx, assets.Manifest{
+		"app.css":       "app.hash.css",
+		"htmx.min.js":   "htmx.hash.js",
+		"htmx-sse.js":   "htmx-sse.hash.js",
+		"alpine.min.js": "alpine.hash.js",
+		"app.js":        "app.hash.js",
+	})
+
+	component := BaseLayout("Einstellungen", PlaceholderPage("Einstellungen"))
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render layout: %v", err)
+	}
+
+	output := rendered.String()
+	assertSettingsOutsideSystemFilters(t, output)
+	if count := strings.Count(output, `data-nav-settings`); count != 2 {
+		t.Fatalf("expected desktop and mobile settings nav blocks, got %d in %s", count, output)
+	}
+	if count := strings.Count(output, `href="/settings" aria-current="page"`); count != 2 {
+		t.Fatalf("expected settings links to be active in desktop and mobile bottom navs, got %d in %s", count, output)
 	}
 }
 
@@ -354,6 +388,25 @@ func TestBaseLayoutRendersShortcutHelp(t *testing.T) {
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected shortcut help to include %q", want)
+		}
+	}
+}
+
+func assertSettingsOutsideSystemFilters(t *testing.T, output string) {
+	t.Helper()
+
+	sections := strings.Split(output, `data-nav-system-filters`)
+	if len(sections) != 3 {
+		t.Fatalf("expected desktop and mobile system filter lists, got %d in %s", len(sections)-1, output)
+	}
+	for _, section := range sections[1:] {
+		end := strings.Index(section, `data-nav-user-filters`)
+		if end < 0 {
+			t.Fatalf("expected user filters after system filters in %s", section)
+		}
+		systemList := section[:end]
+		if strings.Contains(systemList, `href="/settings"`) || strings.Contains(systemList, `>Einstellungen<`) {
+			t.Fatalf("settings must not be rendered inside system filters: %s", systemList)
 		}
 	}
 }

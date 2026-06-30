@@ -661,6 +661,9 @@ async function exerciseKeyboardShortcuts(page) {
   await expect(searchInput).toHaveValue('typingn');
 
   await gotoApp(page, '/settings');
+  await expect(page.locator('.caldo-sidebar [data-nav-system-filters] a[href="/settings"]')).toHaveCount(0);
+  await expect(page.locator('.caldo-sidebar [data-nav-settings] a[href="/settings"]')).toBeVisible();
+  await expect(page.locator('.caldo-sidebar [data-nav-settings] a[href="/settings"]')).toHaveAttribute('aria-current', 'page');
   await page.keyboard.press('g');
   await page.keyboard.press('t');
   await expect(page).toHaveURL(/\/today$/);

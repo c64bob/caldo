@@ -98,6 +98,14 @@ templ shellNavSections(title string, nav NavigationSnapshot) {
 	</section>
 }
 
+templ shellSettingsNav(title string) {
+	<nav class="caldo-sidebar-settings" aria-label={ Text(ctx).Settings } data-nav-settings>
+		<ul class="space-y-1">
+			<li>@navLink(title, settingsNavigationItem(Text(ctx)))</li>
+		</ul>
+	</nav>
+}
+
 templ BaseLayout(title string, content templ.Component) {
 	<!DOCTYPE html>
 	<html lang={ UILanguage(ctx) } data-theme-root data-theme-mode={ UIDarkMode(ctx) } class={ ThemeRootClass(ctx) }>
@@ -120,6 +128,7 @@ templ BaseLayout(title string, content templ.Component) {
 					<nav class="caldo-sidebar-nav" aria-label={ Text(ctx).MainNavigation }>
 						@shellNavSections(title, Navigation(ctx))
 					</nav>
+					@shellSettingsNav(title)
 				</aside>
 				<div class="caldo-workspace">
 					<header class="caldo-topbar">
@@ -171,6 +180,7 @@ templ BaseLayout(title string, content templ.Component) {
 					<nav class="caldo-mobile-nav" aria-label={ Text(ctx).MobileMainNavigation }>
 						@shellNavSections(title, Navigation(ctx))
 					</nav>
+					@shellSettingsNav(title)
 				</div>
 			</dialog>
 			@QuickAddOverlay()

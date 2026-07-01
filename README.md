@@ -173,6 +173,12 @@ npm run test:e2e:webkit
 
 Die lokale Erstinstallation der Browser-Abhängigkeiten und die Root-Kommandos für Linux stehen in `docs/qa/playwright.md`.
 
+Release- und Staging-Runbooks:
+
+- Nextcloud-Staging-Smoke: `docs/qa/nextcloud.md`
+- Backup-, Restore- und Migrationsdrill: `docs/qa/backup-restore.md`
+- Performance-Messpunkte: `docs/qa/performance.md`
+
 Teststrategie:
 
 - Unit-Tests für reine Logik (z. B. Parsing, Roundtrip, Kryptografie)
@@ -185,7 +191,8 @@ Teststrategie:
 - **Healthcheck:** `GET /health` für Liveness/Readiness auf HTTP-Ebene
 - **Single-Process-Modell:** Eine aktive Instanz pro Datenverzeichnis
 - **SQLite-Betrieb:** WAL-Modus, ein synchronisierter Write-Pfad
-- **Migrationen:** Backup vor erster ausstehender Migration; Prüfsummenabweichungen führen zum Startup-Abbruch
+- **Migrationen:** Backup vor erster ausstehender Migration als `<DB_PATH>.backup-*`; Prüfsummenabweichungen führen zum Startup-Abbruch
+- **Backup/Restore:** Drill und relevante Dateien sind in `docs/qa/backup-restore.md` dokumentiert
 - **Monitoring-Basis:** HTTP-Status, Fehlercodes und Sync-Status beobachten (ohne sensible Nutzdaten)
 
 ### 11) Troubleshooting

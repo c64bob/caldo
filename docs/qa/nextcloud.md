@@ -31,6 +31,8 @@ The report must record:
 
 If a finding is product-relevant, create a GitHub issue with sanitized reproduction steps. Assign the `v1.0 production readiness` milestone and add `staging-finding` plus either `production-readiness` or `sync-maturity`. Add `release-blocker` when the finding blocks the current release.
 
+After a successful or failed release smoke run, update the sanitized server summary in `docs/qa/caldav-compatibility.md`. Keep detailed run evidence local under `test-results/nextcloud/`.
+
 ## Safety Rules
 
 - Use a dedicated Nextcloud test account.

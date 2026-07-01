@@ -7,7 +7,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 ## Zusammenfassung
 
 - Bestehende Stories: 89 `Umgesetzt`, 0 `Teilweise umgesetzt`, 0 `Offen`.
-- Neue Planungsstories: 34 `Umgesetzt`, 18 `Offen`.
+- Neue Planungsstories: 35 `Umgesetzt`, 17 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance, 29 Production Readiness, 30 CalDAV Sync Maturity.
 
 ## Legende
@@ -162,7 +162,7 @@ Die neuen Epics 23 bis 30 brechen die verbleibende UI-, QA-, Production-Readines
 | 29.5 | Offen | Security-, Privacy- und Logging-Audit ist noch nicht als Release-Prozess verankert. |
 | 29.6 | Offen | Dependency-, Lizenz- und Update-Review ist noch nicht als wiederholbarer Release-Schritt dokumentiert. |
 | 29.7 | Offen | Operational Health und Debugging Guide ist noch nicht operatororientiert dokumentiert. |
-| 30.1 | Offen | Real-Server-Kompatibilitaetsmatrix fuer CalDAV-Provider ist noch nicht vorhanden. |
+| 30.1 | Umgesetzt | `docs/qa/caldav-compatibility.md` definiert eine sanitisierte Real-Server-Matrix mit Servertyp, Version, Auth-Methode, redigierter Endpoint-Form, CalDAV-Faehigkeiten, Kernflows, Build/Run-Ergebnis, Issue-verlinkten Einschraenkungen und einem Prozess zum Hinzufuegen weiterer Server oder Versionen ohne Codeaenderung; `docs/qa/nextcloud.md` verweist Release-Smoke-Ergebnisse auf diese Matrix. |
 | 30.2 | Offen | Langlauf-Sync-Validierung mit Staging- oder Fake-CalDAV ist noch nicht definiert. |
 | 30.3 | Offen | Grosse Kalender und belastbare Grenzwerte sind noch nicht systematisch gemessen. |
 | 30.4 | Offen | WebDAV-Sync ist noch keine echte inkrementelle Sync-Strategie im normalen Sync. |

@@ -7,7 +7,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 ## Zusammenfassung
 
 - Bestehende Stories: 89 `Umgesetzt`, 0 `Teilweise umgesetzt`, 0 `Offen`.
-- Neue Planungsstories: 39 `Umgesetzt`, 13 `Offen`.
+- Neue Planungsstories: 40 `Umgesetzt`, 12 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance, 29 Production Readiness, 30 CalDAV Sync Maturity.
 
 ## Legende
@@ -159,7 +159,7 @@ Die neuen Epics 23 bis 30 brechen die verbleibende UI-, QA-, Production-Readines
 | 29.2 | Umgesetzt | `docs/qa/backup-restore.md` dokumentiert relevante DB-, WAL-, Lock-, Backup- und Secret-/Config-Dateien, Backup-Kopie, Restore in isolierte Pfade, Start mit wiederhergestellter DB, Migrationsdrill auf Kopie/Staging und Release-Blocker-Regeln. |
 | 29.3 | Umgesetzt | `docs/qa/release-rollback.md` buendelt Commit, Version, Image, CI, Staging-Smoke, Backup-/Restore-Entscheidung, bekannte Risiken, offene Blocker, Release-Notizen sowie Binary- und Container-Rollback. |
 | 29.4 | Umgesetzt | `docs/operations/deployment.md` dokumentiert Runtime-Konfiguration, Reverse-Proxy-Anforderungen, Secrets, Datenverzeichnis, Healthcheck, Container- und Binary-Betrieb, Updates, typische Start-/Konfigurationsfehler sowie Links zu Backup/Restore, Release/Rollback und Staging-Smoke. |
-| 29.5 | Offen | Security-, Privacy- und Logging-Audit ist noch nicht als Release-Prozess verankert. |
+| 29.5 | Umgesetzt | `docs/qa/security-privacy-logging-audit.md` definiert einen Release-Audit fuer verbotene Loginhalte, Fehlerausgaben, Reverse-Proxy-Auth, Setup-Gate, CSRF, CSP, Secret-Handling, Credential-Schutz, CalDAV-/VTODO-Privatsphaere, Browser-Artefakte und blockierende GitHub-Issues mit Release-Milestone. |
 | 29.6 | Offen | Dependency-, Lizenz- und Update-Review ist noch nicht als wiederholbarer Release-Schritt dokumentiert. |
 | 29.7 | Offen | Operational Health und Debugging Guide ist noch nicht operatororientiert dokumentiert. |
 | 30.1 | Umgesetzt | `docs/qa/caldav-compatibility.md` definiert eine sanitisierte Real-Server-Matrix mit Servertyp, Version, Auth-Methode, redigierter Endpoint-Form, CalDAV-Faehigkeiten, Kernflows, Build/Run-Ergebnis, Issue-verlinkten Einschraenkungen und einem Prozess zum Hinzufuegen weiterer Server oder Versionen ohne Codeaenderung; `docs/qa/nextcloud.md` verweist Release-Smoke-Ergebnisse auf diese Matrix. |

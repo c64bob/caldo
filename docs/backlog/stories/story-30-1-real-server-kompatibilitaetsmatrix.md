@@ -4,7 +4,7 @@
 Story 30.1 — Real-Server-Kompatibilitaetsmatrix
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Caldo dokumentiert, welche CalDAV-Server und Faehigkeiten regelmaessig geprueft werden.

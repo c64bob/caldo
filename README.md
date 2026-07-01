@@ -176,6 +176,7 @@ Die lokale Erstinstallation der Browser-Abhängigkeiten und die Root-Kommandos f
 Release- und Staging-Runbooks:
 
 - Deployment- und Betriebsrunbook: `docs/operations/deployment.md`
+- Operational-Health- und Debugging-Guide: `docs/operations/health-debugging.md`
 - Release- und Rollback-Checkliste: `docs/qa/release-rollback.md`
 - Security-, Privacy- und Logging-Audit: `docs/qa/security-privacy-logging-audit.md`
 - Dependency-, Lizenz- und Update-Review: `docs/qa/dependency-license-update-review.md`
@@ -201,6 +202,7 @@ Teststrategie:
 - **Security/Privacy:** Release-Audit für Logs, Auth, CSRF, CSP und Secret-Handling steht in `docs/qa/security-privacy-logging-audit.md`
 - **Dependencies:** Abhängigkeits-, Lizenz- und Update-Review steht in `docs/qa/dependency-license-update-review.md`
 - **Deployment:** Installation, Start, Updates und typische Startfehler sind in `docs/operations/deployment.md` beschrieben
+- **Debugging:** Sichere Diagnose von Health-, Startup-, Sync- und Scheduler-Problemen steht in `docs/operations/health-debugging.md`
 - **Monitoring-Basis:** HTTP-Status, Fehlercodes und Sync-Status beobachten (ohne sensible Nutzdaten)
 
 ### 11) Troubleshooting

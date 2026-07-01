@@ -70,6 +70,7 @@ WebKit-Befunde werden wie normale Browser-QA-Befunde behandelt: Produktrelevante
 
 ```bash
 npm run test:e2e
+npm run test:e2e:sync-longrun
 npm run test:e2e:webkit
 npm run test:e2e:ci
 npm run test:e2e:headed
@@ -87,6 +88,8 @@ make e2e-headed
 ```
 
 `npm run test:e2e` läuft gegen Chromium. `npm run test:e2e:webkit` läuft denselben MVP-Smoke gegen Playwright WebKit. `npm run test:e2e:ci` führt beide Browser nacheinander aus; dadurch bekommt jeder Browser ein frisches temporäres Caldo/Staging-CalDAV-Setup.
+
+`npm run test:e2e:sync-longrun` ist ein opt-in Chromium-Lauf fuer Story 30.2. Er prueft wiederholte synthetische lokale und Remote-Aenderungen ueber mehrere manuelle Sync-Zyklen gegen Stage-CalDAV und schreibt ein lokales Ergebnis nach `test-results/sync-longrun/`.
 
 ## WebKit Setup-Hinweise
 

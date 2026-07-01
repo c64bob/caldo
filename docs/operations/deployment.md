@@ -10,6 +10,7 @@ Use the related release and QA runbooks for release decisions and evidence:
 
 - Release and rollback checklist: `docs/qa/release-rollback.md`
 - Security, privacy, and logging audit: `docs/qa/security-privacy-logging-audit.md`
+- Dependency, license, and update review: `docs/qa/dependency-license-update-review.md`
 - Backup, restore, and migration drill: `docs/qa/backup-restore.md`
 - Nextcloud staging smoke: `docs/qa/nextcloud.md`
 - CalDAV compatibility matrix: `docs/qa/caldav-compatibility.md`
@@ -211,9 +212,10 @@ Before production release:
 
 1. Run the release checklist in `docs/qa/release-rollback.md`.
 2. Run the security, privacy, and logging audit in `docs/qa/security-privacy-logging-audit.md`.
-3. Run the Nextcloud staging smoke in `docs/qa/nextcloud.md`.
-4. Update `docs/qa/caldav-compatibility.md` with sanitized real-server evidence.
-5. Run `docs/qa/backup-restore.md` when migrations, persistence changes, sync conflict changes, or deployment changes are present.
-6. Keep rollback artifacts available: previous binary/static tree or previous image digest, plus a known-good DB backup when migrations are involved.
+3. Run the dependency, license, and update review in `docs/qa/dependency-license-update-review.md`.
+4. Run the Nextcloud staging smoke in `docs/qa/nextcloud.md`.
+5. Update `docs/qa/caldav-compatibility.md` with sanitized real-server evidence.
+6. Run `docs/qa/backup-restore.md` when migrations, persistence changes, sync conflict changes, or deployment changes are present.
+7. Keep rollback artifacts available: previous binary/static tree or previous image digest, plus a known-good DB backup when migrations are involved.
 
 If a deployment fails after release, follow the rollback section in `docs/qa/release-rollback.md`.

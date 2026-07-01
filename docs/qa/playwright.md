@@ -37,6 +37,35 @@ npm run playwright:install
 
 Linux-WebKit ist kein echter Safari-Ersatz. Die Story-21.1-Prüfung nutzt Playwright WebKit als CI-nahe Safari-Approximation; reale Safari-Freigabe braucht macOS mit Safari oder Safari Technology Preview.
 
+## Safari-/WebKit-QA-Gate
+
+WebKit-QA ist der Safari-nahe Browser-Gate für Caldo. Er nutzt denselben MVP-Smoke wie Chromium und läuft ausschließlich gegen die lokale Staging-CalDAV-Testinstanz aus dem Playwright-Global-Setup. Für diesen automatisierten Gate dürfen keine echten CalDAV-Zugänge, privaten Aufgaben oder Nextcloud-Staging-Secrets verwendet werden.
+
+Automatisiert:
+
+- Jeder Pull Request und jeder Push auf `main` durchläuft den CI-Job `browser-qa`.
+- Der Job installiert Chromium und WebKit inklusive Linux-Systemabhängigkeiten mit `npx playwright install --with-deps chromium webkit`.
+- Danach läuft `npm run test:e2e:ci`, also Chromium und WebKit nacheinander mit jeweils frischer temporärer Caldo-/Staging-CalDAV-Instanz.
+- Vor jedem Release Candidate muss der CI-Status dieses Jobs für den Ziel-Commit `pass` sein oder als Release-Blocker behandelt werden.
+
+Lokal:
+
+- Führe `npm run test:e2e:webkit` aus, wenn Änderungen Templ, CSS, `web/assets/app.js`, HTMX-/SSE-Flows, Dialoge, Fokusverhalten, Quick Add, Sync-Status, Konflikte oder Settings berühren.
+- Führe `npm run test:e2e:webkit` vor einem Release lokal aus, wenn CI nicht verfügbar ist oder ein WebKit-/Safari-naher Befund überprüft werden muss.
+- Nutze `npm run test:e2e:webkit:headed` nur zur lokalen Diagnose. Headed-Läufe sind keine zusätzlichen Commit-Artefakte.
+- Reale Safari-Prüfung auf macOS ist zusätzliche manuelle Release-Sicherheit, ersetzt aber nicht den automatisierten WebKit-Smoke im CI-nahen Prozess.
+
+Der WebKit-Smoke deckt die kritischen MVP-Flows ab:
+
+- Setup-Gate, CalDAV-Konfiguration, Kalenderauswahl und Initialimport.
+- Quick Add inklusive Overlay, Preview, Korrekturfeldern, Token-Chips, Tastaturpfad und Speichern.
+- Task Write-through: Erstellen, Inline-Bearbeitung, Detailpanel-Bearbeitung, Erledigen, Wiederöffnen, Favorisieren, Verschieben, Unteraufgabe und Löschen mit Undo.
+- Manueller Sync, SSE-/Sync-Status, Remote Create/Update/Delete über die lokale Staging-CalDAV-Admin-API.
+- Dirty-Local-vs-Remote-Changed-Konflikt, Konfliktliste, Konfliktdetail, manuelle Vorschau und Konfliktauflösung.
+- Desktop-, Tablet- und schmale Mobile-Breiten inklusive Screenshots, Overflow-Prüfungen und Dialog-/Panel-Containment.
+
+WebKit-Befunde werden wie normale Browser-QA-Befunde behandelt: Produktrelevante Fehler bekommen ein GitHub-Issue mit sanitisierten Schritten, Browsername `webkit`, Betriebssystem, Commit-SHA, relevanter Route und nicht-sensiblen Artefaktpfaden. Keine privaten Screenshots, CalDAV-Zugänge, Session-/CSRF-Werte oder Task-Inhalte hochladen.
+
 ## Tests Ausführen
 
 ```bash
@@ -58,6 +87,26 @@ make e2e-headed
 ```
 
 `npm run test:e2e` läuft gegen Chromium. `npm run test:e2e:webkit` läuft denselben MVP-Smoke gegen Playwright WebKit. `npm run test:e2e:ci` führt beide Browser nacheinander aus; dadurch bekommt jeder Browser ein frisches temporäres Caldo/Staging-CalDAV-Setup.
+
+## WebKit Setup-Hinweise
+
+Wenn WebKit lokal nicht startet und Playwright eine Meldung wie `Host system is missing dependencies to run browsers` mit fehlenden Bibliotheken wie `libgtk-4.so.1`, `libicudata.so`, `libgstreamer`, `libsecret-1.so.0` oder `libwoff2dec.so` zeigt, ist das ein lokales Host-Setup-Problem, kein Caldo-Testfehler.
+
+Führe dann aus:
+
+```bash
+sudo npx playwright install-deps webkit
+npx playwright install webkit
+```
+
+Wenn sowohl Chromium als auch WebKit fehlen oder eine frische QA-Maschine eingerichtet wird:
+
+```bash
+sudo npx playwright install-deps chromium webkit
+npx playwright install chromium webkit
+```
+
+In CI wird dieser Schritt durch `npx playwright install --with-deps chromium webkit` erledigt. In Codex-Umgebungen werden fehlende Systembibliotheken nicht per Docker oder Paketmanager nachinstalliert; solche lokalen WebKit-Startfehler werden im PR als Umgebungslimit dokumentiert.
 
 ## CI
 
@@ -88,6 +137,7 @@ Die Tests verwenden keine echten CalDAV-Zugänge. Remote-Änderungen laufen übe
 Der erste Browser-Smoke deckt ab:
 
 - Setup-Gate, CalDAV-Konfiguration, Kalenderauswahl und Initialimport
+- Quick Add mit Overlay, Preview, Korrektur und Speichern
 - globale Navigation, Tastaturkürzel und Theme-Toggle
 - Aufgaben erstellen, inline und im Detailpanel bearbeiten, erledigen, wieder öffnen und löschen
 - Suche sowie Fokus-Refresh bei Remote-Änderungen

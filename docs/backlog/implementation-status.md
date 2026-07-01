@@ -7,7 +7,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 ## Zusammenfassung
 
 - Bestehende Stories: 89 `Umgesetzt`, 0 `Teilweise umgesetzt`, 0 `Offen`.
-- Neue Planungsstories: 44 `Umgesetzt`, 8 `Offen`.
+- Neue Planungsstories: 45 `Umgesetzt`, 7 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance, 29 Production Readiness, 30 CalDAV Sync Maturity.
 
 ## Legende
@@ -151,7 +151,7 @@ Die neuen Epics 23 bis 30 brechen die verbleibende UI-, QA-, Production-Readines
 | 27.6 | Umgesetzt | `internal/view/settings.go`, `internal/view/settings_test.go`, `internal/handler/settings_update.go`, `internal/handler/settings_update_test.go`, `internal/db/settings_update.go`, `internal/db/tasks_create.go`, `internal/handler/quick_add_test.go` und `internal/db/projects_remote_cleanup.go` zeigen synchronisierte, remote-only und remote nicht gefundene Kalenderzustände in den Einstellungen, machen Entfernen-Folgen vor dem Speichern sichtbar, speichern das Default-Projekt fuer den gemeinsamen Task-Erstellungsresolver und halten remote geloeschte Kalender nachvollziehbar. |
 | 28.1 | Umgesetzt | `tests/e2e/mvp-flow.spec.js` prueft eine typische Tablet-Breite fuer Inbox-aehnliches Default-Projekt, Heute, Projekt, Suche, Quick Add, Konflikte und Einstellungen inklusive Hauptnavigation, Topbar-Aktionen, Sync-Badge, Touch-Zielen, horizontaler Overflow-Vermeidung, Dialog-/Panel-Containment und dokumentierenden Tablet-Screenshots in den Playwright-Artefakten. |
 | 28.2 | Umgesetzt | `tests/e2e/mvp-flow.spec.js` prueft schmale Mobile-Breiten fuer Navigation oeffnen/schliessen, aktive Formularfelder nach geschlossenem Drawer, Erreichbarkeit globaler Suche und Quick Add, Settings-Formulare, Aufgabenzeilen mit Chips und Buttons, Inline-Bearbeitung, Detaildialog-Containment und Konfliktloesungsformular ohne Seiten-Overflow inklusive Mobile-Screenshots in den Playwright-Artefakten. |
-| 28.3 | Offen | Safari-/WebKit-QA ist nicht fest im Prozess verankert. |
+| 28.3 | Umgesetzt | `docs/qa/playwright.md`, `playwright.config.js`, `.github/workflows/ci.yml`, `package.json` und `docs/qa/release-rollback.md` verankern Safari-nahe WebKit-QA als CI- und Release-Gate, beschreiben lokale/automatisierte Ausfuehrung, Setup-Hinweise fuer fehlende WebKit-Systembibliotheken, abgedeckte MVP-Flows inklusive Setup, Quick Add, Write-through, Manual Sync und Konfliktloesung sowie die ausschliessliche Nutzung von Fake-/Staging-CalDAV. |
 | 28.4 | Offen | Tastatur-, Fokus- und Accessibility-Abdeckung ist nicht vollstaendig umgesetzt. |
 | 28.5 | Offen | Performance-Szenarien und Messwerte sind nicht dokumentiert oder automatisiert. |
 | 28.6 | Offen | Visuelle Regression wird ueber Baseline-Screenshots vorbereitet, aber kein vollstaendiger Review-/Regression-Prozess ist umgesetzt. |

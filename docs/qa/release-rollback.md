@@ -28,6 +28,7 @@ Record these values before making a release decision:
 | Binary artifacts | Yes | Release workflow builds Linux amd64 and arm64 binaries. |
 | Container image | Yes for container users | Record `ghcr.io/<owner>/caldo:<version>` and the image digest from the release workflow. |
 | CI result | Yes | Main or release-candidate commit must have passing CI. |
+| WebKit browser QA | Yes | The `browser-qa` CI job must include a passing Playwright WebKit run, or a local `npm run test:e2e:webkit` result must be recorded when CI is unavailable. |
 | Release workflow result | Yes when tag is published | Tag workflow must complete successfully before announcing artifacts. |
 | Security/privacy/logging audit | Yes | Required release audit must pass or block release. |
 | Dependency/license/update review | Yes | Required dependency review must pass or have tracked issues for all accepted deferrals. |
@@ -44,6 +45,7 @@ Record these values before making a release decision:
 | Target commit selected | Commit SHA is recorded and comes from `main`. | pass/fail/blocked |
 | Version selected | Version tag is recorded and not already used. | pass/fail/blocked |
 | CI passed | Go vet, race tests, templ generation check, asset manifest check, binary build, browser QA, and Docker image build passed for the commit. | pass/fail/blocked |
+| WebKit browser QA passed | Playwright WebKit MVP smoke passed in CI or a local WebKit run is recorded with non-product setup blockers tracked separately. | pass/fail/blocked |
 | Security workflow reviewed | Latest scheduled or push security workflow has no unresolved release-blocking finding. | pass/fail/blocked |
 | Security/privacy/logging audit completed | `docs/qa/security-privacy-logging-audit.md` result is `pass` with no unresolved blocking finding. | pass/fail/blocked |
 | Dependency/license/update review completed | `docs/qa/dependency-license-update-review.md` result is `pass` with no unresolved blocking finding. | pass/fail/blocked |
@@ -166,6 +168,7 @@ Template:
 - Container image:
 - Image digest:
 - CI result:
+- WebKit browser QA result:
 - Release workflow result:
 - Security workflow reviewed:
 - Security/privacy/logging audit result:
@@ -184,6 +187,7 @@ Template:
 | Target commit selected | pass/fail/blocked | |
 | Version selected | pass/fail/blocked | |
 | CI passed | pass/fail/blocked | |
+| WebKit browser QA passed | pass/fail/blocked | |
 | Security workflow reviewed | pass/fail/blocked | |
 | Security/privacy/logging audit completed | pass/fail/blocked | |
 | Dependency/license/update review completed | pass/fail/blocked | |

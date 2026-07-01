@@ -7,7 +7,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 ## Zusammenfassung
 
 - Bestehende Stories: 89 `Umgesetzt`, 0 `Teilweise umgesetzt`, 0 `Offen`.
-- Neue Planungsstories: 38 `Umgesetzt`, 14 `Offen`.
+- Neue Planungsstories: 39 `Umgesetzt`, 13 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance, 29 Production Readiness, 30 CalDAV Sync Maturity.
 
 ## Legende
@@ -158,7 +158,7 @@ Die neuen Epics 23 bis 30 brechen die verbleibende UI-, QA-, Production-Readines
 | 29.1 | Umgesetzt | `docs/qa/nextcloud.md` definiert den verpflichtenden Staging-Smoke-Gate fuer Release Candidates inklusive Setup/Import, Manual Sync, Remote Create/Update/Delete, Dirty-vs-Remote-Konflikt, Konfliktloesung, synthetischen Testdaten, Ergebnisprotokoll und GitHub-Issue-/Milestone-Regeln. |
 | 29.2 | Umgesetzt | `docs/qa/backup-restore.md` dokumentiert relevante DB-, WAL-, Lock-, Backup- und Secret-/Config-Dateien, Backup-Kopie, Restore in isolierte Pfade, Start mit wiederhergestellter DB, Migrationsdrill auf Kopie/Staging und Release-Blocker-Regeln. |
 | 29.3 | Umgesetzt | `docs/qa/release-rollback.md` buendelt Commit, Version, Image, CI, Staging-Smoke, Backup-/Restore-Entscheidung, bekannte Risiken, offene Blocker, Release-Notizen sowie Binary- und Container-Rollback. |
-| 29.4 | Offen | Deployment- und Betriebsrunbook ist noch nicht zusammenhaengend vorhanden. |
+| 29.4 | Umgesetzt | `docs/operations/deployment.md` dokumentiert Runtime-Konfiguration, Reverse-Proxy-Anforderungen, Secrets, Datenverzeichnis, Healthcheck, Container- und Binary-Betrieb, Updates, typische Start-/Konfigurationsfehler sowie Links zu Backup/Restore, Release/Rollback und Staging-Smoke. |
 | 29.5 | Offen | Security-, Privacy- und Logging-Audit ist noch nicht als Release-Prozess verankert. |
 | 29.6 | Offen | Dependency-, Lizenz- und Update-Review ist noch nicht als wiederholbarer Release-Schritt dokumentiert. |
 | 29.7 | Offen | Operational Health und Debugging Guide ist noch nicht operatororientiert dokumentiert. |

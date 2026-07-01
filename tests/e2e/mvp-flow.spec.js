@@ -72,6 +72,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(page.locator('[data-search-results]').filter({ hasText: 'Stage Seed Task' })).toBeVisible();
   await exerciseKeyboardShortcuts(page);
   await exerciseQuickAddOverlay(page);
+  await exerciseKeyboardFocusAccessibility(page, testInfo);
   await exerciseThemeToggle(page);
   await exerciseSSESyncStatus(page);
   await gotoApp(page, '/search?q=Stage');
@@ -121,6 +122,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(page.locator('[data-saved-filter-create-form]')).toHaveAttribute('aria-describedby', new RegExp(filterCreateErrorID));
   await expect(page.locator('[data-saved-filter-create-form] [name="name"]')).toHaveAttribute('aria-describedby', new RegExp(filterCreateErrorID));
   await expect(page.locator('[data-saved-filter-create-form] [name="name"]')).toHaveAttribute('aria-invalid', 'true');
+  await expectVisibleFormErrorsAssociated(page);
   await expect(page.locator('[data-saved-filter-list]').filter({ hasText: 'E2E Broken Filter' })).toHaveCount(0);
   await expect(page.locator('[data-nav-user-filters] a').filter({ hasText: 'E2E Broken Filter' })).toHaveCount(0);
   await gotoApp(page, '/today');
@@ -557,6 +559,55 @@ async function openLabelDetail(page, labelName) {
   await expect(page).toHaveURL(/\/labels\/[^/]+$/);
 }
 
+async function exerciseKeyboardFocusAccessibility(page, testInfo) {
+  await page.setViewportSize(desktopViewport);
+  await gotoApp(page, '/search?q=Stage');
+  await expectIconButtonsHaveAccessibleNames(page);
+
+  await expectVisibleFocusIndicator(page.locator('.caldo-topbar a[href="/search"]').first());
+  await expectVisibleFocusIndicator(page.locator('.caldo-topbar [data-quick-add-open]').first());
+  await expectVisibleFocusIndicator(page.locator('.caldo-sidebar [data-nav-system-filters] a[href="/today"]').first());
+
+  const stageRow = page.locator('[data-task-id]').filter({ hasText: 'Stage Seed Task' }).first();
+  await expect(stageRow).toBeVisible();
+  await expectVisibleFocusIndicator(stageRow.getByRole('button', { name: 'Bearbeiten' }));
+  await expectVisibleFocusIndicator(stageRow.getByRole('button', { name: 'Details' }));
+  await expectVisibleFocusIndicator(stageRow.getByRole('button', { name: /Favorit/ }).first());
+
+  const quickAddTrigger = page.locator('.caldo-topbar [data-quick-add-open]').first();
+  await quickAddTrigger.focus();
+  await page.keyboard.press('Enter');
+  const quickAddDialog = page.locator('[data-quick-add-overlay]');
+  await expect(quickAddDialog).toBeVisible();
+  await expect(quickAddDialog.locator('[data-quick-add-overlay-input]')).toBeFocused();
+  await expectFocusWithinDialog(quickAddDialog);
+  await page.keyboard.press('Shift+Tab');
+  await expectFocusWithinDialog(quickAddDialog);
+  await page.keyboard.press('Tab');
+  await expectFocusWithinDialog(quickAddDialog);
+  await page.keyboard.press('Escape');
+  await expect(quickAddDialog).toBeHidden();
+  await expect(quickAddTrigger).toBeFocused();
+
+  await gotoApp(page, '/search?q=Stage');
+  const detailRow = page.locator('[data-task-id]').filter({ hasText: 'Stage Seed Task' }).first();
+  const detailButton = detailRow.getByRole('button', { name: 'Details' });
+  await detailButton.focus();
+  await page.keyboard.press('Enter');
+  const detailDialog = detailRow.locator('[data-task-detail-dialog]');
+  await expect(detailDialog).toBeVisible();
+  await expect(detailDialog.locator('[name="title"]')).toBeFocused();
+  await expectIconButtonsHaveAccessibleNames(page);
+  await expectFocusWithinDialog(detailDialog);
+  await page.keyboard.press('Shift+Tab');
+  await expectFocusWithinDialog(detailDialog);
+  await page.keyboard.press('Escape');
+  await expect(detailDialog).toBeHidden();
+  await expect(detailButton).toBeFocused();
+
+  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/accessibility-focus-dialogs.png`, fullPage: true, caret: 'initial' });
+}
+
 async function exerciseMobileNavigationAndSettings(page, testInfo) {
   await page.setViewportSize(narrowMobileViewport);
   await gotoApp(page, '/search?q=Stage');
@@ -916,6 +967,7 @@ async function exerciseQuickAddOverlay(page) {
   await expect(saveForm).toHaveAttribute('aria-describedby', /quick-add-overlay-error/);
   await expect(saveForm.locator('input[name="title"]')).toHaveAttribute('aria-describedby', /quick-add-overlay-error/);
   await expect(saveForm.locator('input[name="title"]')).toHaveAttribute('aria-invalid', 'true');
+  await expectVisibleFormErrorsAssociated(page);
   await expect(input).toHaveValue('E2E Overlay Failed');
   await expect(page).toHaveURL(searchURL);
 
@@ -1194,6 +1246,71 @@ async function expectElementHorizontallyWithinViewport(locator, viewport) {
   }
   expect(box.x).toBeGreaterThanOrEqual(-1);
   expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
+}
+
+async function expectIconButtonsHaveAccessibleNames(page) {
+  const missingNames = await page.locator('button.caldo-icon-button').evaluateAll((buttons) => (
+    buttons
+      .filter((button) => !String(button.getAttribute('aria-label') || '').trim())
+      .map((button) => button.outerHTML)
+  ));
+  expect(missingNames, 'icon buttons must have explicit aria-label values').toEqual([]);
+}
+
+async function expectVisibleFocusIndicator(locator) {
+  await expect(locator).toBeVisible();
+  await locator.focus();
+  await expect(locator).toBeFocused();
+  const focusStyle = await locator.evaluate((element) => {
+    const style = window.getComputedStyle(element);
+    const outlineWidth = Number.parseFloat(style.outlineWidth || '0') || 0;
+    const hasOutline = style.outlineStyle !== 'none' && outlineWidth > 0;
+    const hasShadow = Boolean(style.boxShadow && style.boxShadow !== 'none');
+    return {
+      hasIndicator: hasOutline || hasShadow,
+      outlineStyle: style.outlineStyle,
+      outlineWidth: style.outlineWidth,
+      boxShadow: style.boxShadow
+    };
+  });
+  expect(
+    focusStyle.hasIndicator,
+    `expected visible focus indicator, got outline=${focusStyle.outlineStyle} ${focusStyle.outlineWidth} box-shadow=${focusStyle.boxShadow}`
+  ).toBe(true);
+}
+
+async function expectFocusWithinDialog(dialog) {
+  const containsFocus = await dialog.evaluate((element) => element.contains(document.activeElement));
+  expect(containsFocus, 'open dialog must contain keyboard focus').toBe(true);
+}
+
+async function expectVisibleFormErrorsAssociated(page) {
+  const errors = page.locator('.caldo-alert-error[role="alert"]:not([hidden])');
+  const count = await errors.count();
+  expect(count, 'expected at least one visible form error').toBeGreaterThan(0);
+  for (let index = 0; index < count; index += 1) {
+    const association = await errors.nth(index).evaluate((error) => {
+      const id = String(error.id || '').trim();
+      const describedByIncludesID = (element) => String(element.getAttribute('aria-describedby') || '')
+        .split(/\s+/)
+        .includes(id);
+      const forms = Array.from(document.querySelectorAll('form'))
+        .filter((form) => describedByIncludesID(form));
+      const controls = forms.flatMap((form) => (
+        Array.from(form.querySelectorAll('input:not([type="hidden"]), select, textarea'))
+      ));
+      return {
+        id,
+        formDescribed: Boolean(id && forms.length > 0),
+        controlDescribed: Boolean(id && controls.some((control) => describedByIncludesID(control))),
+        controlInvalid: Boolean(controls.some((control) => control.getAttribute('aria-invalid') === 'true'))
+      };
+    });
+    expect(association.id, 'visible form error must have an id').toBeTruthy();
+    expect(association.formDescribed, 'form must reference visible error via aria-describedby').toBe(true);
+    expect(association.controlDescribed, 'a form control must reference visible error via aria-describedby').toBe(true);
+    expect(association.controlInvalid, 'a form control must expose aria-invalid=true').toBe(true);
+  }
 }
 
 async function expectTouchTargetAtLeast(locator, minimumSize) {

@@ -175,6 +175,7 @@ Die lokale Erstinstallation der Browser-Abhängigkeiten und die Root-Kommandos f
 
 Release- und Staging-Runbooks:
 
+- Release- und Rollback-Checkliste: `docs/qa/release-rollback.md`
 - Nextcloud-Staging-Smoke: `docs/qa/nextcloud.md`
 - Backup-, Restore- und Migrationsdrill: `docs/qa/backup-restore.md`
 - Performance-Messpunkte: `docs/qa/performance.md`
@@ -193,6 +194,7 @@ Teststrategie:
 - **SQLite-Betrieb:** WAL-Modus, ein synchronisierter Write-Pfad
 - **Migrationen:** Backup vor erster ausstehender Migration als `<DB_PATH>.backup-*`; Prüfsummenabweichungen führen zum Startup-Abbruch
 - **Backup/Restore:** Drill und relevante Dateien sind in `docs/qa/backup-restore.md` dokumentiert
+- **Release/Rollback:** Freigabe- und Rollback-Kriterien sind in `docs/qa/release-rollback.md` gebündelt
 - **Monitoring-Basis:** HTTP-Status, Fehlercodes und Sync-Status beobachten (ohne sensible Nutzdaten)
 
 ### 11) Troubleshooting

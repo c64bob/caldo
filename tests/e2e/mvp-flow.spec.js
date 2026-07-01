@@ -132,7 +132,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await captureBaselineSet(page, testInfo, 'quick-add');
   await gotoApp(page, '/settings');
   await captureBaselineSet(page, testInfo, 'settings');
-  await exerciseTabletCoreViews(page);
+  await exerciseTabletCoreViews(page, testInfo);
   await gotoApp(page, '/search?q=Stage');
 
   await page.setViewportSize(mobileViewport);
@@ -488,6 +488,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await captureBaselineSet(page, testInfo, 'conflicts');
   const conflictHref = await conflictLink.getAttribute('href');
   expect(conflictHref).toMatch(/^\/conflicts\//);
+  await exerciseTabletConflictViews(page, testInfo, conflictHref);
 
   await gotoApp(page, conflictHref);
   await expectCurrentView(page, 'Konfliktdetail');
@@ -568,13 +569,18 @@ async function openLabelDetail(page, labelName) {
   await expect(page).toHaveURL(/\/labels\/[^/]+$/);
 }
 
-async function exerciseTabletCoreViews(page) {
+async function exerciseTabletCoreViews(page, testInfo) {
   await page.setViewportSize(tabletViewport);
+  await gotoApp(page, '/projects');
+  const defaultProjectHref = await sidebarProjectHref(page, 'E2E Setup Inbox');
+  const emptyProjectHref = await sidebarProjectHref(page, 'E2E Empty Project');
   const coreViews = [
+    { name: 'inbox-equivalent-default-project', pathname: defaultProjectHref, heading: 'E2E Setup Inbox' },
     { pathname: '/today', heading: 'Heute' },
-    { pathname: '/upcoming', heading: 'Demnächst' },
-    { pathname: '/projects', heading: 'Projekte' },
+    { name: 'project-detail', pathname: emptyProjectHref, heading: 'E2E Empty Project', content: 'Keine offenen Aufgaben in diesem Projekt.' },
     { pathname: '/search?q=Stage', heading: 'Suche', content: 'Stage Seed Task' },
+    { pathname: '/quick-add', heading: 'Quick Add', content: 'Aufgabe' },
+    { pathname: '/conflicts', heading: 'Konflikte', content: 'Keine ungelösten Konflikte' },
     { pathname: '/settings', heading: 'Einstellungen' }
   ];
 
@@ -591,6 +597,53 @@ async function exerciseTabletCoreViews(page) {
     await expect(page.locator('.caldo-topbar [data-theme-toggle]')).toBeVisible();
     await expect(page.locator('.caldo-topbar #sync-status')).toBeVisible();
     await expectNoHorizontalOverflow(page);
+    await expectTabletTouchTargets(page);
+    await page.screenshot({
+      path: `${browserArtifactDir(testInfo)}/tablet-${view.name ?? slugifyArtifactName(view.heading)}.png`,
+      fullPage: true,
+      caret: 'initial'
+    });
+  }
+}
+
+async function exerciseTabletConflictViews(page, testInfo, conflictHref) {
+  await page.setViewportSize(tabletViewport);
+  await gotoApp(page, '/conflicts');
+  await expectCurrentView(page, 'Konflikte');
+  await expect(page.locator('[data-conflict-list-row]').first()).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await expectTabletTouchTargets(page);
+  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/tablet-conflicts-open.png`, fullPage: true, caret: 'initial' });
+
+  await gotoApp(page, conflictHref);
+  await expectCurrentView(page, 'Konfliktdetail');
+  await expect(page.locator('[data-conflict-comparison]')).toBeVisible();
+  await expect(page.locator('[data-conflict-resolution]')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await expectTabletTouchTargets(page);
+  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/tablet-conflict-detail.png`, fullPage: true, caret: 'initial' });
+  await page.setViewportSize(desktopViewport);
+}
+
+async function sidebarProjectHref(page, projectName) {
+  const link = page.locator('.caldo-sidebar [data-nav-projects] a').filter({ hasText: projectName }).first();
+  await link.scrollIntoViewIfNeeded();
+  await expect(link).toBeVisible();
+  const href = await link.getAttribute('href');
+  expect(href, `project link for ${projectName} should have href`).toBeTruthy();
+  return href;
+}
+
+async function expectTabletTouchTargets(page) {
+  const targets = [
+    page.locator('.caldo-sidebar [data-nav-system-filters] a[href="/today"]').first(),
+    page.locator('.caldo-topbar a[href="/search"]').first(),
+    page.locator('.caldo-topbar [data-quick-add-open]').first(),
+    page.locator('.caldo-topbar [data-theme-toggle]').first()
+  ];
+
+  for (const target of targets) {
+    await expectTouchTargetAtLeast(target, 32);
   }
 }
 
@@ -960,6 +1013,14 @@ function browserBaselineDir(testInfo) {
   return `${browserArtifactDir(testInfo)}/baselines`;
 }
 
+function slugifyArtifactName(value) {
+  return value
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^\w]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 async function captureBaselineSet(page, testInfo, name) {
   await captureBaseline(page, testInfo, `${name}-desktop`, desktopViewport);
   await captureBaseline(page, testInfo, `${name}-tablet`, tabletViewport);
@@ -1002,4 +1063,14 @@ async function expectElementWithinViewport(locator, viewport) {
   expect(box.y).toBeGreaterThanOrEqual(-1);
   expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
   expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
+}
+
+async function expectTouchTargetAtLeast(locator, minimumSize) {
+  await expect(locator).toBeVisible();
+  const box = await locator.boundingBox();
+  if (!box) {
+    throw new Error('expected visible touch target to have a bounding box');
+  }
+  expect(box.width).toBeGreaterThanOrEqual(minimumSize);
+  expect(box.height).toBeGreaterThanOrEqual(minimumSize);
 }

@@ -8,6 +8,29 @@ Use this runbook to check that Caldo interoperates with Nextcloud for setup, syn
 
 Do not convert this runbook into a committed Playwright suite. Normal automated browser QA must keep using the local staging CalDAV server.
 
+## Release Smoke Gate
+
+For every release candidate, run the minimal staging smoke below against a dedicated Nextcloud test account before treating the build as production-ready. The run is a release evidence artifact, not a committed fixture.
+
+A release smoke run passes only when all required rows in the result report are `pass` or explicitly `not applicable` with a non-product reason. Any `fail` or product-caused `blocked` result must become a GitHub issue before release decision.
+
+Store one local report per run:
+
+```text
+test-results/nextcloud/<yyyy-mm-dd>-staging-smoke.md
+```
+
+The report must record:
+
+- Date and timezone of the run
+- Commit SHA, release tag, or container image digest
+- Server type, for example `Nextcloud`, and server version when available without exposing private infrastructure details
+- Browser and OS used for manual verification
+- Redacted endpoint shape, not the full CalDAV URL
+- Overall pass/fail status
+
+If a finding is product-relevant, create a GitHub issue with sanitized reproduction steps. Assign the `v1.0 production readiness` milestone and add `staging-finding` plus either `production-readiness` or `sync-maturity`. Add `release-blocker` when the finding blocks the current release.
+
 ## Safety Rules
 
 - Use a dedicated Nextcloud test account.
@@ -100,6 +123,20 @@ Caldo QA remote
 
 ## Checklist
 
+### Minimal Staging Smoke
+
+This is the required Story 29.1 release smoke. The broader sections below can be run when the release touches those areas or when additional confidence is needed.
+
+| Flow | Steps | Expected |
+|---|---|---|
+| Setup and import | Start from a clean Caldo DB, submit the dedicated Nextcloud CalDAV credentials, select only the disposable calendar, complete initial import. | Connection succeeds, no sensitive value appears in UI/logs, normal app opens, selected calendar appears as a project. |
+| Manual sync | Trigger manual sync from Caldo after setup. | Sync completes visibly and does not remain stuck in running state after refresh. |
+| Remote create | Create a synthetic task directly in Nextcloud, then trigger manual sync in Caldo. | New remote task appears locally without duplicate rows. |
+| Remote update | Edit the same remote task directly in Nextcloud, then trigger manual sync in Caldo. | Local clean task updates to the remote value. |
+| Remote delete | Delete the same remote task directly in Nextcloud, then trigger manual sync in Caldo. | Local clean task is removed or a documented conflict appears if local state was changed. |
+| Local dirty vs remote changed | Open a Caldo edit form, change a field without saving, change the same task in Nextcloud, then sync or focus-refresh Caldo. | Dirty local form is not silently overwritten; remote change becomes visible as warning or conflict path. |
+| Conflict resolution | Create or use a visible conflict, open conflict detail, resolve using a selected result, then refresh/sync. | Resolution writes to CalDAV, conflict is marked resolved, selected result remains after refresh. |
+
 ### 1. Setup And Initial Import
 
 - Open Caldo with the proxy-auth header.
@@ -190,27 +227,34 @@ test-results/nextcloud/<yyyy-mm-dd>-manual.md
 Template:
 
 ```markdown
-# Nextcloud QA Result
+# Nextcloud Staging Smoke Result
 
 - Date:
-- Commit:
+- Timezone:
+- Commit/tag/image:
 - Caldo version/branch:
-- Nextcloud endpoint: redacted
+- Server type/version:
+- Nextcloud endpoint shape: redacted
 - Nextcloud account: dedicated test account, redacted
 - Browser:
 - OS:
 - Disposable calendar:
+- Overall result: pass/fail/blocked
 
 | Area | Result | Notes |
 |---|---|---|
-| Setup and initial import | pass/fail/blocked | |
-| Task write-through | pass/fail/blocked | |
-| Remote sync | pass/fail/blocked | |
-| Subtasks | pass/fail/blocked | |
-| Favorites and labels | pass/fail/blocked | |
-| Attachments and recurrence preservation | pass/fail/blocked | |
-| Conflict handling | pass/fail/blocked | |
-| Settings | pass/fail/blocked | |
+| Setup and import | pass/fail/blocked | |
+| Manual sync | pass/fail/blocked | |
+| Remote create | pass/fail/blocked | |
+| Remote update | pass/fail/blocked | |
+| Remote delete | pass/fail/blocked | |
+| Local dirty vs remote changed | pass/fail/blocked | |
+| Conflict resolution | pass/fail/blocked | |
+| Task write-through | pass/fail/blocked/not applicable | |
+| Subtasks | pass/fail/blocked/not applicable | |
+| Favorites and labels | pass/fail/blocked/not applicable | |
+| Attachments and recurrence preservation | pass/fail/blocked/not applicable | |
+| Settings | pass/fail/blocked/not applicable | |
 | Cleanup | pass/fail/blocked | |
 
 ## Observations
@@ -219,5 +263,7 @@ Template:
 
 ## Follow-Ups
 
--
+- GitHub issue:
+- Milestone:
+- Labels:
 ```

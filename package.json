@@ -6,6 +6,7 @@
     "test:e2e": "playwright test --project=chromium",
     "test:e2e:visual": "npm run test:e2e && node tests/e2e/visual-review.js --browser chromium",
     "test:e2e:performance": "CALDO_E2E_PERF=1 playwright test tests/e2e/performance.spec.js --project=chromium",
+    "test:e2e:sync-longrun": "CALDO_E2E_SYNC_LONGRUN=1 playwright test tests/e2e/sync-longrun.spec.js --project=chromium",
     "test:e2e:webkit": "playwright test --project=webkit",
     "test:e2e:visual:webkit": "npm run test:e2e:webkit && node tests/e2e/visual-review.js --browser webkit",
     "test:e2e:ci": "npm run test:e2e && npm run test:e2e:webkit",

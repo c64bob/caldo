@@ -7,7 +7,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 ## Zusammenfassung
 
 - Bestehende Stories: 89 `Umgesetzt`, 0 `Teilweise umgesetzt`, 0 `Offen`.
-- Neue Planungsstories: 48 `Umgesetzt`, 4 `Offen`.
+- Neue Planungsstories: 49 `Umgesetzt`, 3 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance, 29 Production Readiness, 30 CalDAV Sync Maturity.
 
 ## Legende
@@ -163,7 +163,7 @@ Die neuen Epics 23 bis 30 brechen die verbleibende UI-, QA-, Production-Readines
 | 29.6 | Umgesetzt | `docs/qa/dependency-license-update-review.md` definiert einen Release-Review fuer Go-Module, Templ, Tailwind-Pins, npm/Playwright, Security-Workflow-Ergebnisse, npm audit, Lizenzrisiken, Update-Entscheidungen, Runtime-Grenzen und Issue-Tracking ohne private Daten oder Secrets. |
 | 29.7 | Umgesetzt | `docs/operations/health-debugging.md` erklaert Healthcheck, Startstatus, Sync-Zustand, Scheduler-Verhalten, sichere Logauswertung, haeufige Fehlerklassen, lokale Konfigurationsprobleme vs. moegliche Produktfehler und sichere GitHub-Issue-Angaben ohne private Aufgabeninhalte oder CalDAV-Secrets. |
 | 30.1 | Umgesetzt | `docs/qa/caldav-compatibility.md` definiert eine sanitisierte Real-Server-Matrix mit Servertyp, Version, Auth-Methode, redigierter Endpoint-Form, CalDAV-Faehigkeiten, Kernflows, Build/Run-Ergebnis, Issue-verlinkten Einschraenkungen und einem Prozess zum Hinzufuegen weiterer Server oder Versionen ohne Codeaenderung; `docs/qa/nextcloud.md` verweist Release-Smoke-Ergebnisse auf diese Matrix. |
-| 30.2 | Offen | Langlauf-Sync-Validierung mit Staging- oder Fake-CalDAV ist noch nicht definiert. |
+| 30.2 | Umgesetzt | `docs/qa/sync-longrun.md`, `tests/e2e/sync-longrun.spec.js`, `package.json` und `docs/qa/nextcloud.md` definieren und automatisieren eine synthetische Langlauf-Sync-Validierung mit wiederholten lokalen und Remote-Aenderungen, manuellen Sync-Zyklen, Checks fuer Duplikate, verlorene Aenderungen, haengende Sync-Zustaende und unerwartete Konflikte sowie einem Staging-Prozess fuer periodische Sync-Beobachtung und sanitisierte Issues. |
 | 30.3 | Offen | Grosse Kalender und belastbare Grenzwerte sind noch nicht systematisch gemessen. |
 | 30.4 | Offen | WebDAV-Sync ist noch keine echte inkrementelle Sync-Strategie im normalen Sync. |
 | 30.5 | Offen | CTag-/ETag-Strategie ist noch keine vollwertige inkrementelle Sync-Strategie. |

@@ -4,7 +4,7 @@
 Story 29.1 — Staging-Nextcloud-Smoke-Test-Prozess
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Ein wiederholbarer Staging-Smoke-Test gibt vor Releases Sicherheit mit einem echten Nextcloud-CalDAV-Server.

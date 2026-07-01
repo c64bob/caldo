@@ -7,7 +7,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 ## Zusammenfassung
 
 - Bestehende Stories: 89 `Umgesetzt`, 0 `Teilweise umgesetzt`, 0 `Offen`.
-- Neue Planungsstories: 33 `Umgesetzt`, 19 `Offen`.
+- Neue Planungsstories: 34 `Umgesetzt`, 18 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance, 29 Production Readiness, 30 CalDAV Sync Maturity.
 
 ## Legende
@@ -155,7 +155,7 @@ Die neuen Epics 23 bis 30 brechen die verbleibende UI-, QA-, Production-Readines
 | 28.4 | Offen | Tastatur-, Fokus- und Accessibility-Abdeckung ist nicht vollstaendig umgesetzt. |
 | 28.5 | Offen | Performance-Szenarien und Messwerte sind nicht dokumentiert oder automatisiert. |
 | 28.6 | Offen | Visuelle Regression wird ueber Baseline-Screenshots vorbereitet, aber kein vollstaendiger Review-/Regression-Prozess ist umgesetzt. |
-| 29.1 | Offen | Ein verbindlicher Staging-Nextcloud-Smoke-Test-Prozess ist noch nicht dokumentiert und nachweisbar ausgefuehrt. |
+| 29.1 | Umgesetzt | `docs/qa/nextcloud.md` definiert den verpflichtenden Staging-Smoke-Gate fuer Release Candidates inklusive Setup/Import, Manual Sync, Remote Create/Update/Delete, Dirty-vs-Remote-Konflikt, Konfliktloesung, synthetischen Testdaten, Ergebnisprotokoll und GitHub-Issue-/Milestone-Regeln. |
 | 29.2 | Offen | Backup-, Restore- und Migrationsdrills sind noch nicht als Release-Kriterium dokumentiert. |
 | 29.3 | Offen | Release- und Rollback-Checkliste fehlt noch als zusammenhaengender Prozess. |
 | 29.4 | Offen | Deployment- und Betriebsrunbook ist noch nicht zusammenhaengend vorhanden. |

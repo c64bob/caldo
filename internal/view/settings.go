@@ -66,7 +66,7 @@ func renderCalDAVSettings(w io.Writer, csrfToken string, model SettingsPageView,
 		return err
 	}
 	if model.CalDAVError != "" {
-		if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-error mt-3" data-caldav-test-result="error">%s</p>`, html.EscapeString(model.CalDAVError)); err != nil {
+		if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-error mt-3" data-caldav-test-result="error" role="alert" aria-live="polite">%s</p>`, html.EscapeString(model.CalDAVError)); err != nil {
 			return err
 		}
 	}
@@ -119,7 +119,7 @@ func renderCalendarSettings(w io.Writer, csrfToken string, model SettingsPageVie
 		return err
 	}
 	if model.CalendarsError != "" {
-		if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-error mt-3">%s</p>`, html.EscapeString(model.CalendarsError)); err != nil {
+		if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-error mt-3" role="alert" aria-live="polite">%s</p>`, html.EscapeString(model.CalendarsError)); err != nil {
 			return err
 		}
 	}

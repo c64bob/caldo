@@ -21,7 +21,7 @@ func SetupCalDAVContent(errorMessage string) templ.Component {
 		}
 
 		if errorMessage != "" {
-			if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-error mt-4">%s</p>`, html.EscapeString(errorMessage)); err != nil {
+			if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-error mt-4" role="alert" aria-live="polite">%s</p>`, html.EscapeString(errorMessage)); err != nil {
 				return err
 			}
 		}
@@ -74,7 +74,7 @@ func SetupCalendarsContent(calendars []caldav.Calendar, errorMessage string, sel
 			return err
 		}
 		if errorMessage != "" {
-			if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-error mt-4">%s</p>`, html.EscapeString(errorMessage)); err != nil {
+			if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-error mt-4" role="alert" aria-live="polite">%s</p>`, html.EscapeString(errorMessage)); err != nil {
 				return err
 			}
 		}
@@ -147,7 +147,7 @@ func SetupImportContent(errorMessage string) templ.Component {
 		}
 
 		if errorMessage != "" {
-			if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-error mt-4">%s</p>`, html.EscapeString(errorMessage)); err != nil {
+			if _, err := fmt.Fprintf(w, `<p class="caldo-alert caldo-alert-error mt-4" role="alert" aria-live="polite">%s</p>`, html.EscapeString(errorMessage)); err != nil {
 				return err
 			}
 		}
@@ -158,7 +158,7 @@ func SetupImportContent(errorMessage string) templ.Component {
 				<p class="caldo-meta mt-1" data-setup-import-detail>Der Wizard wechselt nach erfolgreichem Import automatisch zur App.</p>
 			</div>
 			<progress class="h-2 w-full accent-[var(--caldo-accent)]" data-setup-import-progress-bar max="100" value="0" aria-label="Importfortschritt"></progress>
-			<p class="caldo-alert caldo-alert-error" data-setup-import-error hidden></p>
+			<p class="caldo-alert caldo-alert-error" data-setup-import-error role="alert" aria-live="polite" hidden></p>
 			<button type="button" class="caldo-button caldo-button-secondary" data-setup-import-retry hidden>Import erneut starten</button>
 		</div>
 	</section>`)

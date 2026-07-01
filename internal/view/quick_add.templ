@@ -17,18 +17,17 @@ templ QuickAddPage(draft *parser.QuickAddDraft, text string, errorMessage string
 			hx-swap="outerHTML"
 			hx-disabled-elt="find button"
 			class="caldo-quick-add-form"
+			aria-describedby="quick-add-page-error"
 		>
 			<label for="quick-add-text" class="caldo-label">{ Text(ctx).QuickAddTaskLabel }</label>
-			<input id="quick-add-text" name="text" type="text" class="caldo-input" autofocus value={ text }/>
+			<input id="quick-add-text" name="text" type="text" class="caldo-input" autofocus value={ text } aria-describedby="quick-add-page-error"/>
 			<div class="caldo-quick-add-actions">
 				<button type="submit" accesskey="q" class="caldo-button caldo-button-secondary">{ Text(ctx).QuickAddPreviewAction }</button>
 				<span class="htmx-indicator caldo-meta" aria-live="polite">{ Text(ctx).QuickAddPreviewPending }</span>
 			</div>
 		</form>
 		<div id="quick-add-preview" class="caldo-quick-add-preview-shell">
-			if errorMessage != "" {
-				<p class="caldo-alert caldo-alert-error">{ errorMessage }</p>
-			}
+			<p id="quick-add-page-error" class="caldo-alert caldo-alert-error" role="alert" aria-live="polite" hidden?={ errorMessage == "" }>{ errorMessage }</p>
 			if draft != nil {
 				@quickAddPreviewContent(*draft, "quick-add-preview", "")
 			}
@@ -54,16 +53,17 @@ templ QuickAddOverlay() {
 					hx-disabled-elt="find button"
 					class="caldo-quick-add-form"
 					data-quick-add-overlay-form
+					aria-describedby="quick-add-overlay-error"
 				>
 					<input type="hidden" name="surface" value={ quickAddOverlaySurface }/>
 					<label for="quick-add-overlay-text" class="caldo-label">{ Text(ctx).QuickAddTaskLabel }</label>
-					<input id="quick-add-overlay-text" name="text" type="text" class="caldo-input" data-quick-add-overlay-input/>
+					<input id="quick-add-overlay-text" name="text" type="text" class="caldo-input" data-quick-add-overlay-input aria-describedby="quick-add-overlay-error"/>
 					<div class="caldo-quick-add-actions">
 						<button type="submit" accesskey="q" class="caldo-button caldo-button-secondary">{ Text(ctx).QuickAddPreviewAction }</button>
 						<span class="htmx-indicator caldo-meta" aria-live="polite">{ Text(ctx).QuickAddPreviewPending }</span>
 					</div>
 				</form>
-				<p class="caldo-alert caldo-alert-error" data-quick-add-overlay-error hidden></p>
+				<p id="quick-add-overlay-error" class="caldo-alert caldo-alert-error" data-quick-add-overlay-error role="alert" aria-live="polite" hidden></p>
 				<div id="quick-add-overlay-preview" class="caldo-quick-add-preview-shell"></div>
 			</div>
 		</div>
@@ -85,38 +85,38 @@ templ quickAddPreviewContent(draft parser.QuickAddDraft, previewID string, surfa
 			<div class="caldo-quick-add-chips" data-quick-add-chips>
 				if strings.TrimSpace(draft.Project) != "" {
 					if draft.ProjectNew {
-						<button type="button" class="caldo-quick-add-chip" data-quick-add-clear="[name='project_new_name']">
+						<button type="button" class="caldo-quick-add-chip" data-quick-add-clear="[name='project_new_name']" aria-label={ quickAddRemoveTokenLabel(ctx, Text(ctx).QuickAddFieldProject, draft.Project) }>
 							<span>{ Text(ctx).QuickAddFieldProject }</span>
 							<strong>{ draft.Project }</strong>
 						</button>
 					} else {
-						<button type="button" class="caldo-quick-add-chip" data-quick-add-clear="[name='project_selection']">
+						<button type="button" class="caldo-quick-add-chip" data-quick-add-clear="[name='project_selection']" aria-label={ quickAddRemoveTokenLabel(ctx, Text(ctx).QuickAddFieldProject, draft.Project) }>
 							<span>{ Text(ctx).QuickAddFieldProject }</span>
 							<strong>{ draft.Project }</strong>
 						</button>
 					}
 				}
 				for _, label := range draft.Labels {
-					<button type="button" class="caldo-quick-add-chip" data-quick-add-remove-label={ label }>
+					<button type="button" class="caldo-quick-add-chip" data-quick-add-remove-label={ label } aria-label={ quickAddRemoveTokenLabel(ctx, Text(ctx).QuickAddFieldLabels, label) }>
 						<span>{ Text(ctx).QuickAddFieldLabels }</span>
 						<strong>{ label }</strong>
 						<span class="caldo-badge">{ quickAddLabelStatus(ctx, draft, label) }</span>
 					</button>
 				}
 				if strings.TrimSpace(draft.Due) != "" {
-					<button type="button" class="caldo-quick-add-chip" data-quick-add-clear="[name='due_date']">
+					<button type="button" class="caldo-quick-add-chip" data-quick-add-clear="[name='due_date']" aria-label={ quickAddRemoveTokenLabel(ctx, Text(ctx).QuickAddFieldDate, quickAddDueChipLabel(draft)) }>
 						<span>{ Text(ctx).QuickAddFieldDate }</span>
 						<strong>{ quickAddDueChipLabel(draft) }</strong>
 					</button>
 				}
 				if strings.TrimSpace(draft.Recurrence) != "" {
-					<button type="button" class="caldo-quick-add-chip" data-quick-add-clear="[name='recurrence']">
+					<button type="button" class="caldo-quick-add-chip" data-quick-add-clear="[name='recurrence']" aria-label={ quickAddRemoveTokenLabel(ctx, Text(ctx).QuickAddFieldRecurrence, quickAddRecurrenceLabel(ctx, draft.Recurrence)) }>
 						<span>{ Text(ctx).QuickAddFieldRecurrence }</span>
 						<strong>{ quickAddRecurrenceLabel(ctx, draft.Recurrence) }</strong>
 					</button>
 				}
 				if strings.TrimSpace(draft.Priority) != "" {
-					<button type="button" class={ quickAddPriorityChipClass(draft.Priority) } data-quick-add-clear="[name='priority']">
+					<button type="button" class={ quickAddPriorityChipClass(draft.Priority) } data-quick-add-clear="[name='priority']" aria-label={ quickAddRemoveTokenLabel(ctx, Text(ctx).QuickAddFieldPriority, quickAddPriorityLabel(ctx, draft.Priority)) }>
 						<span>{ Text(ctx).QuickAddFieldPriority }</span>
 						<strong>{ quickAddPriorityLabel(ctx, draft.Priority) }</strong>
 					</button>
@@ -220,7 +220,7 @@ templ quickAddPreviewContent(draft parser.QuickAddDraft, previewID string, surfa
 							<span class="caldo-meta">{ Text(ctx).QuickAddLabelSuggestions }</span>
 							<div class="caldo-quick-add-suggestion-list">
 								for _, suggestion := range quickAddLabelSuggestions(draft) {
-									<button type="button" class="caldo-quick-add-suggestion" data-quick-add-append-label={ suggestion.Name }>{ "@" + suggestion.Name }</button>
+									<button type="button" class="caldo-quick-add-suggestion" data-quick-add-append-label={ suggestion.Name } aria-label={ quickAddAppendLabelLabel(ctx, suggestion.Name) }>{ "@" + suggestion.Name }</button>
 								}
 							</div>
 						</div>
@@ -259,7 +259,7 @@ templ quickAddPreviewContent(draft parser.QuickAddDraft, previewID string, surfa
 						/>
 						<button type="button" class="caldo-button caldo-button-ghost" data-quick-add-clear="[name='recurrence']">{ Text(ctx).QuickAddClearValue }</button>
 					</div>
-					<p id={ previewID + "-recurrence-error" } class="caldo-quick-add-field-error" data-quick-add-recurrence-error hidden>{ Text(ctx).QuickAddRRuleInvalid }</p>
+					<p id={ previewID + "-recurrence-error" } class="caldo-quick-add-field-error" data-quick-add-recurrence-error role="alert" aria-live="polite" hidden>{ Text(ctx).QuickAddRRuleInvalid }</p>
 				</label>
 				<label class="caldo-label">
 					{ Text(ctx).QuickAddFieldPriority }

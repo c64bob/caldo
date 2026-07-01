@@ -32,7 +32,7 @@ templ ProjectCreateForm(feedback ProjectFeedback) {
 			<p class="caldo-alert caldo-alert-success" data-project-create-success aria-live="polite">{ feedback.CreateSuccess }</p>
 		}
 		if feedback.CreateError != "" {
-			<p class="caldo-alert caldo-alert-error" data-project-create-error aria-live="polite">{ feedback.CreateError }</p>
+			<p class="caldo-alert caldo-alert-error" data-project-create-error role="alert" aria-live="polite">{ feedback.CreateError }</p>
 		}
 		<label class="caldo-label" for="project-create-display-name">Projektname</label>
 		<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -137,7 +137,7 @@ templ ProjectRenameForm(item NavigationOverviewItem) {
 			<p class="caldo-alert caldo-alert-success" data-project-rename-success aria-live="polite">{ item.RenameSuccess }</p>
 		}
 		if item.RenameError != "" {
-			<p class="caldo-alert caldo-alert-error" data-project-rename-error aria-live="polite">{ item.RenameError }</p>
+			<p class="caldo-alert caldo-alert-error" data-project-rename-error role="alert" aria-live="polite">{ item.RenameError }</p>
 		}
 		<label class="caldo-label" for={ "project-rename-" + item.ID }>Projekt umbenennen</label>
 		<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -165,7 +165,7 @@ templ ProjectDeleteForm(item NavigationOverviewItem) {
 		>
 			<input type="hidden" name="expected_version" value={ projectExpectedVersion(item) }/>
 			if item.DeleteError != "" {
-				<p class="caldo-alert caldo-alert-error" data-project-delete-error aria-live="polite">{ item.DeleteError }</p>
+				<p class="caldo-alert caldo-alert-error" data-project-delete-error role="alert" aria-live="polite">{ item.DeleteError }</p>
 			}
 			<p class="caldo-meta" data-project-delete-summary>{ projectDeleteConfirmationText(item) }</p>
 			<label class="caldo-label" for={ "project-delete-" + item.ID }>Bestätigung</label>
@@ -195,7 +195,7 @@ templ LabelRenameForm(item NavigationOverviewItem) {
 			<p class="caldo-alert caldo-alert-success" data-label-rename-success aria-live="polite">{ item.RenameSuccess }</p>
 		}
 		if item.RenameError != "" {
-			<p class="caldo-alert caldo-alert-error" data-label-rename-error aria-live="polite">{ item.RenameError }</p>
+			<p class="caldo-alert caldo-alert-error" data-label-rename-error role="alert" aria-live="polite">{ item.RenameError }</p>
 		}
 		<label class="caldo-label" for={ "label-rename-" + item.ID }>Label umbenennen</label>
 		<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -222,7 +222,7 @@ templ LabelDeleteForm(item NavigationOverviewItem) {
 			data-label-delete-form
 		>
 			if item.DeleteError != "" {
-				<p class="caldo-alert caldo-alert-error" data-label-delete-error aria-live="polite">{ item.DeleteError }</p>
+				<p class="caldo-alert caldo-alert-error" data-label-delete-error role="alert" aria-live="polite">{ item.DeleteError }</p>
 			}
 			<p class="caldo-meta" data-label-delete-summary>{ labelDeleteConfirmationText(item) }</p>
 			<label class="caldo-label" for={ "label-delete-" + item.ID }>Bestätigung</label>

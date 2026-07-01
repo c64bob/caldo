@@ -68,6 +68,7 @@ func TestBaseLayoutUsesComponentFoundationClasses(t *testing.T) {
 		`caldo-main`,
 		`caldo-content`,
 		`data-mobile-nav-open`,
+		`aria-expanded="false"`,
 		`data-mobile-nav-dialog`,
 		`aria-label="Mobile Hauptnavigation"`,
 		`data-quick-add-open`,
@@ -371,6 +372,8 @@ func TestBaseLayoutRendersShortcutHelp(t *testing.T) {
 	output := rendered.String()
 	for _, want := range []string{
 		`data-shortcut-help-dialog`,
+		`aria-labelledby="shortcut-help-title"`,
+		`id="shortcut-help-title"`,
 		`data-shortcut-help-close`,
 		`Tastaturkürzel`,
 		`Neue Aufgabe`,

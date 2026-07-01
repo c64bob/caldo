@@ -59,7 +59,10 @@ func TestQuickAddOverlayUsesDistinctPreviewTarget(t *testing.T) {
 		`hx-target="#quick-add-overlay-preview"`,
 		`hx-trigger="input changed delay:350ms, submit"`,
 		`name="surface" value="overlay"`,
-		`data-quick-add-overlay-error hidden`,
+		`aria-describedby="quick-add-overlay-error"`,
+		`id="quick-add-overlay-error"`,
+		`data-quick-add-overlay-error`,
+		`role="alert"`,
 		`id="quick-add-overlay-preview"`,
 	} {
 		if !strings.Contains(output, want) {
@@ -137,8 +140,10 @@ func TestQuickAddPreviewRendersCorrectionChipsAndEditableFields(t *testing.T) {
 		`value="existing:project-work" selected`,
 		`name="labels" value="urgent, backend"`,
 		`data-quick-add-remove-label="urgent"`,
+		`aria-label="Labels urgent entfernen"`,
 		`data-quick-add-label-suggestions`,
 		`data-quick-add-append-label="review"`,
+		`aria-label="Label review hinzufügen"`,
 		`id="quick-add-preview-label-options"`,
 		`data-quick-add-date-resolution`,
 		`morgen`,
@@ -146,7 +151,7 @@ func TestQuickAddPreviewRendersCorrectionChipsAndEditableFields(t *testing.T) {
 		`Wöchentlich`,
 		`name="recurrence" value="FREQ=WEEKLY"`,
 		`data-quick-add-recurrence-input`,
-		`data-quick-add-recurrence-error hidden`,
+		`data-quick-add-recurrence-error`,
 		`Wiederholung prüfen`,
 		`P2 Mittel`,
 		`caldo-quick-add-priority-p2`,
@@ -154,9 +159,36 @@ func TestQuickAddPreviewRendersCorrectionChipsAndEditableFields(t *testing.T) {
 		`data-quick-add-clear="[name='labels']"`,
 		`data-quick-add-clear="[name='due_date']"`,
 		`data-quick-add-clear="[name='priority']"`,
+		`aria-label="Projekt Work entfernen"`,
+		`aria-label="Datum morgen -&gt; 2026-06-13 entfernen"`,
+		`role="alert"`,
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected correction preview to include %q in %s", want, output)
+		}
+	}
+}
+
+func TestQuickAddPageAssociatesServerError(t *testing.T) {
+	t.Parallel()
+
+	component := QuickAddPage(nil, "bad input", "Vorschau konnte nicht erstellt werden.")
+
+	var rendered bytes.Buffer
+	if err := component.Render(context.Background(), &rendered); err != nil {
+		t.Fatalf("render quick add page: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`aria-describedby="quick-add-page-error"`,
+		`id="quick-add-page-error"`,
+		`role="alert"`,
+		`aria-live="polite"`,
+		`Vorschau konnte nicht erstellt werden.`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected quick add page error to include %q in %s", want, output)
 		}
 	}
 }

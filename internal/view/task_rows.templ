@@ -171,7 +171,7 @@ templ TaskRow(task TaskRowView) {
 						}
 					</div>
 				}
-				<p class="caldo-alert caldo-alert-error caldo-task-action-error" data-task-action-error aria-live="polite" hidden>Aktion konnte nicht ausgeführt werden.</p>
+				<p id={ taskDOMID("task-action-error", task) } class="caldo-alert caldo-alert-error caldo-task-action-error" data-task-action-error role="alert" aria-live="polite" hidden>Aktion konnte nicht ausgeführt werden.</p>
 			</div>
 			if taskCanInlineEdit(task) {
 				<form
@@ -185,6 +185,7 @@ templ TaskRow(task TaskRowView) {
 					data-inline-task-edit-form
 					class="caldo-task-edit-form"
 					aria-label={ "Aufgabe bearbeiten: " + taskRowTitle(task) }
+					aria-describedby={ taskDOMID("task-edit-error", task) }
 					hidden
 				>
 					<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
@@ -199,6 +200,7 @@ templ TaskRow(task TaskRowView) {
 							class="caldo-input caldo-task-edit-title"
 							value={ taskRowTitle(task) }
 							data-inline-task-edit-title
+							aria-describedby={ taskDOMID("task-edit-error", task) }
 						/>
 					</label>
 					<label class="caldo-task-edit-field">
@@ -236,7 +238,7 @@ templ TaskRow(task TaskRowView) {
 							<input type="text" name="labels" value={ taskEditableLabels(task) } class="caldo-input" autocomplete="off" data-task-labels-input/>
 						</label>
 					</div>
-					<p class="caldo-alert caldo-alert-error caldo-task-edit-error" data-inline-task-edit-error aria-live="polite" hidden>Aufgabe konnte nicht gespeichert werden.</p>
+					<p id={ taskDOMID("task-edit-error", task) } class="caldo-alert caldo-alert-error caldo-task-edit-error" data-inline-task-edit-error role="alert" aria-live="polite" hidden>Aufgabe konnte nicht gespeichert werden.</p>
 					<div class="caldo-task-edit-actions">
 						<button type="submit" class="caldo-button caldo-button-primary">Speichern</button>
 						<button type="button" class="caldo-button caldo-button-ghost" data-inline-task-edit-cancel>Abbrechen</button>
@@ -309,6 +311,7 @@ templ SubtaskCreate(task TaskRowView) {
 			data-inline-task-create-form
 			data-subtask-create-form
 			class="caldo-subtask-create-form"
+			aria-describedby={ taskDOMID("subtask-create-error", task) }
 			hidden
 		>
 			<input
@@ -319,9 +322,10 @@ templ SubtaskCreate(task TaskRowView) {
 				class="caldo-input caldo-subtask-create-input"
 				placeholder="Unteraufgabe hinzufügen"
 				aria-label="Unteraufgabentitel"
+				aria-describedby={ taskDOMID("subtask-create-error", task) }
 				data-inline-task-create-title
 			/>
-			<p class="caldo-alert caldo-alert-error caldo-inline-create-error" data-inline-task-create-error aria-live="polite" hidden>Unteraufgabe konnte nicht gespeichert werden.</p>
+			<p id={ taskDOMID("subtask-create-error", task) } class="caldo-alert caldo-alert-error caldo-inline-create-error" data-inline-task-create-error role="alert" aria-live="polite" hidden>Unteraufgabe konnte nicht gespeichert werden.</p>
 			<div class="caldo-subtask-create-actions">
 				<button type="submit" class="caldo-button caldo-button-primary">Speichern</button>
 				<button type="button" class="caldo-button caldo-button-ghost" data-inline-task-create-cancel>Abbrechen</button>
@@ -337,6 +341,7 @@ templ TaskDetailPanel(task TaskRowView) {
 		class="caldo-task-detail-dialog"
 		data-task-detail-dialog
 		aria-labelledby={ taskDOMID("task-detail-title", task) }
+		aria-describedby={ taskDOMID("task-detail-error", task) }
 	>
 		<div class="caldo-task-detail-shell">
 			<header class="caldo-task-detail-header">
@@ -360,7 +365,7 @@ templ TaskDetailPanel(task TaskRowView) {
 			if taskDetailStatusMessage(task) != "" {
 				<p class="caldo-alert caldo-alert-warning caldo-task-detail-status">{ taskDetailStatusMessage(task) }</p>
 			}
-			<p class="caldo-alert caldo-alert-error caldo-task-detail-error" data-task-detail-error aria-live="polite" hidden>Aufgabe konnte nicht gespeichert werden.</p>
+			<p id={ taskDOMID("task-detail-error", task) } class="caldo-alert caldo-alert-error caldo-task-detail-error" data-task-detail-error role="alert" aria-live="polite" hidden>Aufgabe konnte nicht gespeichert werden.</p>
 			<form
 				method="post"
 				action={ taskEditPath(task) }
@@ -372,6 +377,7 @@ templ TaskDetailPanel(task TaskRowView) {
 				data-task-detail-form
 				class="caldo-task-detail-form"
 				aria-label={ "Aufgabendetails bearbeiten: " + taskRowTitle(task) }
+				aria-describedby={ taskDOMID("task-detail-error", task) }
 			>
 				<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
 				<input type="hidden" name="status" value={ task.Status }/>
@@ -385,6 +391,7 @@ templ TaskDetailPanel(task TaskRowView) {
 						class="caldo-input caldo-task-detail-title-input"
 						value={ taskRowTitle(task) }
 						data-task-detail-title
+						aria-describedby={ taskDOMID("task-detail-error", task) }
 						disabled?={ !taskCanDetailEdit(task) }
 					/>
 				</label>
@@ -508,6 +515,7 @@ templ TaskCompleteDialog(task TaskRowView) {
 		class="caldo-task-complete-dialog"
 		data-task-complete-dialog
 		aria-labelledby={ taskDOMID("task-complete-title", task) }
+		aria-describedby={ taskDOMID("task-complete-error", task) }
 	>
 		<div class="caldo-task-complete-shell">
 			<header class="caldo-task-complete-header">
@@ -520,7 +528,7 @@ templ TaskCompleteDialog(task TaskRowView) {
 			<div class="caldo-task-complete-body">
 				<p class="caldo-task-complete-copy">"{ taskRowTitle(task) }" hat { taskOpenSubtaskCountLabel(task.OpenSubtaskCount) }.</p>
 				<p class="caldo-task-complete-copy">Wähle, ob nur die Elternaufgabe oder auch die offenen direkten Unteraufgaben erledigt werden.</p>
-				<p class="caldo-alert caldo-alert-error caldo-task-complete-error" data-task-complete-error aria-live="polite" hidden>Aufgabe konnte nicht erledigt werden.</p>
+				<p id={ taskDOMID("task-complete-error", task) } class="caldo-alert caldo-alert-error caldo-task-complete-error" data-task-complete-error role="alert" aria-live="polite" hidden>Aufgabe konnte nicht erledigt werden.</p>
 				<div class="caldo-task-complete-actions">
 					<form
 						method="post"
@@ -532,6 +540,7 @@ templ TaskCompleteDialog(task TaskRowView) {
 						data-refresh-after-write="true"
 						data-task-complete-form
 						class="caldo-task-complete-form"
+						aria-describedby={ taskDOMID("task-complete-error", task) }
 					>
 						<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
 						<input type="hidden" name="subtasks_action" value="parent_only"/>
@@ -548,6 +557,7 @@ templ TaskCompleteDialog(task TaskRowView) {
 						data-refresh-after-write="true"
 						data-task-complete-form
 						class="caldo-task-complete-form"
+						aria-describedby={ taskDOMID("task-complete-error", task) }
 					>
 						<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
 						<input type="hidden" name="subtasks_action" value="complete_open"/>
@@ -567,6 +577,7 @@ templ TaskDeleteDialog(task TaskRowView) {
 		class="caldo-task-delete-dialog"
 		data-task-delete-dialog
 		aria-labelledby={ taskDOMID("task-delete-title", task) }
+		aria-describedby={ taskDOMID("task-delete-error", task) }
 	>
 		<div class="caldo-task-delete-shell">
 			<header class="caldo-task-delete-header">
@@ -581,7 +592,7 @@ templ TaskDeleteDialog(task TaskRowView) {
 				if taskHasDirectSubtasks(task) {
 					<p class="caldo-task-delete-copy">{ taskDeleteSubtaskWarning(task) }</p>
 				}
-				<p class="caldo-alert caldo-alert-error caldo-task-delete-error" data-task-delete-error aria-live="polite" hidden>Aufgabe konnte nicht gelöscht werden.</p>
+				<p id={ taskDOMID("task-delete-error", task) } class="caldo-alert caldo-alert-error caldo-task-delete-error" data-task-delete-error role="alert" aria-live="polite" hidden>Aufgabe konnte nicht gelöscht werden.</p>
 				<form
 					method="post"
 					action={ taskDeletePath(task) }
@@ -591,6 +602,7 @@ templ TaskDeleteDialog(task TaskRowView) {
 					hx-headers={ taskCSRFHeaders(ctx) }
 					data-task-delete-form
 					class="caldo-task-delete-form"
+					aria-describedby={ taskDOMID("task-delete-error", task) }
 				>
 					<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
 					if taskHasDirectSubtasks(task) {
@@ -654,7 +666,7 @@ templ InlineTaskCreate(create InlineTaskCreateView) {
 						}
 					</div>
 				}
-				<p class="caldo-alert caldo-alert-error caldo-inline-create-error" data-inline-task-create-error aria-live="polite" hidden>Aufgabe konnte nicht gespeichert werden.</p>
+				<p class="caldo-alert caldo-alert-error caldo-inline-create-error" data-inline-task-create-error role="alert" aria-live="polite" hidden>Aufgabe konnte nicht gespeichert werden.</p>
 				<div class="caldo-inline-create-actions">
 					<button type="submit" class="caldo-button caldo-button-primary">Speichern</button>
 					<button type="button" class="caldo-button caldo-button-ghost" data-inline-task-create-cancel>Abbrechen</button>

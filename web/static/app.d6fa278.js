@@ -84,6 +84,204 @@
     return element ? element.closest(selector) : null;
   }
 
+  var focusableSelector = 'button, [href], input, select, textarea, summary, [tabindex]:not([tabindex="-1"])';
+  var formErrorIDSequence = 0;
+
+  function elementIsFocusable(element) {
+    if (!(element instanceof Element)) return false;
+    if (element.hidden || element.disabled || element.getAttribute('aria-hidden') === 'true') return false;
+    var style = window.getComputedStyle ? window.getComputedStyle(element) : null;
+    if (style && (style.display === 'none' || style.visibility === 'hidden')) return false;
+    return element.getClientRects().length > 0 || element === document.activeElement;
+  }
+
+  function focusableControls(root) {
+    if (!root || !root.querySelectorAll) return [];
+    return Array.prototype.slice.call(root.querySelectorAll(focusableSelector)).filter(elementIsFocusable);
+  }
+
+  function focusFirstDialogControl(dialog, preferredSelector) {
+    if (!dialog) return;
+    var preferred = preferredSelector ? dialog.querySelector(preferredSelector) : null;
+    var target = elementIsFocusable(preferred) ? preferred : focusableControls(dialog)[0];
+    if (!target || typeof target.focus !== 'function') return;
+    window.setTimeout(function () {
+      if (document.contains(target)) {
+        target.focus();
+      }
+    }, 0);
+  }
+
+  function topOpenDialog() {
+    var dialogs = document.querySelectorAll('dialog[open]');
+    return dialogs.length > 0 ? dialogs[dialogs.length - 1] : null;
+  }
+
+  function trapFocusInDialog(dialog, event) {
+    if (!dialog || event.key !== 'Tab') return false;
+    var controls = focusableControls(dialog);
+    if (controls.length === 0) {
+      event.preventDefault();
+      return true;
+    }
+
+    var first = controls[0];
+    var last = controls[controls.length - 1];
+    if (!dialog.contains(document.activeElement)) {
+      event.preventDefault();
+      first.focus();
+      return true;
+    }
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+      return true;
+    }
+
+    if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+      return true;
+    }
+
+    return false;
+  }
+
+  function showDialog(dialog) {
+    if (!dialog) return;
+    if (typeof dialog.showModal === 'function') {
+      if (!dialog.open) {
+        dialog.showModal();
+      }
+      return;
+    }
+    dialog.setAttribute('open', '');
+  }
+
+  function closeDialog(dialog) {
+    if (!dialog) return;
+    if (typeof dialog.close === 'function' && dialog.open) {
+      dialog.close();
+      return;
+    }
+    dialog.removeAttribute('open');
+    returnDialogFocus(dialog);
+  }
+
+  function returnDialogFocus(dialog) {
+    if (!dialog) return;
+    var trigger = dialog.__caldoReturnFocus;
+    dialog.__caldoReturnFocus = null;
+    if (trigger && document.contains(trigger) && typeof trigger.focus === 'function' && elementIsFocusable(trigger)) {
+      trigger.focus();
+    }
+  }
+
+  function tokenList(value) {
+    return String(value || '').split(/\s+/).filter(Boolean);
+  }
+
+  function addTokenAttribute(element, name, token) {
+    if (!element || !token) return;
+    var tokens = tokenList(element.getAttribute(name));
+    if (tokens.indexOf(token) === -1) {
+      tokens.push(token);
+      element.setAttribute(name, tokens.join(' '));
+    }
+  }
+
+  function ensureElementID(element, prefix) {
+    if (!element) return '';
+    if (element.id) return element.id;
+    formErrorIDSequence += 1;
+    element.id = (prefix || 'caldo-error') + '-' + formErrorIDSequence;
+    return element.id;
+  }
+
+  function firstFormControl(form) {
+    if (!form || !form.querySelectorAll) return null;
+    var controls = Array.prototype.slice.call(form.querySelectorAll('input:not([type="hidden"]), select, textarea'));
+    for (var i = 0; i < controls.length; i += 1) {
+      if (elementIsFocusable(controls[i]) || (!controls[i].hidden && !controls[i].disabled)) {
+        return controls[i];
+      }
+    }
+    return null;
+  }
+
+  function formForError(error) {
+    if (!error) return null;
+    var form = error.closest('form');
+    if (form) return form;
+    if (error.matches && error.matches('[data-quick-add-overlay-error]')) {
+      var overlay = error.closest('[data-quick-add-overlay]');
+      if (overlay) {
+        return overlay.querySelector('[data-quick-add-save-form]') || overlay.querySelector('[data-quick-add-overlay-form]');
+      }
+    }
+    var dialog = error.closest('[data-task-detail-dialog], [data-task-complete-dialog], [data-task-delete-dialog]');
+    if (dialog) {
+      return dialog.querySelector('form');
+    }
+    var sibling = error.previousElementSibling;
+    while (sibling) {
+      if (sibling.matches && sibling.matches('form')) return sibling;
+      sibling = sibling.previousElementSibling;
+    }
+    var container = error.closest('[data-quick-add-overlay], [data-conflict-resolution], [data-setup-import], [data-task-id], .caldo-card, .caldo-page');
+    return container ? container.querySelector('form') : null;
+  }
+
+  function exposeFormError(error) {
+    if (!error) return;
+    error.setAttribute('role', 'alert');
+    if (!error.hasAttribute('aria-live')) {
+      error.setAttribute('aria-live', 'polite');
+    }
+    var errorID = ensureElementID(error, 'caldo-form-error');
+    var form = formForError(error);
+    if (!form) return;
+    addTokenAttribute(form, 'aria-describedby', errorID);
+    var control = firstFormControl(form);
+    if (control) {
+      addTokenAttribute(control, 'aria-describedby', errorID);
+      if (!error.hidden && String(error.textContent || '').trim() !== '') {
+        control.setAttribute('aria-invalid', 'true');
+      } else if (control.getAttribute('aria-invalid') === 'true') {
+        control.setAttribute('aria-invalid', 'false');
+      }
+    }
+  }
+
+  function setErrorMessage(error, message) {
+    if (!error) return;
+    exposeFormError(error);
+    if (!message) {
+      error.textContent = '';
+      error.hidden = true;
+      var form = formForError(error);
+      var control = firstFormControl(form);
+      if (control && control.getAttribute('aria-invalid') === 'true') {
+        control.setAttribute('aria-invalid', 'false');
+      }
+      return;
+    }
+    error.textContent = message;
+    error.hidden = false;
+    exposeFormError(error);
+  }
+
+  function initializeFormErrors(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    var errors = [];
+    if (scope instanceof Element && scope.matches('.caldo-alert-error')) {
+      errors.push(scope);
+    }
+    Array.prototype.push.apply(errors, scope.querySelectorAll('.caldo-alert-error'));
+    errors.forEach(exposeFormError);
+  }
+
   function isSyncRequestElement(target) {
     return !!closestElement(target, '[data-sync-request]');
   }
@@ -180,22 +378,56 @@
     var dialog = document.querySelector('[data-shortcut-help-dialog]');
     if (!dialog) return;
     if (dialog.hasAttribute('open')) {
-      dialog.close();
+      closeDialog(dialog);
       return;
     }
-    dialog.showModal();
+    dialog.__caldoReturnFocus = document.activeElement;
+    showDialog(dialog);
+    focusFirstDialogControl(dialog, '[data-shortcut-help-close]');
   }
 
-  function openMobileNav() {
+  function openMobileNav(trigger) {
     var dialog = document.querySelector('[data-mobile-nav-dialog]');
     if (!dialog || dialog.hasAttribute('open')) return;
-    dialog.showModal();
+    dialog.__caldoReturnFocus = trigger || document.activeElement;
+    if (trigger) {
+      trigger.setAttribute('aria-expanded', 'true');
+    }
+    showDialog(dialog);
+    focusFirstDialogControl(dialog, '[data-mobile-nav-close]');
   }
 
   function closeMobileNav() {
     var dialog = document.querySelector('[data-mobile-nav-dialog]');
     if (!dialog || !dialog.hasAttribute('open')) return;
-    dialog.close();
+    closeDialog(dialog);
+  }
+
+  function bindApplicationDialogs() {
+    var mobileNav = document.querySelector('[data-mobile-nav-dialog]');
+    if (mobileNav && mobileNav.dataset.mobileNavBound !== 'true') {
+      mobileNav.dataset.mobileNavBound = 'true';
+      mobileNav.addEventListener('close', function () {
+        var trigger = mobileNav.__caldoReturnFocus;
+        if (trigger && document.contains(trigger)) {
+          trigger.setAttribute('aria-expanded', 'false');
+        }
+        returnDialogFocus(mobileNav);
+      });
+      mobileNav.addEventListener('click', function (event) {
+        if (event.target === mobileNav) {
+          closeMobileNav();
+        }
+      });
+    }
+
+    var help = document.querySelector('[data-shortcut-help-dialog]');
+    if (help && help.dataset.shortcutHelpBound !== 'true') {
+      help.dataset.shortcutHelpBound = 'true';
+      help.addEventListener('close', function () {
+        returnDialogFocus(help);
+      });
+    }
   }
 
   function quickAddOverlay() {
@@ -208,14 +440,7 @@
 
   function setQuickAddOverlayError(dialog, message) {
     var error = quickAddOverlayError(dialog);
-    if (!error) return;
-    if (!message) {
-      error.textContent = '';
-      error.hidden = true;
-      return;
-    }
-    error.textContent = message;
-    error.hidden = false;
+    setErrorMessage(error, message);
   }
 
   function resetQuickAddOverlay(dialog) {
@@ -245,13 +470,7 @@
     }
     dialog.__caldoReturnFocus = trigger || document.activeElement;
     setQuickAddOverlayError(dialog, '');
-    if (typeof dialog.showModal === 'function') {
-      if (!dialog.open) {
-        dialog.showModal();
-      }
-    } else {
-      dialog.setAttribute('open', '');
-    }
+    showDialog(dialog);
     var input = dialog.querySelector('[data-quick-add-overlay-input]');
     window.setTimeout(function () {
       if (input) {
@@ -266,16 +485,7 @@
     if (reset) {
       resetQuickAddOverlay(dialog);
     }
-    if (typeof dialog.close === 'function' && dialog.open) {
-      dialog.close();
-      return;
-    }
-    dialog.removeAttribute('open');
-    var trigger = dialog.__caldoReturnFocus;
-    dialog.__caldoReturnFocus = null;
-    if (trigger && document.contains(trigger)) {
-      trigger.focus();
-    }
+    closeDialog(dialog);
   }
 
   function quickAddFocusableControls(root) {
@@ -615,14 +825,7 @@
 
   function setInlineCreateError(root, message) {
     var error = inlineCreateError(root);
-    if (!error) return;
-    if (!message) {
-      error.textContent = '';
-      error.hidden = true;
-      return;
-    }
-    error.textContent = message;
-    error.hidden = false;
+    setErrorMessage(error, message);
   }
 
   function openInlineCreate(root) {
@@ -667,14 +870,7 @@
 
   function setInlineEditError(root, message) {
     var error = inlineEditError(root);
-    if (!error) return;
-    if (!message) {
-      error.textContent = '';
-      error.hidden = true;
-      return;
-    }
-    error.textContent = message;
-    error.hidden = false;
+    setErrorMessage(error, message);
   }
 
   function taskRows() {
@@ -969,14 +1165,7 @@
 
   function setTaskDetailError(dialog, message) {
     var error = taskDetailError(dialog);
-    if (!error) return;
-    if (!message) {
-      error.textContent = '';
-      error.hidden = true;
-      return;
-    }
-    error.textContent = message;
-    error.hidden = false;
+    setErrorMessage(error, message);
   }
 
   function resetTaskRecurrenceUpdate(form) {
@@ -1084,14 +1273,7 @@
 
   function setTaskActionError(row, message) {
     var error = taskActionError(row);
-    if (!error) return;
-    if (!message) {
-      error.textContent = '';
-      error.hidden = true;
-      return;
-    }
-    error.textContent = message;
-    error.hidden = false;
+    setErrorMessage(error, message);
   }
 
   function taskCompleteError(dialog) {
@@ -1100,14 +1282,7 @@
 
   function setTaskCompleteError(dialog, message) {
     var error = taskCompleteError(dialog);
-    if (!error) return;
-    if (!message) {
-      error.textContent = '';
-      error.hidden = true;
-      return;
-    }
-    error.textContent = message;
-    error.hidden = false;
+    setErrorMessage(error, message);
   }
 
   function bindTaskComplete(dialog) {
@@ -1180,14 +1355,7 @@
 
   function setTaskDeleteError(dialog, message) {
     var error = taskDeleteError(dialog);
-    if (!error) return;
-    if (!message) {
-      error.textContent = '';
-      error.hidden = true;
-      return;
-    }
-    error.textContent = message;
-    error.hidden = false;
+    setErrorMessage(error, message);
   }
 
   function bindTaskDelete(dialog) {
@@ -1699,10 +1867,7 @@
   function setSetupImportError(root, message) {
     var error = setupImportElement(root, '[data-setup-import-error]');
     var retry = setupImportElement(root, '[data-setup-import-retry]');
-    if (error) {
-      error.textContent = message || '';
-      error.hidden = !message;
-    }
+    setErrorMessage(error, message);
     if (retry) {
       retry.hidden = !message;
     }
@@ -1833,14 +1998,7 @@
 
   function setConflictResolutionError(element, message) {
     var error = conflictResolutionErrorFor(element);
-    if (!error) return;
-    if (!message) {
-      error.textContent = '';
-      error.hidden = true;
-      return;
-    }
-    error.textContent = message;
-    error.hidden = false;
+    setErrorMessage(error, message);
   }
 
   function conflictResolutionFailureMessage(status) {
@@ -2021,6 +2179,7 @@
     var requestElement = event.detail && event.detail.elt;
     var targetElement = event.detail && event.detail.target instanceof Element ? event.detail.target : null;
     focusQuickAddPreviewResult(requestElement, targetElement);
+    initializeFormErrors(targetElement || document);
     initializeLocalDateTimes(targetElement || document);
     initializeSetupImport(targetElement || document);
     initializeConflictManualPreviews(targetElement || document);
@@ -2339,7 +2498,7 @@
     var mobileNavOpen = closestElement(event.target, '[data-mobile-nav-open]');
     if (mobileNavOpen) {
       event.preventDefault();
-      openMobileNav();
+      openMobileNav(mobileNavOpen);
       return;
     }
 
@@ -2360,7 +2519,7 @@
     if (!closeButton) return;
     var dialog = closeButton.closest('dialog');
     if (dialog) {
-      dialog.close();
+      closeDialog(dialog);
     }
   }, true);
 
@@ -2378,6 +2537,10 @@
   });
 
   document.addEventListener('keydown', function (event) {
+    if (event.key === 'Tab' && trapFocusInDialog(topOpenDialog(), event)) {
+      return;
+    }
+
     var quickAddDialog = closestElement(event.target, '[data-quick-add-overlay]');
     if (quickAddDialog && quickAddDialog.open) {
       if (event.key === 'Escape') {
@@ -2438,6 +2601,20 @@
       return;
     }
 
+    var mobileDialog = closestElement(event.target, '[data-mobile-nav-dialog]');
+    if (mobileDialog && mobileDialog.open && event.key === 'Escape' && typeof mobileDialog.close !== 'function') {
+      event.preventDefault();
+      closeMobileNav();
+      return;
+    }
+
+    var helpDialog = closestElement(event.target, '[data-shortcut-help-dialog]');
+    if (helpDialog && helpDialog.open && event.key === 'Escape' && typeof helpDialog.close !== 'function') {
+      event.preventDefault();
+      closeDialog(helpDialog);
+      return;
+    }
+
     if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey) return;
     if (isTypingTarget(event.target)) {
       navState.pendingView = null;
@@ -2480,6 +2657,8 @@
   });
 
   consumeRememberedWriteStatus();
+  initializeFormErrors();
+  bindApplicationDialogs();
   bindQuickAddOverlay();
   initializeThemeController();
   initializeSetupImport();

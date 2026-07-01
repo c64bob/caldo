@@ -30,7 +30,7 @@ templ SavedFilterCreateForm(create SavedFilterCreateFormView) {
 	>
 		<h3 class="font-medium">Neuer Filter</h3>
 		if create.Error != "" {
-			<p class="caldo-alert caldo-alert-error" data-saved-filter-create-error aria-live="polite">{ create.Error }</p>
+			<p class="caldo-alert caldo-alert-error" data-saved-filter-create-error role="alert" aria-live="polite">{ create.Error }</p>
 		}
 		<div class="grid gap-3 lg:grid-cols-[minmax(12rem,18rem)_1fr_auto] lg:items-end">
 			<div class="space-y-1">
@@ -80,7 +80,7 @@ templ SavedFilterEditForm(item SavedFilterItemView) {
 	>
 		<input type="hidden" name="expected_version" value={ savedFilterExpectedVersion(item) }/>
 		if item.EditError != "" {
-			<p class="caldo-alert caldo-alert-error" data-saved-filter-edit-error aria-live="polite">{ item.EditError }</p>
+			<p class="caldo-alert caldo-alert-error" data-saved-filter-edit-error role="alert" aria-live="polite">{ item.EditError }</p>
 		}
 		<div class="grid gap-3 lg:grid-cols-[minmax(12rem,18rem)_1fr_auto] lg:items-end">
 			<div class="space-y-1">
@@ -117,7 +117,7 @@ templ SavedFilterDeleteForm(item SavedFilterItemView) {
 		>
 			<input type="hidden" name="expected_version" value={ savedFilterExpectedVersion(item) }/>
 			if item.DeleteError != "" {
-				<p class="caldo-alert caldo-alert-error" data-saved-filter-delete-error aria-live="polite">{ item.DeleteError }</p>
+				<p class="caldo-alert caldo-alert-error" data-saved-filter-delete-error role="alert" aria-live="polite">{ item.DeleteError }</p>
 			}
 			<button type="submit" class="caldo-button caldo-button-danger-solid">Endgültig löschen</button>
 		</form>

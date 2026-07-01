@@ -879,7 +879,7 @@ func ConflictManualResolutionForm(conflict db.ConflictDetail, projectOptions []T
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "</dl></section><p class=\"caldo-alert caldo-alert-error caldo-conflict-resolution-error\" data-conflict-resolution-error aria-live=\"polite\" hidden>Konflikt konnte nicht gespeichert werden.</p><div class=\"caldo-conflict-manual-actions\"><button type=\"submit\" class=\"caldo-button caldo-button-primary\">Ausgewählte Felder speichern</button> <span class=\"htmx-indicator caldo-meta\" aria-live=\"polite\">Speichern ...</span></div></form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "</dl></section><p class=\"caldo-alert caldo-alert-error caldo-conflict-resolution-error\" data-conflict-resolution-error role=\"alert\" aria-live=\"polite\" hidden>Konflikt konnte nicht gespeichert werden.</p><div class=\"caldo-conflict-manual-actions\"><button type=\"submit\" class=\"caldo-button caldo-button-primary\">Ausgewählte Felder speichern</button> <span class=\"htmx-indicator caldo-meta\" aria-live=\"polite\">Speichern ...</span></div></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

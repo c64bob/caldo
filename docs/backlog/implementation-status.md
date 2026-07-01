@@ -7,7 +7,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 ## Zusammenfassung
 
 - Bestehende Stories: 89 `Umgesetzt`, 0 `Teilweise umgesetzt`, 0 `Offen`.
-- Neue Planungsstories: 47 `Umgesetzt`, 5 `Offen`.
+- Neue Planungsstories: 48 `Umgesetzt`, 4 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance, 29 Production Readiness, 30 CalDAV Sync Maturity.
 
 ## Legende
@@ -154,7 +154,7 @@ Die neuen Epics 23 bis 30 brechen die verbleibende UI-, QA-, Production-Readines
 | 28.3 | Umgesetzt | `docs/qa/playwright.md`, `playwright.config.js`, `.github/workflows/ci.yml`, `package.json` und `docs/qa/release-rollback.md` verankern Safari-nahe WebKit-QA als CI- und Release-Gate, beschreiben lokale/automatisierte Ausfuehrung, Setup-Hinweise fuer fehlende WebKit-Systembibliotheken, abgedeckte MVP-Flows inklusive Setup, Quick Add, Write-through, Manual Sync und Konfliktloesung sowie die ausschliessliche Nutzung von Fake-/Staging-CalDAV. |
 | 28.4 | Umgesetzt | `tests/e2e/mvp-flow.spec.js` und `docs/qa/playwright.md` pruefen und dokumentieren Tastatur-/Fokus-/Accessibility-Invarianten fuer sichtbare Fokusindikatoren, Dialog-Fokusfalle und Fokus-Rueckgabe, programmatisch zugeordnete Formfehler mit `role`, `aria-describedby` und `aria-invalid` sowie explizite `aria-label`-Werte fuer Icon-Buttons. |
 | 28.5 | Umgesetzt | `tests/e2e/performance.spec.js`, `tests/e2e/helpers/stage.js`, `package.json`, `docs/qa/performance.md` und `docs/qa/playwright.md` definieren und automatisieren einen opt-in Playwright-Performance-Lauf mit synthetischen Aufgaben, mehreren Projekten und Labels, Messwerten fuer Navigation, Suche, Live-Suche und Manual-Sync-Responsiveness sowie lokalen Ergebnisartefakten unter `test-results/performance/`. |
-| 28.6 | Offen | Visuelle Regression wird ueber Baseline-Screenshots vorbereitet, aber kein vollstaendiger Review-/Regression-Prozess ist umgesetzt. |
+| 28.6 | Umgesetzt | `docs/qa/visual-regression.md`, `docs/qa/playwright.md`, `tests/e2e/visual-review.js` und `package.json` definieren einen UI-PR-Prozess fuer synthetische Desktop-/Tablet-/Mobile-Baseline-Screenshots, lokale Manifest-/Hash-Vergleiche, erwartete Designaenderungen und Regressionen. |
 | 29.1 | Umgesetzt | `docs/qa/nextcloud.md` definiert den verpflichtenden Staging-Smoke-Gate fuer Release Candidates inklusive Setup/Import, Manual Sync, Remote Create/Update/Delete, Dirty-vs-Remote-Konflikt, Konfliktloesung, synthetischen Testdaten, Ergebnisprotokoll und GitHub-Issue-/Milestone-Regeln. |
 | 29.2 | Umgesetzt | `docs/qa/backup-restore.md` dokumentiert relevante DB-, WAL-, Lock-, Backup- und Secret-/Config-Dateien, Backup-Kopie, Restore in isolierte Pfade, Start mit wiederhergestellter DB, Migrationsdrill auf Kopie/Staging und Release-Blocker-Regeln. |
 | 29.3 | Umgesetzt | `docs/qa/release-rollback.md` buendelt Commit, Version, Image, CI, Staging-Smoke, Backup-/Restore-Entscheidung, bekannte Risiken, offene Blocker, Release-Notizen sowie Binary- und Container-Rollback. |

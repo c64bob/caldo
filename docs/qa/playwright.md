@@ -192,6 +192,14 @@ Bei neuen interaktiven Elementen muss entweder eine bestehende Caldo-Komponenten
 
 `npm run test:e2e` erzeugt Review-Screenshots unter `test-results/e2e/chromium/baselines/`. `npm run test:e2e:webkit` erzeugt die WebKit-Variante unter `test-results/e2e/webkit/baselines/`. Diese Verzeichnisse sind lokale QA-Artefakte und werden nicht committed.
 
+Der vollstaendige visuelle Review-Prozess steht in `docs/qa/visual-regression.md`. Fuer UI-PRs ist der bevorzugte lokale Lauf:
+
+```bash
+npm run test:e2e:visual
+```
+
+Dieser Lauf prueft, ob alle erwarteten Baseline-Screenshots erzeugt wurden, und schreibt ein lokales Manifest mit Bildgroessen und Hashes. Erwartete Designaenderungen werden im PR beschrieben; nicht erklaerte Abweichungen gelten als Regressionen.
+
 Die Baselines erfassen Desktop, Tablet und Mobile für:
 
 - Setup

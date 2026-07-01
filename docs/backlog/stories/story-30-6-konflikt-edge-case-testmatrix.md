@@ -4,7 +4,7 @@
 Story 30.6 — Konflikt-Edge-Case-Testmatrix
 
 ## Status
-Offen
+Umgesetzt
 
 ## Ziel
 Konflikte werden fuer komplexe CalDAV- und VTODO-Faelle systematisch validiert.

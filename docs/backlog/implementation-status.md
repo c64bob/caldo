@@ -7,7 +7,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 ## Zusammenfassung
 
 - Bestehende Stories: 89 `Umgesetzt`, 0 `Teilweise umgesetzt`, 0 `Offen`.
-- Neue Planungsstories: 35 `Umgesetzt`, 17 `Offen`.
+- Neue Planungsstories: 36 `Umgesetzt`, 16 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance, 29 Production Readiness, 30 CalDAV Sync Maturity.
 
 ## Legende
@@ -167,4 +167,4 @@ Die neuen Epics 23 bis 30 brechen die verbleibende UI-, QA-, Production-Readines
 | 30.3 | Offen | Grosse Kalender und belastbare Grenzwerte sind noch nicht systematisch gemessen. |
 | 30.4 | Offen | WebDAV-Sync ist noch keine echte inkrementelle Sync-Strategie im normalen Sync. |
 | 30.5 | Offen | CTag-/ETag-Strategie ist noch keine vollwertige inkrementelle Sync-Strategie. |
-| 30.6 | Offen | Konflikt-Edge-Case-Testmatrix fuer komplexe CalDAV-/VTODO-Faelle ist noch nicht vorhanden. |
+| 30.6 | Umgesetzt | `docs/qa/conflict-edge-cases.md` definiert eine sanitisierte Konfliktmatrix mit 412-Stale-Writes, Remote-Delete gegen lokale Aenderungen, gleichzeitigen Feldupdates, wiederholter Konfliktloesung, Unteraufgaben, Labels, RRULEs, VALARM, ATTACH, unbekannten VTODO-Feldern, erwarteten Ergebnissen, erlaubten sichtbaren Fehlerzustaenden und GitHub-Issue-Regeln; `docs/qa/nextcloud.md` verweist konfliktbezogene Release-QA auf diese Matrix. |

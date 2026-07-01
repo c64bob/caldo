@@ -703,10 +703,16 @@ Backup-Regel:
 Namensschema:
 
 ```text
-caldo_backup_pre_migration_<version>_<timestamp>.db
+<dbPath>.backup-<UTC timestamp>-<nanoseconds>-<random suffix>-<attempt>
 ```
 
-`<version>` ist die höchste ausstehende Migration.
+Beispiel fuer den Standardpfad:
+
+```text
+/data/caldo.db.backup-20260701T090000Z-000000000-deadbeef-00
+```
+
+Das Backup wird mit SQLite `VACUUM INTO` erzeugt und ist eine eigenstaendige SQLite-Datei.
 
 ### 7.5 Migrations-Invarianten
 
@@ -2336,7 +2342,7 @@ Empfohlene Dateipfade innerhalb `/data`:
 ```text
 /data/caldo.db
 /data/caldo.db.startup.lock
-/data/caldo_backup_pre_migration_<version>_<timestamp>.db
+/data/caldo.db.backup-<UTC timestamp>-<nanoseconds>-<random suffix>-<attempt>
 ```
 
 ### 27.5 Environment-Variablen

@@ -184,6 +184,10 @@ Der MVP-Smoke prüft repräsentative Keyboard- und Accessibility-Invarianten ohn
 
 Bei neuen interaktiven Elementen muss entweder eine bestehende Caldo-Komponentenklasse mit Fokuszustand verwendet oder eine passende `:focus-visible`-Regel ergänzt werden. Neue Dialoge müssen dieselbe Fokusfalle und Fokus-Rückgabe wie die bestehenden Dialoge erfüllen.
 
+## Performance
+
+`npm run test:e2e:performance` ist ein opt-in Chromium-Lauf fuer Story 28.5. Er erzeugt synthetische Aufgaben, Projekte und Labels in der lokalen Stage-CalDAV-Instanz, durchlaeuft Setup/Import und misst Navigation, Suche, Live-Suche und Manual-Sync-Responsiveness. Die Ergebnisdateien liegen unter `test-results/performance/` und werden nicht committed.
+
 ## Visuelle Baselines
 
 `npm run test:e2e` erzeugt Review-Screenshots unter `test-results/e2e/chromium/baselines/`. `npm run test:e2e:webkit` erzeugt die WebKit-Variante unter `test-results/e2e/webkit/baselines/`. Diese Verzeichnisse sind lokale QA-Artefakte und werden nicht committed.

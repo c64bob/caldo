@@ -105,14 +105,14 @@ func SavedFilterCreateForm(create SavedFilterCreateFormView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if create.Error != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"caldo-alert caldo-alert-error\" data-saved-filter-create-error aria-live=\"polite\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"caldo-alert caldo-alert-error\" data-saved-filter-create-error role=\"alert\" aria-live=\"polite\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(create.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 33, Col: 108}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 33, Col: 121}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -351,14 +351,14 @@ func SavedFilterEditForm(item SavedFilterItemView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if item.EditError != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<p class=\"caldo-alert caldo-alert-error\" data-saved-filter-edit-error aria-live=\"polite\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<p class=\"caldo-alert caldo-alert-error\" data-saved-filter-edit-error role=\"alert\" aria-live=\"polite\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(item.EditError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 83, Col: 108}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 83, Col: 121}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -553,14 +553,14 @@ func SavedFilterDeleteForm(item SavedFilterItemView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if item.DeleteError != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<p class=\"caldo-alert caldo-alert-error\" data-saved-filter-delete-error aria-live=\"polite\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<p class=\"caldo-alert caldo-alert-error\" data-saved-filter-delete-error role=\"alert\" aria-live=\"polite\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var30 string
 			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(item.DeleteError)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 120, Col: 113}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/saved_filters.templ`, Line: 120, Col: 126}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 			if templ_7745c5c3_Err != nil {

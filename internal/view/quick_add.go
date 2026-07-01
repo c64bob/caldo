@@ -155,6 +155,23 @@ func quickAddPriorityChipClass(priority string) string {
 	}
 }
 
+func quickAddRemoveTokenLabel(ctx context.Context, field string, value string) string {
+	field = strings.TrimSpace(field)
+	value = strings.TrimSpace(value)
+	if UILanguage(ctx) == "en" {
+		return "Remove " + field + " " + value
+	}
+	return field + " " + value + " entfernen"
+}
+
+func quickAddAppendLabelLabel(ctx context.Context, label string) string {
+	label = strings.TrimSpace(label)
+	if UILanguage(ctx) == "en" {
+		return "Add label " + label
+	}
+	return "Label " + label + " hinzufügen"
+}
+
 type quickAddPriorityOption struct {
 	Value string
 	Label string

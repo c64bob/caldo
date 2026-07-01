@@ -112,7 +112,14 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await invalidFilterCreateForm.locator('[name="query"]').fill('today AND (');
   await invalidFilterCreateForm.locator('[name="favorite"]').check();
   await invalidFilterCreateForm.getByRole('button', { name: 'Filter anlegen' }).click();
-  await expect(page.locator('[data-saved-filter-create-error]')).toContainText('filterquery ist ungültig');
+  const filterCreateError = page.locator('[data-saved-filter-create-error]');
+  await expect(filterCreateError).toContainText('filterquery ist ungültig');
+  await expect(filterCreateError).toHaveAttribute('role', 'alert');
+  const filterCreateErrorID = await filterCreateError.getAttribute('id');
+  expect(filterCreateErrorID).toBeTruthy();
+  await expect(page.locator('[data-saved-filter-create-form]')).toHaveAttribute('aria-describedby', new RegExp(filterCreateErrorID));
+  await expect(page.locator('[data-saved-filter-create-form] [name="name"]')).toHaveAttribute('aria-describedby', new RegExp(filterCreateErrorID));
+  await expect(page.locator('[data-saved-filter-create-form] [name="name"]')).toHaveAttribute('aria-invalid', 'true');
   await expect(page.locator('[data-saved-filter-list]').filter({ hasText: 'E2E Broken Filter' })).toHaveCount(0);
   await expect(page.locator('[data-nav-user-filters] a').filter({ hasText: 'E2E Broken Filter' })).toHaveCount(0);
   await gotoApp(page, '/today');
@@ -129,12 +136,18 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await gotoApp(page, '/search?q=Stage');
 
   await page.setViewportSize(mobileViewport);
-  await expect(page.getByRole('button', { name: 'Navigation öffnen' })).toBeVisible();
-  await page.getByRole('button', { name: 'Navigation öffnen' }).click();
+  const mobileNavTrigger = page.getByRole('button', { name: 'Navigation öffnen' });
+  await expect(mobileNavTrigger).toBeVisible();
+  await mobileNavTrigger.focus();
+  await page.keyboard.press('Enter');
+  await expect(mobileNavTrigger).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByRole('navigation', { name: 'Mobile Hauptnavigation' })).toBeVisible();
+  await expect(page.locator('[data-mobile-nav-close]')).toBeFocused();
   await expect(page.locator('[data-mobile-nav-dialog] nav[aria-label="Mobile Hauptnavigation"] a[href="/today"]')).toBeVisible();
   await page.screenshot({ path: `${browserArtifactDir(testInfo)}/search-mobile.png`, fullPage: true, caret: 'initial' });
-  await page.getByRole('button', { name: 'Schließen' }).click();
+  await page.keyboard.press('Escape');
+  await expect(mobileNavTrigger).toHaveAttribute('aria-expanded', 'false');
+  await expect(mobileNavTrigger).toBeFocused();
   await expect(page.locator('.caldo-topbar a[href="/search"]')).toBeVisible();
   await expect(page.locator('.caldo-topbar a[href="/quick-add"]')).toBeVisible();
   await page.setViewportSize(desktopViewport);
@@ -674,14 +687,21 @@ async function exerciseKeyboardShortcuts(page) {
   await page.keyboard.press('p');
   await expect(page).toHaveURL(/\/projects$/);
 
+  const helpReturnTarget = page.locator('.caldo-sidebar [data-nav-system-filters] a[href="/today"]').first();
+  await helpReturnTarget.focus();
   await page.keyboard.press('Shift+/');
   const helpDialog = page.locator('[data-shortcut-help-dialog]');
   await expect(helpDialog).toBeVisible();
+  await expect(helpDialog).toHaveAttribute('aria-labelledby', 'shortcut-help-title');
+  await expect(helpDialog.getByRole('button', { name: 'Schließen' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(helpDialog.getByRole('button', { name: 'Schließen' })).toBeFocused();
   await expect(helpDialog).toContainText('Tastaturkürzel');
   await expect(helpDialog).toContainText('Mehrfachbearbeitung ist nicht verfügbar');
   await expect(helpDialog).toContainText('G');
-  await helpDialog.getByRole('button', { name: 'Schließen' }).click();
+  await page.keyboard.press('Escape');
   await expect(helpDialog).toBeHidden();
+  await expect(helpReturnTarget).toBeFocused();
 }
 
 async function exerciseQuickAddOverlay(page) {
@@ -717,6 +737,10 @@ async function exerciseQuickAddOverlay(page) {
   await page.keyboard.press('Control+Enter');
   await expect(overlay).toBeVisible();
   await expect(overlay.locator('[data-quick-add-overlay-error]')).toContainText('Aufgabe konnte nicht gespeichert werden.');
+  await expect(overlay.locator('[data-quick-add-overlay-error]')).toHaveAttribute('role', 'alert');
+  await expect(saveForm).toHaveAttribute('aria-describedby', /quick-add-overlay-error/);
+  await expect(saveForm.locator('input[name="title"]')).toHaveAttribute('aria-describedby', /quick-add-overlay-error/);
+  await expect(saveForm.locator('input[name="title"]')).toHaveAttribute('aria-invalid', 'true');
   await expect(input).toHaveValue('E2E Overlay Failed');
   await expect(page).toHaveURL(searchURL);
 

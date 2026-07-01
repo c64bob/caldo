@@ -17,6 +17,7 @@
 		--caldo-text-muted: #6f6c67;
 		--caldo-text-subtle: #8a8680;
 		--caldo-focus: #dc4c3e;
+		--caldo-focus-ring: 0 0 0 3px rgba(220, 76, 62, 0.22);
 		--caldo-danger: #dc2626;
 		--caldo-danger-muted: #fef2f2;
 		--caldo-warning: #b45309;
@@ -40,6 +41,7 @@
 			--caldo-text-muted: #b5afa5;
 			--caldo-text-subtle: #948e83;
 			--caldo-focus: #ff7a6f;
+			--caldo-focus-ring: 0 0 0 3px rgba(255, 122, 111, 0.28);
 			--caldo-danger: #f87171;
 			--caldo-danger-muted: #3b1111;
 			--caldo-warning: #fbbf24;
@@ -63,6 +65,7 @@
 		--caldo-text-muted: #6f6c67;
 		--caldo-text-subtle: #8a8680;
 		--caldo-focus: #dc4c3e;
+		--caldo-focus-ring: 0 0 0 3px rgba(220, 76, 62, 0.22);
 		--caldo-danger: #dc2626;
 		--caldo-danger-muted: #fef2f2;
 		--caldo-warning: #b45309;
@@ -85,6 +88,7 @@
 		--caldo-text-muted: #b5afa5;
 		--caldo-text-subtle: #948e83;
 		--caldo-focus: #ff7a6f;
+		--caldo-focus-ring: 0 0 0 3px rgba(255, 122, 111, 0.28);
 		--caldo-danger: #f87171;
 		--caldo-danger-muted: #3b1111;
 		--caldo-warning: #fbbf24;
@@ -350,6 +354,7 @@
 	.caldo-icon-button:focus-visible {
 		outline: 2px solid var(--caldo-focus);
 		outline-offset: 2px;
+		box-shadow: var(--caldo-focus-ring);
 	}
 
 	.caldo-mobile-nav-trigger {
@@ -384,9 +389,22 @@
 	.caldo-select:focus-visible,
 	.caldo-check:focus-visible,
 	.caldo-nav-link:focus-visible,
-	.caldo-list-link:focus-visible {
+	.caldo-list-link:focus-visible,
+	.caldo-quick-add-chip:focus-visible,
+	.caldo-quick-add-suggestion:focus-visible,
+	.caldo-task-favorite-button:focus-visible,
+	.caldo-task-description-link:focus-visible,
+	.caldo-task-attachment-link:focus-visible,
+	.caldo-task-detail-attachment-link:focus-visible,
+	.caldo-task-edit-open:focus-visible,
+	.caldo-task-detail-open:focus-visible,
+	.caldo-subtask-create-trigger:focus-visible,
+	.caldo-inline-create-trigger:focus-visible,
+	.caldo-menu-item:focus-visible,
+	summary.caldo-button:focus-visible {
 		outline: 2px solid var(--caldo-focus);
 		outline-offset: 2px;
+		box-shadow: var(--caldo-focus-ring);
 	}
 
 	.caldo-button:disabled,
@@ -747,6 +765,12 @@
 	.caldo-quick-add-project-option:has(input:checked) {
 		border-color: var(--caldo-accent);
 		background: var(--caldo-accent-muted);
+	}
+
+	.caldo-quick-add-project-option:focus-within {
+		outline: 2px solid var(--caldo-focus);
+		outline-offset: 2px;
+		box-shadow: var(--caldo-focus-ring);
 	}
 
 	.caldo-list {
@@ -1770,6 +1794,12 @@
 	.caldo-conflict-manual-option:hover,
 	.caldo-conflict-manual-option:focus-within {
 		border-color: var(--caldo-accent-border);
+	}
+
+	.caldo-conflict-manual-option:focus-within {
+		outline: 2px solid var(--caldo-focus);
+		outline-offset: 2px;
+		box-shadow: var(--caldo-focus-ring);
 	}
 
 	.caldo-conflict-manual-option-changed {

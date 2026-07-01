@@ -254,6 +254,51 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 	}
 }
 
+func TestTaskRowAssociatesInteractiveFormErrors(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	component := TaskRow(TaskRowView{
+		ID:               "task-a11y",
+		ProjectID:        "project-1",
+		Title:            "A11y Aufgabe",
+		ProjectName:      "Inbox",
+		Status:           "needs-action",
+		SyncStatus:       "synced",
+		ServerVersion:    8,
+		SubtaskCount:     1,
+		OpenSubtaskCount: 1,
+		ProjectOptions: []TaskProjectOption{
+			{ID: "project-1", Name: "Inbox"},
+		},
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render task row: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`id="task-action-error-task-a11y"`,
+		`id="task-edit-error-task-a11y"`,
+		`aria-describedby="task-edit-error-task-a11y"`,
+		`id="subtask-create-error-task-a11y"`,
+		`aria-describedby="subtask-create-error-task-a11y"`,
+		`id="task-detail-error-task-a11y"`,
+		`aria-describedby="task-detail-error-task-a11y"`,
+		`id="task-complete-error-task-a11y"`,
+		`aria-describedby="task-complete-error-task-a11y"`,
+		`id="task-delete-error-task-a11y"`,
+		`aria-describedby="task-delete-error-task-a11y"`,
+		`role="alert"`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected associated task error markup %q in %s", want, output)
+		}
+	}
+}
+
 func TestTaskRowDoesNotEnableDragMoveForUnsyncedTask(t *testing.T) {
 	t.Parallel()
 

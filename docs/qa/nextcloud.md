@@ -202,6 +202,7 @@ This is the required Story 29.1 release smoke. The broader sections below can be
 - Expected: Caldo warns about the remote change without overwriting the dirty local form.
 - Save a stale local change if possible.
 - Expected: `412 Precondition Failed` or equivalent stale-write handling creates a visible conflict path rather than silently retrying.
+- For release candidates with conflict-related changes, select relevant rows from `docs/qa/conflict-edge-cases.md`.
 
 ### 8. Settings
 

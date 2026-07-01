@@ -9,6 +9,7 @@ Caldo runs as exactly one active process per data directory. It listens on one i
 Use the related release and QA runbooks for release decisions and evidence:
 
 - Release and rollback checklist: `docs/qa/release-rollback.md`
+- Operational health and debugging guide: `docs/operations/health-debugging.md`
 - Security, privacy, and logging audit: `docs/qa/security-privacy-logging-audit.md`
 - Dependency, license, and update review: `docs/qa/dependency-license-update-review.md`
 - Backup, restore, and migration drill: `docs/qa/backup-restore.md`
@@ -187,7 +188,7 @@ Setup-incomplete instances should expose setup routes and `/health`, while norma
 
 ## Common Startup and Configuration Errors
 
-Use sanitized error type, field, code, errno, and path values from logs. Do not paste secrets or task content into tickets.
+Use sanitized error type, field, code, errno, and path values from logs. `docs/operations/health-debugging.md` describes safe issue evidence in more detail. Do not paste secrets or task content into tickets.
 
 | Symptom | Likely cause | Safe triage |
 |---|---|---|

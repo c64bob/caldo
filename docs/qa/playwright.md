@@ -172,6 +172,18 @@ Die Todoist-nahe UI sollte in Browser-QA regelmäßig gegen diese Punkte geprüf
 
 Playwright-Screenshots sind der Feedback-Loop: Ansicht öffnen, Desktop, Tablet und Mobile prüfen, CSS/Templ anpassen, erneut ausführen.
 
+## Tastatur, Fokus und Accessibility
+
+Der MVP-Smoke prüft repräsentative Keyboard- und Accessibility-Invarianten ohne zusätzliche Runtime- oder npm-Abhängigkeiten:
+
+- Globale Aktionen, Navigation und Aufgabenaktionen haben sichtbare Fokusindikatoren.
+- Quick-Add-Overlay, Hilfedialog, Mobile-Navigation und Task-Detaildialog halten Fokus im offenen Dialog.
+- Dialoge geben Fokus beim Schließen an den auslösenden Button oder Link zurück.
+- Formfehler haben `role="alert"`, eine stabile `id`, `aria-describedby` am Formular und am betroffenen Control sowie `aria-invalid="true"` am fehlerhaften Control.
+- Icon-Buttons verwenden explizite `aria-label`-Werte statt nur sichtbarer Symbole.
+
+Bei neuen interaktiven Elementen muss entweder eine bestehende Caldo-Komponentenklasse mit Fokuszustand verwendet oder eine passende `:focus-visible`-Regel ergänzt werden. Neue Dialoge müssen dieselbe Fokusfalle und Fokus-Rückgabe wie die bestehenden Dialoge erfüllen.
+
 ## Visuelle Baselines
 
 `npm run test:e2e` erzeugt Review-Screenshots unter `test-results/e2e/chromium/baselines/`. `npm run test:e2e:webkit` erzeugt die WebKit-Variante unter `test-results/e2e/webkit/baselines/`. Diese Verzeichnisse sind lokale QA-Artefakte und werden nicht committed.

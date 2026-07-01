@@ -18,6 +18,7 @@ const { createRemoteTask, deleteRemoteTask, stageState, updateRemoteTask } = req
 const desktopViewport = { width: 1440, height: 1000 };
 const tabletViewport = { width: 834, height: 1112 };
 const mobileViewport = { width: 390, height: 844 };
+const narrowMobileViewport = { width: 320, height: 720 };
 
 test('MVP setup, sync, write-through, and conflict flow works in a browser session', async ({ page }, testInfo) => {
   fs.mkdirSync(browserBaselineDir(testInfo), { recursive: true });
@@ -135,22 +136,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await exerciseTabletCoreViews(page, testInfo);
   await gotoApp(page, '/search?q=Stage');
 
-  await page.setViewportSize(mobileViewport);
-  const mobileNavTrigger = page.getByRole('button', { name: 'Navigation öffnen' });
-  await expect(mobileNavTrigger).toBeVisible();
-  await mobileNavTrigger.focus();
-  await page.keyboard.press('Enter');
-  await expect(mobileNavTrigger).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.getByRole('navigation', { name: 'Mobile Hauptnavigation' })).toBeVisible();
-  await expect(page.locator('[data-mobile-nav-close]')).toBeFocused();
-  await expect(page.locator('[data-mobile-nav-dialog] nav[aria-label="Mobile Hauptnavigation"] a[href="/today"]')).toBeVisible();
-  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/search-mobile.png`, fullPage: true, caret: 'initial' });
-  await page.keyboard.press('Escape');
-  await expect(mobileNavTrigger).toHaveAttribute('aria-expanded', 'false');
-  await expect(mobileNavTrigger).toBeFocused();
-  await expect(page.locator('.caldo-topbar a[href="/search"]')).toBeVisible();
-  await expect(page.locator('.caldo-topbar a[href="/quick-add"]')).toBeVisible();
-  await page.setViewportSize(desktopViewport);
+  await exerciseMobileNavigationAndSettings(page, testInfo);
 
   await gotoApp(page, '/search?q=%23Work');
   const mainInlineCreate = page.locator('.caldo-inline-create').first();
@@ -291,6 +277,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   detailRow = page.locator(`[data-task-id="${panelTaskID}"]`);
   await expect(detailRow).toContainText('1 Unteraufgabe');
   await exerciseTabletTaskActions(page, panelTaskID);
+  await exerciseMobileTaskEditing(page, testInfo, panelTaskID);
   detailRow = page.locator(`[data-task-id="${panelTaskID}"]`);
   let completeDialog = detailRow.locator('[data-task-complete-dialog]');
   await expect(completeDialog).toBeHidden();
@@ -499,6 +486,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expectNoHorizontalOverflow(page);
   await expect(page.locator('[data-conflict-comparison]')).toBeVisible();
   await expect(page.locator('[data-conflict-field="project"]')).toBeVisible();
+  await exerciseMobileConflictResolution(page, testInfo);
   await page.setViewportSize(desktopViewport);
   const conflictSplitPreview = page.locator('[data-conflict-split-preview]');
   await expect(conflictSplitPreview).toContainText('Nach dem Split existieren zwei Aufgaben');
@@ -569,6 +557,85 @@ async function openLabelDetail(page, labelName) {
   await expect(page).toHaveURL(/\/labels\/[^/]+$/);
 }
 
+async function exerciseMobileNavigationAndSettings(page, testInfo) {
+  await page.setViewportSize(narrowMobileViewport);
+  await gotoApp(page, '/search?q=Stage');
+  const searchInput = page.locator('#global-search');
+  await expect(searchInput).toBeVisible();
+  await searchInput.focus();
+
+  let mobileNavTrigger = page.getByRole('button', { name: 'Navigation öffnen' });
+  await expect(mobileNavTrigger).toBeVisible();
+  await mobileNavTrigger.click();
+  await expect(mobileNavTrigger).toHaveAttribute('aria-expanded', 'true');
+  const mobileNavDialog = page.locator('[data-mobile-nav-dialog]');
+  await expect(mobileNavDialog).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Mobile Hauptnavigation' })).toBeVisible();
+  await expect(page.locator('[data-mobile-nav-close]')).toBeFocused();
+  await expect(page.locator('[data-mobile-nav-dialog] nav[aria-label="Mobile Hauptnavigation"] a[href="/today"]')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/search-mobile.png`, fullPage: true, caret: 'initial' });
+
+  await page.keyboard.press('Escape');
+  await expect(mobileNavTrigger).toHaveAttribute('aria-expanded', 'false');
+  await expect(mobileNavTrigger).toBeFocused();
+  await expect(searchInput).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+
+  await mobileNavTrigger.click();
+  await expect(mobileNavDialog).toBeVisible();
+  await page.locator('[data-mobile-nav-dialog] a[href="/settings"]').click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await expectCurrentView(page, 'Einstellungen');
+  mobileNavTrigger = page.getByRole('button', { name: 'Navigation öffnen' });
+  await expect(mobileNavTrigger).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('.caldo-topbar a[href="/search"]')).toBeVisible();
+  await expect(page.locator('.caldo-topbar a[href="/quick-add"]')).toBeVisible();
+  await exerciseMobileSettings(page, testInfo);
+
+  await mobileNavTrigger.click();
+  await expect(mobileNavDialog).toBeVisible();
+  await page.locator('[data-mobile-nav-dialog] [data-quick-add-open]').click();
+  await expect(mobileNavDialog).toBeHidden();
+  const quickAddOverlay = page.locator('[data-quick-add-overlay]');
+  await expect(quickAddOverlay).toBeVisible();
+  await expect(quickAddOverlay.locator('[data-quick-add-overlay-input]')).toBeFocused();
+  await expectElementWithinViewport(quickAddOverlay, narrowMobileViewport);
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/mobile-quick-add-from-nav.png`, fullPage: true, caret: 'initial' });
+  await quickAddOverlay.getByRole('button', { name: 'Schließen' }).click();
+  await expect(quickAddOverlay).toBeHidden();
+  await page.setViewportSize(desktopViewport);
+}
+
+async function exerciseMobileSettings(page, testInfo) {
+  await page.setViewportSize(narrowMobileViewport);
+  await expectCurrentView(page, 'Einstellungen');
+  await expect(page.locator('[data-settings-caldav]')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+
+  const caldavURL = page.locator('#settings_caldav_url');
+  await caldavURL.scrollIntoViewIfNeeded();
+  await expect(caldavURL).toBeVisible();
+  await caldavURL.focus();
+  await expectElementHorizontallyWithinViewport(caldavURL, narrowMobileViewport);
+  await expect(page.locator('[data-settings-caldav] button[name="caldav_action"][value="test"]')).toBeVisible();
+  await expect(page.locator('[data-settings-caldav] button[name="caldav_action"][value="save"]')).toBeVisible();
+
+  const calendarSettings = page.locator('[data-settings-calendars]');
+  await calendarSettings.scrollIntoViewIfNeeded();
+  await expect(calendarSettings).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+
+  const uiSettings = page.locator('#ui-settings');
+  await uiSettings.scrollIntoViewIfNeeded();
+  await expect(uiSettings).toBeVisible();
+  await expect(uiSettings.locator('select[name="dark_mode"]')).toBeVisible();
+  await expect(uiSettings.getByRole('button', { name: 'UI-Einstellungen speichern' })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/mobile-settings.png`, fullPage: true, caret: 'initial' });
+}
+
 async function exerciseTabletCoreViews(page, testInfo) {
   await page.setViewportSize(tabletViewport);
   await gotoApp(page, '/projects');
@@ -623,6 +690,26 @@ async function exerciseTabletConflictViews(page, testInfo, conflictHref) {
   await expectTabletTouchTargets(page);
   await page.screenshot({ path: `${browserArtifactDir(testInfo)}/tablet-conflict-detail.png`, fullPage: true, caret: 'initial' });
   await page.setViewportSize(desktopViewport);
+}
+
+async function exerciseMobileConflictResolution(page, testInfo) {
+  await page.setViewportSize(narrowMobileViewport);
+  await expectCurrentView(page, 'Konfliktdetail');
+  await expect(page.locator('[data-conflict-comparison]')).toBeVisible();
+  await expect(page.locator('[data-conflict-resolution]')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+
+  const manualForm = page.locator('[data-conflict-manual-form]');
+  await manualForm.scrollIntoViewIfNeeded();
+  await expect(manualForm).toBeVisible();
+  await manualForm.locator('[name="title_source"][value="manual"]').check();
+  await manualForm.locator('[name="title_manual"]').fill('E2E Mobile Manual Preview');
+  await expect(manualForm.locator('[data-conflict-preview-value="title"]')).toContainText('E2E Mobile Manual Preview');
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/mobile-conflict-resolution.png`, fullPage: true, caret: 'initial' });
+
+  await manualForm.locator('[name="title_source"][value="remote"]').check();
+  await expect(manualForm.locator('[data-conflict-preview-value="title"]')).toContainText('E2E Remote Conflict Edit');
 }
 
 async function sidebarProjectHref(page, projectName) {
@@ -686,6 +773,41 @@ async function exerciseTabletTaskActions(page, panelTaskID) {
   await deleteDialog.getByRole('button', { name: 'Abbrechen', exact: true }).click();
   await expect(deleteDialog).toBeHidden();
   await closeTaskRowEdit(row);
+  await page.setViewportSize(desktopViewport);
+}
+
+async function exerciseMobileTaskEditing(page, testInfo, panelTaskID) {
+  await page.setViewportSize(narrowMobileViewport);
+  await gotoApp(page, '/search?q=E2E%20Panel%20Edited');
+  await expectCurrentView(page, 'Suche');
+  await expectNoHorizontalOverflow(page);
+  await ensureBrowserCSRFCookie(page);
+
+  let row = page.locator(`[data-task-id="${panelTaskID}"]`);
+  await expect(row).toBeVisible();
+  await expect(row.locator('.caldo-task-meta-line')).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+
+  await openTaskRowEdit(row);
+  const inlineTitle = row.locator('[data-inline-task-edit-title]');
+  await expect(inlineTitle).toBeFocused();
+  await inlineTitle.fill('E2E Mobile Unsaved Draft');
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/mobile-task-inline-edit.png`, fullPage: true, caret: 'initial' });
+  await inlineTitle.press('Escape');
+  await expect(row.locator('[data-inline-task-edit-form]')).toBeHidden();
+  await expect(row).toContainText('E2E Panel Edited');
+
+  row = page.locator(`[data-task-id="${panelTaskID}"]`);
+  await row.getByRole('button', { name: 'Details' }).click();
+  const detailDialog = row.locator('[data-task-detail-dialog]');
+  await expect(detailDialog).toBeVisible();
+  await expectElementWithinViewport(detailDialog, narrowMobileViewport);
+  await detailDialog.locator('[name="title"]').fill('E2E Mobile Detail Draft');
+  await expectNoHorizontalOverflow(page);
+  await detailDialog.getByRole('button', { name: 'Details schließen' }).click();
+  await expect(detailDialog).toBeHidden();
+  await expect(row).toContainText('E2E Panel Edited');
   await page.setViewportSize(desktopViewport);
 }
 
@@ -1063,6 +1185,15 @@ async function expectElementWithinViewport(locator, viewport) {
   expect(box.y).toBeGreaterThanOrEqual(-1);
   expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
   expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
+}
+
+async function expectElementHorizontallyWithinViewport(locator, viewport) {
+  const box = await locator.boundingBox();
+  if (!box) {
+    throw new Error('expected visible element to have a bounding box');
+  }
+  expect(box.x).toBeGreaterThanOrEqual(-1);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
 }
 
 async function expectTouchTargetAtLeast(locator, minimumSize) {

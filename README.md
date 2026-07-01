@@ -177,6 +177,7 @@ Release- und Staging-Runbooks:
 
 - Deployment- und Betriebsrunbook: `docs/operations/deployment.md`
 - Release- und Rollback-Checkliste: `docs/qa/release-rollback.md`
+- Security-, Privacy- und Logging-Audit: `docs/qa/security-privacy-logging-audit.md`
 - Nextcloud-Staging-Smoke: `docs/qa/nextcloud.md`
 - Backup-, Restore- und Migrationsdrill: `docs/qa/backup-restore.md`
 - Performance-Messpunkte: `docs/qa/performance.md`
@@ -196,6 +197,7 @@ Teststrategie:
 - **Migrationen:** Backup vor erster ausstehender Migration als `<DB_PATH>.backup-*`; Prüfsummenabweichungen führen zum Startup-Abbruch
 - **Backup/Restore:** Drill und relevante Dateien sind in `docs/qa/backup-restore.md` dokumentiert
 - **Release/Rollback:** Freigabe- und Rollback-Kriterien sind in `docs/qa/release-rollback.md` gebündelt
+- **Security/Privacy:** Release-Audit für Logs, Auth, CSRF, CSP und Secret-Handling steht in `docs/qa/security-privacy-logging-audit.md`
 - **Deployment:** Installation, Start, Updates und typische Startfehler sind in `docs/operations/deployment.md` beschrieben
 - **Monitoring-Basis:** HTTP-Status, Fehlercodes und Sync-Status beobachten (ohne sensible Nutzdaten)
 

@@ -9,6 +9,7 @@ Caldo runs as exactly one active process per data directory. It listens on one i
 Use the related release and QA runbooks for release decisions and evidence:
 
 - Release and rollback checklist: `docs/qa/release-rollback.md`
+- Security, privacy, and logging audit: `docs/qa/security-privacy-logging-audit.md`
 - Backup, restore, and migration drill: `docs/qa/backup-restore.md`
 - Nextcloud staging smoke: `docs/qa/nextcloud.md`
 - CalDAV compatibility matrix: `docs/qa/caldav-compatibility.md`
@@ -209,9 +210,10 @@ Use sanitized error type, field, code, errno, and path values from logs. Do not 
 Before production release:
 
 1. Run the release checklist in `docs/qa/release-rollback.md`.
-2. Run the Nextcloud staging smoke in `docs/qa/nextcloud.md`.
-3. Update `docs/qa/caldav-compatibility.md` with sanitized real-server evidence.
-4. Run `docs/qa/backup-restore.md` when migrations, persistence changes, sync conflict changes, or deployment changes are present.
-5. Keep rollback artifacts available: previous binary/static tree or previous image digest, plus a known-good DB backup when migrations are involved.
+2. Run the security, privacy, and logging audit in `docs/qa/security-privacy-logging-audit.md`.
+3. Run the Nextcloud staging smoke in `docs/qa/nextcloud.md`.
+4. Update `docs/qa/caldav-compatibility.md` with sanitized real-server evidence.
+5. Run `docs/qa/backup-restore.md` when migrations, persistence changes, sync conflict changes, or deployment changes are present.
+6. Keep rollback artifacts available: previous binary/static tree or previous image digest, plus a known-good DB backup when migrations are involved.
 
 If a deployment fails after release, follow the rollback section in `docs/qa/release-rollback.md`.

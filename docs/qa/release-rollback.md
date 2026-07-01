@@ -10,6 +10,7 @@ The checklist bundles release evidence, known risk, and rollback decisions. It d
 - Backup, restore, and migration drill: `docs/qa/backup-restore.md`
 - CalDAV compatibility matrix: `docs/qa/caldav-compatibility.md`
 - Conflict edge-case matrix: `docs/qa/conflict-edge-cases.md`
+- Security, privacy, and logging audit: `docs/qa/security-privacy-logging-audit.md`
 - Browser QA: `docs/qa/playwright.md`
 - Performance measurement points: `docs/qa/performance.md`
 
@@ -27,6 +28,7 @@ Record these values before making a release decision:
 | Container image | Yes for container users | Record `ghcr.io/<owner>/caldo:<version>` and the image digest from the release workflow. |
 | CI result | Yes | Main or release-candidate commit must have passing CI. |
 | Release workflow result | Yes when tag is published | Tag workflow must complete successfully before announcing artifacts. |
+| Security/privacy/logging audit | Yes | Required release audit must pass or block release. |
 | Staging smoke | Yes | Required Nextcloud smoke must pass or be explicitly non-applicable for a non-product reason. |
 | Backup/restore decision | Yes | Required before releases with migrations, persistence changes, sync conflict changes, or deployment changes. |
 | Known risks | Yes | Link GitHub issues or state `none known`. |
@@ -41,6 +43,7 @@ Record these values before making a release decision:
 | Version selected | Version tag is recorded and not already used. | pass/fail/blocked |
 | CI passed | Go vet, race tests, templ generation check, asset manifest check, binary build, browser QA, and Docker image build passed for the commit. | pass/fail/blocked |
 | Security workflow reviewed | Latest scheduled or push security workflow has no unresolved release-blocking finding. | pass/fail/blocked |
+| Security/privacy/logging audit completed | `docs/qa/security-privacy-logging-audit.md` result is `pass` with no unresolved blocking finding. | pass/fail/blocked |
 | Staging smoke completed | `docs/qa/nextcloud.md` result is `pass` or only has non-product `not applicable` rows. | pass/fail/blocked |
 | Compatibility matrix updated | `docs/qa/caldav-compatibility.md` reflects the latest real-server smoke outcome. | pass/fail/blocked |
 | Migration risk classified | Release is marked as `no migration`, `migration on copied/staging DB passed`, or `migration blocked`. | pass/fail/blocked |
@@ -135,7 +138,7 @@ Do not include private server names, CalDAV URLs, task content, credentials, log
 |---|---|
 | `ship` | All required checks pass, artifacts are known, and no release blocker remains. |
 | `hold` | Checks are incomplete or non-blocking risk needs an explicit owner before release. |
-| `block` | A required check failed, a migration/restore drill failed, CI failed, staging smoke failed, or a release blocker remains open. |
+| `block` | A required check failed, a migration/restore drill failed, CI failed, security/privacy/logging audit failed, staging smoke failed, or a release blocker remains open. |
 | `rollback` | A published or deployed release has caused a production-impacting issue and operators should move back to the previous known-good binary/image, restoring DB backup if required. |
 
 ## Result Template
@@ -162,6 +165,7 @@ Template:
 - CI result:
 - Release workflow result:
 - Security workflow reviewed:
+- Security/privacy/logging audit result:
 - Staging smoke result:
 - Compatibility matrix updated:
 - Backup/restore drill result:
@@ -177,6 +181,7 @@ Template:
 | Version selected | pass/fail/blocked | |
 | CI passed | pass/fail/blocked | |
 | Security workflow reviewed | pass/fail/blocked | |
+| Security/privacy/logging audit completed | pass/fail/blocked | |
 | Staging smoke completed | pass/fail/blocked | |
 | Compatibility matrix updated | pass/fail/blocked | |
 | Migration risk classified | pass/fail/blocked | |

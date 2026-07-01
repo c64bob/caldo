@@ -14,6 +14,18 @@ Dieses Dokument macht die Performance-Ziele aus `docs/prd.md` Abschnitt 23 als w
 
 ## Referenzdaten
 
+### Browser-Interaktionsdatensatz
+
+Der Browser-Interaktionsdatensatz ist die wiederholbare UI-Messung fuer Story 28.5. Er besteht standardmaessig aus:
+
+- 8 CalDAV-Kalendern/Projekten
+- 400 aktiven synthetischen VTODOs
+- 24 synthetischen Labels
+- kurzen Titeln nach dem Muster `Perf Task 0001`
+- gemischten Faelligkeiten und Prioritaeten
+
+Der Datensatz wird durch den opt-in Playwright-Test gegen die lokale Stage-CalDAV-Instanz erzeugt. Er enthaelt keine privaten Inhalte und keine echten CalDAV-Zugaenge.
+
 ### 400-Aufgaben-Datensatz
 
 Der 400-Aufgaben-Datensatz ist die PRD-Referenz fuer realistische Nutzung. Er besteht aus:
@@ -43,6 +55,9 @@ Die Daten sollen ueber den normalen Importpfad oder eine dokumentierte Testfixtu
 |---|---:|---|---|---|---|
 | Prozessstart ohne Migrationen | max. 5 s | bereits migrierte, setup-complete DB | Prozessstart des Caldo-Binary | `GET /health` liefert 200 | jeder verwertbare Lauf <= 5 s |
 | Erste UI-Ansicht bei grosser Aufgabenmenge | max. 2 s | 10.000 lokale Tasks | Browser-Navigation zu `/today` nach frischem Prozessstart | `domcontentloaded` fuer `/today` | jeder verwertbare Lauf <= 2 s |
+| Browser-Navigation | max. 2 s | Browser-Interaktionsdatensatz | Navigation zu `/today`, `/upcoming`, `/projects`, `/labels` | Zielansicht ist sichtbar | jeder gemessene Pfad <= 2 s |
+| Suche | max. 2 s | Browser-Interaktionsdatensatz | Navigation oder Live-Eingabe fuer Titel-, Projekt- und Labelsuche | passendes Ergebnis ist sichtbar | jeder Suchlauf <= 2 s |
+| Manual-Sync-UI-Reaktion | max. 1 s Start, max. 500 ms Eingabe | Browser-Interaktionsdatensatz | Klick auf `Jetzt synchronisieren` | Request kehrt zurueck und Sucheingabe bleibt editierbar | beide Interaktionswerte halten Ziel ein |
 | Inkrementeller Sync ohne groessere Aenderungen | max. 10 s | 400 Remote-Tasks, Setup abgeschlossen | manueller Sync-Trigger | Sync-Status meldet abgeschlossenen Lauf per SSE/UI | jeder verwertbare Lauf <= 10 s |
 | Initialimport | max. 30 s | 400 Remote-Tasks | `POST /setup/import` angenommen | Setup-Import meldet abgeschlossen und `POST /setup/complete` ist moeglich | jeder verwertbare Lauf <= 30 s |
 
@@ -54,6 +69,26 @@ Die Daten sollen ueber den normalen Importpfad oder eine dokumentierte Testfixtu
 mkdir -p .tmp/perf test-results/performance
 go build -o .tmp/perf/caldo ./cmd/caldo
 go build -o .tmp/perf/stagecaldav ./cmd/stagecaldav
+```
+
+### 1a. Browser-Interaktionsmessung ausfuehren
+
+Der opt-in Playwright-Check erzeugt den Browser-Interaktionsdatensatz automatisch ueber die lokale Stage-CalDAV-Instanz, durchlaeuft Setup und Import, misst Navigation, Suche, Live-Suche und Manual-Sync-Responsiveness und schreibt ein lokales JSON-Protokoll nach `test-results/performance/<yyyy-mm-dd>/`.
+
+```bash
+npm run test:e2e:performance
+```
+
+Die Standarddatenmenge kann fuer lokale Untersuchungen angepasst werden:
+
+```bash
+CALDO_E2E_PERF_TASKS=1000 CALDO_E2E_PERF_PROJECTS=12 CALDO_E2E_PERF_LABELS=40 npm run test:e2e:performance
+```
+
+Zielwert-Overrides sind nur fuer Diagnose-Laeufe gedacht und duerfen nicht als Release-Gate verwendet werden:
+
+```bash
+CALDO_E2E_PERF_SEARCH_MS=3000 npm run test:e2e:performance
 ```
 
 ### 2. Lokale Stage-CalDAV-Instanz vorbereiten

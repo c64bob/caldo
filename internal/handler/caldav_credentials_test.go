@@ -18,6 +18,24 @@ func TestEffectiveCalendarBaseURL(t *testing.T) {
 			want:            "https://nextcloud.example/remote.php/dav",
 		},
 		{
+			name:            "empty home set infers parent from nextcloud calendar collection",
+			baseURL:         "https://nextcloud.example/remote.php/dav/calendars/alice/tasks/",
+			calendarHomeSet: "",
+			want:            "https://nextcloud.example/remote.php/dav/calendars/alice/",
+		},
+		{
+			name:            "empty home set infers parent from collection without trailing slash",
+			baseURL:         "https://nextcloud.example/remote.php/dav/calendars/alice/tasks",
+			calendarHomeSet: "",
+			want:            "https://nextcloud.example/remote.php/dav/calendars/alice/",
+		},
+		{
+			name:            "empty home set keeps calendar home url",
+			baseURL:         "https://nextcloud.example/remote.php/dav/calendars/alice/",
+			calendarHomeSet: "",
+			want:            "https://nextcloud.example/remote.php/dav/calendars/alice/",
+		},
+		{
 			name:            "absolute path resolves against configured origin",
 			baseURL:         "https://nextcloud.example/remote.php/dav",
 			calendarHomeSet: "/remote.php/dav/calendars/alice/",

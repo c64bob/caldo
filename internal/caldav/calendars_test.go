@@ -63,6 +63,91 @@ func TestCalendarClientListCalendars(t *testing.T) {
 	}
 }
 
+func TestCalendarClientListCalendarsMergesSuccessfulPropstats(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+		w.WriteHeader(http.StatusMultiStatus)
+		_, _ = w.Write([]byte(`<?xml version="1.0" encoding="utf-8"?>
+<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <d:response>
+    <d:href>/remote.php/dav/calendars/alice/tasks/</d:href>
+    <d:propstat>
+      <d:prop>
+        <d:displayname>tasks</d:displayname>
+      </d:prop>
+      <d:status>HTTP/1.1 200 OK</d:status>
+    </d:propstat>
+    <d:propstat>
+      <d:prop>
+        <d:resourcetype><d:collection/><c:calendar/></d:resourcetype>
+        <c:supported-calendar-component-set><c:comp name="VTODO"/></c:supported-calendar-component-set>
+      </d:prop>
+      <d:status>HTTP/1.1 200 OK</d:status>
+    </d:propstat>
+  </d:response>
+  <d:response>
+    <d:href>/remote.php/dav/calendars/alice/liste1/</d:href>
+    <d:propstat>
+      <d:prop>
+        <c:supported-calendar-component-set><c:comp name="VTODO"/></c:supported-calendar-component-set>
+      </d:prop>
+      <d:status>HTTP/1.1 200 OK</d:status>
+    </d:propstat>
+    <d:propstat>
+      <d:prop>
+        <d:displayname>Liste1</d:displayname>
+        <d:resourcetype><d:collection/><c:calendar/></d:resourcetype>
+      </d:prop>
+      <d:status>HTTP/1.1 200 OK</d:status>
+    </d:propstat>
+  </d:response>
+  <d:response>
+    <d:href>/remote.php/dav/calendars/alice/events/</d:href>
+    <d:propstat>
+      <d:prop>
+        <d:displayname>Events</d:displayname>
+        <d:resourcetype><d:collection/><c:calendar/></d:resourcetype>
+        <c:supported-calendar-component-set><c:comp name="VEVENT"/></c:supported-calendar-component-set>
+      </d:prop>
+      <d:status>HTTP/1.1 200 OK</d:status>
+    </d:propstat>
+  </d:response>
+  <d:response>
+    <d:href>/remote.php/dav/calendars/alice/broken/</d:href>
+    <d:propstat>
+      <d:prop>
+        <d:displayname>Broken</d:displayname>
+        <d:resourcetype><d:collection/><c:calendar/></d:resourcetype>
+      </d:prop>
+      <d:status>HTTP/1.1 404 Not Found</d:status>
+    </d:propstat>
+  </d:response>
+</d:multistatus>`))
+	}))
+	t.Cleanup(server.Close)
+
+	client := NewCalendarClient(server.Client())
+	calendars, err := client.ListCalendars(context.Background(), Credentials{
+		URL:      server.URL,
+		Username: "alice",
+		Password: "secret",
+	})
+	if err != nil {
+		t.Fatalf("list calendars: %v", err)
+	}
+	if len(calendars) != 2 {
+		t.Fatalf("unexpected calendar count: got %d want %d: %#v", len(calendars), 2, calendars)
+	}
+	if calendars[0].Href != "/remote.php/dav/calendars/alice/tasks/" || calendars[0].DisplayName != "tasks" {
+		t.Fatalf("unexpected first calendar: %#v", calendars[0])
+	}
+	if calendars[1].Href != "/remote.php/dav/calendars/alice/liste1/" || calendars[1].DisplayName != "Liste1" {
+		t.Fatalf("unexpected second calendar: %#v", calendars[1])
+	}
+}
+
 func TestCalendarClientCreateCalendar(t *testing.T) {
 	t.Parallel()
 

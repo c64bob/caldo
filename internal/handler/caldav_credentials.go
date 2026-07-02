@@ -20,6 +20,9 @@ func effectiveCalendarBaseURL(baseURL string, calendarHomeSet string) string {
 	trimmedBase := strings.TrimSpace(baseURL)
 	trimmedHomeSet := strings.TrimSpace(calendarHomeSet)
 	if trimmedHomeSet == "" {
+		if inferred := inferCalendarHomeBaseURL(trimmedBase); inferred != "" {
+			return inferred
+		}
 		return trimmedBase
 	}
 	if strings.HasPrefix(trimmedHomeSet, "http://") || strings.HasPrefix(trimmedHomeSet, "https://") {
@@ -46,4 +49,34 @@ func effectiveCalendarBaseURL(baseURL string, calendarHomeSet string) string {
 		return trimmedBase
 	}
 	return base.ResolveReference(relative).String()
+}
+
+func inferCalendarHomeBaseURL(baseURL string) string {
+	parsed, err := url.Parse(strings.TrimSpace(baseURL))
+	if err != nil {
+		return ""
+	}
+
+	trimmedPath := strings.Trim(strings.TrimSpace(parsed.Path), "/")
+	if trimmedPath == "" {
+		return ""
+	}
+	segments := strings.Split(trimmedPath, "/")
+	for i, segment := range segments {
+		if !strings.EqualFold(segment, "calendars") {
+			continue
+		}
+		if len(segments) <= i+2 {
+			return ""
+		}
+
+		homeSegments := segments[:i+2]
+		parsed.Path = "/" + strings.Join(homeSegments, "/") + "/"
+		parsed.RawPath = ""
+		parsed.RawQuery = ""
+		parsed.Fragment = ""
+		return parsed.String()
+	}
+
+	return ""
 }

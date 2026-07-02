@@ -106,15 +106,38 @@ func (c *CalendarClient) ListCalendars(ctx context.Context, credentials Credenti
 
 	calendars := make([]Calendar, 0, len(multistatus.Responses))
 	for _, resp := range multistatus.Responses {
-		if len(resp.Propstat.Prop.ResourceType.Calendars) == 0 {
-			continue
-		}
 		href := strings.TrimSpace(resp.Href)
 		if href == "" {
 			continue
 		}
 
-		displayName := strings.TrimSpace(resp.Propstat.Prop.DisplayName)
+		displayName := ""
+		isCalendar := false
+		sawComponentSet := false
+		supportsVTODO := false
+		for _, propstat := range resp.Propstats {
+			if !propstatSuccess(propstat.Status) {
+				continue
+			}
+			if len(propstat.Prop.ResourceType.Calendars) > 0 {
+				isCalendar = true
+			}
+			if name := strings.TrimSpace(propstat.Prop.DisplayName); name != "" {
+				displayName = name
+			}
+			if len(propstat.Prop.SupportedComponents.Components) > 0 {
+				sawComponentSet = true
+				for _, component := range propstat.Prop.SupportedComponents.Components {
+					if strings.EqualFold(strings.TrimSpace(component.Name), "VTODO") {
+						supportsVTODO = true
+					}
+				}
+			}
+		}
+		if !isCalendar || (sawComponentSet && !supportsVTODO) {
+			continue
+		}
+
 		if displayName == "" {
 			displayName = href
 		}
@@ -305,21 +328,43 @@ type multistatusResponse struct {
 }
 
 type propfindResponse struct {
-	Href     string         `xml:"href"`
-	Propstat propstatRecord `xml:"propstat"`
+	Href      string           `xml:"href"`
+	Propstats []propstatRecord `xml:"propstat"`
 }
 
 type propstatRecord struct {
-	Prop propRecord `xml:"prop"`
+	Status string     `xml:"status"`
+	Prop   propRecord `xml:"prop"`
 }
 
 type propRecord struct {
-	DisplayName  string             `xml:"displayname"`
-	ResourceType resourceTypeRecord `xml:"resourcetype"`
+	DisplayName         string                              `xml:"displayname"`
+	ResourceType        resourceTypeRecord                  `xml:"resourcetype"`
+	SupportedComponents supportedCalendarComponentSetRecord `xml:"supported-calendar-component-set"`
 }
 
 type resourceTypeRecord struct {
 	Calendars []struct{} `xml:"calendar"`
+}
+
+type supportedCalendarComponentSetRecord struct {
+	Components []calendarComponentRecord `xml:"comp"`
+}
+
+type calendarComponentRecord struct {
+	Name string `xml:"name,attr"`
+}
+
+func propstatSuccess(statusLine string) bool {
+	trimmed := strings.TrimSpace(statusLine)
+	if trimmed == "" {
+		return true
+	}
+	statusCode, err := parseWebDAVStatusCode(trimmed)
+	if err != nil {
+		return false
+	}
+	return statusCode >= http.StatusOK && statusCode < http.StatusMultipleChoices
 }
 
 func validateCalendarRenameMultiStatus(body []byte) error {

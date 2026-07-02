@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"caldo/internal/model"
@@ -85,7 +86,7 @@ func (d *Database) applyIncrementalSyncProject(ctx context.Context, input increm
 			}
 		}
 		if strings.TrimSpace(task.Href) != "" {
-			localByHref[strings.TrimSpace(task.Href)] = task
+			localByHref[incrementalRemoteHrefKey(task.Href)] = task
 		}
 	}
 
@@ -109,7 +110,7 @@ func (d *Database) applyIncrementalSyncProject(ctx context.Context, input increm
 	deleteTasks := make([]fullScanLocalTask, 0, len(input.deletedHrefs)+len(localTasks))
 	deletedSeen := make(map[string]struct{}, len(input.deletedHrefs))
 	for _, href := range input.deletedHrefs {
-		localTask, exists := localByHref[strings.TrimSpace(href)]
+		localTask, exists := localByHref[incrementalRemoteHrefKey(href)]
 		if !exists {
 			continue
 		}
@@ -206,7 +207,7 @@ WHERE id = ?;
 func applyWebDAVChangedTask(ctx context.Context, tx *sql.Tx, projectID string, localByUID map[string]fullScanLocalTask, localByHref map[string]fullScanLocalTask, remoteTask ImportedTask, result *FullScanApplyResult) (string, error) {
 	localTask, exists := localByUID[remoteTask.UID]
 	if !exists {
-		if hrefMatch, ok := localByHref[strings.TrimSpace(remoteTask.Href)]; ok {
+		if hrefMatch, ok := localByHref[incrementalRemoteHrefKey(remoteTask.Href)]; ok {
 			return hrefMatch.ID, recordWebDAVUIDConflict(ctx, tx, hrefMatch, remoteTask, result)
 		}
 		taskID := uuid.NewString()
@@ -249,6 +250,18 @@ func applyWebDAVChangedTask(ctx context.Context, tx *sql.Tx, projectID string, l
 	}
 	result.Conflicts++
 	return localTask.ID, nil
+}
+
+func incrementalRemoteHrefKey(href string) string {
+	trimmed := strings.TrimSpace(href)
+	if trimmed == "" {
+		return ""
+	}
+	parsed, err := url.Parse(trimmed)
+	if err == nil && strings.TrimSpace(parsed.Path) != "" {
+		trimmed = parsed.Path
+	}
+	return strings.TrimSpace(trimmed)
 }
 
 func recordWebDAVUIDConflict(ctx context.Context, tx *sql.Tx, localTask fullScanLocalTask, remoteTask ImportedTask, result *FullScanApplyResult) error {

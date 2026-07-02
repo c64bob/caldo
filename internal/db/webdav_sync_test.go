@@ -54,6 +54,40 @@ INSERT INTO tasks (
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM conflicts WHERE task_id='task-delete-dirty' AND conflict_type='edit_delete' AND remote_vtodo IS NULL;`, 1)
 }
 
+func TestApplyWebDAVSyncProjectMatchesAbsoluteDeletedHref(t *testing.T) {
+	t.Parallel()
+
+	database, err := OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	if _, err := database.Conn.ExecContext(context.Background(), `
+INSERT INTO projects (id, calendar_href, display_name, sync_strategy, sync_token, created_at, updated_at)
+VALUES ('project-1', '/cal/work/', 'Work', 'webdav_sync', 'token-1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+INSERT INTO tasks (
+	id, project_id, uid, href, etag, server_version, title, status, raw_vtodo, base_vtodo, project_name, sync_status, created_at, updated_at
+) VALUES
+	('task-delete-clean', 'project-1', 'uid-delete-clean', '/cal/work/uid-delete-clean.ics', '"etag-del"', 3, 'Delete Clean', 'needs-action', 'BEGIN:VTODO\nUID:uid-delete-clean\nSUMMARY:Delete Clean\nEND:VTODO', 'BEGIN:VTODO\nUID:uid-delete-clean\nSUMMARY:Delete Clean\nEND:VTODO', 'Work', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+`); err != nil {
+		t.Fatalf("seed data: %v", err)
+	}
+
+	result, err := database.ApplyWebDAVSyncProject(context.Background(), "project-1", nil, []string{
+		"https://nextcloud.example.test/cal/work/uid-delete-clean.ics",
+	}, "token-2", false)
+	if err != nil {
+		t.Fatalf("apply webdav sync: %v", err)
+	}
+
+	if result.Deleted != 1 {
+		t.Fatalf("unexpected result: %#v", result)
+	}
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM tasks WHERE uid='uid-delete-clean';`, 0)
+}
+
 func TestApplyWebDAVSyncProjectRecordsConflictWhenHrefUIDChanges(t *testing.T) {
 	t.Parallel()
 

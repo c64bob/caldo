@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +17,9 @@ const (
 	maxTodoScanResponseBytes = 8 << 20
 )
 
+// ErrSyncCollectionUnsupported indicates that a calendar cannot use WebDAV Sync.
+var ErrSyncCollectionUnsupported = errors.New("caldav sync collection unsupported")
+
 // CalendarObject represents one remote VTODO resource including raw payload and metadata.
 type CalendarObject struct {
 	Href     string
@@ -23,7 +27,14 @@ type CalendarObject struct {
 	RawVTODO string
 }
 
-// TodoClient loads VTODO resources from a calendar using a full-scan REPORT.
+// SyncCollectionResult contains one incremental WebDAV Sync response.
+type SyncCollectionResult struct {
+	SyncToken    string
+	Changed      []CalendarObject
+	DeletedHrefs []string
+}
+
+// TodoClient loads VTODO resources from a calendar.
 type TodoClient struct {
 	executor *retryExecutor
 }
@@ -90,6 +101,106 @@ func (c *TodoClient) ListVTODOs(ctx context.Context, credentials Credentials, ca
 	}
 
 	return objects, nil
+}
+
+// SyncCollection performs a WebDAV sync-collection REPORT for one calendar.
+func (c *TodoClient) SyncCollection(ctx context.Context, credentials Credentials, calendarHref string, syncToken string) (SyncCollectionResult, error) {
+	calendarURL, err := resolveCalendarURL(credentials.URL, calendarHref)
+	if err != nil {
+		return SyncCollectionResult{}, fmt.Errorf("sync collection: resolve calendar url: %w", err)
+	}
+
+	response, err := c.executor.do(ctx, operationPolicy{
+		timeout:      timeoutREPORT,
+		retryEnabled: true,
+	}, func(requestCtx context.Context) (*http.Request, error) {
+		request, reqErr := http.NewRequestWithContext(requestCtx, "REPORT", calendarURL, bytes.NewBufferString(syncCollectionBody(syncToken)))
+		if reqErr != nil {
+			return nil, reqErr
+		}
+		request.SetBasicAuth(credentials.Username, credentials.Password)
+		request.Header.Set("Depth", "1")
+		request.Header.Set("Content-Type", "application/xml; charset=utf-8")
+		return request, nil
+	})
+	if err != nil {
+		return SyncCollectionResult{}, fmt.Errorf("sync collection: request failed: %w", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode == http.StatusForbidden ||
+		response.StatusCode == http.StatusNotFound ||
+		response.StatusCode == http.StatusMethodNotAllowed ||
+		response.StatusCode == http.StatusConflict ||
+		response.StatusCode == http.StatusNotImplemented {
+		return SyncCollectionResult{}, ErrSyncCollectionUnsupported
+	}
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return SyncCollectionResult{}, fmt.Errorf("sync collection: unexpected status %d", response.StatusCode)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxTodoScanResponseBytes))
+	if err != nil {
+		return SyncCollectionResult{}, fmt.Errorf("sync collection: read response: %w", err)
+	}
+
+	var parsed syncCollectionMultistatus
+	if err := xml.Unmarshal(body, &parsed); err != nil {
+		return SyncCollectionResult{}, fmt.Errorf("sync collection: parse response: %w", err)
+	}
+
+	result := SyncCollectionResult{SyncToken: strings.TrimSpace(parsed.SyncToken)}
+	if result.SyncToken == "" {
+		return SyncCollectionResult{}, ErrSyncCollectionUnsupported
+	}
+
+	for _, responseEntry := range parsed.Responses {
+		href := strings.TrimSpace(responseEntry.Href)
+		if href == "" {
+			continue
+		}
+		if syncResponseDeleted(responseEntry) {
+			result.DeletedHrefs = append(result.DeletedHrefs, href)
+			continue
+		}
+
+		object := CalendarObject{Href: href}
+		foundOKPropstat := false
+		for _, propstat := range responseEntry.Propstats {
+			statusCode, statusErr := parseWebDAVStatusCode(propstat.Status)
+			if statusErr == nil && statusCode == http.StatusNotFound {
+				result.DeletedHrefs = append(result.DeletedHrefs, href)
+				foundOKPropstat = false
+				break
+			}
+			if statusErr == nil && (statusCode < http.StatusOK || statusCode >= http.StatusMultipleChoices) {
+				continue
+			}
+			foundOKPropstat = true
+			object.ETag = strings.TrimSpace(propstat.Prop.ETag)
+			object.RawVTODO = strings.TrimSpace(propstat.Prop.CalendarData)
+			break
+		}
+		if !foundOKPropstat {
+			continue
+		}
+		if object.RawVTODO == "" {
+			raw, etag, getErr := c.GetVTODO(ctx, credentials, href)
+			if getErr != nil {
+				return SyncCollectionResult{}, fmt.Errorf("sync collection: fetch changed vtodo: %w", getErr)
+			}
+			object.RawVTODO = strings.TrimSpace(raw)
+			if strings.TrimSpace(object.ETag) == "" {
+				object.ETag = strings.TrimSpace(etag)
+			}
+		}
+		if !strings.Contains(strings.ToUpper(object.RawVTODO), "BEGIN:VTODO") {
+			continue
+		}
+		result.Changed = append(result.Changed, object)
+	}
+
+	return result, nil
 }
 
 // GetVTODO fetches one VTODO object body and optional ETag metadata.
@@ -250,6 +361,27 @@ type todoProp struct {
 	CalendarData string `xml:"calendar-data"`
 }
 
+type syncCollectionMultistatus struct {
+	SyncToken string                   `xml:"sync-token"`
+	Responses []syncCollectionResponse `xml:"response"`
+}
+
+type syncCollectionResponse struct {
+	Href      string                   `xml:"href"`
+	Status    string                   `xml:"status"`
+	Propstats []syncCollectionPropstat `xml:"propstat"`
+}
+
+type syncCollectionPropstat struct {
+	Status string             `xml:"status"`
+	Prop   syncCollectionProp `xml:"prop"`
+}
+
+type syncCollectionProp struct {
+	ETag         string `xml:"getetag"`
+	CalendarData string `xml:"calendar-data"`
+}
+
 const vtodoFullScanBody = `<?xml version="1.0" encoding="utf-8"?>
 <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
   <d:prop>
@@ -262,3 +394,26 @@ const vtodoFullScanBody = `<?xml version="1.0" encoding="utf-8"?>
     </c:comp-filter>
   </c:filter>
 </c:calendar-query>`
+
+func syncCollectionBody(syncToken string) string {
+	tokenElement := ""
+	if strings.TrimSpace(syncToken) != "" {
+		tokenElement = "<d:sync-token>" + xmlEscape(syncToken) + "</d:sync-token>"
+	}
+	return `<?xml version="1.0" encoding="utf-8"?>
+<d:sync-collection xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  ` + tokenElement + `
+  <d:sync-level>1</d:sync-level>
+  <d:prop>
+    <d:getetag/>
+    <c:calendar-data/>
+  </d:prop>
+</d:sync-collection>`
+}
+
+func syncResponseDeleted(response syncCollectionResponse) bool {
+	if statusCode, err := parseWebDAVStatusCode(response.Status); err == nil && statusCode == http.StatusNotFound {
+		return true
+	}
+	return false
+}

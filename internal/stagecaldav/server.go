@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -53,6 +54,7 @@ type Task struct {
 type calendarObject struct {
 	Task
 	RawVTODO string
+	Revision int64
 }
 
 // Server is an in-memory CalDAV server for local staging smoke tests.
@@ -63,6 +65,7 @@ type Server struct {
 	adminToken string
 	calendars  map[string]Calendar
 	objects    map[string]calendarObject
+	deleted    map[string]int64
 	revision   int64
 }
 
@@ -91,6 +94,7 @@ func New(config Config) (*Server, error) {
 		adminToken: config.AdminToken,
 		calendars:  make(map[string]Calendar),
 		objects:    make(map[string]calendarObject),
+		deleted:    make(map[string]int64),
 		revision:   100,
 	}
 	server.resetLocked(calendarHref, config.CalendarName)
@@ -135,7 +139,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		s.writeCalendarList(w)
 	case "REPORT":
-		s.writeVTODOReport(w, r.URL.Path)
+		s.handleReport(w, r)
 	case "MKCALENDAR":
 		s.handleMKCalendar(w, r)
 	case http.MethodGet:
@@ -286,16 +290,19 @@ func (s *Server) createAdminTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	etag := s.nextETagLocked()
 	object := calendarObject{
 		Task: Task{
 			CalendarHref: calendarHref,
 			Href:         href,
 			UID:          uid,
-			ETag:         s.nextETagLocked(),
+			ETag:         etag,
 		},
 		RawVTODO: rawVTODO,
+		Revision: s.revision,
 	}
 	s.objects[object.Href] = object
+	delete(s.deleted, object.Href)
 	writeJSON(w, http.StatusCreated, object.Task)
 }
 
@@ -339,7 +346,9 @@ func (s *Server) updateAdminTask(w http.ResponseWriter, r *http.Request) {
 	object.UID = uid
 	object.RawVTODO = rawVTODO
 	object.ETag = s.nextETagLocked()
+	object.Revision = s.revision
 	s.objects[href] = object
+	delete(s.deleted, href)
 	writeJSON(w, http.StatusOK, object.Task)
 }
 
@@ -358,6 +367,8 @@ func (s *Server) deleteAdminTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	delete(s.objects, href)
+	s.revision++
+	s.deleted[href] = s.revision
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -405,17 +416,20 @@ func (s *Server) resetLocked(calendarHref string, displayName string) {
 		calendarHref: {Href: calendarHref, DisplayName: displayName},
 	}
 	s.objects = make(map[string]calendarObject)
+	s.deleted = make(map[string]int64)
 
 	uid := "stage-seed"
 	href := joinCalendarHref(calendarHref, uid)
+	etag := s.nextETagLocked()
 	s.objects[href] = calendarObject{
 		Task: Task{
 			CalendarHref: calendarHref,
 			Href:         href,
 			UID:          uid,
-			ETag:         s.nextETagLocked(),
+			ETag:         etag,
 		},
 		RawVTODO: buildVTODO(uid, "Stage Seed Task"),
+		Revision: s.revision,
 	}
 }
 
@@ -478,6 +492,20 @@ func (s *Server) writeCalendarList(w http.ResponseWriter) {
 	_, _ = w.Write([]byte(body.String()))
 }
 
+func (s *Server) handleReport(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxRequestBodyBytes))
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	_ = r.Body.Close()
+	if strings.Contains(strings.ToLower(string(body)), "sync-collection") {
+		s.writeSyncCollectionReport(w, r.URL.Path, body)
+		return
+	}
+	s.writeVTODOReport(w, r.URL.Path)
+}
+
 func (s *Server) writeVTODOReport(w http.ResponseWriter, calendarHref string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -516,6 +544,67 @@ func (s *Server) writeVTODOReport(w http.ResponseWriter, calendarHref string) {
 	_, _ = w.Write([]byte(body.String()))
 }
 
+func (s *Server) writeSyncCollectionReport(w http.ResponseWriter, calendarHref string, requestBody []byte) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	calendarHref = normalizeCalendarHref(calendarHref)
+	if _, ok := s.calendars[calendarHref]; !ok {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	tokenRevision, ok := syncTokenRevision(syncTokenFromReport(requestBody))
+	if !ok {
+		http.Error(w, http.StatusText(http.StatusConflict), http.StatusConflict)
+		return
+	}
+	if tokenRevision > s.revision {
+		http.Error(w, http.StatusText(http.StatusConflict), http.StatusConflict)
+		return
+	}
+
+	hrefs := make([]string, 0, len(s.objects)+len(s.deleted))
+	for href, object := range s.objects {
+		if object.CalendarHref == calendarHref && object.Revision > tokenRevision {
+			hrefs = append(hrefs, href)
+		}
+	}
+	for href, revision := range s.deleted {
+		if strings.HasPrefix(href, calendarHref) && revision > tokenRevision {
+			hrefs = append(hrefs, href)
+		}
+	}
+	sort.Strings(hrefs)
+
+	var body strings.Builder
+	body.WriteString(`<?xml version="1.0" encoding="utf-8"?>` + "\n")
+	body.WriteString(`<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">`)
+	body.WriteString(`<d:sync-token>`)
+	body.WriteString(xmlEscapeText(syncTokenForRevision(s.revision)))
+	body.WriteString(`</d:sync-token>`)
+	for _, href := range hrefs {
+		if object, ok := s.objects[href]; ok {
+			body.WriteString(`<d:response><d:href>`)
+			body.WriteString(xmlEscapeText(object.Href))
+			body.WriteString(`</d:href><d:propstat><d:prop><d:getetag>`)
+			body.WriteString(xmlEscapeText(object.ETag))
+			body.WriteString(`</d:getetag><c:calendar-data>`)
+			body.WriteString(xmlEscapeText(object.RawVTODO))
+			body.WriteString(`</c:calendar-data></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`)
+			continue
+		}
+		body.WriteString(`<d:response><d:href>`)
+		body.WriteString(xmlEscapeText(href))
+		body.WriteString(`</d:href><d:status>HTTP/1.1 404 Not Found</d:status></d:response>`)
+	}
+	body.WriteString(`</d:multistatus>`)
+
+	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+	w.WriteHeader(http.StatusMultiStatus)
+	_, _ = w.Write([]byte(body.String()))
+}
+
 func (s *Server) handleMKCalendar(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(io.LimitReader(r.Body, maxRequestBodyBytes))
 	if err != nil {
@@ -536,6 +625,7 @@ func (s *Server) handleMKCalendar(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	s.revision++
 	statusCode := http.StatusCreated
 	if _, exists := s.calendars[calendarHref]; exists {
 		statusCode = http.StatusOK
@@ -618,7 +708,9 @@ func (s *Server) handlePut(w http.ResponseWriter, r *http.Request) {
 			ETag:         etag,
 		},
 		RawVTODO: rawVTODO,
+		Revision: s.revision,
 	}
+	delete(s.deleted, href)
 
 	w.Header().Set("ETag", etag)
 	if exists {
@@ -640,6 +732,8 @@ func (s *Server) handleDelete(w http.ResponseWriter, r *http.Request) {
 		for objectHref, object := range s.objects {
 			if object.CalendarHref == normalizeCalendarHref(href) {
 				delete(s.objects, objectHref)
+				s.revision++
+				s.deleted[objectHref] = s.revision
 			}
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -656,6 +750,8 @@ func (s *Server) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	delete(s.objects, href)
+	s.revision++
+	s.deleted[href] = s.revision
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -727,6 +823,35 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func syncTokenFromReport(body []byte) string {
+	var payload struct {
+		SyncToken string `xml:"sync-token"`
+	}
+	if err := xml.Unmarshal(body, &payload); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(payload.SyncToken)
+}
+
+func syncTokenForRevision(revision int64) string {
+	return fmt.Sprintf("stage-sync-%d", revision)
+}
+
+func syncTokenRevision(token string) (int64, bool) {
+	trimmed := strings.TrimSpace(token)
+	if trimmed == "" {
+		return 0, true
+	}
+	if !strings.HasPrefix(trimmed, "stage-sync-") {
+		return 0, false
+	}
+	revision, err := strconv.ParseInt(strings.TrimPrefix(trimmed, "stage-sync-"), 10, 64)
+	if err != nil || revision < 0 {
+		return 0, false
+	}
+	return revision, true
 }
 
 func xmlEscapeText(value string) string {

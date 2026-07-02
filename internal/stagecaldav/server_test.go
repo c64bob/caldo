@@ -62,6 +62,14 @@ func TestServerSupportsCaldoClients(t *testing.T) {
 		t.Fatalf("unexpected object count: %d", len(objects))
 	}
 
+	initialSync, err := todos.SyncCollection(context.Background(), credentials, defaultCalendarHref, "")
+	if err != nil {
+		t.Fatalf("initial sync collection: %v", err)
+	}
+	if initialSync.SyncToken == "" || len(initialSync.Changed) != 2 {
+		t.Fatalf("unexpected initial sync: %#v", initialSync)
+	}
+
 	if _, err := todos.PutVTODOUpdate(context.Background(), credentials, "/cal/work/client-created.ics", testRawVTODO("client-created"), `"stale"`); !errors.Is(err, caldav.ErrPreconditionFailed) {
 		t.Fatalf("expected precondition failure, got %v", err)
 	}
@@ -76,6 +84,13 @@ func TestServerSupportsCaldoClients(t *testing.T) {
 
 	if err := todos.DeleteVTODO(context.Background(), credentials, "/cal/work/client-created.ics", updatedETag); err != nil {
 		t.Fatalf("delete vtodo: %v", err)
+	}
+	incrementalSync, err := todos.SyncCollection(context.Background(), credentials, defaultCalendarHref, initialSync.SyncToken)
+	if err != nil {
+		t.Fatalf("incremental sync collection: %v", err)
+	}
+	if len(incrementalSync.DeletedHrefs) != 1 || incrementalSync.DeletedHrefs[0] != "/cal/work/client-created.ics" {
+		t.Fatalf("unexpected incremental sync: %#v", incrementalSync)
 	}
 	if err := todos.DeleteVTODO(context.Background(), credentials, "/cal/work/missing.ics", `"missing"`); err != nil {
 		t.Fatalf("delete missing vtodo should be successful for client: %v", err)

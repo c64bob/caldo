@@ -7,7 +7,7 @@ Dieses Dokument sammelt die Evidenz zum Status der bestehenden Stories. Die Stor
 ## Zusammenfassung
 
 - Bestehende Stories: 89 `Umgesetzt`, 0 `Teilweise umgesetzt`, 0 `Offen`.
-- Neue Planungsstories: 50 `Umgesetzt`, 2 `Offen`.
+- Neue Planungsstories: 51 `Umgesetzt`, 1 `Offen`.
 - Neue Epics: 23 UI-Grundsystem, 24 Aufgabenliste, 25 Schnellanlage, 26 Navigation/Projekte/Filter/Labels, 27 Konflikte/Einstellungen, 28 Responsive QA/Accessibility/Performance, 29 Production Readiness, 30 CalDAV Sync Maturity.
 
 ## Legende
@@ -165,6 +165,6 @@ Die neuen Epics 23 bis 30 brechen die verbleibende UI-, QA-, Production-Readines
 | 30.1 | Umgesetzt | `docs/qa/caldav-compatibility.md` definiert eine sanitisierte Real-Server-Matrix mit Servertyp, Version, Auth-Methode, redigierter Endpoint-Form, CalDAV-Faehigkeiten, Kernflows, Build/Run-Ergebnis, Issue-verlinkten Einschraenkungen und einem Prozess zum Hinzufuegen weiterer Server oder Versionen ohne Codeaenderung; `docs/qa/nextcloud.md` verweist Release-Smoke-Ergebnisse auf diese Matrix. |
 | 30.2 | Umgesetzt | `docs/qa/sync-longrun.md`, `tests/e2e/sync-longrun.spec.js`, `package.json` und `docs/qa/nextcloud.md` definieren und automatisieren eine synthetische Langlauf-Sync-Validierung mit wiederholten lokalen und Remote-Aenderungen, manuellen Sync-Zyklen, Checks fuer Duplikate, verlorene Aenderungen, haengende Sync-Zustaende und unerwartete Konflikte sowie einem Staging-Prozess fuer periodische Sync-Beobachtung und sanitisierte Issues. |
 | 30.3 | Umgesetzt | `docs/qa/large-calendars.md`, `tests/e2e/performance.spec.js`, `docs/qa/performance.md`, `docs/qa/playwright.md` und `docs/qa/nextcloud.md` definieren dokumentierte Testgroessen fuer grosse Kalender inklusive erledigter Aufgaben, Unteraufgaben und Konflikte, messen Initialimport, Full-Scan, Navigation, Suche und Aufgabenbearbeitung getrennt, erfassen Umgebung/Servertyp/Messwerte in lokalen Artefakten und beschreiben Performance-Issue-Regeln bei Zielwertueberschreitungen. |
-| 30.4 | Offen | WebDAV-Sync ist noch keine echte inkrementelle Sync-Strategie im normalen Sync. |
+| 30.4 | Umgesetzt | `internal/caldav/todos.go`, `internal/sync/fullscan.go`, `internal/db/webdav_sync.go`, `internal/stagecaldav/server.go` und zugehoerige Tests implementieren WebDAV `sync-collection` als echte inkrementelle Normalstrategie, speichern `projects.sync_token` nach erfolgreichen Laeufen, wenden geaenderte und geloeschte Ressourcen ohne Full-Scan-Calendar-Query an und fallen bei fehlender/ungueltiger WebDAV-Sync-Unterstuetzung sicher ueber die bestehende Strategie-Kette zurueck. |
 | 30.5 | Offen | CTag-/ETag-Strategie ist noch keine vollwertige inkrementelle Sync-Strategie. |
 | 30.6 | Umgesetzt | `docs/qa/conflict-edge-cases.md` definiert eine sanitisierte Konfliktmatrix mit 412-Stale-Writes, Remote-Delete gegen lokale Aenderungen, gleichzeitigen Feldupdates, wiederholter Konfliktloesung, Unteraufgaben, Labels, RRULEs, VALARM, ATTACH, unbekannten VTODO-Feldern, erwarteten Ergebnissen, erlaubten sichtbaren Fehlerzustaenden und GitHub-Issue-Regeln; `docs/qa/nextcloud.md` verweist konfliktbezogene Release-QA auf diese Matrix. |

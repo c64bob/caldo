@@ -17,6 +17,12 @@ type SyncProject struct {
 	CTag         string
 }
 
+// ProjectRemoteTaskState contains local remote identity metadata for one task.
+type ProjectRemoteTaskState struct {
+	Href string
+	ETag string
+}
+
 // ListSyncProjects returns all projects with sync metadata.
 func (d *Database) ListSyncProjects(ctx context.Context) ([]SyncProject, error) {
 	rows, err := d.Conn.QueryContext(ctx, `
@@ -73,4 +79,34 @@ WHERE id = ?;
 	}
 
 	return nil
+}
+
+// ListProjectRemoteTaskState returns local href and ETag metadata for one project.
+func (d *Database) ListProjectRemoteTaskState(ctx context.Context, projectID string) ([]ProjectRemoteTaskState, error) {
+	rows, err := d.Conn.QueryContext(ctx, `
+SELECT COALESCE(href, ''), COALESCE(etag, '')
+FROM tasks
+WHERE project_id = ? AND COALESCE(href, '') <> ''
+ORDER BY created_at ASC, id ASC;
+`, strings.TrimSpace(projectID))
+	if err != nil {
+		return nil, fmt.Errorf("list project remote task state: %w", err)
+	}
+	defer rows.Close()
+
+	states := make([]ProjectRemoteTaskState, 0)
+	for rows.Next() {
+		var state ProjectRemoteTaskState
+		if err := rows.Scan(&state.Href, &state.ETag); err != nil {
+			return nil, fmt.Errorf("list project remote task state: scan row: %w", err)
+		}
+		state.Href = strings.TrimSpace(state.Href)
+		state.ETag = strings.TrimSpace(state.ETag)
+		states = append(states, state)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list project remote task state: iterate rows: %w", err)
+	}
+
+	return states, nil
 }

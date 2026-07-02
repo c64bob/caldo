@@ -189,6 +189,125 @@ func TestTodoClientSyncCollectionUnsupported(t *testing.T) {
 	}
 }
 
+func TestTodoClientCalendarCTag(t *testing.T) {
+	t.Parallel()
+
+	var sawCTagPropfind bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PROPFIND" || r.Header.Get("Depth") != "0" {
+			t.Fatalf("unexpected request: %s depth=%s", r.Method, r.Header.Get("Depth"))
+		}
+		body := readRequestBody(t, r)
+		if !strings.Contains(body, "getctag") {
+			t.Fatalf("unexpected ctag body: %s", body)
+		}
+		sawCTagPropfind = true
+		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+		w.WriteHeader(http.StatusMultiStatus)
+		_, _ = w.Write([]byte(`<?xml version="1.0"?>
+<d:multistatus xmlns:d="DAV:" xmlns:cs="http://calendarserver.org/ns/">
+  <d:response>
+    <d:href>/cal/work/</d:href>
+    <d:propstat>
+      <d:prop><cs:getctag>"ctag-2"</cs:getctag></d:prop>
+      <d:status>HTTP/1.1 200 OK</d:status>
+    </d:propstat>
+  </d:response>
+</d:multistatus>`))
+	}))
+	t.Cleanup(server.Close)
+
+	client := NewTodoClient(server.Client())
+	ctag, err := client.CalendarCTag(context.Background(), Credentials{
+		URL:      server.URL,
+		Username: "alice",
+		Password: "secret",
+	}, "/cal/work/")
+	if err != nil {
+		t.Fatalf("calendar ctag: %v", err)
+	}
+	if !sawCTagPropfind || ctag != `"ctag-2"` {
+		t.Fatalf("unexpected ctag result: saw=%v ctag=%q", sawCTagPropfind, ctag)
+	}
+}
+
+func TestTodoClientListVTODOETags(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PROPFIND" || r.Header.Get("Depth") != "1" {
+			t.Fatalf("unexpected request: %s depth=%s", r.Method, r.Header.Get("Depth"))
+		}
+		body := readRequestBody(t, r)
+		if !strings.Contains(body, "getetag") {
+			t.Fatalf("unexpected etag body: %s", body)
+		}
+		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+		w.WriteHeader(http.StatusMultiStatus)
+		_, _ = w.Write([]byte(`<?xml version="1.0"?>
+<d:multistatus xmlns:d="DAV:">
+  <d:response>
+    <d:href>/cal/work/</d:href>
+    <d:propstat>
+      <d:prop><d:getetag>"calendar-etag"</d:getetag></d:prop>
+      <d:status>HTTP/1.1 200 OK</d:status>
+    </d:propstat>
+  </d:response>
+  <d:response>
+    <d:href>/cal/work/todo-1.ics</d:href>
+    <d:propstat>
+      <d:prop><d:getetag>"etag-1"</d:getetag></d:prop>
+      <d:status>HTTP/1.1 200 OK</d:status>
+    </d:propstat>
+  </d:response>
+</d:multistatus>`))
+	}))
+	t.Cleanup(server.Close)
+
+	client := NewTodoClient(server.Client())
+	objects, err := client.ListVTODOETags(context.Background(), Credentials{
+		URL:      server.URL,
+		Username: "alice",
+		Password: "secret",
+	}, "/cal/work/")
+	if err != nil {
+		t.Fatalf("list vtodo etags: %v", err)
+	}
+	if len(objects) != 1 || objects[0].Href != "/cal/work/todo-1.ics" || objects[0].ETag != `"etag-1"` {
+		t.Fatalf("unexpected etag objects: %#v", objects)
+	}
+}
+
+func TestTodoClientListVTODOETagsFallbackWhenETagMissing(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+		w.WriteHeader(http.StatusMultiStatus)
+		_, _ = w.Write([]byte(`<?xml version="1.0"?>
+<d:multistatus xmlns:d="DAV:">
+  <d:response>
+    <d:href>/cal/work/todo-1.ics</d:href>
+    <d:propstat>
+      <d:prop></d:prop>
+      <d:status>HTTP/1.1 200 OK</d:status>
+    </d:propstat>
+  </d:response>
+</d:multistatus>`))
+	}))
+	t.Cleanup(server.Close)
+
+	client := NewTodoClient(server.Client())
+	_, err := client.ListVTODOETags(context.Background(), Credentials{
+		URL:      server.URL,
+		Username: "alice",
+		Password: "secret",
+	}, "/cal/work/")
+	if !errors.Is(err, ErrCTagUnsupported) {
+		t.Fatalf("expected ctag fallback error, got %v", err)
+	}
+}
+
 func TestTodoClientPutVTODOCreateDoesNotRetry(t *testing.T) {
 	t.Parallel()
 

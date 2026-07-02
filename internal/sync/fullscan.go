@@ -20,6 +20,13 @@ type WebDAVSyncer interface {
 	SyncCollection(ctx context.Context, credentials caldav.Credentials, calendarHref string, syncToken string) (caldav.SyncCollectionResult, error)
 }
 
+// CTagSyncer performs CTag/ETag metadata discovery and resource fetches.
+type CTagSyncer interface {
+	CalendarCTag(ctx context.Context, credentials caldav.Credentials, calendarHref string) (string, error)
+	ListVTODOETags(ctx context.Context, credentials caldav.Credentials, calendarHref string) ([]caldav.CalendarObject, error)
+	GetVTODO(ctx context.Context, credentials caldav.Credentials, todoHref string) (string, string, error)
+}
+
 type databaseProjectStore struct {
 	database *db.Database
 }
@@ -43,8 +50,15 @@ func NewRunner(database *db.Database, encryptionKey []byte, todos TodoLister) (*
 		}
 	}
 
-	fallback := FallbackRunner{}
-	return NewEngine(databaseProjectStore{database: database}, webdavRunner, fallback, fullscan)
+	var ctagRunner StrategyRunner = FallbackRunner{}
+	if ctagSync, ok := todos.(CTagSyncer); ok {
+		ctagRunner, err = NewCTagSyncRunner(database, encryptionKey, ctagSync)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return NewEngine(databaseProjectStore{database: database}, webdavRunner, ctagRunner, fullscan)
 }
 
 func (s databaseProjectStore) ListSyncProjects(ctx context.Context) ([]ProjectState, error) {

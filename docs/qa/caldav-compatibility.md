@@ -46,7 +46,7 @@ Add one sanitized row per tested server version and auth method. If the same ser
 
 | Server | Version | Auth method | Endpoint shape | Capabilities | Core flows | Last run | Build | Result | Known limitations / issues |
 |---|---|---|---|---|---|---|---|---|---|
-| Nextcloud | pending first recorded run | app password | `https://<host>/remote.php/dav/calendars/<user>/` | pending | pending | pending | pending | pending | none recorded |
+| Nextcloud | 34.0.1 | app password | `https://<host>/remote.php/dav/calendars/<user>/` | calendar-home-set=yes; calendar-query-vtodo=yes; mkcalendar=yes; put-if-match=yes; delete-404-success=yes; getctag=yes; webdav-sync=yes; fullscan=yes | setup/import=pass; manual sync=pass; remote create=pass; remote update=pass; remote delete=pass; dirty-vs-remote=pass; conflict resolution=pass | 2026-07-02 | 401ec088f8975564b5f5f00f27bac478a02bd564 | pass | none known for tested flows |
 
 ## Row Template
 

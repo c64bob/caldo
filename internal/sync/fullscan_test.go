@@ -94,6 +94,10 @@ func TestRunnerFallsBackToFullScanAgainstFakeCalDAVServer(t *testing.T) {
 	const rawVTODO = "BEGIN:VCALENDAR\nBEGIN:VTODO\nUID:uid-1\nSUMMARY:Remote Task\nSTATUS:NEEDS-ACTION\nCATEGORIES:home,STARRED\nEND:VTODO\nEND:VCALENDAR"
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "PROPFIND" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
 		if r.Method != "REPORT" || r.URL.Path != "/cal/work/" {
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}

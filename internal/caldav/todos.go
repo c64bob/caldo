@@ -20,6 +20,9 @@ const (
 // ErrSyncCollectionUnsupported indicates that a calendar cannot use WebDAV Sync.
 var ErrSyncCollectionUnsupported = errors.New("caldav sync collection unsupported")
 
+// ErrCTagUnsupported indicates that a calendar cannot use CTag/ETag sync.
+var ErrCTagUnsupported = errors.New("caldav ctag etag sync unsupported")
+
 // CalendarObject represents one remote VTODO resource including raw payload and metadata.
 type CalendarObject struct {
 	Href     string
@@ -203,6 +206,133 @@ func (c *TodoClient) SyncCollection(ctx context.Context, credentials Credentials
 	return result, nil
 }
 
+// CalendarCTag loads the current calendar collection CTag.
+func (c *TodoClient) CalendarCTag(ctx context.Context, credentials Credentials, calendarHref string) (string, error) {
+	calendarURL, err := resolveCalendarURL(credentials.URL, calendarHref)
+	if err != nil {
+		return "", fmt.Errorf("calendar ctag: resolve calendar url: %w", err)
+	}
+
+	response, err := c.executor.do(ctx, operationPolicy{
+		timeout:      timeoutPROPFIND,
+		retryEnabled: true,
+	}, func(requestCtx context.Context) (*http.Request, error) {
+		request, reqErr := http.NewRequestWithContext(requestCtx, "PROPFIND", calendarURL, bytes.NewBufferString(calendarCTagBody))
+		if reqErr != nil {
+			return nil, reqErr
+		}
+		request.SetBasicAuth(credentials.Username, credentials.Password)
+		request.Header.Set("Depth", "0")
+		request.Header.Set("Content-Type", "application/xml; charset=utf-8")
+		return request, nil
+	})
+	if err != nil {
+		return "", fmt.Errorf("calendar ctag: request failed: %w", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode == http.StatusForbidden ||
+		response.StatusCode == http.StatusNotFound ||
+		response.StatusCode == http.StatusMethodNotAllowed ||
+		response.StatusCode == http.StatusNotImplemented {
+		return "", ErrCTagUnsupported
+	}
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return "", fmt.Errorf("calendar ctag: unexpected status %d", response.StatusCode)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxTodoScanResponseBytes))
+	if err != nil {
+		return "", fmt.Errorf("calendar ctag: read response: %w", err)
+	}
+
+	var parsed ctagMultistatus
+	if err := xml.Unmarshal(body, &parsed); err != nil {
+		return "", fmt.Errorf("calendar ctag: parse response: %w", err)
+	}
+	for _, responseEntry := range parsed.Responses {
+		for _, propstat := range responseEntry.Propstats {
+			if !propstatOK(propstat.Status) {
+				continue
+			}
+			ctag := strings.TrimSpace(propstat.Prop.CTag)
+			if ctag != "" {
+				return ctag, nil
+			}
+		}
+	}
+	return "", ErrCTagUnsupported
+}
+
+// ListVTODOETags lists resource hrefs and ETags for one calendar without loading bodies.
+func (c *TodoClient) ListVTODOETags(ctx context.Context, credentials Credentials, calendarHref string) ([]CalendarObject, error) {
+	calendarURL, err := resolveCalendarURL(credentials.URL, calendarHref)
+	if err != nil {
+		return nil, fmt.Errorf("list vtodo etags: resolve calendar url: %w", err)
+	}
+
+	response, err := c.executor.do(ctx, operationPolicy{
+		timeout:      timeoutPROPFIND,
+		retryEnabled: true,
+	}, func(requestCtx context.Context) (*http.Request, error) {
+		request, reqErr := http.NewRequestWithContext(requestCtx, "PROPFIND", calendarURL, bytes.NewBufferString(vtodoETagBody))
+		if reqErr != nil {
+			return nil, reqErr
+		}
+		request.SetBasicAuth(credentials.Username, credentials.Password)
+		request.Header.Set("Depth", "1")
+		request.Header.Set("Content-Type", "application/xml; charset=utf-8")
+		return request, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list vtodo etags: request failed: %w", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode == http.StatusForbidden ||
+		response.StatusCode == http.StatusNotFound ||
+		response.StatusCode == http.StatusMethodNotAllowed ||
+		response.StatusCode == http.StatusNotImplemented {
+		return nil, ErrCTagUnsupported
+	}
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("list vtodo etags: unexpected status %d", response.StatusCode)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxTodoScanResponseBytes))
+	if err != nil {
+		return nil, fmt.Errorf("list vtodo etags: read response: %w", err)
+	}
+
+	var parsed etagMultistatus
+	if err := xml.Unmarshal(body, &parsed); err != nil {
+		return nil, fmt.Errorf("list vtodo etags: parse response: %w", err)
+	}
+
+	objects := make([]CalendarObject, 0, len(parsed.Responses))
+	for _, responseEntry := range parsed.Responses {
+		href := strings.TrimSpace(responseEntry.Href)
+		if href == "" || normalizeHrefForCompare(href) == normalizeHrefForCompare(calendarHref) {
+			continue
+		}
+
+		var etag string
+		for _, propstat := range responseEntry.Propstats {
+			if !propstatOK(propstat.Status) {
+				continue
+			}
+			etag = strings.TrimSpace(propstat.Prop.ETag)
+			break
+		}
+		if etag == "" {
+			return nil, ErrCTagUnsupported
+		}
+		objects = append(objects, CalendarObject{Href: href, ETag: etag})
+	}
+
+	return objects, nil
+}
+
 // GetVTODO fetches one VTODO object body and optional ETag metadata.
 func (c *TodoClient) GetVTODO(ctx context.Context, credentials Credentials, todoHref string) (string, string, error) {
 	resourceURL, err := resolveCalendarURL(credentials.URL, todoHref)
@@ -382,6 +512,42 @@ type syncCollectionProp struct {
 	CalendarData string `xml:"calendar-data"`
 }
 
+type ctagMultistatus struct {
+	Responses []ctagResponse `xml:"response"`
+}
+
+type ctagResponse struct {
+	Href      string         `xml:"href"`
+	Propstats []ctagPropstat `xml:"propstat"`
+}
+
+type ctagPropstat struct {
+	Status string   `xml:"status"`
+	Prop   ctagProp `xml:"prop"`
+}
+
+type ctagProp struct {
+	CTag string `xml:"getctag"`
+}
+
+type etagMultistatus struct {
+	Responses []etagResponse `xml:"response"`
+}
+
+type etagResponse struct {
+	Href      string         `xml:"href"`
+	Propstats []etagPropstat `xml:"propstat"`
+}
+
+type etagPropstat struct {
+	Status string   `xml:"status"`
+	Prop   etagProp `xml:"prop"`
+}
+
+type etagProp struct {
+	ETag string `xml:"getetag"`
+}
+
 const vtodoFullScanBody = `<?xml version="1.0" encoding="utf-8"?>
 <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
   <d:prop>
@@ -394,6 +560,20 @@ const vtodoFullScanBody = `<?xml version="1.0" encoding="utf-8"?>
     </c:comp-filter>
   </c:filter>
 </c:calendar-query>`
+
+const calendarCTagBody = `<?xml version="1.0" encoding="utf-8"?>
+<d:propfind xmlns:d="DAV:" xmlns:cs="http://calendarserver.org/ns/">
+  <d:prop>
+    <cs:getctag/>
+  </d:prop>
+</d:propfind>`
+
+const vtodoETagBody = `<?xml version="1.0" encoding="utf-8"?>
+<d:propfind xmlns:d="DAV:">
+  <d:prop>
+    <d:getetag/>
+  </d:prop>
+</d:propfind>`
 
 func syncCollectionBody(syncToken string) string {
 	tokenElement := ""
@@ -416,4 +596,28 @@ func syncResponseDeleted(response syncCollectionResponse) bool {
 		return true
 	}
 	return false
+}
+
+func propstatOK(status string) bool {
+	status = strings.TrimSpace(status)
+	if status == "" {
+		return true
+	}
+	statusCode, err := parseWebDAVStatusCode(status)
+	return err == nil && statusCode >= http.StatusOK && statusCode < http.StatusMultipleChoices
+}
+
+func normalizeHrefForCompare(href string) string {
+	trimmed := strings.TrimSpace(href)
+	if trimmed == "" {
+		return ""
+	}
+	parsed, err := url.Parse(trimmed)
+	if err == nil && parsed.Path != "" {
+		trimmed = parsed.Path
+	}
+	if !strings.HasSuffix(trimmed, "/") {
+		return trimmed
+	}
+	return strings.TrimRight(trimmed, "/") + "/"
 }

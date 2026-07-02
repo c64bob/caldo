@@ -429,6 +429,10 @@ func (f *fakeRouterCalDAV) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			f.writeCapabilityResponse(w, r.URL.Path)
 			return
 		}
+		if f.isCalendarHref(r.URL.Path) {
+			f.writeVTODOETagList(w, r.URL.Path)
+			return
+		}
 		f.writeCalendarList(w)
 	case "REPORT":
 		f.writeVTODOReport(w, r.URL.Path)
@@ -451,6 +455,7 @@ func (f *fakeRouterCalDAV) putObject(href string, uid string, rawVTODO string, e
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
+	f.revision++
 	f.objects[href] = fakeRouterCalDAVObject{
 		Href:     href,
 		UID:      uid,
@@ -481,6 +486,7 @@ func (f *fakeRouterCalDAV) deleteObject(href string) {
 	defer f.mu.Unlock()
 
 	delete(f.objects, href)
+	f.revision++
 }
 
 func (f *fakeRouterCalDAV) hasObject(href string) bool {
@@ -547,6 +553,10 @@ func (f *fakeRouterCalDAV) lastIfMatch(href string) string {
 }
 
 func (f *fakeRouterCalDAV) writeCapabilityResponse(w http.ResponseWriter, href string) {
+	f.mu.Lock()
+	ctag := f.currentCTagLocked()
+	f.mu.Unlock()
+
 	w.Header().Set("DAV", "1, calendar-access, sync-collection")
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 	w.WriteHeader(http.StatusMultiStatus)
@@ -555,14 +565,26 @@ func (f *fakeRouterCalDAV) writeCapabilityResponse(w http.ResponseWriter, href s
   <d:response>
     <d:href>` + xmlEscapeText(href) + `</d:href>
     <d:propstat>
-      <d:prop>
-        <d:getetag>"root-etag"</d:getetag>
-        <cs:getctag>"ctag-1"</cs:getctag>
-      </d:prop>
+	      <d:prop>
+	        <d:getetag>"root-etag"</d:getetag>
+	        <cs:getctag>` + xmlEscapeText(ctag) + `</cs:getctag>
+	      </d:prop>
       <d:status>HTTP/1.1 200 OK</d:status>
     </d:propstat>
   </d:response>
 </d:multistatus>`))
+}
+
+func (f *fakeRouterCalDAV) isCalendarHref(href string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	calendarHref := href
+	if !strings.HasSuffix(calendarHref, "/") {
+		calendarHref += "/"
+	}
+	_, ok := f.calendars[calendarHref]
+	return ok
 }
 
 func (f *fakeRouterCalDAV) writeCalendarList(w http.ResponseWriter) {
@@ -604,6 +626,43 @@ func (f *fakeRouterCalDAV) writeVTODOReport(w http.ResponseWriter, calendarHref 
 		body.WriteString(`</d:getetag><c:calendar-data>`)
 		body.WriteString(xmlEscapeText(object.RawVTODO))
 		body.WriteString(`</c:calendar-data></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`)
+	}
+	body.WriteString(`</d:multistatus>`)
+
+	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+	w.WriteHeader(http.StatusMultiStatus)
+	_, _ = w.Write([]byte(body.String()))
+}
+
+func (f *fakeRouterCalDAV) writeVTODOETagList(w http.ResponseWriter, calendarHref string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if !strings.HasSuffix(calendarHref, "/") {
+		calendarHref += "/"
+	}
+	if _, ok := f.calendars[calendarHref]; !ok {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	var body strings.Builder
+	body.WriteString(`<?xml version="1.0" encoding="utf-8"?>` + "\n")
+	body.WriteString(`<d:multistatus xmlns:d="DAV:">`)
+	body.WriteString(`<d:response><d:href>`)
+	body.WriteString(xmlEscapeText(calendarHref))
+	body.WriteString(`</d:href><d:propstat><d:prop><d:getetag>`)
+	body.WriteString(xmlEscapeText(f.currentCTagLocked()))
+	body.WriteString(`</d:getetag></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`)
+	for _, object := range f.objects {
+		if !strings.HasPrefix(object.Href, calendarHref) {
+			continue
+		}
+		body.WriteString(`<d:response><d:href>`)
+		body.WriteString(xmlEscapeText(object.Href))
+		body.WriteString(`</d:href><d:propstat><d:prop><d:getetag>`)
+		body.WriteString(xmlEscapeText(object.ETag))
+		body.WriteString(`</d:getetag></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`)
 	}
 	body.WriteString(`</d:multistatus>`)
 
@@ -722,6 +781,7 @@ func (f *fakeRouterCalDAV) handleDelete(w http.ResponseWriter, r *http.Request) 
 				delete(f.objects, objectHref)
 			}
 		}
+		f.revision++
 		f.deleteCalendarCalls++
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -737,6 +797,7 @@ func (f *fakeRouterCalDAV) handleDelete(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	delete(f.objects, href)
+	f.revision++
 	f.deleteObjectCalls++
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -761,6 +822,10 @@ func (f *fakeRouterCalDAV) handleGet(w http.ResponseWriter, r *http.Request) {
 func (f *fakeRouterCalDAV) nextETagLocked() string {
 	f.revision++
 	return fmt.Sprintf(`"etag-%d"`, f.revision)
+}
+
+func (f *fakeRouterCalDAV) currentCTagLocked() string {
+	return fmt.Sprintf(`"ctag-%d"`, f.revision)
 }
 
 func e2eRequest(t *testing.T, router http.Handler, secret []byte, method string, target string, form url.Values, tabID string) *httptest.ResponseRecorder {

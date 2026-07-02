@@ -12,11 +12,50 @@ import (
 
 // ApplyWebDAVSyncProject applies one WebDAV Sync result for a project.
 func (d *Database) ApplyWebDAVSyncProject(ctx context.Context, projectID string, changed []ImportedTask, deletedHrefs []string, syncToken string, baseline bool) (FullScanApplyResult, error) {
-	if strings.TrimSpace(projectID) == "" {
-		return FullScanApplyResult{}, fmt.Errorf("apply webdav sync project: project id is required")
-	}
 	if strings.TrimSpace(syncToken) == "" {
 		return FullScanApplyResult{}, fmt.Errorf("apply webdav sync project: sync token is required")
+	}
+	return d.applyIncrementalSyncProject(ctx, incrementalSyncApplyInput{
+		operation:    "apply webdav sync project",
+		projectID:    projectID,
+		changed:      changed,
+		deletedHrefs: deletedHrefs,
+		syncToken:    syncToken,
+		strategy:     "webdav_sync",
+		baseline:     baseline,
+	})
+}
+
+// ApplyCTagSyncProject applies one CTag/ETag sync result for a project.
+func (d *Database) ApplyCTagSyncProject(ctx context.Context, projectID string, changed []ImportedTask, deletedHrefs []string, ctag string, baseline bool) (FullScanApplyResult, error) {
+	if strings.TrimSpace(ctag) == "" {
+		return FullScanApplyResult{}, fmt.Errorf("apply ctag sync project: ctag is required")
+	}
+	return d.applyIncrementalSyncProject(ctx, incrementalSyncApplyInput{
+		operation:    "apply ctag sync project",
+		projectID:    projectID,
+		changed:      changed,
+		deletedHrefs: deletedHrefs,
+		ctag:         ctag,
+		strategy:     "ctag",
+		baseline:     baseline,
+	})
+}
+
+type incrementalSyncApplyInput struct {
+	operation    string
+	projectID    string
+	changed      []ImportedTask
+	deletedHrefs []string
+	syncToken    string
+	ctag         string
+	strategy     string
+	baseline     bool
+}
+
+func (d *Database) applyIncrementalSyncProject(ctx context.Context, input incrementalSyncApplyInput) (FullScanApplyResult, error) {
+	if strings.TrimSpace(input.projectID) == "" {
+		return FullScanApplyResult{}, fmt.Errorf("%s: project id is required", input.operation)
 	}
 
 	d.WriteMu.Lock()
@@ -24,18 +63,18 @@ func (d *Database) ApplyWebDAVSyncProject(ctx context.Context, projectID string,
 
 	tx, err := d.Conn.BeginTx(ctx, nil)
 	if err != nil {
-		return FullScanApplyResult{}, fmt.Errorf("apply webdav sync project: begin transaction: %w", err)
+		return FullScanApplyResult{}, fmt.Errorf("%s: begin transaction: %w", input.operation, err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	projectName, err := loadProjectDisplayName(ctx, tx, projectID)
+	projectName, err := loadProjectDisplayName(ctx, tx, input.projectID)
 	if err != nil {
 		return FullScanApplyResult{}, err
 	}
 
-	localTasks, err := loadFullScanLocalTasks(ctx, tx, projectID)
+	localTasks, err := loadFullScanLocalTasks(ctx, tx, input.projectID)
 	if err != nil {
-		return FullScanApplyResult{}, fmt.Errorf("apply webdav sync project: load local tasks: %w", err)
+		return FullScanApplyResult{}, fmt.Errorf("%s: load local tasks: %w", input.operation, err)
 	}
 	localByUID := make(map[string]fullScanLocalTask, len(localTasks))
 	localByHref := make(map[string]fullScanLocalTask, len(localTasks))
@@ -50,7 +89,7 @@ func (d *Database) ApplyWebDAVSyncProject(ctx context.Context, projectID string,
 		}
 	}
 
-	remoteTasks := dedupeImportedTasks(changed, projectName)
+	remoteTasks := dedupeImportedTasks(input.changed, projectName)
 	parentUIDByUID := make(map[string]string, len(remoteTasks))
 	remoteUIDs := make(map[string]struct{}, len(remoteTasks))
 	touchedLocalIDs := make(map[string]struct{}, len(remoteTasks))
@@ -58,7 +97,7 @@ func (d *Database) ApplyWebDAVSyncProject(ctx context.Context, projectID string,
 	for _, remoteTask := range remoteTasks {
 		parentUIDByUID[remoteTask.UID] = strings.TrimSpace(remoteTask.ParentUID)
 		remoteUIDs[remoteTask.UID] = struct{}{}
-		touchedID, err := applyWebDAVChangedTask(ctx, tx, projectID, localByUID, localByHref, remoteTask, &result)
+		touchedID, err := applyWebDAVChangedTask(ctx, tx, input.projectID, localByUID, localByHref, remoteTask, &result)
 		if err != nil {
 			return FullScanApplyResult{}, err
 		}
@@ -67,9 +106,9 @@ func (d *Database) ApplyWebDAVSyncProject(ctx context.Context, projectID string,
 		}
 	}
 
-	deleteTasks := make([]fullScanLocalTask, 0, len(deletedHrefs)+len(localTasks))
-	deletedSeen := make(map[string]struct{}, len(deletedHrefs))
-	for _, href := range deletedHrefs {
+	deleteTasks := make([]fullScanLocalTask, 0, len(input.deletedHrefs)+len(localTasks))
+	deletedSeen := make(map[string]struct{}, len(input.deletedHrefs))
+	for _, href := range input.deletedHrefs {
 		localTask, exists := localByHref[strings.TrimSpace(href)]
 		if !exists {
 			continue
@@ -90,7 +129,7 @@ func (d *Database) ApplyWebDAVSyncProject(ctx context.Context, projectID string,
 		}
 		result.Conflicts++
 	}
-	if baseline {
+	if input.baseline {
 		for _, localTask := range localTasks {
 			if _, ok := remoteUIDs[localTask.UID]; ok {
 				continue
@@ -123,23 +162,45 @@ func (d *Database) ApplyWebDAVSyncProject(ctx context.Context, projectID string,
 		result.Deleted = deleted
 	}
 
-	if err := applyFullScanParentLinks(ctx, tx, projectID, parentUIDByUID); err != nil {
+	if err := applyFullScanParentLinks(ctx, tx, input.projectID, parentUIDByUID); err != nil {
 		return FullScanApplyResult{}, err
 	}
-	if _, err := tx.ExecContext(ctx, `
+	if err := updateIncrementalProjectMetadata(ctx, tx, input); err != nil {
+		return FullScanApplyResult{}, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return FullScanApplyResult{}, fmt.Errorf("%s: commit transaction: %w", input.operation, err)
+	}
+	return result, nil
+}
+
+func updateIncrementalProjectMetadata(ctx context.Context, tx *sql.Tx, input incrementalSyncApplyInput) error {
+	switch input.strategy {
+	case "webdav_sync":
+		if _, err := tx.ExecContext(ctx, `
 UPDATE projects
 SET sync_token = ?,
     sync_strategy = 'webdav_sync',
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ?;
-`, strings.TrimSpace(syncToken), strings.TrimSpace(projectID)); err != nil {
-		return FullScanApplyResult{}, fmt.Errorf("apply webdav sync project: update sync metadata: %w", err)
+`, strings.TrimSpace(input.syncToken), strings.TrimSpace(input.projectID)); err != nil {
+			return fmt.Errorf("%s: update sync metadata: %w", input.operation, err)
+		}
+	case "ctag":
+		if _, err := tx.ExecContext(ctx, `
+UPDATE projects
+SET ctag = ?,
+    sync_strategy = 'ctag',
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = ?;
+`, strings.TrimSpace(input.ctag), strings.TrimSpace(input.projectID)); err != nil {
+			return fmt.Errorf("%s: update sync metadata: %w", input.operation, err)
+		}
+	default:
+		return fmt.Errorf("%s: unknown sync strategy", input.operation)
 	}
-
-	if err := tx.Commit(); err != nil {
-		return FullScanApplyResult{}, fmt.Errorf("apply webdav sync project: commit transaction: %w", err)
-	}
-	return result, nil
+	return nil
 }
 
 func applyWebDAVChangedTask(ctx context.Context, tx *sql.Tx, projectID string, localByUID map[string]fullScanLocalTask, localByHref map[string]fullScanLocalTask, remoteTask ImportedTask, result *FullScanApplyResult) (string, error) {

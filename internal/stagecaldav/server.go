@@ -137,6 +137,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			s.writeCapabilityResponse(w, r.URL.Path)
 			return
 		}
+		if s.isCalendarHref(r.URL.Path) {
+			s.writeVTODOETagList(w, r.URL.Path)
+			return
+		}
 		s.writeCalendarList(w)
 	case "REPORT":
 		s.handleReport(w, r)
@@ -445,7 +449,18 @@ func (s *Server) firstCalendarHrefLocked() string {
 	return hrefs[0]
 }
 
+func (s *Server) currentCTagLocked(calendarHref string) string {
+	if _, ok := s.calendars[calendarHref]; !ok {
+		return fmt.Sprintf(`"stage-ctag-%d"`, s.revision)
+	}
+	return fmt.Sprintf(`"stage-ctag-%s-%d"`, strings.Trim(strings.ReplaceAll(calendarHref, "/", "-"), "-"), s.revision)
+}
+
 func (s *Server) writeCapabilityResponse(w http.ResponseWriter, href string) {
+	s.mu.Lock()
+	ctag := s.currentCTagLocked(normalizeCalendarHref(href))
+	s.mu.Unlock()
+
 	w.Header().Set("DAV", "1, calendar-access, sync-collection")
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 	w.WriteHeader(http.StatusMultiStatus)
@@ -456,12 +471,20 @@ func (s *Server) writeCapabilityResponse(w http.ResponseWriter, href string) {
     <d:propstat>
       <d:prop>
         <d:getetag>"stage-root"</d:getetag>
-        <cs:getctag>"stage-ctag"</cs:getctag>
+        <cs:getctag>` + xmlEscapeText(ctag) + `</cs:getctag>
       </d:prop>
       <d:status>HTTP/1.1 200 OK</d:status>
     </d:propstat>
   </d:response>
 </d:multistatus>`))
+}
+
+func (s *Server) isCalendarHref(href string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, ok := s.calendars[normalizeCalendarHref(href)]
+	return ok
 }
 
 func (s *Server) writeCalendarList(w http.ResponseWriter) {
@@ -536,6 +559,47 @@ func (s *Server) writeVTODOReport(w http.ResponseWriter, calendarHref string) {
 		body.WriteString(`</d:getetag><c:calendar-data>`)
 		body.WriteString(xmlEscapeText(object.RawVTODO))
 		body.WriteString(`</c:calendar-data></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`)
+	}
+	body.WriteString(`</d:multistatus>`)
+
+	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+	w.WriteHeader(http.StatusMultiStatus)
+	_, _ = w.Write([]byte(body.String()))
+}
+
+func (s *Server) writeVTODOETagList(w http.ResponseWriter, calendarHref string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	calendarHref = normalizeCalendarHref(calendarHref)
+	if _, ok := s.calendars[calendarHref]; !ok {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	hrefs := make([]string, 0, len(s.objects))
+	for href, object := range s.objects {
+		if object.CalendarHref == calendarHref {
+			hrefs = append(hrefs, href)
+		}
+	}
+	sort.Strings(hrefs)
+
+	var body strings.Builder
+	body.WriteString(`<?xml version="1.0" encoding="utf-8"?>` + "\n")
+	body.WriteString(`<d:multistatus xmlns:d="DAV:">`)
+	body.WriteString(`<d:response><d:href>`)
+	body.WriteString(xmlEscapeText(calendarHref))
+	body.WriteString(`</d:href><d:propstat><d:prop><d:getetag>`)
+	body.WriteString(xmlEscapeText(s.currentCTagLocked(calendarHref)))
+	body.WriteString(`</d:getetag></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`)
+	for _, href := range hrefs {
+		object := s.objects[href]
+		body.WriteString(`<d:response><d:href>`)
+		body.WriteString(xmlEscapeText(object.Href))
+		body.WriteString(`</d:href><d:propstat><d:prop><d:getetag>`)
+		body.WriteString(xmlEscapeText(object.ETag))
+		body.WriteString(`</d:getetag></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`)
 	}
 	body.WriteString(`</d:multistatus>`)
 

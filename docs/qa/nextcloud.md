@@ -204,6 +204,7 @@ This is the required Story 29.1 release smoke. The broader sections below can be
 - Expected: `412 Precondition Failed` or equivalent stale-write handling creates a visible conflict path rather than silently retrying.
 - For release candidates with conflict-related changes, select relevant rows from `docs/qa/conflict-edge-cases.md`.
 - For release candidates with sync-engine, scheduler, conflict, CalDAV client, or persistence changes, also run the long-running sync process in `docs/qa/sync-longrun.md`.
+- For release candidates that need large-calendar confidence, run the documented mixed and large scenarios from `docs/qa/large-calendars.md`.
 
 ### 8. Settings
 

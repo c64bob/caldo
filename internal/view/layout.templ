@@ -153,10 +153,36 @@ templ BaseLayout(title string, content templ.Component) {
 								data-theme-system-label={ Text(ctx).ThemeSystem }
 								data-theme-light-label={ Text(ctx).ThemeLight }
 								data-theme-dark-label={ Text(ctx).ThemeDark }
-								class="caldo-button caldo-button-ghost"
+								class="caldo-icon-button caldo-button-ghost caldo-theme-toggle"
 								aria-label={ Text(ctx).ThemeSettings + ": " + ThemeModeLabel(ctx, UIDarkMode(ctx)) }
+								title={ Text(ctx).ThemeSettings + ": " + ThemeModeLabel(ctx, UIDarkMode(ctx)) }
 							>
-								{ Text(ctx).ThemeSettings }: { ThemeModeLabel(ctx, UIDarkMode(ctx)) }
+								<span class="caldo-theme-icon caldo-theme-icon-system" aria-hidden="true">
+									<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+										<rect x="3" y="4" width="18" height="12" rx="2"></rect>
+										<path d="M8 20h8"></path>
+										<path d="M12 16v4"></path>
+									</svg>
+								</span>
+								<span class="caldo-theme-icon caldo-theme-icon-dark" aria-hidden="true">
+									<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+										<path d="M20.99 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 20.99 12.79z"></path>
+									</svg>
+								</span>
+								<span class="caldo-theme-icon caldo-theme-icon-light" aria-hidden="true">
+									<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+										<circle cx="12" cy="12" r="4"></circle>
+										<path d="M12 2v2"></path>
+										<path d="M12 20v2"></path>
+										<path d="m4.93 4.93 1.41 1.41"></path>
+										<path d="m17.66 17.66 1.41 1.41"></path>
+										<path d="M2 12h2"></path>
+										<path d="M20 12h2"></path>
+										<path d="m6.34 17.66-1.41 1.41"></path>
+										<path d="m19.07 4.93-1.41 1.41"></path>
+									</svg>
+								</span>
+								<span class="sr-only" data-theme-current-label>{ Text(ctx).ThemeSettings }: { ThemeModeLabel(ctx, UIDarkMode(ctx)) }</span>
 							</button>
 						</div>
 					</header>
@@ -203,7 +229,7 @@ templ BaseLayout(title string, content templ.Component) {
 						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> { Text(ctx).Then } <kbd class="caldo-kbd">F</kbd> { Text(ctx).ShortcutFilters }</li>
 						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> { Text(ctx).Then } <kbd class="caldo-kbd">C</kbd> { Text(ctx).ShortcutConflicts }</li>
 						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> { Text(ctx).Then } <kbd class="caldo-kbd">E</kbd> { Text(ctx).ShortcutSettings }</li>
-						<li class="caldo-menu-item"><span class="caldo-kbd" aria-hidden="true">-</span> { Text(ctx).MultiEditUnavailable }</li>
+						<li class="caldo-menu-item"><kbd class="caldo-kbd">R</kbd> { Text(ctx).ShortcutSyncNow }</li>
 						<li class="caldo-menu-item"><kbd class="caldo-kbd">?</kbd> { Text(ctx).ShortcutOpenHelp }</li>
 					</ul>
 				</div>

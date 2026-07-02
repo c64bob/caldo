@@ -212,13 +212,13 @@ func TestNewRouterRendersPersistedSyncStatusInBaseLayout(t *testing.T) {
 		t.Fatalf("unexpected status code: got %d want %d body=%q", responseRecorder.Code, http.StatusOK, responseRecorder.Body.String())
 	}
 	body := responseRecorder.Body.String()
-	if !strings.Contains(body, "Letzter Sync:") || !strings.Contains(body, lastSuccess.Text) {
+	if !strings.Contains(body, "Letzter erfolgreicher Sync:") || !strings.Contains(body, lastSuccess.Text) {
 		t.Fatalf("expected base layout to include persisted last sync %q in %s", lastSuccess.Text, body)
 	}
 	if !strings.Contains(body, `datetime="`+lastSuccess.ISO+`"`) || !strings.Contains(body, `data-local-date-time`) {
 		t.Fatalf("expected base layout to include local timestamp metadata for %q in %s", lastSuccess.ISO, body)
 	}
-	if strings.Contains(body, "Letzter Sync: nie") {
+	if strings.Contains(body, "Letzter erfolgreicher Sync: nie") {
 		t.Fatalf("expected base layout not to render fallback last sync: %s", body)
 	}
 }

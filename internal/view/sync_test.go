@@ -24,12 +24,17 @@ func TestSyncStatusFrameKeepsStableSwapTargetOutsideSwappedBadge(t *testing.T) {
 		`id="sync-status"`,
 		`hx-swap="innerHTML"`,
 		`data-sync-request`,
+		`data-sync-state="idle"`,
+		`data-sync-tooltip-template="Jetzt synchronisieren. Status: bereit. Letzter erfolgreicher Sync: {last}"`,
 		`hx-post="/sync/manual"`,
-		`Status: idle`,
-		`Letzter Sync:`,
+		`aria-label="Jetzt synchronisieren. Status: bereit. Letzter erfolgreicher Sync: 02.01.2026 03:04"`,
+		`title="Jetzt synchronisieren. Status: bereit. Letzter erfolgreicher Sync: 02.01.2026 03:04"`,
+		`Status: bereit`,
+		`Letzter erfolgreicher Sync:`,
 		`02.01.2026 03:04`,
 		`datetime="2026-01-02T03:04:00Z"`,
 		`data-local-date-time`,
+		`data-sync-last-value`,
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected sync stream to include %q in %s", want, output)
@@ -49,7 +54,9 @@ func TestSyncStatusBadgePollsWhileRunning(t *testing.T) {
 
 	output := rendered.String()
 	for _, want := range []string{
-		`Status: running`,
+		`caldo-sync-action-running`,
+		`data-sync-state="running"`,
+		`Status: läuft`,
 		`hx-get="/sync/status"`,
 		`hx-trigger="load delay:1s"`,
 		`hx-target="#sync-status"`,

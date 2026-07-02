@@ -56,13 +56,14 @@ func TestEventsPublishesSyncStatusHTML(t *testing.T) {
 		`hx-target="#sync-status"`,
 		`hx-swap="innerHTML"`,
 		`data-sync-request`,
-		"Letzter Sync: ",
+		"Letzter erfolgreicher Sync: ",
+		`data-sync-tooltip-template`,
 	} {
 		if !strings.Contains(syncStatusBlock, want) {
 			t.Fatalf("expected sync-status block to include %q in %q", want, syncStatusBlock)
 		}
 	}
-	if strings.Contains(syncStatusBlock, "Letzter Sync: nie") {
+	if strings.Contains(syncStatusBlock, "Letzter erfolgreicher Sync: nie") {
 		t.Fatalf("expected sync-status block to include persisted success time, got %q", syncStatusBlock)
 	}
 }

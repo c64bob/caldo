@@ -191,6 +191,8 @@ Bei neuen interaktiven Elementen muss entweder eine bestehende Caldo-Komponenten
 
 `npm run test:e2e:performance` ist ein opt-in Chromium-Lauf fuer Story 28.5. Er erzeugt synthetische Aufgaben, Projekte und Labels in der lokalen Stage-CalDAV-Instanz, durchlaeuft Setup/Import und misst Navigation, Suche, Live-Suche und Manual-Sync-Responsiveness. Die Ergebnisdateien liegen unter `test-results/performance/` und werden nicht committed.
 
+Fuer Story 30.3 kann derselbe Lauf grosse Kalender mit erledigten Aufgaben, Unteraufgaben und synthetischen Konflikten erzeugen. Die dokumentierten Groessen, Beispielkommandos und Ergebnisvorlage stehen in `docs/qa/large-calendars.md`.
+
 ## Visuelle Baselines
 
 `npm run test:e2e` erzeugt Review-Screenshots unter `test-results/e2e/chromium/baselines/`. `npm run test:e2e:webkit` erzeugt die WebKit-Variante unter `test-results/e2e/webkit/baselines/`. Diese Verzeichnisse sind lokale QA-Artefakte und werden nicht committed.

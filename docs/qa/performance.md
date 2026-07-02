@@ -2,6 +2,8 @@
 
 Dieses Dokument macht die Performance-Ziele aus `docs/prd.md` Abschnitt 23 als wiederholbare QA-Checks pruefbar. Die Checks sind fuer Release- oder Pre-Release-QA gedacht, nicht als harte lokale Entwicklerpflicht bei jeder Aenderung.
 
+Grosse-Kalender-Grenzen, gemischte Datensaetze mit erledigten Aufgaben, Unteraufgaben und Konflikten sowie die Ergebnisvorlage fuer reale Staging-Server stehen in `docs/qa/large-calendars.md`.
+
 ## Grundregeln
 
 - Nur synthetische Daten verwenden. Keine privaten Aufgaben, echten CalDAV-Zugaenge oder produktiven Nextcloud-Instanzen.
@@ -24,7 +26,7 @@ Der Browser-Interaktionsdatensatz ist die wiederholbare UI-Messung fuer Story 28
 - kurzen Titeln nach dem Muster `Perf Task 0001`
 - gemischten Faelligkeiten und Prioritaeten
 
-Der Datensatz wird durch den opt-in Playwright-Test gegen die lokale Stage-CalDAV-Instanz erzeugt. Er enthaelt keine privaten Inhalte und keine echten CalDAV-Zugaenge.
+Der Datensatz wird durch den opt-in Playwright-Test gegen die lokale Stage-CalDAV-Instanz erzeugt. Er enthaelt keine privaten Inhalte und keine echten CalDAV-Zugaenge. Fuer Story 30.3 kann derselbe Test ueber Umgebungsvariablen erledigte Aufgaben, Unteraufgaben und synthetische Konflikte erzeugen; die dokumentierten Groessen stehen in `docs/qa/large-calendars.md`.
 
 ### 400-Aufgaben-Datensatz
 
@@ -79,10 +81,18 @@ Der opt-in Playwright-Check erzeugt den Browser-Interaktionsdatensatz automatisc
 npm run test:e2e:performance
 ```
 
+Der Lauf misst ausserdem Initialimport und eine write-through Aufgabenbearbeitung. Wenn `CALDO_E2E_PERF_CONFLICTS` gesetzt ist, erzeugt er synthetische Dirty-Local-vs-Remote-Konflikte und misst den Full-Scan bis zur Konfliktliste.
+
 Die Standarddatenmenge kann fuer lokale Untersuchungen angepasst werden:
 
 ```bash
 CALDO_E2E_PERF_TASKS=1000 CALDO_E2E_PERF_PROJECTS=12 CALDO_E2E_PERF_LABELS=40 npm run test:e2e:performance
+```
+
+Gemischte Datensaetze koennen erledigte Aufgaben, Unteraufgaben und Konflikte enthalten:
+
+```bash
+CALDO_E2E_PERF_TASKS=400 CALDO_E2E_PERF_COMPLETED_TASKS=80 CALDO_E2E_PERF_SUBTASKS=40 CALDO_E2E_PERF_CONFLICTS=1 npm run test:e2e:performance
 ```
 
 Zielwert-Overrides sind nur fuer Diagnose-Laeufe gedacht und duerfen nicht als Release-Gate verwendet werden:

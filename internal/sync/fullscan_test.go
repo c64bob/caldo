@@ -88,6 +88,68 @@ VALUES ('project-1', '/cal/work/', 'Work', 'webdav_sync', 'token-1', CURRENT_TIM
 	}
 }
 
+func TestRunnerWebDAVSyncDeletesAbsoluteHref(t *testing.T) {
+	t.Parallel()
+
+	var sawWebDAVSync bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "REPORT" || r.URL.Path != "/cal/work/" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		body := readSyncTestBody(t, r)
+		if !strings.Contains(body, "sync-collection") || !strings.Contains(body, "token-1") {
+			t.Fatalf("unexpected sync report body: %s", body)
+		}
+		sawWebDAVSync = true
+		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+		w.WriteHeader(http.StatusMultiStatus)
+		_, _ = w.Write([]byte(`<d:multistatus xmlns:d="DAV:">
+<d:sync-token>token-2</d:sync-token>
+<d:response>
+  <d:href>http://` + r.Host + `/cal/work/uid-delete.ics</d:href>
+  <d:status>HTTP/1.1 404 Not Found</d:status>
+</d:response>
+</d:multistatus>`))
+	}))
+	t.Cleanup(server.Close)
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	key := []byte("12345678901234567890123456789012")
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: server.URL, Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+	if _, err := database.Conn.ExecContext(context.Background(), `
+INSERT INTO projects (id, calendar_href, display_name, sync_strategy, sync_token, created_at, updated_at)
+VALUES ('project-1', '/cal/work/', 'Work', 'webdav_sync', 'token-1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+INSERT INTO tasks (
+	id, project_id, uid, href, etag, server_version, title, status, raw_vtodo, base_vtodo, project_name, sync_status, created_at, updated_at
+) VALUES
+	('task-delete', 'project-1', 'uid-delete', '/cal/work/uid-delete.ics', '"etag-del"', 1, 'Delete', 'needs-action', 'BEGIN:VTODO\nUID:uid-delete\nSUMMARY:Delete\nEND:VTODO', 'BEGIN:VTODO\nUID:uid-delete\nSUMMARY:Delete\nEND:VTODO', 'Work', 'synced', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+`); err != nil {
+		t.Fatalf("seed project: %v", err)
+	}
+
+	runner, err := NewRunner(database, key, caldav.NewTodoClient(server.Client()))
+	if err != nil {
+		t.Fatalf("new runner: %v", err)
+	}
+	if err := runner.Run(context.Background()); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	if !sawWebDAVSync {
+		t.Fatal("expected webdav sync report")
+	}
+	assertSyncSingleInt(t, database, `SELECT COUNT(*) FROM tasks WHERE uid='uid-delete';`, 0)
+	assertSyncSingleText(t, database, `SELECT sync_token FROM projects WHERE id='project-1';`, "token-2")
+}
+
 func TestRunnerFallsBackToFullScanAgainstFakeCalDAVServer(t *testing.T) {
 	t.Parallel()
 

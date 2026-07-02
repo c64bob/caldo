@@ -47,7 +47,7 @@ func newRetryExecutor(httpClient *http.Client) *retryExecutor {
 
 	return &retryExecutor{
 		httpClient: httpClient,
-		rng:        rand.New(rand.NewSource(time.Now().UnixNano())),
+		rng:        rand.New(rand.NewSource(time.Now().UnixNano())), // #nosec G404 -- retry jitter is not security-sensitive randomness.
 		sleep:      time.Sleep,
 	}
 }
@@ -70,12 +70,12 @@ func (e *retryExecutor) do(ctx context.Context, policy operationPolicy, buildReq
 		if doErr == nil {
 			if response.StatusCode == http.StatusPreconditionFailed {
 				cancel()
-				response.Body.Close()
+				_ = response.Body.Close()
 				return nil, ErrPreconditionFailed
 			}
 			if shouldRetryStatus(response.StatusCode) && attempt < attempts-1 {
 				cancel()
-				response.Body.Close()
+				_ = response.Body.Close()
 				e.sleep(e.backoff(attempt))
 				continue
 			}

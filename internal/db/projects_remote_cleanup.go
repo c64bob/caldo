@@ -77,7 +77,7 @@ SELECT p.id, p.calendar_href,
 FROM projects p`
 	args := make([]any, 0, len(remoteHrefs))
 	if len(remoteHrefs) > 0 {
-		query += "\nWHERE p.calendar_href NOT IN (" + placeholders(len(remoteHrefs)) + ")"
+		query += "\nWHERE p.calendar_href NOT IN (" + placeholders(len(remoteHrefs)) + ")" // #nosec G202 -- placeholders are generated from slice length and hrefs are passed as query args.
 		for _, href := range remoteHrefs {
 			args = append(args, href)
 		}

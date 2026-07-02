@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 	"syscall"
+	"time"
 
 	"caldo/internal/assets"
 	"caldo/internal/caldav"
@@ -26,6 +27,8 @@ import (
 )
 
 var errShutdownTimeout = errors.New("shutdown timeout exceeded")
+
+const httpReadHeaderTimeout = 5 * time.Second
 
 func main() {
 	logger := logging.New(os.Stderr, os.Getenv("APP_ENV"), os.Getenv("LOG_LEVEL"))
@@ -90,8 +93,9 @@ func run(logger *slog.Logger) error {
 	}
 
 	server := &http.Server{
-		Addr:    ":" + cfg.Port,
-		Handler: handler.NewRouter(logger, cfg.ProxyUserHeader, manifest, setupStatus.Complete, cfg.EncryptionKey, sqliteDB, lifecycleCtx, appScheduler, syncRunner),
+		Addr:              ":" + cfg.Port,
+		Handler:           handler.NewRouter(logger, cfg.ProxyUserHeader, manifest, setupStatus.Complete, cfg.EncryptionKey, sqliteDB, lifecycleCtx, appScheduler, syncRunner),
+		ReadHeaderTimeout: httpReadHeaderTimeout,
 	}
 	server.RegisterOnShutdown(cancelLifecycle)
 

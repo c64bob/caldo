@@ -19,13 +19,13 @@ import (
 
 const (
 	defaultUsername     = "stage"
-	defaultPassword     = "stage"
-	defaultAdminToken   = "stage-admin"
+	defaultPassword     = "stage"       // #nosec G101 -- local in-memory staging server default used only for QA.
+	defaultAdminToken   = "stage-admin" // #nosec G101 -- local in-memory staging server default used only for QA.
 	defaultCalendarHref = "/cal/work/"
 	defaultCalendarName = "Work"
 
 	maxRequestBodyBytes = 2 << 20
-	adminTokenHeader    = "X-Stage-CalDAV-Admin-Token"
+	adminTokenHeader    = "X-Stage-CalDAV-Admin-Token" // #nosec G101 -- header name is not a credential.
 )
 
 // Config contains runtime settings for the staging CalDAV server.

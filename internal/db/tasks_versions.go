@@ -25,7 +25,7 @@ func (d *Database) ListTaskVersions(ctx context.Context, taskIDs []string) ([]Ta
 		args[i] = taskID
 	}
 
-	query := `SELECT id, server_version FROM tasks WHERE id IN (` + strings.Join(placeholders, ",") + `);`
+	query := `SELECT id, server_version FROM tasks WHERE id IN (` + strings.Join(placeholders, ",") + `);` // #nosec G202 -- placeholders are generated internally and values are passed as query args.
 	rows, err := d.Conn.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list task versions: %w", err)

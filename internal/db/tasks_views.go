@@ -301,6 +301,7 @@ func (d *Database) listSimpleSystemTasks(ctx context.Context, whereSQL string, l
 		limit = 200
 	}
 
+	// #nosec G202 -- whereSQL is selected from package-owned constant fragments; no user input is concatenated.
 	rows, err := d.Conn.QueryContext(ctx, `
 WITH cfg AS (
 	SELECT show_completed
@@ -393,6 +394,7 @@ func (d *Database) listDateScopedTasks(ctx context.Context, dateFilterSQL string
 	}
 	args = append(args, limit)
 
+	// #nosec G202 -- dateFilterSQL is selected from package-owned constant fragments; values are passed as query args.
 	rows, err := d.Conn.QueryContext(ctx, `
 WITH cfg AS (
 	SELECT show_completed, upcoming_days

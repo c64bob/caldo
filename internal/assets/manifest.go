@@ -12,7 +12,7 @@ type Manifest map[string]string
 
 // LoadManifest reads and validates a manifest.json file.
 func LoadManifest(path string) (Manifest, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- manifest path is a repository or operator-controlled startup path.
 	if err != nil {
 		return nil, fmt.Errorf("read manifest: %w", err)
 	}

@@ -21,11 +21,11 @@ type StartupLock struct {
 func AcquireStartupLock(dbPath string) (*StartupLock, error) {
 	lockPath := dbPath + ".startup.lock"
 	lockDir := filepath.Dir(lockPath)
-	if err := os.MkdirAll(lockDir, 0o755); err != nil {
+	if err := os.MkdirAll(lockDir, 0o700); err != nil {
 		return nil, fmt.Errorf("create startup lock directory: %w", err)
 	}
 
-	file, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o600)
+	file, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o600) // #nosec G304 -- startup lock path is derived from operator-configured DB_PATH.
 	if err != nil {
 		return nil, fmt.Errorf("open startup lock file: %w", err)
 	}

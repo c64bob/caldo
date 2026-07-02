@@ -216,7 +216,7 @@ type Texts struct {
 	SettingsInconsistent     string
 }
 
-var germanTexts = Texts{
+var germanTexts = Texts{ // #nosec G101 -- text catalog values are UI labels, not credentials.
 	AppSubtitle:              "CalDAV-Aufgaben",
 	CurrentView:              "Aktuelle Ansicht",
 	OpenNavigation:           "Navigation öffnen",
@@ -356,7 +356,7 @@ var germanTexts = Texts{
 	SettingsInconsistent:     "inkonsistent",
 }
 
-var englishTexts = Texts{
+var englishTexts = Texts{ // #nosec G101 -- text catalog values are UI labels, not credentials.
 	AppSubtitle:              "CalDAV tasks",
 	CurrentView:              "Current view",
 	OpenNavigation:           "Open navigation",

@@ -356,7 +356,7 @@ func deleteFullScanTasks(ctx context.Context, tx *sql.Tx, tasks []fullScanLocalT
 	for _, task := range tasks {
 		args = append(args, task.ID)
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET parent_id = NULL WHERE parent_id IN (`+placeholders(len(tasks))+`);`, args...); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET parent_id = NULL WHERE parent_id IN (`+placeholders(len(tasks))+`);`, args...); err != nil { // #nosec G202 -- placeholders are generated from slice length and task IDs are passed as query args.
 		return 0, fmt.Errorf("apply fullscan project: clear deleted parent links: %w", err)
 	}
 

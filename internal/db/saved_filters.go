@@ -151,6 +151,7 @@ func (d *Database) ListSavedFilterTasks(ctx context.Context, filterID string, re
 	queryArgs = append(queryArgs, args...)
 	queryArgs = append(queryArgs, limit)
 
+	// #nosec G202 -- whereSQL is emitted by the filter compiler and user values are passed as query args.
 	rows, err := d.Conn.QueryContext(ctx, `
 SELECT
 	t.id,

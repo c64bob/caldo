@@ -913,6 +913,14 @@ async function exerciseKeyboardShortcuts(page) {
   await page.keyboard.press('p');
   await expect(page).toHaveURL(/\/projects$/);
 
+  await gotoApp(page, '/today');
+  await ensureBrowserCSRFCookie(page);
+  const syncShortcutResponse = page.waitForResponse(response =>
+    response.url().endsWith('/sync/manual') && response.request().method() === 'POST'
+  );
+  await page.keyboard.press('r');
+  expect((await syncShortcutResponse).status()).toBe(200);
+
   const helpReturnTarget = page.locator('.caldo-sidebar [data-nav-system-filters] a[href="/today"]').first();
   await helpReturnTarget.focus();
   await page.keyboard.press('Shift+/');
@@ -923,7 +931,8 @@ async function exerciseKeyboardShortcuts(page) {
   await page.keyboard.press('Tab');
   await expect(helpDialog.getByRole('button', { name: 'Schließen' })).toBeFocused();
   await expect(helpDialog).toContainText('Tastaturkürzel');
-  await expect(helpDialog).toContainText('Mehrfachbearbeitung ist nicht verfügbar');
+  await expect(helpDialog).not.toContainText('Mehrfachbearbeitung ist nicht verfügbar');
+  await expect(helpDialog).toContainText('Jetzt synchronisieren');
   await expect(helpDialog).toContainText('G');
   await page.keyboard.press('Escape');
   await expect(helpDialog).toBeHidden();
@@ -1053,23 +1062,24 @@ async function exerciseThemeToggle(page) {
   const toggle = page.locator('[data-theme-toggle]');
 
   await expect(root).toHaveAttribute('data-theme-mode', 'system');
-  await expect(toggle).toContainText('Darstellung: System');
+  await expect(toggle).toHaveAttribute('aria-label', 'Darstellung: System');
+  await expect(toggle).toHaveAttribute('title', 'Darstellung: System');
 
   await toggle.click();
   await expect(root).toHaveAttribute('data-theme-mode', 'dark');
   await expect.poll(async () => (await root.getAttribute('class')) || '').toBe('dark');
-  await expect(toggle).toContainText('Darstellung: Dunkel');
+  await expect(toggle).toHaveAttribute('aria-label', 'Darstellung: Dunkel');
 
   await toggle.click();
   await expect(root).toHaveAttribute('data-theme-mode', 'light');
   await expect.poll(async () => (await root.getAttribute('class')) || '').toBe('light');
-  await expect(toggle).toContainText('Darstellung: Hell');
+  await expect(toggle).toHaveAttribute('aria-label', 'Darstellung: Hell');
 
   await toggle.click();
   await expect(root).toHaveAttribute('data-theme-mode', 'system');
   await expect(root).toHaveAttribute('data-theme-effective', /^(dark|light)$/);
   await expect.poll(async () => (await root.getAttribute('class')) || '').toBe('');
-  await expect(toggle).toContainText('Darstellung: System');
+  await expect(toggle).toHaveAttribute('aria-label', 'Darstellung: System');
 }
 
 async function exerciseSSESyncStatus(page) {
@@ -1112,7 +1122,7 @@ async function exerciseSSESyncStatus(page) {
 
     await expect.poll(() => page.evaluate(() => window.__caldoSSEConnected === true)).toBe(true);
     await ensureBrowserCSRFCookie(page);
-    await syncStatus.getByRole('button', { name: 'Jetzt synchronisieren' }).click();
+    await syncStatus.getByRole('button', { name: /Jetzt synchronisieren/ }).click();
     const event = await eventPromise;
     expect(event).toMatchObject({ type: 'sync', resource: 'sync_status' });
     await expect.poll(async () => {
@@ -1122,8 +1132,8 @@ async function exerciseSSESyncStatus(page) {
       });
       if (response.status() !== 200) return '';
       return response.text();
-    }, { timeout: 30_000 }).toMatch(/Status: idle[\s\S]*Letzter Sync: (?!nie)/);
-    await expect.poll(async () => (await syncStatus.textContent()) || '').toMatch(/Status: idle[\s\S]*Letzter Sync: (?!nie)/);
+    }, { timeout: 30_000 }).toMatch(/data-sync-state="idle"[\s\S]*Letzter erfolgreicher Sync: (?!nie)/);
+    await expect.poll(async () => await syncStatus.getByRole('button', { name: /Jetzt synchronisieren/ }).getAttribute('aria-label') || '').toMatch(/Status: bereit[\s\S]*Letzter erfolgreicher Sync: (?!nie)/);
     await expect(page.locator('[data-write-status]')).not.toContainText('Gespeichert');
   } finally {
     await page.unroute(eventsRoute);

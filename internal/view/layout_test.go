@@ -140,8 +140,9 @@ func TestBaseLayoutUsesSyncStatusFromContext(t *testing.T) {
 
 	output := rendered.String()
 	for _, want := range []string{
-		`Status: idle`,
-		`Letzter Sync:`,
+		`data-sync-state="idle"`,
+		`aria-label="Jetzt synchronisieren. Status: bereit. Letzter erfolgreicher Sync: 02.01.2026 03:04"`,
+		`title="Jetzt synchronisieren. Status: bereit. Letzter erfolgreicher Sync: 02.01.2026 03:04"`,
 		`02.01.2026 03:04`,
 		`datetime="2026-01-02T03:04:00Z"`,
 		`data-local-date-time`,
@@ -176,7 +177,7 @@ func TestBaseLayoutDoesNotOpenNormalEventsStreamByDefault(t *testing.T) {
 	if strings.Contains(output, `sse-connect="/events"`) {
 		t.Fatalf("expected default layout not to open normal events stream: %s", output)
 	}
-	if !strings.Contains(output, `Letzter Sync: nie`) {
+	if !strings.Contains(output, `Letzter erfolgreicher Sync: nie`) {
 		t.Fatalf("expected default layout to keep sync status fallback: %s", output)
 	}
 }
@@ -210,6 +211,7 @@ func TestBaseLayoutUsesUIPreferences(t *testing.T) {
 		`New task`,
 		`System filters`,
 		`Appearance: Dark`,
+		`title="Appearance: Dark"`,
 		`data-theme-mode="dark"`,
 		`data-theme-label-prefix="Appearance"`,
 		`data-theme-dark-label="Dark"`,
@@ -250,7 +252,9 @@ func TestBaseLayoutRendersSystemThemeToggleButton(t *testing.T) {
 		`data-theme-system-label="System"`,
 		`data-theme-light-label="Hell"`,
 		`data-theme-dark-label="Dunkel"`,
+		`caldo-theme-icon-system`,
 		`aria-label="Darstellung: System"`,
+		`title="Darstellung: System"`,
 		`Darstellung: System`,
 	} {
 		if !strings.Contains(output, want) {
@@ -386,12 +390,15 @@ func TestBaseLayoutRendersShortcutHelp(t *testing.T) {
 		`Filter`,
 		`Konflikte`,
 		`Einstellungen`,
-		`Mehrfachbearbeitung ist nicht verfügbar`,
+		`Jetzt synchronisieren`,
 		`Hilfe öffnen`,
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected shortcut help to include %q", want)
 		}
+	}
+	if strings.Contains(output, `Mehrfachbearbeitung ist nicht verfügbar`) {
+		t.Fatalf("expected shortcut help to omit unavailable multi-edit row")
 	}
 }
 

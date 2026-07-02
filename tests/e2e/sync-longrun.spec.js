@@ -133,7 +133,7 @@ async function syncAndWait(page, report, cycle, phase) {
   await manualSync(page);
   const status = await waitForSyncIdle(page);
   const milliseconds = Date.now() - started;
-  const passed = /Status: idle[\s\S]*Letzter Sync: (?!nie)/.test(status);
+  const passed = /data-sync-state="idle"[\s\S]*Letzter erfolgreicher Sync: (?!nie)/.test(status);
   report.checks.push({ cycle, phase, milliseconds, sync_idle: passed });
   expect(passed, `sync did not return to idle after ${phase} cycle ${cycle}`).toBe(true);
 }
@@ -152,7 +152,7 @@ async function waitForSyncIdle(page) {
     }
     latest = await response.text();
     return latest;
-  }, { timeout: syncTimeoutMs }).toMatch(/Status: idle[\s\S]*Letzter Sync: (?!nie)/);
+  }, { timeout: syncTimeoutMs }).toMatch(/data-sync-state="idle"[\s\S]*Letzter erfolgreicher Sync: (?!nie)/);
   return latest;
 }
 

@@ -338,7 +338,13 @@
       var label = themeToggleLabel(button, mode);
       button.setAttribute('data-theme-mode', mode);
       button.setAttribute('aria-label', label);
-      button.textContent = label;
+      button.setAttribute('title', label);
+      var currentLabel = button.querySelector('[data-theme-current-label]');
+      if (currentLabel) {
+        currentLabel.textContent = label;
+      } else {
+        button.textContent = label;
+      }
     });
   }
 
@@ -550,6 +556,30 @@
         node.textContent = formatted;
       }
     });
+    refreshSyncTooltips(scope);
+  }
+
+  function refreshSyncTooltips(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    var targets = [];
+    if (scope instanceof Element && scope.matches('[data-sync-tooltip-template]')) {
+      targets.push(scope);
+    }
+    Array.prototype.push.apply(targets, scope.querySelectorAll('[data-sync-tooltip-template]'));
+    Array.prototype.forEach.call(targets, function (target) {
+      var template = target.getAttribute('data-sync-tooltip-template') || '';
+      var lastSync = target.querySelector('[data-sync-last-value]');
+      if (!template || !lastSync) return;
+      var label = template.replace('{last}', (lastSync.textContent || '').trim());
+      target.setAttribute('aria-label', label);
+      target.setAttribute('title', label);
+    });
+  }
+
+  function requestManualSync() {
+    var syncButton = document.querySelector('button[data-sync-request]');
+    if (!syncButton || typeof syncButton.click !== 'function') return;
+    syncButton.click();
   }
 
   function bindQuickAddOverlay() {
@@ -2641,6 +2671,12 @@
     if (key === 'n') {
       event.preventDefault();
       openQuickAddOverlay(null);
+      return;
+    }
+
+    if (key === 'r') {
+      event.preventDefault();
+      requestManualSync();
       return;
     }
 

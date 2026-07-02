@@ -164,7 +164,7 @@ async function measureManualSyncResponsiveness(page, measurements, state) {
   const searchInput = page.locator('#global-search');
 
   const syncStarted = Date.now();
-  await syncStatus.getByRole('button', { name: 'Jetzt synchronisieren' }).click();
+  await syncStatus.getByRole('button', { name: /Jetzt synchronisieren/ }).click();
   record(measurements, 'manual_sync', 'request_returned', Date.now() - syncStarted, targets.syncStartMs);
 
   const interactionStarted = Date.now();
@@ -225,7 +225,7 @@ async function waitForSyncIdle(page, state, timeoutMs) {
     });
     if (response.status() !== 200) return '';
     return response.text();
-  }, { timeout: timeoutMs + 5_000 }).toMatch(/Status: idle[\s\S]*Letzter Sync: (?!nie)/);
+  }, { timeout: timeoutMs + 5_000 }).toMatch(/data-sync-state="idle"[\s\S]*Letzter erfolgreicher Sync: (?!nie)/);
 }
 
 async function measurePageLoad(page, pathname, readySelector) {

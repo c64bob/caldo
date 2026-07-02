@@ -114,8 +114,8 @@ type Texts struct {
 	ShortcutFilters          string
 	ShortcutConflicts        string
 	ShortcutSettings         string
+	ShortcutSyncNow          string
 	ShortcutOpenHelp         string
-	MultiEditUnavailable     string
 	Or                       string
 	Then                     string
 	OpenItemsAria            string
@@ -254,8 +254,8 @@ var germanTexts = Texts{ // #nosec G101 -- text catalog values are UI labels, no
 	ShortcutFilters:          "Filter",
 	ShortcutConflicts:        "Konflikte",
 	ShortcutSettings:         "Einstellungen",
+	ShortcutSyncNow:          "Jetzt synchronisieren",
 	ShortcutOpenHelp:         "Hilfe öffnen",
-	MultiEditUnavailable:     "Mehrfachbearbeitung ist nicht verfügbar",
 	Or:                       "oder",
 	Then:                     "dann",
 	OpenItemsAria:            "offene Einträge",
@@ -394,8 +394,8 @@ var englishTexts = Texts{ // #nosec G101 -- text catalog values are UI labels, n
 	ShortcutFilters:          "Filters",
 	ShortcutConflicts:        "Conflicts",
 	ShortcutSettings:         "Settings",
+	ShortcutSyncNow:          "Sync now",
 	ShortcutOpenHelp:         "Open help",
-	MultiEditUnavailable:     "Multi-edit is not available",
 	Or:                       "or",
 	Then:                     "then",
 	OpenItemsAria:            "open items",

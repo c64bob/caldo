@@ -121,6 +121,42 @@ func TestProjectCreateUsesDiscoveredCalendarHomeSet(t *testing.T) {
 	}
 }
 
+func TestProjectCreateInfersCalendarHomeFromConfiguredCalendarURL(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	if err := database.SaveCalDAVCredentials(context.Background(), []byte("12345678901234567890123456789012"), db.CalDAVCredentials{
+		URL: "https://nextcloud.example/remote.php/dav/calendars/alice/tasks/", Username: "alice", Password: "secret",
+	}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+	if err := database.SaveCalDAVServerCapabilities(context.Background(), db.CalDAVServerCapabilities{FullScan: true}); err != nil {
+		t.Fatalf("save capabilities: %v", err)
+	}
+
+	calendar := &fakeProjectCreateCalendarClient{created: caldav.Calendar{Href: "/remote.php/dav/calendars/alice/new-project/", DisplayName: "New Project"}}
+	h := ProjectCreate(projectCreateDependencies{database: database, encryptionKey: []byte("12345678901234567890123456789012"), calendar: calendar})
+
+	form := url.Values{"display_name": {"New Project"}}
+	request := httptest.NewRequest(http.MethodPost, "/projects", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	responseRecorder := httptest.NewRecorder()
+
+	h(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusCreated {
+		t.Fatalf("unexpected status code: got %d want %d body %s", responseRecorder.Code, http.StatusCreated, responseRecorder.Body.String())
+	}
+	if calendar.credentials.URL != "https://nextcloud.example/remote.php/dav/calendars/alice/" {
+		t.Fatalf("unexpected create base url: %#v", calendar.credentials)
+	}
+}
+
 func TestProjectCreateDoesNotPersistWhenRemoteCreateFails(t *testing.T) {
 	t.Parallel()
 

@@ -1141,28 +1141,32 @@
     });
   }
 
-  function openInlineEdit(root) {
+  function openInlineEdit(root, focusTarget) {
     if (!root) return;
     var display = root.querySelector('[data-inline-task-display]');
     var form = root.querySelector('[data-inline-task-edit-form]');
-    var trigger = root.querySelector('[data-inline-task-edit-open]');
+    var triggers = root.querySelectorAll('[data-inline-task-edit-open]');
     var extra = root.querySelector('[data-inline-task-edit-extra]');
     if (!form || !display) return;
     root.dataset.inlineTaskEditState = 'open';
+    root.dataset.inlineTaskEditFocus = focusTarget || 'title';
     display.hidden = true;
     form.hidden = false;
     if (extra) {
       extra.hidden = false;
     }
-    if (trigger) {
+    triggers.forEach(function (trigger) {
       trigger.setAttribute('aria-expanded', 'true');
-    }
+    });
     setInlineEditError(root, '');
-    var input = form.querySelector('[data-inline-task-edit-title]');
+    var selector = focusTarget === 'date' ? '[data-inline-task-edit-date]' : '[data-inline-task-edit-title]';
+    var input = form.querySelector(selector) || form.querySelector('[data-inline-task-edit-title]');
     if (input) {
       window.setTimeout(function () {
         input.focus();
-        input.select();
+        if (focusTarget !== 'date' && typeof input.select === 'function') {
+          input.select();
+        }
       }, 0);
     }
   }
@@ -1171,9 +1175,10 @@
     if (!root) return;
     var display = root.querySelector('[data-inline-task-display]');
     var form = root.querySelector('[data-inline-task-edit-form]');
-    var trigger = root.querySelector('[data-inline-task-edit-open]');
+    var triggers = root.querySelectorAll('[data-inline-task-edit-open]');
     var extra = root.querySelector('[data-inline-task-edit-extra]');
     if (!form || !display) return;
+    var focusTarget = root.dataset.inlineTaskEditFocus || 'title';
     form.reset();
     form.hidden = true;
     if (extra) {
@@ -1183,8 +1188,11 @@
     display.hidden = false;
     root.dataset.inlineTaskEditState = 'closed';
     setInlineEditError(root, '');
-    if (trigger) {
+    triggers.forEach(function (trigger) {
       trigger.setAttribute('aria-expanded', 'false');
+    });
+    var trigger = root.querySelector('[data-inline-task-edit-open][data-inline-task-edit-focus="' + focusTarget + '"]') || root.querySelector('[data-inline-task-edit-open]');
+    if (trigger) {
       trigger.focus();
     }
   }
@@ -2472,7 +2480,7 @@
     var inlineEditOpen = closestElement(event.target, '[data-inline-task-edit-open]');
     if (inlineEditOpen && !closestElement(event.target, '[data-inline-task-edit-form]')) {
       event.preventDefault();
-      openInlineEdit(inlineEditOpen.closest('[data-task-id]'));
+      openInlineEdit(inlineEditOpen.closest('[data-task-id]'), inlineEditOpen.getAttribute('data-inline-task-edit-focus') || 'title');
       return;
     }
 

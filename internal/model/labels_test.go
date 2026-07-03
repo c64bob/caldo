@@ -84,3 +84,53 @@ func TestLabelsAndFavoriteToCategoriesRejectsReservedLabel(t *testing.T) {
 		t.Fatal("expected reserved label error")
 	}
 }
+
+func TestNormalizeFavoritePriorityFields(t *testing.T) {
+	t.Parallel()
+
+	medium := 5
+	categories, priority, err := NormalizeFavoritePriorityFields([]string{"home", ReservedFavoriteCategory}, &medium)
+	if err != nil {
+		t.Fatalf("normalize favorite priority: %v", err)
+	}
+	if priority == nil || *priority != FavoritePriorityValue {
+		t.Fatalf("expected favorite to set high priority, got %#v", priority)
+	}
+	if !reflect.DeepEqual(categories, []string{"home", ReservedFavoriteCategory}) {
+		t.Fatalf("unexpected categories: %v", categories)
+	}
+
+	high := 4
+	categories, priority, err = NormalizeFavoritePriorityFields([]string{"home"}, &high)
+	if err != nil {
+		t.Fatalf("normalize high priority: %v", err)
+	}
+	if priority == nil || *priority != 4 {
+		t.Fatalf("expected high priority to be preserved, got %#v", priority)
+	}
+	if !reflect.DeepEqual(categories, []string{"home", ReservedFavoriteCategory}) {
+		t.Fatalf("expected high priority to set favorite, got %v", categories)
+	}
+}
+
+func TestCategoriesWithFavoriteFromPriority(t *testing.T) {
+	t.Parallel()
+
+	medium := 5
+	categories, err := CategoriesWithFavoriteFromPriority([]string{"home", ReservedFavoriteCategory}, &medium)
+	if err != nil {
+		t.Fatalf("priority category normalization: %v", err)
+	}
+	if !reflect.DeepEqual(categories, []string{"home"}) {
+		t.Fatalf("expected non-high priority to remove favorite, got %v", categories)
+	}
+
+	high := 1
+	categories, err = CategoriesWithFavoriteFromPriority([]string{"home"}, &high)
+	if err != nil {
+		t.Fatalf("priority category normalization: %v", err)
+	}
+	if !reflect.DeepEqual(categories, []string{"home", ReservedFavoriteCategory}) {
+		t.Fatalf("expected high priority to add favorite, got %v", categories)
+	}
+}

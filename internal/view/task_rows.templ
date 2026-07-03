@@ -53,9 +53,9 @@ templ TaskRow(task TaskRowView) {
 							aria-label={ taskCompletionLabel(task) }
 							checked?={ taskIsCompleted(task) }
 						/>
-						<span class="caldo-task-checkbox" aria-hidden="true">
-							<span aria-hidden="true" class="caldo-task-checkbox-mark"></span>
-						</span>
+							<span class={ "caldo-task-checkbox", taskCheckboxPriorityClass(task) } aria-hidden="true">
+								<span aria-hidden="true" class="caldo-task-checkbox-mark"></span>
+							</span>
 					</label>
 				} else {
 					<label
@@ -70,15 +70,28 @@ templ TaskRow(task TaskRowView) {
 							disabled?={ !taskCanToggleCompletion(task) }
 							data-task-completion-checkbox
 						/>
-						<span class="caldo-task-checkbox" aria-hidden="true">
-							<span aria-hidden="true" class="caldo-task-checkbox-mark"></span>
-						</span>
+							<span class={ "caldo-task-checkbox", taskCheckboxPriorityClass(task) } aria-hidden="true">
+								<span aria-hidden="true" class="caldo-task-checkbox-mark"></span>
+							</span>
 					</label>
 				}
 			</form>
-			<div class="caldo-task-content" data-inline-task-display>
-				<div class="caldo-task-title-line">
-					<p class="caldo-task-title">{ taskRowTitle(task) }</p>
+				<div class="caldo-task-content" data-inline-task-display>
+					<div class="caldo-task-title-line">
+						if taskCanInlineEdit(task) {
+							<button
+								type="button"
+								class="caldo-task-title caldo-task-title-edit-trigger"
+								data-inline-task-edit-open
+								data-inline-task-edit-focus="title"
+								aria-expanded="false"
+								aria-label={ "Titel bearbeiten: " + taskRowTitle(task) }
+							>
+								{ taskRowTitle(task) }
+							</button>
+						} else {
+							<p class="caldo-task-title">{ taskRowTitle(task) }</p>
+						}
 					if taskCanShowFavorite(task) {
 						<form
 							method="post"
@@ -116,17 +129,7 @@ templ TaskRow(task TaskRowView) {
 					for _, state := range taskStateChips(task) {
 						<span class={ state.Class }>{ state.Label }</span>
 					}
-					if taskCanInlineEdit(task) {
-						<button
-							type="button"
-							class="caldo-task-edit-open"
-							data-inline-task-edit-open
-							aria-expanded="false"
-						>
-							Bearbeiten
-						</button>
-					}
-					if taskUsesConflictLink(task) {
+						if taskUsesConflictLink(task) {
 						<a
 							class="caldo-task-detail-open"
 							href={ templ.URL(taskConflictPath(task)) }
@@ -145,21 +148,39 @@ templ TaskRow(task TaskRowView) {
 							Details
 						</button>
 					}
-				</div>
-				if taskRowDescription(task) != "" {
-					<p class="caldo-task-description">@TaskDescriptionText(taskRowDescription(task))</p>
-				}
-				<div class="caldo-task-meta-line">
-					for _, chip := range taskRelationshipChips(task) {
-						<span class={ chip.Class }>{ chip.Label }</span>
+					</div>
+					if taskRowDescription(task) != "" {
+						<div class="caldo-task-description">@TaskDescriptionMarkdown(taskRowDescription(task))</div>
 					}
-					for _, chip := range taskMetaChips(task) {
-						<span class={ chip.Class }>{ chip.Label }</span>
-					}
-					for _, chip := range taskLabelChips(task) {
-						<span class={ chip.Class }>{ chip.Label }</span>
-					}
-				</div>
+					<div class="caldo-task-meta-line">
+						<div class="caldo-task-meta-main">
+							for _, chip := range taskRelationshipChips(task) {
+								<span class={ chip.Class }>{ chip.Label }</span>
+							}
+							for _, chip := range taskMetaChips(task) {
+								<span class={ chip.Class }>{ chip.Label }</span>
+							}
+							for _, chip := range taskLabelChips(task) {
+								<span class={ chip.Class }>{ chip.Label }</span>
+							}
+						</div>
+						<div class="caldo-task-date-slot">
+							if taskCanInlineEdit(task) {
+								<button
+									type="button"
+									class={ taskDueStateChip(task).Class, "caldo-task-date-trigger" }
+									data-inline-task-edit-open
+									data-inline-task-edit-focus="date"
+									aria-expanded="false"
+									aria-label={ taskDateEditLabel(task) }
+								>
+									{ taskDueStateChip(task).Label }
+								</button>
+							} else {
+								<span class={ taskDueStateChip(task).Class }>{ taskDueStateChip(task).Label }</span>
+							}
+						</div>
+					</div>
 				if len(task.Attachments) > 0 {
 					<div class="caldo-task-attachments" aria-label="Anhänge">
 						for _, attachment := range task.Attachments {
@@ -187,57 +208,29 @@ templ TaskRow(task TaskRowView) {
 					aria-label={ "Aufgabe bearbeiten: " + taskRowTitle(task) }
 					aria-describedby={ taskDOMID("task-edit-error", task) }
 					hidden
-				>
-					<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
-					<input type="hidden" name="status" value={ task.Status }/>
-					<label class="caldo-task-edit-field">
-						<span>Titel</span>
-						<input
-							type="text"
-							name="title"
-							required
-							autocomplete="off"
-							class="caldo-input caldo-task-edit-title"
-							value={ taskRowTitle(task) }
-							data-inline-task-edit-title
-							aria-describedby={ taskDOMID("task-edit-error", task) }
-						/>
-					</label>
-					<label class="caldo-task-edit-field">
-						<span>Beschreibung</span>
-						<textarea name="description" rows="3" class="caldo-input caldo-task-edit-description">{ taskRowDescription(task) }</textarea>
-					</label>
-					<div class="caldo-task-edit-grid">
-						<label class="caldo-task-edit-field">
-							<span>Projekt</span>
-							if len(taskProjectOptions(task)) > 0 {
-								<select name="project_id" class="caldo-select">
-									for _, project := range taskProjectOptions(task) {
-										<option value={ project.ID } selected?={ strings.TrimSpace(project.ID) == strings.TrimSpace(task.ProjectID) }>{ project.Name }</option>
-									}
-								</select>
-							} else {
-								<input type="hidden" name="project_id" value={ task.ProjectID }/>
-								<span class="caldo-task-edit-static">{ task.ProjectName }</span>
-							}
-						</label>
-						<label class="caldo-task-edit-field">
-							<span>Fällig</span>
-							<input type="date" name="due_date" value={ task.DueISODate } class="caldo-input"/>
-						</label>
-						<label class="caldo-task-edit-field">
-							<span>Priorität</span>
-							<select name="priority" class="caldo-select">
-								for _, priority := range taskPriorityOptions() {
-									<option value={ priority.Value } selected?={ priority.Value == taskPriorityValue(task) }>{ priority.Label }</option>
-								}
-							</select>
-						</label>
-						<label class="caldo-task-edit-field caldo-task-edit-field-wide">
-							<span>Labels</span>
-							<input type="text" name="labels" value={ taskEditableLabels(task) } class="caldo-input" autocomplete="off" data-task-labels-input/>
-						</label>
-					</div>
+					>
+						<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
+						<input type="hidden" name="status" value={ task.Status }/>
+						<input type="hidden" name="project_id" value={ task.ProjectID }/>
+						<div class="caldo-task-edit-grid">
+							<label class="caldo-task-edit-field caldo-task-edit-field-title">
+								<span>Titel</span>
+								<input
+									type="text"
+									name="title"
+									required
+									autocomplete="off"
+									class="caldo-input caldo-task-edit-title"
+									value={ taskRowTitle(task) }
+									data-inline-task-edit-title
+									aria-describedby={ taskDOMID("task-edit-error", task) }
+								/>
+							</label>
+							<label class="caldo-task-edit-field">
+								<span>Fällig</span>
+								<input type="date" name="due_date" value={ task.DueISODate } class="caldo-input" data-inline-task-edit-date/>
+							</label>
+						</div>
 					<p id={ taskDOMID("task-edit-error", task) } class="caldo-alert caldo-alert-error caldo-task-edit-error" data-inline-task-edit-error role="alert" aria-live="polite" hidden>Aufgabe konnte nicht gespeichert werden.</p>
 					<div class="caldo-task-edit-actions">
 						<button type="submit" class="caldo-button caldo-button-primary">Speichern</button>
@@ -279,10 +272,18 @@ templ TaskRow(task TaskRowView) {
 	</li>
 }
 
-templ TaskDescriptionText(description string) {
-	for _, segment := range taskDescriptionSegments(description) {
-		if segment.URL != "" {
+templ TaskDescriptionMarkdown(description string) {
+	for _, segment := range taskDescriptionMarkdownSegments(description) {
+		if segment.Kind == "link" {
 			<a href={ templ.SafeURL(segment.URL) } target="_blank" rel="noopener noreferrer" class="caldo-task-description-link">{ segment.Text }</a>
+		} else if segment.Kind == "strong" {
+			<strong>{ segment.Text }</strong>
+		} else if segment.Kind == "em" {
+			<em>{ segment.Text }</em>
+		} else if segment.Kind == "code" {
+			<code>{ segment.Text }</code>
+		} else if segment.Kind == "break" {
+			<br/>
 		} else {
 			{ segment.Text }
 		}

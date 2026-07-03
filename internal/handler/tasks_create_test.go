@@ -61,7 +61,7 @@ func TestTaskCreateSuccessPersistsSyncedTask(t *testing.T) {
 	if !strings.Contains(stub.raw, "SUMMARY:Buy milk") {
 		t.Fatalf("expected summary in raw payload: %q", stub.raw)
 	}
-	if !strings.Contains(stub.raw, "CATEGORIES:finance,home") {
+	if !strings.Contains(stub.raw, "CATEGORIES:finance,home,STARRED") {
 		t.Fatalf("expected categories in raw payload: %q", stub.raw)
 	}
 	if !strings.Contains(stub.raw, "PRIORITY:1") {
@@ -89,7 +89,7 @@ func TestTaskCreateSuccessPersistsSyncedTask(t *testing.T) {
 	if syncStatus != "synced" || etag != `"etag-1"` || serverVersion != 2 {
 		t.Fatalf("unexpected task state: status=%q etag=%q version=%d", syncStatus, etag, serverVersion)
 	}
-	if dueDate != "2026-06-09" || priority != 1 || labelNames != "finance,home" {
+	if dueDate != "2026-06-09" || priority != 1 || labelNames != "finance,home,STARRED" {
 		t.Fatalf("unexpected denormalized task fields: due=%q priority=%d labels=%q", dueDate, priority, labelNames)
 	}
 }
@@ -126,7 +126,7 @@ func TestTaskCreateQuickAddCanCreateProjectBeforeTask(t *testing.T) {
 	if calendar.createCalls != 1 || calendar.displayName != "Work" {
 		t.Fatalf("unexpected calendar create: calls=%d name=%q", calendar.createCalls, calendar.displayName)
 	}
-	if !strings.HasPrefix(todos.href, "/cal/work/") || !strings.Contains(todos.raw, "SUMMARY:Plan release") || !strings.Contains(todos.raw, "CATEGORIES:urgent,backend") || !strings.Contains(todos.raw, "PRIORITY:5") {
+	if !strings.HasPrefix(todos.href, "/cal/work/") || !strings.Contains(todos.raw, "SUMMARY:Plan release") || !strings.Contains(todos.raw, "CATEGORIES:backend,urgent") || !strings.Contains(todos.raw, "PRIORITY:5") {
 		t.Fatalf("unexpected task create payload: href=%q raw=%q", todos.href, todos.raw)
 	}
 
@@ -139,7 +139,7 @@ WHERE title = 'Plan release';
 `).Scan(&projectName, &href, &labelNames, &priority); err != nil {
 		t.Fatalf("query quick add task: %v", err)
 	}
-	if projectName != "Work" || !strings.HasPrefix(href, "/cal/work/") || labelNames != "urgent,backend" || priority != 5 {
+	if projectName != "Work" || !strings.HasPrefix(href, "/cal/work/") || labelNames != "backend,urgent" || priority != 5 {
 		t.Fatalf("unexpected quick add task row: project=%q href=%q labels=%q priority=%d", projectName, href, labelNames, priority)
 	}
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM projects WHERE display_name = 'Work' AND calendar_href = '/cal/work/';`, 1)

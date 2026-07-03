@@ -122,13 +122,13 @@ WHERE id = 'task-1';
 `).Scan(&title, &description, &status, &dueDate, &priority, &labelNames, &rawVTODO, &syncStatus, &etag, &version); err != nil {
 		t.Fatalf("query task: %v", err)
 	}
-	if title != "new title" || description != "updated" || status != "completed" || dueDate != "2026-07-10" || priority != 4 || labelNames != "home,urgent" {
+	if title != "new title" || description != "updated" || status != "completed" || dueDate != "2026-07-10" || priority != 4 || labelNames != "home,urgent,STARRED" {
 		t.Fatalf("unexpected edited fields: title=%q description=%q status=%q due=%q priority=%d labels=%q", title, description, status, dueDate, priority, labelNames)
 	}
 	if syncStatus != "synced" || etag != `"etag-2"` || version != 4 {
 		t.Fatalf("unexpected sync row: status=%q etag=%q version=%d", syncStatus, etag, version)
 	}
-	for _, want := range []string{"SUMMARY:new title", "DESCRIPTION:updated", "STATUS:COMPLETED", "DUE;VALUE=DATE:20260710", "PRIORITY:4", "CATEGORIES:home,urgent", "COMPLETED:"} {
+	for _, want := range []string{"SUMMARY:new title", "DESCRIPTION:updated", "STATUS:COMPLETED", "DUE;VALUE=DATE:20260710", "PRIORITY:4", "CATEGORIES:home,urgent,STARRED", "COMPLETED:"} {
 		if !bytes.Contains([]byte(rawVTODO), []byte(want)) {
 			t.Fatalf("expected raw vtodo to contain %q in %q", want, rawVTODO)
 		}
@@ -137,6 +137,52 @@ WHERE id = 'task-1';
 		t.Fatalf("unexpected caldav update call: calls=%d href=%q etag=%q raw=%q", stub.updateCalls, stub.lastHref, stub.lastUpdateETag, stub.lastRawVTODO)
 	}
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM undo_snapshots WHERE session_id = 'session-1' AND tab_id = 'tab-1' AND task_id = 'task-1' AND action_type = 'task_updated';`, 1)
+}
+
+func TestTaskUpdatePriorityChangeRemovesFavoriteCategory(t *testing.T) {
+	t.Parallel()
+	database := openSQLiteForTaskUpdateHandlerTest(t)
+	seedTaskUpdateHandlerData(t, database)
+	setTaskRawVTODO(t, database, `BEGIN:VCALENDAR
+BEGIN:VTODO
+UID:uid-1
+SUMMARY:old
+STATUS:NEEDS-ACTION
+PRIORITY:1
+CATEGORIES:home,STARRED
+END:VTODO
+END:VCALENDAR`)
+
+	key := bytes.Repeat([]byte{0x67}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	stub := &stubTaskUpdateTodoClient{updateETag: `"etag-priority"`}
+	h := TaskUpdate(taskUpdateDependencies{database: database, encryptionKey: key, todos: stub})
+	form := url.Values{
+		"expected_version": {"2"},
+		"title":            {"old"},
+		"priority":         {"5"},
+	}
+	req := httptest.NewRequest(http.MethodPatch, "/tasks/task-1", bytes.NewBufferString(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Tab-ID", "tab-priority")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("taskID", "task-1")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("unexpected status: got %d body=%q", rr.Code, rr.Body.String())
+	}
+	if bytes.Contains([]byte(stub.lastRawVTODO), []byte("STARRED")) {
+		t.Fatalf("expected priority change away from high to remove STARRED, raw=%q", stub.lastRawVTODO)
+	}
+	if !bytes.Contains([]byte(stub.lastRawVTODO), []byte("PRIORITY:5")) || !bytes.Contains([]byte(stub.lastRawVTODO), []byte("CATEGORIES:home")) {
+		t.Fatalf("expected priority and non-favorite categories to remain, raw=%q", stub.lastRawVTODO)
+	}
 }
 
 func TestTaskUpdatePreservesAttachAndUnknownProperties(t *testing.T) {
@@ -360,7 +406,7 @@ func TestTaskUpdatePreservesDescriptionWhenOmitted(t *testing.T) {
 	}
 }
 
-func TestTaskUpdateClearsExplicitFieldsAndPreservesFavoriteCategory(t *testing.T) {
+func TestTaskUpdateClearsExplicitFieldsAndFavoriteWhenPriorityClears(t *testing.T) {
 	t.Parallel()
 	database := openSQLiteForTaskUpdateHandlerTest(t)
 	seedTaskUpdateHandlerData(t, database)
@@ -429,14 +475,11 @@ WHERE id = 'task-1';
 			t.Fatalf("raw vtodo unexpectedly contains %q: %q", notWant, rawVTODO)
 		}
 	}
-	if !bytes.Contains([]byte(rawVTODO), []byte("CATEGORIES:STARRED")) {
-		t.Fatalf("expected favorite category to be preserved, raw=%q", rawVTODO)
-	}
 	if description.Valid || dueDate.Valid || priority.Valid {
 		t.Fatalf("expected cleared nullable fields, description=%#v dueDate=%#v priority=%#v", description, dueDate, priority)
 	}
-	if !labelNames.Valid || labelNames.String != "STARRED" {
-		t.Fatalf("expected only favorite label name to remain, got %#v", labelNames)
+	if labelNames.Valid {
+		t.Fatalf("expected labels to be cleared when priority is cleared, got %#v", labelNames)
 	}
 }
 

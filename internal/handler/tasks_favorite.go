@@ -81,6 +81,11 @@ func performTaskFavoriteUpdate(ctx context.Context, deps taskUpdateDependencies,
 		return errTaskCompletionPersistPending
 	}
 	patch := model.VTODOPatch{Categories: categories}
+	if favorite {
+		patch.Priority = model.FavoritePriority()
+	} else {
+		patch.ClearPriority = true
+	}
 	rawVTODO := model.PatchVTODO(base.RawVTODO, patch)
 	parsed := model.ParseVTODOFields(rawVTODO)
 

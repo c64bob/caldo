@@ -15,7 +15,11 @@ func MapCalendarObject(object caldav.CalendarObject, projectName string) (db.Imp
 		return db.ImportedTask{}, false
 	}
 
-	labels, favorite := model.CategoriesToLabelsAndFavorite(parsed.Categories)
+	categories, priority, err := model.NormalizeFavoritePriorityFields(parsed.Categories, parsed.Priority)
+	if err != nil {
+		return db.ImportedTask{}, false
+	}
+	labels, favorite := model.CategoriesToLabelsAndFavorite(categories)
 	if favorite {
 		labels = append(labels, model.ReservedFavoriteCategory)
 	}
@@ -35,7 +39,7 @@ func MapCalendarObject(object caldav.CalendarObject, projectName string) (db.Imp
 		CompletedAt: formatTimePointer(parsed.CompletedAt),
 		DueDate:     parsed.DueDate,
 		DueAt:       formatTimePointer(parsed.DueAt),
-		Priority:    parsed.Priority,
+		Priority:    priority,
 		RRule:       parsed.RRule,
 		ParentUID:   parsed.ParentUID,
 		RawVTODO:    object.RawVTODO,

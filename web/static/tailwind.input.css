@@ -22,6 +22,8 @@
 		--caldo-danger-muted: #fef2f2;
 		--caldo-warning: #b45309;
 		--caldo-warning-muted: #fffbeb;
+		--caldo-info: #2563eb;
+		--caldo-info-muted: #eff6ff;
 		--caldo-success: #047857;
 		--caldo-success-muted: #ecfdf5;
 	}
@@ -46,6 +48,8 @@
 			--caldo-danger-muted: #3b1111;
 			--caldo-warning: #fbbf24;
 			--caldo-warning-muted: #3a2505;
+			--caldo-info: #60a5fa;
+			--caldo-info-muted: #10233f;
 			--caldo-success: #34d399;
 			--caldo-success-muted: #082f24;
 		}
@@ -70,6 +74,8 @@
 		--caldo-danger-muted: #fef2f2;
 		--caldo-warning: #b45309;
 		--caldo-warning-muted: #fffbeb;
+		--caldo-info: #2563eb;
+		--caldo-info-muted: #eff6ff;
 		--caldo-success: #047857;
 		--caldo-success-muted: #ecfdf5;
 	}
@@ -93,6 +99,8 @@
 		--caldo-danger-muted: #3b1111;
 		--caldo-warning: #fbbf24;
 		--caldo-warning-muted: #3a2505;
+		--caldo-info: #60a5fa;
+		--caldo-info-muted: #10233f;
 		--caldo-success: #34d399;
 		--caldo-success-muted: #082f24;
 	}
@@ -415,11 +423,10 @@
 	.caldo-quick-add-chip:focus-visible,
 	.caldo-quick-add-suggestion:focus-visible,
 	.caldo-task-favorite-button:focus-visible,
-	.caldo-task-description-link:focus-visible,
-	.caldo-task-attachment-link:focus-visible,
-	.caldo-task-detail-attachment-link:focus-visible,
-	.caldo-task-edit-open:focus-visible,
-	.caldo-task-detail-open:focus-visible,
+		.caldo-task-description-link:focus-visible,
+		.caldo-task-attachment-link:focus-visible,
+		.caldo-task-detail-attachment-link:focus-visible,
+		.caldo-task-detail-open:focus-visible,
 	.caldo-subtask-create-trigger:focus-visible,
 	.caldo-inline-create-trigger:focus-visible,
 	.caldo-menu-item:focus-visible,
@@ -894,17 +901,47 @@
 		@apply sr-only;
 	}
 
-	.caldo-task-checkbox {
-		@apply flex h-5 w-5 items-center justify-center rounded-full border transition;
-		background: var(--caldo-surface);
-		border-color: var(--caldo-border-strong);
-		color: var(--caldo-accent);
-	}
+		.caldo-task-checkbox {
+			@apply flex h-5 w-5 items-center justify-center rounded-full border transition;
+			background: var(--caldo-surface);
+			border-color: var(--caldo-border-strong);
+			color: var(--caldo-accent);
+		}
 
-	.caldo-task-checkbox-label:hover .caldo-task-checkbox,
-	.caldo-task-checkbox-input:focus-visible + .caldo-task-checkbox {
-		border-color: var(--caldo-accent);
-	}
+		.caldo-task-checkbox-priority-high {
+			border-color: var(--caldo-danger);
+			color: var(--caldo-danger);
+		}
+
+		.caldo-task-checkbox-priority-medium {
+			border-color: var(--caldo-warning);
+			color: var(--caldo-warning);
+		}
+
+		.caldo-task-checkbox-priority-low {
+			border-color: var(--caldo-info);
+			color: var(--caldo-info);
+		}
+
+		.caldo-task-checkbox-label:hover .caldo-task-checkbox,
+		.caldo-task-checkbox-input:focus-visible + .caldo-task-checkbox {
+			border-color: var(--caldo-accent);
+		}
+
+		.caldo-task-checkbox-label:hover .caldo-task-checkbox-priority-high,
+		.caldo-task-checkbox-input:focus-visible + .caldo-task-checkbox-priority-high {
+			border-color: var(--caldo-danger);
+		}
+
+		.caldo-task-checkbox-label:hover .caldo-task-checkbox-priority-medium,
+		.caldo-task-checkbox-input:focus-visible + .caldo-task-checkbox-priority-medium {
+			border-color: var(--caldo-warning);
+		}
+
+		.caldo-task-checkbox-label:hover .caldo-task-checkbox-priority-low,
+		.caldo-task-checkbox-input:focus-visible + .caldo-task-checkbox-priority-low {
+			border-color: var(--caldo-info);
+		}
 
 	.caldo-task-checkbox-input:focus-visible + .caldo-task-checkbox {
 		outline: 2px solid var(--caldo-focus);
@@ -915,12 +952,30 @@
 		@apply cursor-not-allowed opacity-50;
 	}
 
-	.caldo-task-checkbox-input:checked + .caldo-task-checkbox,
-	.caldo-task-row-completed .caldo-task-checkbox {
-		background: var(--caldo-accent);
-		border-color: var(--caldo-accent);
-		color: #fff;
-	}
+		.caldo-task-checkbox-input:checked + .caldo-task-checkbox,
+		.caldo-task-row-completed .caldo-task-checkbox {
+			background: var(--caldo-accent);
+			border-color: var(--caldo-accent);
+			color: #fff;
+		}
+
+		.caldo-task-checkbox-input:checked + .caldo-task-checkbox-priority-high,
+		.caldo-task-row-completed .caldo-task-checkbox-priority-high {
+			background: var(--caldo-danger);
+			border-color: var(--caldo-danger);
+		}
+
+		.caldo-task-checkbox-input:checked + .caldo-task-checkbox-priority-medium,
+		.caldo-task-row-completed .caldo-task-checkbox-priority-medium {
+			background: var(--caldo-warning);
+			border-color: var(--caldo-warning);
+		}
+
+		.caldo-task-checkbox-input:checked + .caldo-task-checkbox-priority-low,
+		.caldo-task-row-completed .caldo-task-checkbox-priority-low {
+			background: var(--caldo-info);
+			border-color: var(--caldo-info);
+		}
 
 	.caldo-task-checkbox-mark {
 		@apply hidden h-2 w-3 rotate-[-45deg] border-b-2 border-l-2;
@@ -952,13 +1007,13 @@
 			grid-column: 1;
 		}
 
-		.caldo-task-meta-line {
-			align-self: start;
-			grid-column: 2;
-			grid-row: 1 / span 2;
-			justify-content: flex-end;
-			padding-top: 0.125rem;
-		}
+			.caldo-task-meta-line {
+				align-self: start;
+				grid-column: 2;
+				grid-row: 1 / span 2;
+				justify-content: stretch;
+				padding-top: 0.125rem;
+			}
 
 		.caldo-task-attachments,
 		.caldo-task-actions,
@@ -971,11 +1026,32 @@
 		@apply flex min-w-0 items-start gap-1.5;
 	}
 
-	.caldo-task-title {
-		@apply min-w-0 flex-1 text-sm font-medium leading-5;
-		color: var(--caldo-text);
-		overflow-wrap: anywhere;
-	}
+		.caldo-task-title {
+			@apply min-w-0 flex-1 text-sm font-medium leading-5;
+			color: var(--caldo-text);
+			overflow-wrap: anywhere;
+		}
+
+		.caldo-task-title-edit-trigger {
+			appearance: none;
+			background: transparent;
+			border: 0;
+			border-radius: 0.125rem;
+			cursor: text;
+			padding: 0;
+			text-align: left;
+		}
+
+		.caldo-task-title-edit-trigger:hover,
+		.caldo-task-title-edit-trigger:focus-visible {
+			color: var(--caldo-accent);
+			outline: 2px solid transparent;
+			outline-offset: 2px;
+		}
+
+		.caldo-task-title-edit-trigger:focus-visible {
+			outline-color: var(--caldo-focus);
+		}
 
 	.caldo-task-row-completed .caldo-task-title {
 		color: var(--caldo-text-muted);
@@ -1013,11 +1089,21 @@
 		color: var(--caldo-warning);
 	}
 
-	.caldo-task-description {
-		@apply max-w-full text-sm leading-5;
-		color: var(--caldo-text-muted);
-		overflow-wrap: anywhere;
-	}
+		.caldo-task-description {
+			@apply max-w-full text-sm leading-5;
+			color: var(--caldo-text-muted);
+			display: -webkit-box;
+			-webkit-box-orient: vertical;
+			-webkit-line-clamp: 2;
+			overflow: hidden;
+			overflow-wrap: anywhere;
+		}
+
+		.caldo-task-description code {
+			@apply rounded px-1 py-0.5 text-xs;
+			background: var(--caldo-surface-muted);
+			color: var(--caldo-text);
+		}
 
 	.caldo-task-description-link {
 		@apply rounded-sm underline decoration-transparent underline-offset-2 transition;
@@ -1035,10 +1121,26 @@
 		outline-color: var(--caldo-focus);
 	}
 
-	.caldo-task-meta-line,
-	.caldo-task-attachments {
-		@apply flex min-w-0 flex-wrap items-center gap-1;
-	}
+		.caldo-task-meta-line,
+		.caldo-task-meta-main,
+		.caldo-task-attachments {
+			@apply flex min-w-0 flex-wrap items-center gap-1;
+		}
+
+		.caldo-task-date-slot {
+			@apply flex min-w-0 shrink-0 items-center;
+		}
+
+		@media (min-width: 768px) {
+			.caldo-task-meta-line {
+				@apply grid w-full items-start gap-1.5;
+				grid-template-columns: minmax(0, 1fr) auto;
+			}
+
+			.caldo-task-date-slot {
+				@apply justify-end;
+			}
+		}
 
 	.caldo-task-chip,
 	.caldo-task-state {
@@ -1081,9 +1183,27 @@
 		color: var(--caldo-success);
 	}
 
-	.caldo-task-chip-due-none {
-		color: var(--caldo-text-subtle);
-	}
+		.caldo-task-chip-due-none {
+			color: var(--caldo-text-subtle);
+		}
+
+		.caldo-task-date-trigger {
+			appearance: none;
+			cursor: pointer;
+			font: inherit;
+			text-align: left;
+		}
+
+		.caldo-task-date-trigger:hover,
+		.caldo-task-date-trigger:focus-visible {
+			background: var(--caldo-surface);
+			outline: 2px solid transparent;
+			outline-offset: 2px;
+		}
+
+		.caldo-task-date-trigger:focus-visible {
+			outline-color: var(--caldo-focus);
+		}
 
 	.caldo-task-priority-p1 {
 		border-color: var(--caldo-danger);
@@ -1095,10 +1215,10 @@
 		color: var(--caldo-warning);
 	}
 
-	.caldo-task-priority-p3 {
-		border-color: var(--caldo-border-strong);
-		color: var(--caldo-text-muted);
-	}
+		.caldo-task-priority-p3 {
+			border-color: var(--caldo-info);
+			color: var(--caldo-info);
+		}
 
 	.caldo-task-state-pending {
 		background: var(--caldo-warning-muted);
@@ -1145,26 +1265,22 @@
 		@apply mt-1.5 py-1.5;
 	}
 
-	.caldo-task-edit-open,
-	.caldo-task-detail-open {
-		@apply shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium transition;
-		color: var(--caldo-text-subtle);
-	}
+		.caldo-task-detail-open {
+			@apply shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium transition;
+			color: var(--caldo-text-subtle);
+		}
 
-	.caldo-task-edit-open:hover,
-	.caldo-task-edit-open:focus-visible,
-	.caldo-task-detail-open:hover,
-	.caldo-task-detail-open:focus-visible {
-		background: var(--caldo-surface-muted);
-		color: var(--caldo-accent);
+		.caldo-task-detail-open:hover,
+		.caldo-task-detail-open:focus-visible {
+			background: var(--caldo-surface-muted);
+			color: var(--caldo-accent);
 		outline: 2px solid transparent;
 		outline-offset: 2px;
 	}
 
-	.caldo-task-edit-open:focus-visible,
-	.caldo-task-detail-open:focus-visible {
-		outline-color: var(--caldo-focus);
-	}
+		.caldo-task-detail-open:focus-visible {
+			outline-color: var(--caldo-focus);
+		}
 
 	.caldo-task-edit-form {
 		@apply min-w-0 space-y-2 px-1 pb-1;
@@ -1191,11 +1307,11 @@
 		grid-template-columns: minmax(0, 1fr);
 	}
 
-	@media (min-width: 640px) {
-		.caldo-task-edit-grid {
-			grid-template-columns: minmax(0, 1fr) minmax(9rem, 0.75fr) minmax(8rem, 0.75fr);
+		@media (min-width: 640px) {
+			.caldo-task-edit-grid {
+				grid-template-columns: minmax(0, 1fr) minmax(10rem, 14rem);
+			}
 		}
-	}
 
 	.caldo-task-edit-field-wide {
 		@apply min-w-0;

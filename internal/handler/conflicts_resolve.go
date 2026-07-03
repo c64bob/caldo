@@ -177,6 +177,7 @@ func buildManualConflictVTODO(loaded db.ConflictResolutionBase, form map[string]
 	}
 
 	patch := model.VTODOPatch{}
+	priorityTouched := false
 	if conflictFieldSource(form, "title") == "manual" {
 		title := strings.TrimSpace(firstFormValue(form, "title_manual"))
 		patch.Summary = &title
@@ -235,12 +236,14 @@ func buildManualConflictVTODO(loaded db.ConflictResolutionBase, form map[string]
 		if err := applyManualConflictPriorityPatch(firstFormValue(form, "priority_manual"), &patch); err != nil {
 			return "", err
 		}
+		priorityTouched = true
 	} else if selected, ok := selectedConflictVersion(form, "priority", base, local, remote); ok {
 		if selected.fields.Priority != nil {
 			patch.Priority = selected.fields.Priority
 		} else {
 			patch.ClearPriority = true
 		}
+		priorityTouched = true
 	}
 	if conflictFieldSource(form, "labels") == "manual" {
 		if err := applyManualConflictLabelsPatch(firstFormValue(form, "labels_manual"), target.fields, &patch); err != nil {
@@ -265,6 +268,7 @@ func buildManualConflictVTODO(loaded db.ConflictResolutionBase, form map[string]
 		}
 	}
 
+	applyFavoritePriorityRule(target.fields, &patch, priorityTouched)
 	return model.PatchVTODO(target.raw, patch), nil
 }
 

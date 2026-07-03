@@ -94,8 +94,38 @@ func TestTaskRowRendersDescriptionURLsAsSafeLinks(t *testing.T) {
 			t.Fatalf("expected linked description to include %q in %s", want, output)
 		}
 	}
-	if strings.Count(output, description) < 2 {
-		t.Fatalf("expected edit controls to preserve raw description %q in %s", description, output)
+	if !strings.Contains(output, `>Bitte https://example.com/browser prüfen.</textarea>`) {
+		t.Fatalf("expected detail edit controls to preserve raw description %q in %s", description, output)
+	}
+}
+
+func TestTaskRowRendersDescriptionMarkdownReadOnlyWithoutChangingRawEditValue(t *testing.T) {
+	t.Parallel()
+
+	description := "Bitte **prüfen**\\nZeile 2 mit escaped\\, comma"
+	component := TaskRow(TaskRowView{
+		ID:            "task-markdown",
+		ProjectID:     "project-1",
+		Title:         "Markdown Aufgabe",
+		Description:   description,
+		Status:        "needs-action",
+		SyncStatus:    "synced",
+		ServerVersion: 2,
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(context.Background(), &rendered); err != nil {
+		t.Fatalf("render task row: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`Bitte <strong>prüfen</strong><br>Zeile 2 mit escaped, comma`,
+		`>Bitte **prüfen**\nZeile 2 mit escaped\, comma</textarea>`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected markdown description to include %q in %s", want, output)
+		}
 	}
 }
 
@@ -196,7 +226,10 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 		`data-task-drag-move`,
 		`draggable="true"`,
 		`data-inline-task-edit-open`,
+		`data-inline-task-edit-focus="title"`,
+		`data-inline-task-edit-focus="date"`,
 		`data-inline-task-edit-form`,
+		`data-inline-task-edit-date`,
 		`data-inline-task-edit-extra`,
 		`data-task-favorite-form`,
 		`aria-label="Favorit entfernen"`,
@@ -225,19 +258,21 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 		`value="Editierbare Aufgabe"`,
 		`Alter Text`,
 		`name="project_id"`,
-		`value="project-1" selected`,
-		`value="project-2"`,
 		`name="due_date" value="2026-06-09"`,
-		`name="priority"`,
-		`value="4" selected`,
-		`name="labels" value="Büro, urgent"`,
-		`data-task-labels-input`,
 		`data-inline-task-edit-cancel`,
 		`data-inline-task-edit-error`,
 		`X-CSRF-Token`,
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected inline edit form to include %q in %s", want, output)
+		}
+	}
+	for _, notWant := range []string{
+		`>Bearbeiten<`,
+		`class="caldo-task-edit-open"`,
+	} {
+		if strings.Contains(output, notWant) {
+			t.Fatalf("inline edit trigger must not render old edit button %q in %s", notWant, output)
 		}
 	}
 	if strings.Contains(output, `name="labels" value="Büro, urgent, STARRED"`) {

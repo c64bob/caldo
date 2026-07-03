@@ -7,6 +7,7 @@ import (
 )
 
 const ReservedFavoriteCategory = "STARRED"
+const FavoritePriorityValue = 1
 
 // NormalizeLabelName validates and normalizes a user-provided label name.
 func NormalizeLabelName(name string) (string, error) {
@@ -90,4 +91,38 @@ func LabelsAndFavoriteToCategories(labels []string, isFavorite bool) ([]string, 
 	}
 
 	return categories, nil
+}
+
+// PriorityIsHigh reports whether an iCalendar PRIORITY value maps to Caldo's high priority bucket.
+func PriorityIsHigh(priority *int) bool {
+	return priority != nil && *priority >= 1 && *priority <= 4
+}
+
+// FavoritePriority returns the canonical priority value Caldo writes for favorite tasks.
+func FavoritePriority() *int {
+	priority := FavoritePriorityValue
+	return &priority
+}
+
+// CategoriesWithFavoriteFromPriority returns categories whose STARRED state follows priority exactly.
+func CategoriesWithFavoriteFromPriority(categories []string, priority *int) ([]string, error) {
+	labels, _ := CategoriesToLabelsAndFavorite(categories)
+	return LabelsAndFavoriteToCategories(labels, PriorityIsHigh(priority))
+}
+
+// NormalizeFavoritePriorityFields derives a consistent STARRED/high-priority pair for local indexes.
+func NormalizeFavoritePriorityFields(categories []string, priority *int) ([]string, *int, error) {
+	labels, favorite := CategoriesToLabelsAndFavorite(categories)
+	normalizedPriority := priority
+	if favorite && !PriorityIsHigh(normalizedPriority) {
+		normalizedPriority = FavoritePriority()
+	}
+	if PriorityIsHigh(normalizedPriority) {
+		favorite = true
+	}
+	normalizedCategories, err := LabelsAndFavoriteToCategories(labels, favorite)
+	if err != nil {
+		return nil, nil, err
+	}
+	return normalizedCategories, normalizedPriority, nil
 }

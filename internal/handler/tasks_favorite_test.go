@@ -46,6 +46,9 @@ END:VCALENDAR`)
 	if !strings.Contains(raw, "CATEGORIES:home,work,STARRED") {
 		t.Fatalf("expected STARRED category to be appended, got %q", raw)
 	}
+	if !strings.Contains(raw, "PRIORITY:1") {
+		t.Fatalf("expected favorite to set high priority, got %q", raw)
+	}
 
 	req = favoriteRequest(t, "4", "false")
 	rr = httptest.NewRecorder()
@@ -56,8 +59,8 @@ END:VCALENDAR`)
 	if err := database.Conn.QueryRowContext(context.Background(), `SELECT raw_vtodo FROM tasks WHERE id='task-1';`).Scan(&raw); err != nil {
 		t.Fatalf("query task: %v", err)
 	}
-	if strings.Contains(raw, "STARRED") || !strings.Contains(raw, "CATEGORIES:home,work") {
-		t.Fatalf("expected STARRED removed but other categories preserved, got %q", raw)
+	if strings.Contains(raw, "STARRED") || strings.Contains(raw, "PRIORITY:") || !strings.Contains(raw, "CATEGORIES:home,work") {
+		t.Fatalf("expected STARRED and priority removed but other categories preserved, got %q", raw)
 	}
 }
 

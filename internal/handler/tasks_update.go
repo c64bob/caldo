@@ -128,8 +128,9 @@ func handleTaskUpdate(w http.ResponseWriter, r *http.Request, deps taskUpdateDep
 		Status:      &status,
 	}
 	applyDuePatch(r.PostForm, baseFields, &patch)
-	applyPriorityPatch(r.PostForm, &patch)
+	priorityTouched := applyPriorityPatch(r.PostForm, &patch)
 	applyLabelPatch(r.PostForm, baseFields.Categories, &patch)
+	applyFavoritePriorityRule(baseFields, &patch, priorityTouched)
 	if !model.IsComplexRRule(existingRRule) {
 		if recurrence := buildExplicitRRuleUpdate(r.PostForm); recurrence != nil {
 			if *recurrence != strings.TrimSpace(existingRRule) {
@@ -323,16 +324,21 @@ func applyDuePatch(form map[string][]string, baseFields model.VTODOFields, patch
 	patch.DueDate = parsedDate
 }
 
-func applyPriorityPatch(form map[string][]string, patch *model.VTODOPatch) {
+func applyPriorityPatch(form map[string][]string, patch *model.VTODOPatch) bool {
 	if _, ok := form["priority"]; !ok {
-		return
+		return false
 	}
 	priorityRaw := strings.TrimSpace(firstFormValue(form, "priority"))
 	if priorityRaw == "" {
 		patch.ClearPriority = true
-		return
+		return true
 	}
-	patch.Priority = parseOptionalInt(priorityRaw)
+	priority := parseOptionalInt(priorityRaw)
+	if priority == nil {
+		return false
+	}
+	patch.Priority = priority
+	return true
 }
 
 func applyLabelPatch(form map[string][]string, existingCategories []string, patch *model.VTODOPatch) {

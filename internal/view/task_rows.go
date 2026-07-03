@@ -83,6 +83,7 @@ type taskSelectOption struct {
 type taskDescriptionSegment struct {
 	Text string
 	URL  string
+	Kind string
 }
 
 func taskRowTitle(task TaskRowView) string {
@@ -97,45 +98,152 @@ func taskRowDescription(task TaskRowView) string {
 	return strings.TrimSpace(task.Description)
 }
 
-func taskDescriptionSegments(description string) []taskDescriptionSegment {
-	description = strings.TrimSpace(description)
+func taskDescriptionMarkdownSegments(description string) []taskDescriptionSegment {
+	description = taskDescriptionDisplayText(description)
 	if description == "" {
 		return nil
 	}
 
-	segments := make([]taskDescriptionSegment, 0, 3)
-	remaining := description
-	for len(remaining) > 0 {
-		index, schemeLen := nextDescriptionURLIndex(remaining)
-		if index < 0 {
-			segments = append(segments, taskDescriptionSegment{Text: remaining})
-			break
-		}
-		if index > 0 {
-			segments = append(segments, taskDescriptionSegment{Text: remaining[:index]})
-		}
+	return mergeTaskDescriptionSegments(parseTaskDescriptionInlineMarkdown(description))
+}
 
-		candidateEnd := index
-		for candidateEnd < len(remaining) && !unicode.IsSpace(rune(remaining[candidateEnd])) {
-			candidateEnd++
+func taskDescriptionDisplayText(description string) string {
+	return strings.TrimSpace(unescapeTaskDescriptionText(description))
+}
+
+func unescapeTaskDescriptionText(value string) string {
+	value = strings.ReplaceAll(value, "\r\n", "\n")
+	value = strings.ReplaceAll(value, "\r", "\n")
+	var builder strings.Builder
+	builder.Grow(len(value))
+	for i := 0; i < len(value); i++ {
+		if value[i] != '\\' || i+1 >= len(value) {
+			builder.WriteByte(value[i])
+			continue
 		}
-		candidate := remaining[index:candidateEnd]
-		urlText, suffix := trimDescriptionURL(candidate)
-		if descriptionURLIsSafe(urlText, schemeLen) {
-			segments = append(segments, taskDescriptionSegment{Text: urlText, URL: urlText})
-			if suffix != "" {
-				segments = append(segments, taskDescriptionSegment{Text: suffix})
+		next := value[i+1]
+		switch next {
+		case 'n', 'N':
+			builder.WriteByte('\n')
+		case ',', ';', '\\':
+			builder.WriteByte(next)
+		default:
+			builder.WriteByte(value[i])
+			builder.WriteByte(next)
+		}
+		i++
+	}
+	return builder.String()
+}
+
+func parseTaskDescriptionInlineMarkdown(description string) []taskDescriptionSegment {
+	segments := make([]taskDescriptionSegment, 0, 6)
+	for len(description) > 0 {
+		if description[0] == '\n' {
+			segments = append(segments, taskDescriptionSegment{Kind: "break"})
+			description = description[1:]
+			continue
+		}
+		if strings.HasPrefix(description, "**") {
+			if end := strings.Index(description[2:], "**"); end >= 0 {
+				text := description[2 : 2+end]
+				if strings.TrimSpace(text) != "" {
+					segments = append(segments, taskDescriptionSegment{Text: text, Kind: "strong"})
+					description = description[2+end+2:]
+					continue
+				}
 			}
-			remaining = remaining[candidateEnd:]
+		}
+		if description[0] == '*' {
+			if end := strings.Index(description[1:], "*"); end >= 0 {
+				text := description[1 : 1+end]
+				if strings.TrimSpace(text) != "" {
+					segments = append(segments, taskDescriptionSegment{Text: text, Kind: "em"})
+					description = description[1+end+1:]
+					continue
+				}
+			}
+		}
+		if description[0] == '`' {
+			if end := strings.Index(description[1:], "`"); end >= 0 {
+				text := description[1 : 1+end]
+				if text != "" {
+					segments = append(segments, taskDescriptionSegment{Text: text, Kind: "code"})
+					description = description[1+end+1:]
+					continue
+				}
+			}
+		}
+		if strings.HasPrefix(description, "[") {
+			if segment, rest, ok := parseMarkdownLink(description); ok {
+				segments = append(segments, segment)
+				description = rest
+				continue
+			}
+		}
+		if segment, rest, ok := parseBareDescriptionURL(description); ok {
+			segments = append(segments, segment)
+			description = rest
 			continue
 		}
 
-		plainEnd := index + schemeLen
-		segments = append(segments, taskDescriptionSegment{Text: remaining[index:plainEnd]})
-		remaining = remaining[plainEnd:]
+		next := nextDescriptionMarkupIndex(description[1:])
+		if next < 0 {
+			segments = append(segments, taskDescriptionSegment{Text: description})
+			break
+		}
+		next++
+		segments = append(segments, taskDescriptionSegment{Text: description[:next]})
+		description = description[next:]
 	}
+	return segments
+}
 
-	return mergeTaskDescriptionSegments(segments)
+func parseMarkdownLink(description string) (taskDescriptionSegment, string, bool) {
+	labelEnd := strings.Index(description, "](")
+	if labelEnd <= 1 {
+		return taskDescriptionSegment{}, description, false
+	}
+	urlStart := labelEnd + 2
+	urlEnd := strings.Index(description[urlStart:], ")")
+	if urlEnd < 0 {
+		return taskDescriptionSegment{}, description, false
+	}
+	urlEnd += urlStart
+	text := description[1:labelEnd]
+	link := strings.TrimSpace(description[urlStart:urlEnd])
+	if text == "" || !descriptionURLIsSafe(link) {
+		return taskDescriptionSegment{}, description, false
+	}
+	return taskDescriptionSegment{Text: text, URL: link, Kind: "link"}, description[urlEnd+1:], true
+}
+
+func parseBareDescriptionURL(description string) (taskDescriptionSegment, string, bool) {
+	index, _ := nextDescriptionURLIndex(description)
+	if index != 0 {
+		return taskDescriptionSegment{}, description, false
+	}
+	candidateEnd := 0
+	for candidateEnd < len(description) && !unicode.IsSpace(rune(description[candidateEnd])) {
+		candidateEnd++
+	}
+	candidate := description[:candidateEnd]
+	urlText, suffix := trimDescriptionURL(candidate)
+	if !descriptionURLIsSafe(urlText) {
+		return taskDescriptionSegment{}, description, false
+	}
+	rest := suffix + description[candidateEnd:]
+	return taskDescriptionSegment{Text: urlText, URL: urlText, Kind: "link"}, rest, true
+}
+
+func nextDescriptionMarkupIndex(text string) int {
+	next := -1
+	for _, marker := range []string{"\n", "**", "*", "`", "[", "http://", "https://"} {
+		if index := strings.Index(text, marker); index >= 0 && (next < 0 || index < next) {
+			next = index
+		}
+	}
+	return next
 }
 
 func nextDescriptionURLIndex(text string) (int, int) {
@@ -166,8 +274,9 @@ func trimDescriptionURL(candidate string) (string, string) {
 	return candidate, ""
 }
 
-func descriptionURLIsSafe(candidate string, schemeLen int) bool {
-	if len(candidate) <= schemeLen {
+func descriptionURLIsSafe(candidate string) bool {
+	candidate = strings.TrimSpace(candidate)
+	if candidate == "" {
 		return false
 	}
 	parsed, err := url.Parse(candidate)
@@ -183,11 +292,11 @@ func descriptionURLIsSafe(candidate string, schemeLen int) bool {
 func mergeTaskDescriptionSegments(segments []taskDescriptionSegment) []taskDescriptionSegment {
 	merged := make([]taskDescriptionSegment, 0, len(segments))
 	for _, segment := range segments {
-		if segment.Text == "" {
+		if segment.Text == "" && segment.Kind != "break" {
 			continue
 		}
 		last := len(merged) - 1
-		if segment.URL == "" && last >= 0 && merged[last].URL == "" {
+		if segment.Kind == "" && segment.URL == "" && last >= 0 && merged[last].Kind == "" && merged[last].URL == "" {
 			merged[last].Text += segment.Text
 			continue
 		}
@@ -328,12 +437,19 @@ func taskCanShowFavorite(task TaskRowView) bool {
 }
 
 func taskIsFavorite(task TaskRowView) bool {
+	if taskPriorityIsHigh(task) {
+		return true
+	}
 	for _, label := range rawTaskLabels(task.LabelNames) {
 		if strings.EqualFold(label, model.ReservedFavoriteCategory) {
 			return true
 		}
 	}
 	return false
+}
+
+func taskPriorityIsHigh(task TaskRowView) bool {
+	return task.HasPriority && task.Priority > 0 && task.Priority <= 4
 }
 
 func taskFavoriteLabel(task TaskRowView) string {
@@ -386,9 +502,7 @@ func taskUsesConflictLink(task TaskRowView) bool {
 }
 
 func taskMetaChips(task TaskRowView) []taskRowChip {
-	chips := make([]taskRowChip, 0, 4)
-	due := taskDueStateChip(task)
-	chips = append(chips, taskRowChip{Label: due.Label, Class: due.Class})
+	chips := make([]taskRowChip, 0, 3)
 	if project := strings.TrimSpace(task.ProjectName); project != "" {
 		chips = append(chips, taskRowChip{Label: project, Class: "caldo-task-chip"})
 	}
@@ -396,6 +510,27 @@ func taskMetaChips(task TaskRowView) []taskRowChip {
 		chips = append(chips, taskRowChip{Label: priority, Class: "caldo-task-chip " + taskPriorityClass(task)})
 	}
 	return chips
+}
+
+func taskCheckboxPriorityClass(task TaskRowView) string {
+	if taskIsFavorite(task) {
+		return "caldo-task-checkbox-priority-high"
+	}
+	if !task.HasPriority || task.Priority <= 0 {
+		return ""
+	}
+	switch {
+	case task.Priority <= 4:
+		return "caldo-task-checkbox-priority-high"
+	case task.Priority <= 6:
+		return "caldo-task-checkbox-priority-medium"
+	default:
+		return "caldo-task-checkbox-priority-low"
+	}
+}
+
+func taskDateEditLabel(task TaskRowView) string {
+	return "Fälligkeit bearbeiten: " + taskDueStateChip(task).Label
 }
 
 func taskRelationshipChips(task TaskRowView) []taskRowChip {

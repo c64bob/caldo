@@ -231,7 +231,12 @@ func importedTaskWithRaw(task ImportedTask, rawVTODO string) ImportedTask {
 	if title == "" {
 		title = task.UID
 	}
-	labels, favorite := model.CategoriesToLabelsAndFavorite(parsed.Categories)
+	categories, priority, err := model.NormalizeFavoritePriorityFields(parsed.Categories, parsed.Priority)
+	if err != nil {
+		categories = parsed.Categories
+		priority = parsed.Priority
+	}
+	labels, favorite := model.CategoriesToLabelsAndFavorite(categories)
 	if favorite {
 		labels = append(labels, model.ReservedFavoriteCategory)
 	}
@@ -242,7 +247,7 @@ func importedTaskWithRaw(task ImportedTask, rawVTODO string) ImportedTask {
 	task.CompletedAt = fullScanTimePointer(parsed.CompletedAt)
 	task.DueDate = parsed.DueDate
 	task.DueAt = fullScanTimePointer(parsed.DueAt)
-	task.Priority = parsed.Priority
+	task.Priority = priority
 	task.RRule = parsed.RRule
 	task.ParentUID = parsed.ParentUID
 	task.RawVTODO = rawVTODO

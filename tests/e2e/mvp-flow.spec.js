@@ -165,7 +165,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   let inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Created' }).first();
   let inlineEditForm = inlineEditRow.locator('[data-inline-task-edit-form]');
   await expect(inlineEditForm).toBeHidden();
-  await inlineEditRow.getByRole('button', { name: 'Bearbeiten' }).click();
+  await openTaskRowEdit(inlineEditRow);
   inlineEditForm = inlineEditRow.locator('[data-inline-task-edit-form]');
   await expect(inlineEditForm).toBeVisible();
   await expect(inlineEditForm.locator('[name="title"]')).toBeFocused();
@@ -175,17 +175,24 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(inlineEditRow).toContainText('E2E Inline Created');
   await expect(inlineEditRow).not.toContainText('E2E Inline Edit Canceled');
 
-  await inlineEditRow.getByRole('button', { name: 'Bearbeiten' }).click();
+  await openTaskRowEdit(inlineEditRow);
   inlineEditForm = inlineEditRow.locator('[data-inline-task-edit-form]');
   await inlineEditForm.locator('[name="title"]').fill('E2E Inline Edited');
-  await inlineEditForm.locator('[name="description"]').fill('edited inline through browser https://example.com/browser');
   await inlineEditForm.locator('[name="due_date"]').fill('2099-06-12');
-  await inlineEditForm.locator('[name="priority"]').selectOption('5');
-  await inlineEditForm.locator('[name="labels"]').fill('browser, inline');
-  await expect(inlineEditForm.locator('[data-task-labels-input]')).toHaveValue('browser, inline');
   await inlineEditForm.getByRole('button', { name: 'Speichern' }).focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first()).toBeVisible();
+  inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
+  await expect(inlineEditRow).toContainText('Fällig 2099-06-12');
+
+  await inlineEditRow.getByRole('button', { name: 'Details' }).click();
+  const inlineDetailDialog = inlineEditRow.locator('[data-task-detail-dialog]');
+  await inlineDetailDialog.locator('[name="description"]').fill('edited inline through browser https://example.com/browser');
+  await inlineDetailDialog.locator('[name="priority"]').selectOption('5');
+  await inlineDetailDialog.locator('[name="labels"]').fill('browser, inline');
+  await expect(inlineDetailDialog.locator('[data-task-labels-input]')).toHaveValue('browser, inline');
+  await inlineDetailDialog.getByRole('button', { name: 'Speichern' }).focus();
+  await page.keyboard.press('Enter');
   inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
   await expect(inlineEditRow).toContainText('edited inline through browser');
   await expect(inlineEditRow.locator('.caldo-task-description-link[href="https://example.com/browser"]')).toHaveAttribute('target', '_blank');
@@ -351,7 +358,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(focusRow).toContainText('E2E Focus Refreshed');
   await expect(focusRow).toContainText('refreshed after browser focus');
 
-  await focusRow.getByRole('button', { name: 'Bearbeiten' }).click();
+  await openTaskRowEdit(focusRow);
   let focusEditForm = focusRow.locator('[data-inline-task-edit-form]');
   await focusEditForm.locator('[name="title"]').fill('Unsaved local focus edit');
   version = await taskVersion(page, createdID);
@@ -570,7 +577,7 @@ async function exerciseKeyboardFocusAccessibility(page, testInfo) {
 
   const stageRow = page.locator('[data-task-id]').filter({ hasText: 'Stage Seed Task' }).first();
   await expect(stageRow).toBeVisible();
-  await expectVisibleFocusIndicator(stageRow.getByRole('button', { name: 'Bearbeiten' }));
+  await expectVisibleFocusIndicator(stageRow.locator('[data-inline-task-edit-open][data-inline-task-edit-focus="title"]').first());
   await expectVisibleFocusIndicator(stageRow.getByRole('button', { name: 'Details' }));
   await expectVisibleFocusIndicator(stageRow.getByRole('button', { name: /Favorit/ }).first());
 
@@ -863,7 +870,7 @@ async function exerciseMobileTaskEditing(page, testInfo, panelTaskID) {
 }
 
 async function openTaskRowEdit(row) {
-  await row.getByRole('button', { name: 'Bearbeiten' }).click();
+  await row.locator('[data-inline-task-edit-open][data-inline-task-edit-focus="title"]').first().click();
   await expect(row.locator('[data-inline-task-edit-form]')).toBeVisible();
   await expect(row.locator('[data-inline-task-edit-extra]')).toBeVisible();
 }

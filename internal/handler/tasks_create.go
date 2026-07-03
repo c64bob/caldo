@@ -128,10 +128,16 @@ func createTask(w http.ResponseWriter, r *http.Request, deps taskCreateDependenc
 		linked := strings.TrimSpace(parentUID)
 		rawVTODO = strings.Replace(rawVTODO, "\r\nEND:VTODO\r\n", "\r\nRELATED-TO;RELTYPE=PARENT:"+linked+"\r\nEND:VTODO\r\n", 1)
 	}
+	priority := parseQuickAddPriority(r.FormValue("priority"))
+	categories, priority, err := model.NormalizeFavoritePriorityFields(parseQuickAddLabels(r.FormValue("labels")), priority)
+	if err != nil {
+		http.Error(w, "labels are invalid", http.StatusBadRequest)
+		return
+	}
 	rawVTODO = model.PatchVTODO(rawVTODO, model.VTODOPatch{
-		Priority:   parseQuickAddPriority(r.FormValue("priority")),
+		Priority:   priority,
 		DueDate:    parseOptionalDate(r.FormValue("due_date")),
-		Categories: parseQuickAddLabels(r.FormValue("labels")),
+		Categories: optionalCategories(categories),
 		RRule:      recurrence,
 	})
 	parsed := model.ParseVTODOFields(rawVTODO)
@@ -303,6 +309,13 @@ func parseQuickAddLabels(value string) []string {
 		return nil
 	}
 	return labels
+}
+
+func optionalCategories(categories []string) []string {
+	if len(categories) == 0 {
+		return nil
+	}
+	return categories
 }
 
 func parseQuickAddRecurrence(value string) (*string, error) {

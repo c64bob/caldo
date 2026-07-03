@@ -953,9 +953,10 @@ async function exerciseQuickAddOverlay(page) {
   const overlay = page.locator('[data-quick-add-overlay]');
   const input = overlay.locator('[data-quick-add-overlay-input]');
   const previewForm = overlay.locator('[data-quick-add-overlay-form]');
-  const searchShortcutTarget = page.locator('.caldo-topbar a[href="/search"]').first();
+  const shortcutReturnTarget = page.locator('.caldo-topbar [data-theme-toggle]').first();
 
-  await searchShortcutTarget.focus();
+  await shortcutReturnTarget.focus();
+  await expect(shortcutReturnTarget).toBeFocused();
   await page.keyboard.press('n');
   await expect(overlay).toBeVisible();
   await expect(input).toBeFocused();
@@ -963,7 +964,7 @@ async function exerciseQuickAddOverlay(page) {
   await input.fill('E2E Overlay Canceled');
   await page.keyboard.press('Escape');
   await expect(overlay).toBeHidden();
-  await expect(searchShortcutTarget).toBeFocused();
+  await expect(shortcutReturnTarget).toBeFocused();
   await expect(page).toHaveURL(searchURL);
 
   await page.keyboard.press('n');
@@ -1030,7 +1031,7 @@ async function exerciseQuickAddOverlay(page) {
   await saveForm.locator('input[name="labels"]').focus();
   await page.keyboard.press('Control+Enter');
   await expect(overlay).toBeHidden();
-  await expect(searchShortcutTarget).toBeFocused();
+  await expect(shortcutReturnTarget).toBeFocused();
   await expect(page).toHaveURL(searchURL);
   await waitForSearchResult(page, 'E2E Overlay Corrected');
   const correctedRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Overlay Corrected' }).first();

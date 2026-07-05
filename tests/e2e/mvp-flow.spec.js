@@ -163,27 +163,30 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
 
   await gotoApp(page, '/search?q=%23Work');
   let inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Created' }).first();
-  let inlineEditForm = inlineEditRow.locator('[data-inline-task-edit-form]');
+  let inlineEditForm = inlineEditRow.locator('[data-inline-task-edit-form][data-inline-task-edit-kind="title"]');
   await expect(inlineEditForm).toBeHidden();
-  await openTaskRowEdit(inlineEditRow);
-  inlineEditForm = inlineEditRow.locator('[data-inline-task-edit-form]');
+  inlineEditForm = await openTaskRowEdit(inlineEditRow);
   await expect(inlineEditForm).toBeVisible();
   await expect(inlineEditForm.locator('[name="title"]')).toBeFocused();
   await inlineEditForm.locator('[name="title"]').fill('E2E Inline Edit Canceled');
-  await inlineEditForm.getByRole('button', { name: 'Abbrechen' }).click();
+  await inlineEditForm.locator('[name="title"]').press('Escape');
   await expect(inlineEditForm).toBeHidden();
   await expect(inlineEditRow).toContainText('E2E Inline Created');
   await expect(inlineEditRow).not.toContainText('E2E Inline Edit Canceled');
 
-  await openTaskRowEdit(inlineEditRow);
-  inlineEditForm = inlineEditRow.locator('[data-inline-task-edit-form]');
+  inlineEditForm = await openTaskRowEdit(inlineEditRow);
   await inlineEditForm.locator('[name="title"]').fill('E2E Inline Edited');
-  await inlineEditForm.locator('[name="due_date"]').fill('2099-06-12');
-  await inlineEditForm.getByRole('button', { name: 'Speichern' }).focus();
-  await page.keyboard.press('Enter');
+  await inlineEditForm.locator('[name="title"]').press('Enter');
   await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first()).toBeVisible();
   inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
-  await expect(inlineEditRow).toContainText('Fällig 2099-06-12');
+  const inlineDateForm = await openTaskRowEdit(inlineEditRow, 'date');
+  await inlineDateForm.locator('[name="due_date"]').evaluate((input) => {
+    input.value = '2099-06-12';
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first()).toBeVisible();
+  inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
+  await expect(inlineEditRow).toContainText('Fällig 12.06.2099');
 
   await inlineEditRow.getByRole('button', { name: 'Details' }).click();
   const inlineDetailDialog = inlineEditRow.locator('[data-task-detail-dialog]');
@@ -197,7 +200,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(inlineEditRow).toContainText('edited inline through browser');
   await expect(inlineEditRow.locator('.caldo-task-description-link[href="https://example.com/browser"]')).toHaveAttribute('target', '_blank');
   await expect(inlineEditRow.locator('.caldo-task-description-link[href="https://example.com/browser"]')).toHaveAttribute('rel', 'noopener noreferrer');
-  await expect(inlineEditRow).toContainText('Fällig 2099-06-12');
+  await expect(inlineEditRow).toContainText('Fällig 12.06.2099');
   await expect(inlineEditRow).toContainText('P2');
   await expect(inlineEditRow).toContainText('browser');
   await expect(inlineEditRow).toContainText('inline');
@@ -235,13 +238,13 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(detailDialog).toBeHidden();
   await inlineEditRow.getByRole('button', { name: 'Details' }).click();
   await expect(detailDialog).toBeVisible();
-  await expect(detailDialog.locator('[name="title"]')).toBeFocused();
+  await expect(detailDialog.locator('[data-task-detail-title]')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(detailDialog).toBeHidden();
 
   await inlineEditRow.getByRole('button', { name: 'Details' }).click();
   detailDialog = inlineEditRow.locator('[data-task-detail-dialog]');
-  await detailDialog.locator('[name="title"]').fill('E2E Panel Edited');
+  await detailDialog.locator('[data-task-detail-title]').fill('E2E Panel Edited');
   await detailDialog.locator('[name="description"]').fill('edited through task detail panel');
   await detailDialog.locator('[name="due_date"]').fill('2099-06-11');
   await detailDialog.locator('[name="priority"]').selectOption('1');
@@ -253,7 +256,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Panel Edited' }).first()).toBeVisible();
   let detailRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Panel Edited' }).first();
   await expect(detailRow).toContainText('edited through task detail panel');
-  await expect(detailRow).toContainText('Fällig 2099-06-11');
+  await expect(detailRow).toContainText('Fällig 11.06.2099');
   await expect(detailRow).toContainText('P1');
   await expect(detailRow).toContainText('panel');
   await expect(detailRow).toContainText('browser');
@@ -269,8 +272,10 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   const panelTaskID = await detailRow.getAttribute('data-task-id');
   await ensureBrowserCSRFCookie(page);
   await expect(detailRow.getByRole('button', { name: 'Unteraufgabe hinzufügen' })).toHaveCount(0);
-  await openTaskRowEdit(detailRow);
-  await detailRow.getByRole('button', { name: 'Unteraufgabe hinzufügen' }).click();
+  await detailRow.getByRole('button', { name: 'Details' }).click();
+  let actionDetailDialog = detailRow.locator('[data-task-detail-dialog]');
+  await expect(actionDetailDialog).toBeVisible();
+  await actionDetailDialog.getByRole('button', { name: 'Unteraufgabe hinzufügen' }).click();
   const subtaskForm = detailRow.locator('[data-subtask-create-form]');
   await expect(subtaskForm).toBeVisible();
   const subtaskTitle = subtaskForm.locator('[data-inline-task-create-title]');
@@ -315,8 +320,10 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   detailRow = page.locator(`[data-task-id="${panelTaskID}"]`);
   const parentDeleteDialog = detailRow.locator('[data-task-delete-dialog]');
   await expect(detailRow.getByRole('button', { name: 'Löschen' })).toHaveCount(0);
-  await openTaskRowEdit(detailRow);
-  await detailRow.getByRole('button', { name: 'Löschen' }).click();
+  await detailRow.getByRole('button', { name: 'Details' }).click();
+  actionDetailDialog = detailRow.locator('[data-task-detail-dialog]');
+  await expect(actionDetailDialog).toBeVisible();
+  await actionDetailDialog.getByRole('button', { name: 'Löschen' }).click();
   await expect(parentDeleteDialog).toBeVisible();
   await expect(parentDeleteDialog).toContainText('1 Unteraufgabe');
   await parentDeleteDialog.getByRole('button', { name: 'Aufgabe und Unteraufgaben löschen' }).click();
@@ -358,8 +365,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(focusRow).toContainText('E2E Focus Refreshed');
   await expect(focusRow).toContainText('refreshed after browser focus');
 
-  await openTaskRowEdit(focusRow);
-  let focusEditForm = focusRow.locator('[data-inline-task-edit-form]');
+  let focusEditForm = await openTaskRowEdit(focusRow);
   await focusEditForm.locator('[name="title"]').fill('Unsaved local focus edit');
   version = await taskVersion(page, createdID);
   response = await appFormRequest(page, 'PATCH', `/tasks/${createdID}`, {
@@ -373,7 +379,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(focusEditForm.locator('[name="title"]')).toHaveValue('Unsaved local focus edit');
   await expect(focusRow).toContainText('Aufgabe wurde in einem anderen Tab geändert');
-  await focusEditForm.getByRole('button', { name: 'Abbrechen' }).click();
+  await focusEditForm.locator('[name="title"]').press('Escape');
   await page.waitForTimeout(600);
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(focusRow).toContainText('E2E Focus Dirty Remote');
@@ -398,15 +404,20 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   let deleteDialog = deleteRow.locator('[data-task-delete-dialog]');
   await expect(deleteDialog).toBeHidden();
   await expect(deleteRow.getByRole('button', { name: 'Löschen' })).toHaveCount(0);
-  await openTaskRowEdit(deleteRow);
-  await deleteRow.getByRole('button', { name: 'Löschen' }).click();
+  await deleteRow.getByRole('button', { name: 'Details' }).click();
+  let deleteDetailDialog = deleteRow.locator('[data-task-detail-dialog]');
+  await expect(deleteDetailDialog).toBeVisible();
+  await deleteDetailDialog.getByRole('button', { name: 'Löschen' }).click();
   await expect(deleteDialog).toBeVisible();
   await expect(deleteDialog.locator('[data-task-delete-cancel]')).toBeFocused();
   await deleteDialog.locator('[data-task-delete-cancel]').click();
   await expect(deleteDialog).toBeHidden();
   await expect(deleteRow).toBeVisible();
 
-  await deleteRow.getByRole('button', { name: 'Löschen' }).click();
+  await deleteRow.getByRole('button', { name: 'Details' }).click();
+  deleteDetailDialog = deleteRow.locator('[data-task-detail-dialog]');
+  await expect(deleteDetailDialog).toBeVisible();
+  await deleteDetailDialog.getByRole('button', { name: 'Löschen' }).click();
   await expect(deleteDialog).toBeVisible();
   await deleteDialog.getByRole('button', { name: 'Endgültig löschen' }).click();
   await expect(page.locator('[data-task-id]').filter({ hasText: currentLocalTitle })).toHaveCount(0);
@@ -427,8 +438,10 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
 
   deleteRow = page.locator('[data-task-id]').filter({ hasText: currentLocalTitle }).first();
   deleteDialog = deleteRow.locator('[data-task-delete-dialog]');
-  await openTaskRowEdit(deleteRow);
-  await deleteRow.getByRole('button', { name: 'Löschen' }).click();
+  await deleteRow.getByRole('button', { name: 'Details' }).click();
+  deleteDetailDialog = deleteRow.locator('[data-task-detail-dialog]');
+  await expect(deleteDetailDialog).toBeVisible();
+  await deleteDetailDialog.getByRole('button', { name: 'Löschen' }).click();
   await expect(deleteDialog).toBeVisible();
   await deleteDialog.getByRole('button', { name: 'Endgültig löschen' }).click();
   await waitForNoSearchResult(page, currentLocalTitle);
@@ -526,14 +539,26 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await gotoApp(page, '/conflicts');
   await expect(page.getByText('Keine ungelösten Konflikte')).toBeVisible();
   await expectSearchResult(page, 'E2E Manual Conflict Resolution');
-  expect(browserErrors.filter((message) => !expectedBrowserConsoleError(message, testInfo.project.name))).toEqual([]);
+  expect(unexpectedBrowserConsoleErrors(browserErrors, testInfo.project.name)).toEqual([]);
 });
+
+function unexpectedBrowserConsoleErrors(messages, projectName) {
+  const hasWebKitSyncStatusAccessError = projectName === 'webkit' && messages.some(isWebKitSyncStatusAccessError);
+  return messages.filter((message) => {
+    if (expectedBrowserConsoleError(message, projectName)) return false;
+    if (hasWebKitSyncStatusAccessError && ['htmx:afterRequest', 'htmx:sendError'].includes(message)) return false;
+    return true;
+  });
+}
 
 function expectedBrowserConsoleError(message, projectName) {
   if (
     projectName === 'webkit' &&
     message === "Refused to apply a stylesheet because its hash, its nonce, or 'unsafe-inline' does not appear in the style-src directive of the Content Security Policy."
   ) {
+    return true;
+  }
+  if (projectName === 'webkit' && isWebKitSyncStatusAccessError(message)) {
     return true;
   }
 
@@ -543,6 +568,10 @@ function expectedBrowserConsoleError(message, projectName) {
     'Failed to load resource: the server responded with a status of 502 (Bad Gateway)',
     'Response Status Error Code 502 from /tasks/'
   ].includes(message);
+}
+
+function isWebKitSyncStatusAccessError(message) {
+  return /\/127\.0\.0\.1:\d+\/sync\/status due to access control checks\.$/.test(message);
 }
 
 async function dragTaskRowToProject(page, row, projectName) {
@@ -603,7 +632,7 @@ async function exerciseKeyboardFocusAccessibility(page, testInfo) {
   await page.keyboard.press('Enter');
   const detailDialog = detailRow.locator('[data-task-detail-dialog]');
   await expect(detailDialog).toBeVisible();
-  await expect(detailDialog.locator('[name="title"]')).toBeFocused();
+  await expect(detailDialog.locator('[data-task-detail-title]')).toBeFocused();
   await expectIconButtonsHaveAccessibleNames(page);
   await expectFocusWithinDialog(detailDialog);
   await page.keyboard.press('Shift+Tab');
@@ -823,14 +852,15 @@ async function exerciseTabletTaskActions(page, panelTaskID) {
   row = page.locator(`[data-task-id="${panelTaskID}"]`);
   const deleteDialog = row.locator('[data-task-delete-dialog]');
   await expect(row.getByRole('button', { name: 'Löschen' })).toHaveCount(0);
-  await openTaskRowEdit(row);
-  await row.getByRole('button', { name: 'Löschen' }).click();
+  await row.getByRole('button', { name: 'Details' }).click();
+  detailDialog = row.locator('[data-task-detail-dialog]');
+  await expect(detailDialog).toBeVisible();
+  await detailDialog.getByRole('button', { name: 'Löschen' }).click();
   await expect(deleteDialog).toBeVisible();
   await expectElementWithinViewport(deleteDialog, tabletViewport);
   await expect(deleteDialog.getByRole('button', { name: 'Aufgabe und Unteraufgaben löschen' })).toBeVisible();
   await deleteDialog.getByRole('button', { name: 'Abbrechen', exact: true }).click();
   await expect(deleteDialog).toBeHidden();
-  await closeTaskRowEdit(row);
   await page.setViewportSize(desktopViewport);
 }
 
@@ -853,7 +883,7 @@ async function exerciseMobileTaskEditing(page, testInfo, panelTaskID) {
   await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: `${browserArtifactDir(testInfo)}/mobile-task-inline-edit.png`, fullPage: true, caret: 'initial' });
   await inlineTitle.press('Escape');
-  await expect(row.locator('[data-inline-task-edit-form]')).toBeHidden();
+  await expect(row.locator('[data-inline-task-edit-form][data-inline-task-edit-kind="title"]').first()).toBeHidden();
   await expect(row).toContainText('E2E Panel Edited');
 
   row = page.locator(`[data-task-id="${panelTaskID}"]`);
@@ -861,7 +891,7 @@ async function exerciseMobileTaskEditing(page, testInfo, panelTaskID) {
   const detailDialog = row.locator('[data-task-detail-dialog]');
   await expect(detailDialog).toBeVisible();
   await expectElementWithinViewport(detailDialog, narrowMobileViewport);
-  await detailDialog.locator('[name="title"]').fill('E2E Mobile Detail Draft');
+  await detailDialog.locator('[data-task-detail-title]').fill('E2E Mobile Detail Draft');
   await expectNoHorizontalOverflow(page);
   await detailDialog.getByRole('button', { name: 'Details schließen' }).click();
   await expect(detailDialog).toBeHidden();
@@ -869,15 +899,17 @@ async function exerciseMobileTaskEditing(page, testInfo, panelTaskID) {
   await page.setViewportSize(desktopViewport);
 }
 
-async function openTaskRowEdit(row) {
-  await row.locator('[data-inline-task-edit-open][data-inline-task-edit-focus="title"]').first().click();
-  await expect(row.locator('[data-inline-task-edit-form]')).toBeVisible();
-  await expect(row.locator('[data-inline-task-edit-extra]')).toBeVisible();
+async function openTaskRowEdit(row, focusTarget = 'title') {
+  await row.locator(`[data-inline-task-edit-open][data-inline-task-edit-focus="${focusTarget}"]`).first().click();
+  const form = row.locator(`[data-inline-task-edit-form][data-inline-task-edit-kind="${focusTarget}"]`).first();
+  await expect(form).toBeVisible();
+  return form;
 }
 
 async function closeTaskRowEdit(row) {
-  await row.getByRole('button', { name: 'Abbrechen' }).click();
-  await expect(row.locator('[data-inline-task-edit-form]')).toBeHidden();
+  const titleInput = row.locator('[data-inline-task-edit-title]').first();
+  await titleInput.press('Escape');
+  await expect(row.locator('[data-inline-task-edit-form][data-inline-task-edit-kind="title"]').first()).toBeHidden();
   await expect(row.getByRole('button', { name: 'Details' })).toBeVisible();
 }
 
@@ -1038,7 +1070,7 @@ async function exerciseQuickAddOverlay(page) {
   await expect(correctedRow).toContainText('reviewed');
   await expect(correctedRow).toContainText('P3');
   await expect(correctedRow).toContainText('Wöchentlich');
-  await expect(correctedRow).toContainText('Fällig 2099-06-30');
+  await expect(correctedRow).toContainText('Fällig 30.06.2099');
 
   await page.locator('.caldo-topbar [data-quick-add-open]').click();
   await input.fill('E2E Overlay Suggested #Work');

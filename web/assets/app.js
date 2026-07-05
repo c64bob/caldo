@@ -957,14 +957,26 @@
     return Array.prototype.some.call(form.elements, controlIsDirty);
   }
 
+  function inlineEditForms(row) {
+    if (!row) return [];
+    return Array.prototype.slice.call(row.querySelectorAll('[data-inline-task-edit-form]'));
+  }
+
+  function visibleInlineEditForm(row) {
+    return inlineEditForms(row).find(function (form) {
+      return !form.hidden;
+    }) || null;
+  }
+
   function openTaskForms(row) {
     var forms = [];
     if (!row) return forms;
 
-    var inlineEdit = row.querySelector('[data-inline-task-edit-form]');
-    if (inlineEdit && !inlineEdit.hidden) {
-      forms.push(inlineEdit);
-    }
+    inlineEditForms(row).forEach(function (inlineEdit) {
+      if (!inlineEdit.hidden) {
+        forms.push(inlineEdit);
+      }
+    });
 
     var subtaskCreate = row.querySelector('[data-subtask-create-form]');
     if (subtaskCreate && !subtaskCreate.hidden) {
@@ -1141,60 +1153,59 @@
     });
   }
 
+  function closeInlineEditForm(root, form, shouldFocusTrigger) {
+    if (!root || !form) return;
+    var scope = closestElement(form, '[data-inline-task-edit-scope]');
+    var focusTarget = scope ? scope.getAttribute('data-inline-task-edit-focus') || 'title' : root.dataset.inlineTaskEditFocus || 'title';
+    var trigger = scope ? scope.querySelector('[data-inline-task-edit-open]') : root.querySelector('[data-inline-task-edit-open][data-inline-task-edit-focus="' + focusTarget + '"]');
+    form.reset();
+    form.hidden = true;
+    if (trigger) {
+      trigger.hidden = false;
+      trigger.setAttribute('aria-expanded', 'false');
+      if (shouldFocusTrigger) {
+        trigger.focus();
+      }
+    }
+  }
+
   function openInlineEdit(root, focusTarget) {
     if (!root) return;
-    var display = root.querySelector('[data-inline-task-display]');
-    var form = root.querySelector('[data-inline-task-edit-form]');
-    var triggers = root.querySelectorAll('[data-inline-task-edit-open]');
-    var extra = root.querySelector('[data-inline-task-edit-extra]');
-    if (!form || !display) return;
-    root.dataset.inlineTaskEditState = 'open';
-    root.dataset.inlineTaskEditFocus = focusTarget || 'title';
-    display.hidden = true;
-    form.hidden = false;
-    if (extra) {
-      extra.hidden = false;
-    }
-    triggers.forEach(function (trigger) {
-      trigger.setAttribute('aria-expanded', 'true');
+    focusTarget = focusTarget || 'title';
+    var scope = root.querySelector('[data-inline-task-edit-scope][data-inline-task-edit-focus="' + focusTarget + '"]') || root.querySelector('[data-inline-task-edit-scope]');
+    var form = scope ? scope.querySelector('[data-inline-task-edit-form]') : null;
+    var trigger = scope ? scope.querySelector('[data-inline-task-edit-open]') : null;
+    if (!form || !trigger) return;
+    inlineEditForms(root).forEach(function (otherForm) {
+      if (otherForm !== form && !otherForm.hidden) {
+        closeInlineEditForm(root, otherForm, false);
+      }
     });
+    root.dataset.inlineTaskEditState = 'open';
+    root.dataset.inlineTaskEditFocus = focusTarget;
+    form.reset();
+    trigger.hidden = true;
+    trigger.setAttribute('aria-expanded', 'true');
+    form.hidden = false;
     setInlineEditError(root, '');
     var selector = focusTarget === 'date' ? '[data-inline-task-edit-date]' : '[data-inline-task-edit-title]';
     var input = form.querySelector(selector) || form.querySelector('[data-inline-task-edit-title]');
     if (input) {
       window.setTimeout(function () {
         input.focus();
-        if (focusTarget !== 'date' && typeof input.select === 'function') {
-          input.select();
-        }
       }, 0);
     }
   }
 
   function closeInlineEdit(root) {
     if (!root) return;
-    var display = root.querySelector('[data-inline-task-display]');
-    var form = root.querySelector('[data-inline-task-edit-form]');
-    var triggers = root.querySelectorAll('[data-inline-task-edit-open]');
-    var extra = root.querySelector('[data-inline-task-edit-extra]');
-    if (!form || !display) return;
-    var focusTarget = root.dataset.inlineTaskEditFocus || 'title';
-    form.reset();
-    form.hidden = true;
-    if (extra) {
-      closeInlineCreate(extra.querySelector('[data-subtask-create]'));
-      extra.hidden = true;
+    var form = visibleInlineEditForm(root);
+    if (!form) return;
+    closeInlineEditForm(root, form, true);
+    if (!visibleInlineEditForm(root)) {
+      root.dataset.inlineTaskEditState = 'closed';
     }
-    display.hidden = false;
-    root.dataset.inlineTaskEditState = 'closed';
     setInlineEditError(root, '');
-    triggers.forEach(function (trigger) {
-      trigger.setAttribute('aria-expanded', 'false');
-    });
-    var trigger = root.querySelector('[data-inline-task-edit-open][data-inline-task-edit-focus="' + focusTarget + '"]') || root.querySelector('[data-inline-task-edit-open]');
-    if (trigger) {
-      trigger.focus();
-    }
   }
 
   function taskDetailError(dialog) {
@@ -1271,7 +1282,6 @@
     window.setTimeout(function () {
       if (input && !input.disabled) {
         input.focus();
-        input.select();
         return;
       }
       if (close) close.focus();
@@ -1403,10 +1413,14 @@
       var form = dialog.querySelector('[data-task-delete-form]');
       if (form) form.reset();
       setTaskDeleteError(dialog, '');
-      var trigger = dialog.__caldoReturnFocus;
-      dialog.__caldoReturnFocus = null;
+      var trigger = dialog.__caldoDeleteTrigger;
+      dialog.__caldoDeleteTrigger = null;
       if (trigger && document.contains(trigger)) {
         trigger.setAttribute('aria-expanded', 'false');
+      }
+      trigger = dialog.__caldoReturnFocus;
+      dialog.__caldoReturnFocus = null;
+      if (trigger && document.contains(trigger)) {
         trigger.focus();
       }
     });
@@ -1417,13 +1431,14 @@
     });
   }
 
-  function openTaskDelete(trigger) {
+  function openTaskDelete(trigger, returnFocus) {
     if (!trigger) return;
     var task = trigger.closest('[data-task-id]');
     var dialog = task ? task.querySelector('[data-task-delete-dialog]') : null;
     if (!dialog) return;
     bindTaskDelete(dialog);
-    dialog.__caldoReturnFocus = trigger;
+    dialog.__caldoDeleteTrigger = trigger;
+    dialog.__caldoReturnFocus = returnFocus || trigger;
     trigger.setAttribute('aria-expanded', 'true');
     setTaskDeleteError(dialog, '');
     setTaskActionError(task, '');
@@ -1450,10 +1465,14 @@
     var form = dialog.querySelector('[data-task-delete-form]');
     if (form) form.reset();
     setTaskDeleteError(dialog, '');
-    var trigger = dialog.__caldoReturnFocus;
-    dialog.__caldoReturnFocus = null;
+    var trigger = dialog.__caldoDeleteTrigger;
+    dialog.__caldoDeleteTrigger = null;
     if (trigger && document.contains(trigger)) {
       trigger.setAttribute('aria-expanded', 'false');
+    }
+    trigger = dialog.__caldoReturnFocus;
+    dialog.__caldoReturnFocus = null;
+    if (trigger && document.contains(trigger)) {
       trigger.focus();
     }
   }
@@ -2470,13 +2489,6 @@
       return;
     }
 
-    var inlineEditCancel = closestElement(event.target, '[data-inline-task-edit-cancel]');
-    if (inlineEditCancel) {
-      event.preventDefault();
-      closeInlineEdit(inlineEditCancel.closest('[data-task-id]'));
-      return;
-    }
-
     var inlineEditOpen = closestElement(event.target, '[data-inline-task-edit-open]');
     if (inlineEditOpen && !closestElement(event.target, '[data-inline-task-edit-form]')) {
       event.preventDefault();
@@ -2522,7 +2534,14 @@
     var taskDeleteOpen = closestElement(event.target, '[data-task-delete-open]');
     if (taskDeleteOpen) {
       event.preventDefault();
-      openTaskDelete(taskDeleteOpen);
+      var deleteDetailDialog = closestElement(taskDeleteOpen, '[data-task-detail-dialog]');
+      var deleteReturnFocus = taskDeleteOpen;
+      if (deleteDetailDialog && deleteDetailDialog.open) {
+        var deleteTaskRow = taskDeleteOpen.closest('[data-task-id]');
+        deleteReturnFocus = deleteTaskRow ? deleteTaskRow.querySelector('[data-task-detail-open]') || taskDeleteOpen : taskDeleteOpen;
+        closeTaskDetail(deleteDetailDialog);
+      }
+      openTaskDelete(taskDeleteOpen, deleteReturnFocus);
       return;
     }
 
@@ -2611,11 +2630,18 @@
       }
     }
 
-    var inlineEdit = closestElement(event.target, '[data-task-id]');
-    if (inlineEdit && inlineEdit.dataset.inlineTaskEditState === 'open' && event.key === 'Escape') {
-      event.preventDefault();
-      closeInlineEdit(inlineEdit);
-      return;
+    var inlineEditForm = closestElement(event.target, '[data-inline-task-edit-form]');
+    if (inlineEditForm) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeInlineEdit(inlineEditForm.closest('[data-task-id]'));
+        return;
+      }
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        submitForm(inlineEditForm);
+        return;
+      }
     }
 
     var taskDetailDialog = closestElement(event.target, '[data-task-detail-dialog]');

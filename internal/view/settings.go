@@ -268,12 +268,21 @@ func renderSettingsSyncSummary(w io.Writer, syncStatus db.SyncStatus, text Texts
 }
 
 func renderUISettings(w io.Writer, csrfToken string, settings db.AppSettings, text Texts) error {
+	taskNoteDisplay := NormalizeTaskNoteDisplay(settings.TaskNoteDisplay)
 	_, err := fmt.Fprintf(w, `<div id="ui-settings" class="caldo-card">
 <h3 class="font-medium">%s</h3>
 	<form class="mt-3 space-y-3 text-sm" method="post" action="/settings/ui" hx-post="/settings/ui" hx-target="body" hx-swap="outerHTML" hx-push-url="false" hx-disabled-elt="find button" hx-headers='{"X-CSRF-Token":"%s"}'>
 <label class="flex items-center gap-2"><input class="caldo-check" type="checkbox" name="show_completed" %s> %s</label>
 <label class="caldo-label">%s
 <input class="caldo-input w-32" type="number" min="1" name="upcoming_days" value="%d">
+</label>
+<label class="caldo-label">%s
+<select class="caldo-select w-48" name="task_note_display">
+<option value="none" %s>%s</option>
+<option value="full" %s>%s</option>
+<option value="first_line" %s>%s</option>
+<option value="first_two_lines" %s>%s</option>
+</select>
 </label>
 <label class="caldo-label">%s
 <select class="caldo-select w-48" name="ui_language">
@@ -291,7 +300,7 @@ func renderUISettings(w io.Writer, csrfToken string, settings db.AppSettings, te
 <button type="submit" class="caldo-button caldo-button-secondary">%s</button>
 <span class="htmx-indicator caldo-meta ml-2" aria-live="polite">%s</span>
 </form>
-</div>`, html.EscapeString(text.SettingsUITitle), csrfToken, checkedAttr(settings.ShowCompleted), html.EscapeString(text.SettingsShowCompleted), html.EscapeString(text.SettingsUpcomingDays), settings.UpcomingDays, html.EscapeString(text.SettingsLanguage), selectedAttr(settings.UILanguage, "de"), selectedAttr(settings.UILanguage, "en"), html.EscapeString(text.SettingsDarkMode), selectedAttr(settings.DarkMode, "system"), html.EscapeString(text.ThemeSystem), selectedAttr(settings.DarkMode, "light"), html.EscapeString(text.ThemeLight), selectedAttr(settings.DarkMode, "dark"), html.EscapeString(text.ThemeDark), html.EscapeString(text.SettingsSaveUI), html.EscapeString(text.SettingsSyncPending))
+</div>`, html.EscapeString(text.SettingsUITitle), csrfToken, checkedAttr(settings.ShowCompleted), html.EscapeString(text.SettingsShowCompleted), html.EscapeString(text.SettingsUpcomingDays), settings.UpcomingDays, html.EscapeString(text.SettingsTaskNotes), selectedAttr(taskNoteDisplay, TaskNoteDisplayNone), html.EscapeString(text.SettingsTaskNotesNone), selectedAttr(taskNoteDisplay, TaskNoteDisplayFull), html.EscapeString(text.SettingsTaskNotesFull), selectedAttr(taskNoteDisplay, TaskNoteDisplayOneLine), html.EscapeString(text.SettingsTaskNotesOneLine), selectedAttr(taskNoteDisplay, TaskNoteDisplayTwoLines), html.EscapeString(text.SettingsTaskNotesTwoLine), html.EscapeString(text.SettingsLanguage), selectedAttr(settings.UILanguage, "de"), selectedAttr(settings.UILanguage, "en"), html.EscapeString(text.SettingsDarkMode), selectedAttr(settings.DarkMode, "system"), html.EscapeString(text.ThemeSystem), selectedAttr(settings.DarkMode, "light"), html.EscapeString(text.ThemeLight), selectedAttr(settings.DarkMode, "dark"), html.EscapeString(text.ThemeDark), html.EscapeString(text.SettingsSaveUI), html.EscapeString(text.SettingsSyncPending))
 	return err
 }
 

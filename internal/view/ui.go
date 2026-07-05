@@ -3,35 +3,50 @@ package view
 import "context"
 
 const (
-	defaultUILanguage = "de"
-	defaultDarkMode   = "system"
+	defaultUILanguage       = "de"
+	defaultDarkMode         = "system"
+	defaultTaskNoteDisplay  = "first_two_lines"
+	TaskNoteDisplayNone     = "none"
+	TaskNoteDisplayFull     = "full"
+	TaskNoteDisplayOneLine  = "first_line"
+	TaskNoteDisplayTwoLines = "first_two_lines"
 )
 
 const uiPreferencesKey contextKey = "ui_preferences"
 
 // UIPreferences contains presentation preferences for one rendered page.
 type UIPreferences struct {
-	Language string
-	DarkMode string
+	Language        string
+	DarkMode        string
+	TaskNoteDisplay string
 }
 
 // WithUIPreferences stores normalized UI preferences in request context.
 func WithUIPreferences(ctx context.Context, language string, darkMode string) context.Context {
 	return context.WithValue(ctx, uiPreferencesKey, UIPreferences{
-		Language: NormalizeUILanguage(language),
-		DarkMode: NormalizeDarkMode(darkMode),
+		Language:        NormalizeUILanguage(language),
+		DarkMode:        NormalizeDarkMode(darkMode),
+		TaskNoteDisplay: defaultTaskNoteDisplay,
 	})
+}
+
+// WithTaskNoteDisplay stores the normalized task-note list display preference in request context.
+func WithTaskNoteDisplay(ctx context.Context, mode string) context.Context {
+	preferences := CurrentUIPreferences(ctx)
+	preferences.TaskNoteDisplay = NormalizeTaskNoteDisplay(mode)
+	return context.WithValue(ctx, uiPreferencesKey, preferences)
 }
 
 // CurrentUIPreferences returns normalized UI preferences from context.
 func CurrentUIPreferences(ctx context.Context) UIPreferences {
 	preferences, ok := ctx.Value(uiPreferencesKey).(UIPreferences)
 	if !ok {
-		return UIPreferences{Language: defaultUILanguage, DarkMode: defaultDarkMode}
+		return UIPreferences{Language: defaultUILanguage, DarkMode: defaultDarkMode, TaskNoteDisplay: defaultTaskNoteDisplay}
 	}
 	return UIPreferences{
-		Language: NormalizeUILanguage(preferences.Language),
-		DarkMode: NormalizeDarkMode(preferences.DarkMode),
+		Language:        NormalizeUILanguage(preferences.Language),
+		DarkMode:        NormalizeDarkMode(preferences.DarkMode),
+		TaskNoteDisplay: NormalizeTaskNoteDisplay(preferences.TaskNoteDisplay),
 	}
 }
 
@@ -53,6 +68,16 @@ func NormalizeDarkMode(mode string) string {
 	}
 }
 
+// NormalizeTaskNoteDisplay returns a supported task-note list display mode or the default.
+func NormalizeTaskNoteDisplay(mode string) string {
+	switch mode {
+	case TaskNoteDisplayNone, TaskNoteDisplayFull, TaskNoteDisplayOneLine, TaskNoteDisplayTwoLines:
+		return mode
+	default:
+		return defaultTaskNoteDisplay
+	}
+}
+
 // UILanguage returns the current HTML language code.
 func UILanguage(ctx context.Context) string {
 	return CurrentUIPreferences(ctx).Language
@@ -61,6 +86,11 @@ func UILanguage(ctx context.Context) string {
 // UIDarkMode returns the current dark-mode preference.
 func UIDarkMode(ctx context.Context) string {
 	return CurrentUIPreferences(ctx).DarkMode
+}
+
+// UITaskNoteDisplay returns the current task-note list display preference.
+func UITaskNoteDisplay(ctx context.Context) string {
+	return CurrentUIPreferences(ctx).TaskNoteDisplay
 }
 
 // ThemeRootClass returns the CSS class needed to override system preference.
@@ -204,6 +234,11 @@ type Texts struct {
 	SettingsUITitle          string
 	SettingsShowCompleted    string
 	SettingsUpcomingDays     string
+	SettingsTaskNotes        string
+	SettingsTaskNotesNone    string
+	SettingsTaskNotesFull    string
+	SettingsTaskNotesOneLine string
+	SettingsTaskNotesTwoLine string
 	SettingsLanguage         string
 	SettingsDarkMode         string
 	SettingsSaveUI           string
@@ -344,6 +379,11 @@ var germanTexts = Texts{ // #nosec G101 -- text catalog values are UI labels, no
 	SettingsUITitle:          "UI",
 	SettingsShowCompleted:    "Erledigte Aufgaben anzeigen",
 	SettingsUpcomingDays:     "Demnächst-Zeitraum (Tage)",
+	SettingsTaskNotes:        "Aufgabennotizen in Listen",
+	SettingsTaskNotesNone:    "Nein",
+	SettingsTaskNotesFull:    "Ja - vollständig",
+	SettingsTaskNotesOneLine: "Ja - erste Zeile",
+	SettingsTaskNotesTwoLine: "Ja - erste 2 Zeilen",
 	SettingsLanguage:         "Sprache",
 	SettingsDarkMode:         "Dark Mode",
 	SettingsSaveUI:           "UI-Einstellungen speichern",
@@ -484,6 +524,11 @@ var englishTexts = Texts{ // #nosec G101 -- text catalog values are UI labels, n
 	SettingsUITitle:          "UI",
 	SettingsShowCompleted:    "Show completed tasks",
 	SettingsUpcomingDays:     "Upcoming range (days)",
+	SettingsTaskNotes:        "Task notes in lists",
+	SettingsTaskNotesNone:    "No",
+	SettingsTaskNotesFull:    "Yes - full",
+	SettingsTaskNotesOneLine: "Yes - first line",
+	SettingsTaskNotesTwoLine: "Yes - first 2 lines",
 	SettingsLanguage:         "Language",
 	SettingsDarkMode:         "Dark mode",
 	SettingsSaveUI:           "Save UI settings",

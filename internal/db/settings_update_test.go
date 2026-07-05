@@ -43,3 +43,34 @@ VALUES ('task-1', 'project-work', 'uid-1', '/cal/work/task-1.ics', 'Task', 'need
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM projects WHERE is_default = TRUE AND calendar_href = '/cal/home/';`, 1)
 	assertSingleTextResult(t, database, `SELECT p.calendar_href FROM settings s JOIN projects p ON p.id = s.default_project_id WHERE s.id = 'default';`, "/cal/home/")
 }
+
+func TestSaveUISettingsPersistsTaskNoteDisplay(t *testing.T) {
+	t.Parallel()
+
+	database, err := OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	preferences, err := database.LoadUIPreferences(context.Background())
+	if err != nil {
+		t.Fatalf("load ui preferences: %v", err)
+	}
+	if preferences.TaskNoteDisplay != "first_two_lines" {
+		t.Fatalf("expected default task note display, got %q", preferences.TaskNoteDisplay)
+	}
+
+	if err := database.SaveUISettings(context.Background(), true, 14, "en", "dark", "full"); err != nil {
+		t.Fatalf("save ui settings: %v", err)
+	}
+
+	assertSingleTextResult(t, database, `SELECT task_note_display FROM settings WHERE id = 'default';`, "full")
+	preferences, err = database.LoadUIPreferences(context.Background())
+	if err != nil {
+		t.Fatalf("reload ui preferences: %v", err)
+	}
+	if preferences.UILanguage != "en" || preferences.DarkMode != "dark" || preferences.TaskNoteDisplay != "full" {
+		t.Fatalf("unexpected ui preferences: %#v", preferences)
+	}
+}

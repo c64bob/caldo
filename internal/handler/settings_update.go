@@ -223,11 +223,12 @@ func SettingsUIUpdate(database *db.Database) http.HandlerFunc {
 		showCompleted := strings.EqualFold(strings.TrimSpace(r.FormValue("show_completed")), "on")
 		uiLanguage := strings.TrimSpace(r.FormValue("ui_language"))
 		darkMode := strings.TrimSpace(r.FormValue("dark_mode"))
-		if !isSupportedUILanguage(uiLanguage) || !isSupportedDarkMode(darkMode) {
+		taskNoteDisplay := strings.TrimSpace(r.FormValue("task_note_display"))
+		if !isSupportedUILanguage(uiLanguage) || !isSupportedDarkMode(darkMode) || !isSupportedTaskNoteDisplay(taskNoteDisplay) {
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
-		if err := database.SaveUISettings(r.Context(), showCompleted, upcomingDays, uiLanguage, darkMode); err != nil {
+		if err := database.SaveUISettings(r.Context(), showCompleted, upcomingDays, uiLanguage, darkMode, taskNoteDisplay); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
@@ -241,4 +242,13 @@ func isSupportedUILanguage(language string) bool {
 
 func isSupportedDarkMode(mode string) bool {
 	return mode == "light" || mode == "dark" || mode == "system"
+}
+
+func isSupportedTaskNoteDisplay(mode string) bool {
+	switch mode {
+	case "none", "full", "first_line", "first_two_lines":
+		return true
+	default:
+		return false
+	}
 }

@@ -129,6 +129,60 @@ func TestTaskRowRendersDescriptionMarkdownReadOnlyWithoutChangingRawEditValue(t 
 	}
 }
 
+func TestTaskRowHonorsTaskNoteDisplayPreference(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		mode      string
+		wantClass string
+		hidden    bool
+	}{
+		{name: "none", mode: TaskNoteDisplayNone, hidden: true},
+		{name: "full", mode: TaskNoteDisplayFull, wantClass: "caldo-task-description-full"},
+		{name: "one line", mode: TaskNoteDisplayOneLine, wantClass: "caldo-task-description-lines-1"},
+		{name: "two lines", mode: TaskNoteDisplayTwoLines, wantClass: "caldo-task-description-lines-2"},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := WithTaskNoteDisplay(context.Background(), tt.mode)
+			component := TaskRow(TaskRowView{
+				ID:            "task-note-" + strings.ReplaceAll(tt.name, " ", "-"),
+				ProjectID:     "project-1",
+				Title:         "Notiz Aufgabe",
+				Description:   "Zeile 1\\nZeile 2\\nZeile 3",
+				Status:        "needs-action",
+				SyncStatus:    "synced",
+				ServerVersion: 2,
+			})
+
+			var rendered bytes.Buffer
+			if err := component.Render(ctx, &rendered); err != nil {
+				t.Fatalf("render task row: %v", err)
+			}
+
+			output := rendered.String()
+			hasDescription := strings.Contains(output, `caldo-task-description`)
+			if tt.hidden {
+				if hasDescription {
+					t.Fatalf("expected task note to be hidden in %s", output)
+				}
+				if !strings.Contains(output, `>Zeile 1\nZeile 2\nZeile 3</textarea>`) {
+					t.Fatalf("hidden list notes must not remove raw detail description in %s", output)
+				}
+				return
+			}
+			if !hasDescription || !strings.Contains(output, tt.wantClass) {
+				t.Fatalf("expected task note class %q in %s", tt.wantClass, output)
+			}
+		})
+	}
+}
+
 func TestTaskRowLeavesPlainDescriptionTextUnlinked(t *testing.T) {
 	t.Parallel()
 
@@ -230,11 +284,9 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 		`data-inline-task-edit-focus="date"`,
 		`data-inline-task-edit-form`,
 		`data-inline-task-edit-date`,
-		`data-inline-task-edit-extra`,
 		`data-task-favorite-form`,
 		`aria-label="Favorit entfernen"`,
 		`aria-pressed="true"`,
-		`data-task-actions`,
 		`data-task-action-form`,
 		`data-task-action-error`,
 		`data-task-delete-open`,
@@ -249,6 +301,7 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 		`data-subtask-create-form`,
 		`hx-post="/tasks/task-1/subtasks"`,
 		`Unteraufgabe hinzufügen`,
+		`Unteraufgaben`,
 		`Unteraufgabentitel`,
 		`hidden`,
 		`hx-patch="/tasks/task-1"`,
@@ -259,7 +312,6 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 		`Alter Text`,
 		`name="project_id"`,
 		`name="due_date" value="2026-06-09"`,
-		`data-inline-task-edit-cancel`,
 		`data-inline-task-edit-error`,
 		`X-CSRF-Token`,
 	} {
@@ -280,12 +332,6 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 	}
 	if strings.Contains(output, `>Aufgabe erledigen<`) {
 		t.Fatalf("completion must be available only through the checkbox control: %s", output)
-	}
-	editExtraIndex := strings.Index(output, `data-inline-task-edit-extra`)
-	deleteIndex := strings.Index(output, `data-task-delete-open`)
-	subtaskIndex := strings.Index(output, `data-subtask-create`)
-	if editExtraIndex < 0 || deleteIndex < editExtraIndex || subtaskIndex < editExtraIndex {
-		t.Fatalf("delete and subtask actions must render inside edit-only controls: %s", output)
 	}
 }
 
@@ -529,9 +575,9 @@ func TestTaskRowRendersDueStateChips(t *testing.T) {
 		class string
 	}{
 		{name: "none", due: "", want: "Ohne Datum", class: "caldo-task-chip-due-none"},
-		{name: "overdue", due: "2026-06-08", want: "Überfällig 2026-06-08", class: "caldo-task-chip-due-overdue"},
+		{name: "overdue", due: "2026-06-08", want: "08.06.2026", class: "caldo-task-chip-due-overdue"},
 		{name: "today", due: "2026-06-09", want: "Heute", class: "caldo-task-chip-due-today"},
-		{name: "future", due: "2026-06-10", want: "Fällig 2026-06-10", class: "caldo-task-chip-due-future"},
+		{name: "future", due: "2026-06-10", want: "Fällig 10.06.2026", class: "caldo-task-chip-due-future"},
 	}
 
 	for _, tt := range tests {
@@ -590,7 +636,6 @@ func TestTaskRowRendersCompletedCheckboxAndEditOnlyDeleteAction(t *testing.T) {
 		`checked`,
 		`Speichern ...`,
 		`data-task-action-error`,
-		`data-inline-task-edit-extra`,
 		`data-task-delete-open`,
 	} {
 		if !strings.Contains(output, want) {
@@ -868,7 +913,7 @@ func TestInlineTaskCreateRendersContextAndControls(t *testing.T) {
 		`data-inline-task-create-error`,
 		`X-CSRF-Token`,
 		`Work`,
-		`Fällig 2026-06-09`,
+		`Fällig 09.06.2026`,
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected inline create to include %q in %s", want, output)

@@ -265,6 +265,7 @@ func renderSettingsPage(w http.ResponseWriter, r *http.Request, deps settingsDep
 		settings.CalDAVUsername = pageState.CalDAVUsername
 	}
 	ctx := view.WithUIPreferences(r.Context(), settings.UILanguage, settings.DarkMode)
+	ctx = view.WithTaskNoteDisplay(ctx, settings.TaskNoteDisplay)
 
 	available := pageState.Available
 	calendarLoadError := pageState.CalendarsError

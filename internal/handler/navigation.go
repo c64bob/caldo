@@ -45,7 +45,8 @@ func withUIPreferences(ctx context.Context, database *db.Database) context.Conte
 	if err != nil {
 		return ctx
 	}
-	return view.WithUIPreferences(ctx, preferences.UILanguage, preferences.DarkMode)
+	ctx = view.WithUIPreferences(ctx, preferences.UILanguage, preferences.DarkMode)
+	return view.WithTaskNoteDisplay(ctx, preferences.TaskNoteDisplay)
 }
 
 func shouldLoadNavigation(database *db.Database, setupState *SetupState, r *http.Request) bool {

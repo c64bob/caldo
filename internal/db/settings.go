@@ -14,6 +14,7 @@ type AppSettings struct {
 	ShowCompleted       bool
 	UILanguage          string
 	DarkMode            string
+	TaskNoteDisplay     string
 	CalDAVURL           string
 	CalDAVUsername      string
 	CalDAVConfigured    bool
@@ -33,18 +34,19 @@ type SettingsProject struct {
 
 // UIPreferences contains the persisted UI language and dark-mode setting.
 type UIPreferences struct {
-	UILanguage string
-	DarkMode   string
+	UILanguage      string
+	DarkMode        string
+	TaskNoteDisplay string
 }
 
 // LoadUIPreferences reads persisted presentation preferences from settings.
 func (d *Database) LoadUIPreferences(ctx context.Context) (UIPreferences, error) {
 	var preferences UIPreferences
 	err := d.Conn.QueryRowContext(ctx, `
-SELECT ui_language, dark_mode
+SELECT ui_language, dark_mode, task_note_display
 FROM settings
 WHERE id='default';
-`).Scan(&preferences.UILanguage, &preferences.DarkMode)
+`).Scan(&preferences.UILanguage, &preferences.DarkMode, &preferences.TaskNoteDisplay)
 	if err != nil {
 		return UIPreferences{}, fmt.Errorf("load ui preferences: %w", err)
 	}
@@ -63,6 +65,7 @@ SELECT
 	show_completed,
 	ui_language,
 	dark_mode,
+	task_note_display,
 	caldav_url,
 	caldav_username,
 	caldav_password_enc IS NOT NULL
@@ -74,6 +77,7 @@ WHERE id='default';
 		&s.ShowCompleted,
 		&s.UILanguage,
 		&s.DarkMode,
+		&s.TaskNoteDisplay,
 		&caldavURL,
 		&caldavUsername,
 		&caldavPasswordConfigured,

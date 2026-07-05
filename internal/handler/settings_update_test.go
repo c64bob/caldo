@@ -377,3 +377,14 @@ func TestIsSupportedDarkMode(t *testing.T) {
 		t.Fatal("unexpected custom mode support")
 	}
 }
+
+func TestIsSupportedTaskNoteDisplay(t *testing.T) {
+	for _, mode := range []string{"none", "full", "first_line", "first_two_lines"} {
+		if !isSupportedTaskNoteDisplay(mode) {
+			t.Fatalf("expected supported task note mode %q", mode)
+		}
+	}
+	if isSupportedTaskNoteDisplay("summary") {
+		t.Fatal("unexpected task note mode support")
+	}
+}

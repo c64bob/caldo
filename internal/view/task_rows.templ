@@ -79,16 +79,46 @@ templ TaskRow(task TaskRowView) {
 				<div class="caldo-task-content" data-inline-task-display>
 					<div class="caldo-task-title-line">
 						if taskCanInlineEdit(task) {
-							<button
-								type="button"
-								class="caldo-task-title caldo-task-title-edit-trigger"
-								data-inline-task-edit-open
-								data-inline-task-edit-focus="title"
-								aria-expanded="false"
-								aria-label={ "Titel bearbeiten: " + taskRowTitle(task) }
-							>
-								{ taskRowTitle(task) }
-							</button>
+							<div class="caldo-task-title-edit-shell" data-inline-task-edit-scope data-inline-task-edit-focus="title">
+								<button
+									type="button"
+									class="caldo-task-title caldo-task-title-edit-trigger"
+									data-inline-task-edit-open
+									data-inline-task-edit-focus="title"
+									aria-expanded="false"
+									aria-label={ "Titel bearbeiten: " + taskRowTitle(task) }
+								>
+									{ taskRowTitle(task) }
+								</button>
+								<form
+									method="post"
+									action={ taskEditPath(task) }
+									hx-patch={ taskEditPath(task) }
+									hx-swap="none"
+									hx-disabled-elt="find button"
+									hx-headers={ taskCSRFHeaders(ctx) }
+									data-refresh-after-write="true"
+									data-inline-task-edit-form
+									data-inline-task-edit-kind="title"
+									class="caldo-task-inline-edit-form caldo-task-title-edit-form"
+									aria-label={ "Titel bearbeiten: " + taskRowTitle(task) }
+									aria-describedby={ taskDOMID("task-edit-error", task) }
+									hidden
+								>
+									<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
+									<input
+										type="text"
+										name="title"
+										required
+										autocomplete="off"
+										class="caldo-input caldo-task-edit-title"
+										value={ taskRowTitle(task) }
+										data-inline-task-edit-title
+										aria-describedby={ taskDOMID("task-edit-error", task) }
+									/>
+									<button type="submit" class="sr-only">Speichern</button>
+								</form>
+							</div>
 						} else {
 							<p class="caldo-task-title">{ taskRowTitle(task) }</p>
 						}
@@ -149,8 +179,8 @@ templ TaskRow(task TaskRowView) {
 						</button>
 					}
 					</div>
-					if taskRowDescription(task) != "" {
-						<div class="caldo-task-description">@TaskDescriptionMarkdown(taskRowDescription(task))</div>
+					if taskRowDescriptionVisible(ctx, task) {
+						<div class={ "caldo-task-description", taskRowDescriptionClass(ctx) }>@TaskDescriptionMarkdown(taskRowDescription(task))</div>
 					}
 					<div class="caldo-task-meta-line">
 						<div class="caldo-task-meta-main">
@@ -166,16 +196,38 @@ templ TaskRow(task TaskRowView) {
 						</div>
 						<div class="caldo-task-date-slot">
 							if taskCanInlineEdit(task) {
-								<button
-									type="button"
-									class={ taskDueStateChip(task).Class, "caldo-task-date-trigger" }
-									data-inline-task-edit-open
-									data-inline-task-edit-focus="date"
-									aria-expanded="false"
-									aria-label={ taskDateEditLabel(task) }
-								>
-									{ taskDueStateChip(task).Label }
-								</button>
+								<div class="caldo-task-date-edit-shell" data-inline-task-edit-scope data-inline-task-edit-focus="date">
+									<button
+										type="button"
+										class={ taskDueStateChip(task).Class, "caldo-task-date-trigger" }
+										data-inline-task-edit-open
+										data-inline-task-edit-focus="date"
+										aria-expanded="false"
+										aria-label={ taskDateEditLabel(task) }
+									>
+										{ taskDueStateChip(task).Label }
+									</button>
+									<form
+										method="post"
+										action={ taskEditPath(task) }
+										hx-patch={ taskEditPath(task) }
+										hx-trigger="change, submit"
+										hx-swap="none"
+										hx-disabled-elt="find button"
+										hx-headers={ taskCSRFHeaders(ctx) }
+										data-refresh-after-write="true"
+										data-inline-task-edit-form
+										data-inline-task-edit-kind="date"
+										class="caldo-task-inline-edit-form caldo-task-date-edit-form"
+										aria-label={ taskDateEditLabel(task) }
+										aria-describedby={ taskDOMID("task-edit-error", task) }
+										hidden
+									>
+										<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
+										<input type="date" name="due_date" value={ task.DueISODate } class="caldo-input caldo-task-date-edit-input" data-inline-task-edit-date aria-label={ taskDateEditLabel(task) } aria-describedby={ taskDOMID("task-edit-error", task) }/>
+										<button type="submit" class="sr-only">Speichern</button>
+									</form>
+								</div>
 							} else {
 								<span class={ taskDueStateChip(task).Class }>{ taskDueStateChip(task).Label }</span>
 							}
@@ -192,73 +244,11 @@ templ TaskRow(task TaskRowView) {
 						}
 					</div>
 				}
+				if taskCanInlineEdit(task) {
+					<p id={ taskDOMID("task-edit-error", task) } class="caldo-alert caldo-alert-error caldo-task-edit-error" data-inline-task-edit-error role="alert" aria-live="polite" hidden>Aufgabe konnte nicht gespeichert werden.</p>
+				}
 				<p id={ taskDOMID("task-action-error", task) } class="caldo-alert caldo-alert-error caldo-task-action-error" data-task-action-error role="alert" aria-live="polite" hidden>Aktion konnte nicht ausgeführt werden.</p>
 			</div>
-			if taskCanInlineEdit(task) {
-				<form
-					method="post"
-					action={ taskEditPath(task) }
-					hx-patch={ taskEditPath(task) }
-					hx-swap="none"
-					hx-disabled-elt="find button"
-					hx-headers={ taskCSRFHeaders(ctx) }
-					data-refresh-after-write="true"
-					data-inline-task-edit-form
-					class="caldo-task-edit-form"
-					aria-label={ "Aufgabe bearbeiten: " + taskRowTitle(task) }
-					aria-describedby={ taskDOMID("task-edit-error", task) }
-					hidden
-					>
-						<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
-						<input type="hidden" name="status" value={ task.Status }/>
-						<input type="hidden" name="project_id" value={ task.ProjectID }/>
-						<div class="caldo-task-edit-grid">
-							<label class="caldo-task-edit-field caldo-task-edit-field-title">
-								<span>Titel</span>
-								<input
-									type="text"
-									name="title"
-									required
-									autocomplete="off"
-									class="caldo-input caldo-task-edit-title"
-									value={ taskRowTitle(task) }
-									data-inline-task-edit-title
-									aria-describedby={ taskDOMID("task-edit-error", task) }
-								/>
-							</label>
-							<label class="caldo-task-edit-field">
-								<span>Fällig</span>
-								<input type="date" name="due_date" value={ task.DueISODate } class="caldo-input" data-inline-task-edit-date/>
-							</label>
-						</div>
-					<p id={ taskDOMID("task-edit-error", task) } class="caldo-alert caldo-alert-error caldo-task-edit-error" data-inline-task-edit-error role="alert" aria-live="polite" hidden>Aufgabe konnte nicht gespeichert werden.</p>
-					<div class="caldo-task-edit-actions">
-						<button type="submit" class="caldo-button caldo-button-primary">Speichern</button>
-						<button type="button" class="caldo-button caldo-button-ghost" data-inline-task-edit-cancel>Abbrechen</button>
-						<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
-					</div>
-				</form>
-			}
-			if taskCanInlineEdit(task) && (taskCanCreateSubtask(task) || taskCanDelete(task)) {
-				<div class="caldo-task-edit-extra" data-inline-task-edit-extra hidden>
-					if taskCanCreateSubtask(task) {
-						@SubtaskCreate(task)
-					}
-					if taskCanDelete(task) {
-						<div class="caldo-task-actions" data-task-actions>
-							<button
-								type="button"
-								class="caldo-button caldo-button-ghost caldo-button-danger"
-								data-task-delete-open
-								aria-haspopup="dialog"
-								aria-controls={ taskDOMID("task-delete", task) }
-							>
-								Löschen
-							</button>
-						</div>
-					}
-				</div>
-			}
 		</div>
 		if taskNeedsCompletionDecision(task) {
 			@TaskCompleteDialog(task)
@@ -421,7 +411,7 @@ templ TaskDetailPanel(task TaskRowView) {
 					<label class="caldo-task-detail-field">
 						<span>Priorität</span>
 						<select name="priority" class="caldo-select" disabled?={ !taskCanDetailEdit(task) }>
-							for _, priority := range taskPriorityOptions() {
+							for _, priority := range taskDetailPriorityOptions(task) {
 								<option value={ priority.Value } selected?={ priority.Value == taskPriorityValue(task) }>{ priority.Label }</option>
 							}
 						</select>
@@ -502,10 +492,29 @@ templ TaskDetailPanel(task TaskRowView) {
 				</section>
 				<div class="caldo-task-detail-actions">
 					<button type="submit" class="caldo-button caldo-button-primary" disabled?={ !taskCanDetailEdit(task) }>Speichern</button>
+					if taskCanDelete(task) {
+						<button
+							type="button"
+							class="caldo-button caldo-button-ghost caldo-button-danger"
+							data-task-delete-open
+							aria-haspopup="dialog"
+							aria-controls={ taskDOMID("task-delete", task) }
+						>
+							Löschen
+						</button>
+					}
 					<button type="button" class="caldo-button caldo-button-ghost" data-task-detail-close>Schließen</button>
 					<span class="htmx-indicator caldo-meta" aria-live="polite">Speichern ...</span>
 				</div>
 			</form>
+			if taskCanCreateSubtask(task) {
+				<section class="caldo-task-detail-section" aria-label="Unteraufgaben">
+					<div class="caldo-task-detail-section-heading">
+						<h3>Unteraufgaben</h3>
+					</div>
+					@SubtaskCreate(task)
+				</section>
+			}
 		</div>
 	</dialog>
 }

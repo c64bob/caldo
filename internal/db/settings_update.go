@@ -194,7 +194,7 @@ WHERE id = 'default';
 }
 
 // SaveUISettings updates UI settings in the singleton row.
-func (d *Database) SaveUISettings(ctx context.Context, showCompleted bool, upcomingDays int, uiLanguage, darkMode string) error {
+func (d *Database) SaveUISettings(ctx context.Context, showCompleted bool, upcomingDays int, uiLanguage, darkMode string, taskNoteDisplay string) error {
 	d.WriteMu.Lock()
 	defer d.WriteMu.Unlock()
 
@@ -204,9 +204,10 @@ SET show_completed = ?,
     upcoming_days = ?,
     ui_language = ?,
     dark_mode = ?,
+    task_note_display = ?,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = 'default';
-`, showCompleted, upcomingDays, uiLanguage, darkMode)
+`, showCompleted, upcomingDays, uiLanguage, darkMode, taskNoteDisplay)
 	if err != nil {
 		return fmt.Errorf("update ui settings: %w", err)
 	}

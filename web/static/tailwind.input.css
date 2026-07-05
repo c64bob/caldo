@@ -1026,6 +1026,10 @@
 		@apply flex min-w-0 items-start gap-1.5;
 	}
 
+		.caldo-task-title-edit-shell {
+			@apply min-w-0 flex-1;
+		}
+
 		.caldo-task-title {
 			@apply min-w-0 flex-1 text-sm font-medium leading-5;
 			color: var(--caldo-text);
@@ -1040,6 +1044,7 @@
 			cursor: text;
 			padding: 0;
 			text-align: left;
+			width: 100%;
 		}
 
 		.caldo-task-title-edit-trigger:hover,
@@ -1051,6 +1056,20 @@
 
 		.caldo-task-title-edit-trigger:focus-visible {
 			outline-color: var(--caldo-focus);
+		}
+
+		.caldo-task-inline-edit-form {
+			@apply min-w-0;
+		}
+
+		.caldo-task-title-edit-form {
+			@apply w-full;
+		}
+
+		.caldo-task-title-edit-form .caldo-input {
+			@apply w-full text-sm font-medium leading-5;
+			min-height: 1.5rem;
+			padding: 0 0.25rem;
 		}
 
 	.caldo-task-row-completed .caldo-task-title {
@@ -1092,11 +1111,26 @@
 		.caldo-task-description {
 			@apply max-w-full text-sm leading-5;
 			color: var(--caldo-text-muted);
+			overflow-wrap: anywhere;
+		}
+
+		.caldo-task-description-lines-1,
+		.caldo-task-description-lines-2 {
 			display: -webkit-box;
 			-webkit-box-orient: vertical;
-			-webkit-line-clamp: 2;
 			overflow: hidden;
-			overflow-wrap: anywhere;
+		}
+
+		.caldo-task-description-lines-1 {
+			-webkit-line-clamp: 1;
+		}
+
+		.caldo-task-description-lines-2 {
+			-webkit-line-clamp: 2;
+		}
+
+		.caldo-task-description-full {
+			white-space: normal;
 		}
 
 		.caldo-task-description code {
@@ -1129,6 +1163,11 @@
 
 		.caldo-task-date-slot {
 			@apply flex min-w-0 shrink-0 items-center;
+		}
+
+		.caldo-task-date-edit-shell,
+		.caldo-task-date-edit-form {
+			@apply min-w-0;
 		}
 
 		@media (min-width: 768px) {
@@ -1190,8 +1229,14 @@
 		.caldo-task-date-trigger {
 			appearance: none;
 			cursor: pointer;
-			font: inherit;
 			text-align: left;
+		}
+
+		.caldo-task-date-edit-input {
+			@apply text-xs leading-4;
+			min-height: 1.5rem;
+			padding: 0 0.25rem;
+			width: 8.5rem;
 		}
 
 		.caldo-task-date-trigger:hover,
@@ -1344,6 +1389,11 @@
 	}
 
 	.caldo-task-edit-extra .caldo-subtask-create {
+		@apply mt-0 px-0;
+		grid-column: auto;
+	}
+
+	.caldo-task-detail-section .caldo-subtask-create {
 		@apply mt-0 px-0;
 		grid-column: auto;
 	}

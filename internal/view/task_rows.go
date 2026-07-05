@@ -98,6 +98,21 @@ func taskRowDescription(task TaskRowView) string {
 	return strings.TrimSpace(task.Description)
 }
 
+func taskRowDescriptionVisible(ctx context.Context, task TaskRowView) bool {
+	return UITaskNoteDisplay(ctx) != TaskNoteDisplayNone && taskRowDescription(task) != ""
+}
+
+func taskRowDescriptionClass(ctx context.Context) string {
+	switch UITaskNoteDisplay(ctx) {
+	case TaskNoteDisplayFull:
+		return "caldo-task-description-full"
+	case TaskNoteDisplayOneLine:
+		return "caldo-task-description-lines-1"
+	default:
+		return "caldo-task-description-lines-2"
+	}
+}
+
 func taskDescriptionMarkdownSegments(description string) []taskDescriptionSegment {
 	description = taskDescriptionDisplayText(description)
 	if description == "" {
@@ -384,7 +399,7 @@ func inlineTaskCreateContextChips(create InlineTaskCreateView) []taskRowChip {
 		chips = append(chips, taskRowChip{Label: project, Class: "caldo-task-chip"})
 	}
 	if due := strings.TrimSpace(create.DueDate); due != "" {
-		chips = append(chips, taskRowChip{Label: "Fällig " + due, Class: "caldo-task-chip caldo-task-chip-due"})
+		chips = append(chips, taskRowChip{Label: "Fällig " + taskDisplayDate(due), Class: "caldo-task-chip caldo-task-chip-due"})
 	}
 	return chips
 }
@@ -588,15 +603,25 @@ func taskDueStateChip(task TaskRowView) taskDueChip {
 		return taskDueChip{Label: "Ohne Datum", Class: "caldo-task-chip caldo-task-chip-due caldo-task-chip-due-none"}
 	}
 
+	displayDue := taskDisplayDate(due)
 	today := taskTodayISODate(task)
 	switch {
 	case due < today:
-		return taskDueChip{Label: "Überfällig " + due, Class: "caldo-task-chip caldo-task-chip-due caldo-task-chip-due-overdue"}
+		return taskDueChip{Label: displayDue, Class: "caldo-task-chip caldo-task-chip-due caldo-task-chip-due-overdue"}
 	case due == today:
 		return taskDueChip{Label: "Heute", Class: "caldo-task-chip caldo-task-chip-due caldo-task-chip-due-today"}
 	default:
-		return taskDueChip{Label: "Fällig " + due, Class: "caldo-task-chip caldo-task-chip-due caldo-task-chip-due-future"}
+		return taskDueChip{Label: "Fällig " + displayDue, Class: "caldo-task-chip caldo-task-chip-due caldo-task-chip-due-future"}
 	}
+}
+
+func taskDisplayDate(isoDate string) string {
+	trimmed := strings.TrimSpace(isoDate)
+	parsed, err := time.Parse("2006-01-02", trimmed)
+	if err != nil {
+		return trimmed
+	}
+	return parsed.Format("02.01.2006")
 }
 
 func taskTodayISODate(task TaskRowView) string {
@@ -644,6 +669,43 @@ func taskPriorityOptions() []taskPriorityOption {
 		{Value: "7", Label: "P3 - 7"},
 		{Value: "8", Label: "P3 - 8"},
 		{Value: "9", Label: "P3 - 9"},
+	}
+}
+
+func taskDetailPriorityOptions(task TaskRowView) []taskPriorityOption {
+	options := []taskPriorityOption{{Value: "", Label: "Keine"}}
+	selected := taskPriorityValue(task)
+	skipCanonical := ""
+	if selected != "" {
+		canonical := taskPriorityCanonicalValue(task.Priority)
+		if selected != canonical {
+			options = append(options, taskPriorityOption{Value: selected, Label: taskPriorityLabel(task)})
+			skipCanonical = canonical
+		}
+	}
+	for _, option := range []taskPriorityOption{
+		{Value: "1", Label: "P1 Hoch"},
+		{Value: "5", Label: "P2 Mittel"},
+		{Value: "9", Label: "P3 Niedrig"},
+	} {
+		if option.Value == skipCanonical {
+			continue
+		}
+		options = append(options, option)
+	}
+	return options
+}
+
+func taskPriorityCanonicalValue(priority int) string {
+	switch {
+	case priority <= 0:
+		return ""
+	case priority <= 4:
+		return "1"
+	case priority <= 6:
+		return "5"
+	default:
+		return "9"
 	}
 }
 

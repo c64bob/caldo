@@ -10,14 +10,14 @@
 		--caldo-accent-border: #f7b4ad;
 		--caldo-bg: #ffffff;
 		--caldo-surface: #ffffff;
-		--caldo-surface-muted: #f7f7f5;
-		--caldo-border: #e5e5e0;
-		--caldo-border-strong: #d7d7d0;
-		--caldo-text: #20201d;
-		--caldo-text-muted: #6f6c67;
-		--caldo-text-subtle: #8a8680;
+		--caldo-surface-muted: #fafaf8;
+		--caldo-border: #ececea;
+		--caldo-border-strong: #ddddd8;
+		--caldo-text: #1a1a17;
+		--caldo-text-muted: #6b6862;
+		--caldo-text-subtle: #9a958e;
 		--caldo-focus: #dc4c3e;
-		--caldo-focus-ring: 0 0 0 3px rgba(220, 76, 62, 0.22);
+		--caldo-focus-ring: 0 0 0 2px rgba(220, 76, 62, 0.18);
 		--caldo-danger: #dc2626;
 		--caldo-danger-muted: #fef2f2;
 		--caldo-warning: #b45309;
@@ -34,16 +34,16 @@
 			--caldo-accent-hover: #ff9188;
 			--caldo-accent-muted: #3b1713;
 			--caldo-accent-border: #7f2d25;
-			--caldo-bg: #171714;
-			--caldo-surface: #1f1f1b;
-			--caldo-surface-muted: #282722;
-			--caldo-border: #38362f;
-			--caldo-border-strong: #4a473e;
+			--caldo-bg: #151513;
+			--caldo-surface: #1c1c19;
+			--caldo-surface-muted: #242320;
+			--caldo-border: #33312b;
+			--caldo-border-strong: #44413a;
 			--caldo-text: #f4f1ea;
 			--caldo-text-muted: #b5afa5;
-			--caldo-text-subtle: #948e83;
+			--caldo-text-subtle: #85807a;
 			--caldo-focus: #ff7a6f;
-			--caldo-focus-ring: 0 0 0 3px rgba(255, 122, 111, 0.28);
+			--caldo-focus-ring: 0 0 0 2px rgba(255, 122, 111, 0.24);
 			--caldo-danger: #f87171;
 			--caldo-danger-muted: #3b1111;
 			--caldo-warning: #fbbf24;
@@ -62,14 +62,14 @@
 		--caldo-accent-border: #f7b4ad;
 		--caldo-bg: #ffffff;
 		--caldo-surface: #ffffff;
-		--caldo-surface-muted: #f7f7f5;
-		--caldo-border: #e5e5e0;
-		--caldo-border-strong: #d7d7d0;
-		--caldo-text: #20201d;
-		--caldo-text-muted: #6f6c67;
-		--caldo-text-subtle: #8a8680;
+		--caldo-surface-muted: #fafaf8;
+		--caldo-border: #ececea;
+		--caldo-border-strong: #ddddd8;
+		--caldo-text: #1a1a17;
+		--caldo-text-muted: #6b6862;
+		--caldo-text-subtle: #9a958e;
 		--caldo-focus: #dc4c3e;
-		--caldo-focus-ring: 0 0 0 3px rgba(220, 76, 62, 0.22);
+		--caldo-focus-ring: 0 0 0 2px rgba(220, 76, 62, 0.18);
 		--caldo-danger: #dc2626;
 		--caldo-danger-muted: #fef2f2;
 		--caldo-warning: #b45309;
@@ -85,16 +85,16 @@
 		--caldo-accent-hover: #ff9188;
 		--caldo-accent-muted: #3b1713;
 		--caldo-accent-border: #7f2d25;
-		--caldo-bg: #171714;
-		--caldo-surface: #1f1f1b;
-		--caldo-surface-muted: #282722;
-		--caldo-border: #38362f;
-		--caldo-border-strong: #4a473e;
+		--caldo-bg: #151513;
+		--caldo-surface: #1c1c19;
+		--caldo-surface-muted: #242320;
+		--caldo-border: #33312b;
+		--caldo-border-strong: #44413a;
 		--caldo-text: #f4f1ea;
 		--caldo-text-muted: #b5afa5;
-		--caldo-text-subtle: #948e83;
+		--caldo-text-subtle: #85807a;
 		--caldo-focus: #ff7a6f;
-		--caldo-focus-ring: 0 0 0 3px rgba(255, 122, 111, 0.28);
+		--caldo-focus-ring: 0 0 0 2px rgba(255, 122, 111, 0.24);
 		--caldo-danger: #f87171;
 		--caldo-danger-muted: #3b1111;
 		--caldo-warning: #fbbf24;
@@ -119,11 +119,11 @@
 	.htmx-request .htmx-indicator,
 	.htmx-request.htmx-indicator {
 		opacity: 1;
-		transition: opacity 200ms ease-in;
+		transition: opacity 150ms ease-in;
 	}
 
 	.caldo-page {
-		@apply w-full max-w-6xl space-y-4;
+		@apply w-full max-w-6xl space-y-3;
 	}
 
 	.caldo-app-shell {
@@ -137,7 +137,7 @@
 	}
 
 	.caldo-sidebar {
-		@apply sticky top-0 hidden h-screen w-60 shrink-0 flex-col overflow-hidden border-r p-3;
+		@apply sticky top-0 hidden h-screen w-56 shrink-0 flex-col overflow-hidden border-r p-3;
 		background: var(--caldo-surface-muted);
 		border-color: var(--caldo-border);
 	}
@@ -150,7 +150,7 @@
 
 	@media (min-width: 1024px) {
 		.caldo-sidebar {
-			@apply w-72 p-4;
+			@apply w-64 p-4;
 		}
 	}
 
@@ -173,7 +173,7 @@
 	}
 
 	.caldo-sidebar-section {
-		@apply mt-5;
+		@apply mt-4;
 	}
 
 	.caldo-sidebar-section:first-child {
@@ -195,7 +195,7 @@
 	}
 
 	.caldo-topbar {
-		@apply sticky top-0 z-20 flex min-h-16 flex-col items-stretch gap-2 border-b px-3 py-2;
+		@apply sticky top-0 z-20 flex min-h-14 flex-col items-stretch gap-2 border-b px-3 py-2;
 		background: var(--caldo-bg);
 		border-color: var(--caldo-border);
 	}
@@ -247,13 +247,14 @@
 	}
 
 	.caldo-topbar-heading {
-		@apply block truncate text-lg font-semibold tracking-normal;
+		@apply block truncate font-semibold tracking-normal;
+		font-size: 1rem;
 		color: var(--caldo-text);
 	}
 
 	.caldo-topbar-actions {
-		@apply grid w-full min-w-0 gap-2;
-		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
+		@apply grid w-full min-w-0 gap-1.5;
+		grid-template-columns: auto auto auto auto;
 	}
 
 	.caldo-topbar-actions > .caldo-button {
@@ -307,19 +308,21 @@
 	}
 
 	.caldo-page-title {
-		@apply text-xl font-semibold tracking-normal;
+		@apply font-semibold tracking-normal;
+		font-size: 1.0625rem;
 		color: var(--caldo-text);
 	}
 
 	.caldo-section-title {
-		@apply text-sm font-semibold tracking-normal;
-		color: var(--caldo-text-muted);
+		@apply font-semibold tracking-wider uppercase;
+		font-size: 0.6875rem;
+		color: var(--caldo-text-subtle);
 	}
 
 	.caldo-state {
-		@apply rounded-md border p-4;
+		@apply rounded-lg p-4;
 		background: var(--caldo-surface);
-		border-color: var(--caldo-border);
+		box-shadow: inset 0 0 0 1px var(--caldo-border);
 	}
 
 	.caldo-state-error {
@@ -332,32 +335,38 @@
 		color: var(--caldo-text);
 	}
 
+	.caldo-empty-state-icon {
+		@apply mb-2 flex justify-center;
+		color: var(--caldo-text-subtle);
+		opacity: 0.5;
+	}
+
 	.caldo-muted {
 		@apply text-sm;
 		color: var(--caldo-text-muted);
 	}
 
 	.caldo-meta {
-		@apply text-xs;
+		font-size: 0.6875rem;
 		color: var(--caldo-text-subtle);
 	}
 
 	.caldo-button {
-		@apply inline-flex min-h-8 min-w-0 max-w-full items-center justify-center gap-1.5 truncate rounded-md border px-3 py-1.5 text-sm font-medium leading-5 transition;
+		@apply inline-flex min-h-8 min-w-0 max-w-full items-center justify-center gap-1.5 truncate rounded-lg px-3 py-1.5 text-sm font-medium leading-5 transition-colors duration-100;
 		background: var(--caldo-surface);
-		border-color: var(--caldo-border-strong);
+		box-shadow: inset 0 0 0 1px var(--caldo-border-strong);
 		color: var(--caldo-text);
 	}
 
 	.caldo-icon-button {
-		@apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition;
-		background: var(--caldo-surface);
-		border-color: var(--caldo-border-strong);
-		color: var(--caldo-text);
+		@apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors duration-100;
+		background: transparent;
+		color: var(--caldo-text-muted);
 	}
 
 	.caldo-icon-button:hover {
 		background: var(--caldo-surface-muted);
+		color: var(--caldo-text);
 	}
 
 	.caldo-icon-button:focus-visible {
@@ -453,13 +462,13 @@
 
 	.caldo-button-primary {
 		background: var(--caldo-accent);
-		border-color: var(--caldo-accent);
+		box-shadow: inset 0 0 0 1px var(--caldo-accent);
 		color: #ffffff;
 	}
 
 	.caldo-button-primary:hover {
 		background: var(--caldo-accent-hover);
-		border-color: var(--caldo-accent-hover);
+		box-shadow: inset 0 0 0 1px var(--caldo-accent-hover);
 	}
 
 	.caldo-button-secondary {
@@ -490,13 +499,13 @@
 
 	.caldo-button-danger-solid {
 		background: var(--caldo-danger);
-		border-color: var(--caldo-danger);
+		box-shadow: inset 0 0 0 1px var(--caldo-danger);
 		color: #ffffff;
 	}
 
 	.caldo-button-danger-solid:hover {
 		background: #b91c1c;
-		border-color: #b91c1c;
+		box-shadow: inset 0 0 0 1px #b91c1c;
 	}
 
 	.caldo-label {
@@ -506,9 +515,9 @@
 
 	.caldo-input,
 	.caldo-select {
-		@apply mt-1 w-full rounded-md border px-3 py-2 text-sm leading-5 transition;
+		@apply mt-1 w-full rounded-lg px-3 py-2 text-sm leading-5 transition-colors duration-100;
 		background: var(--caldo-surface);
-		border-color: var(--caldo-border-strong);
+		box-shadow: inset 0 0 0 1px var(--caldo-border-strong);
 		color: var(--caldo-text);
 	}
 
@@ -518,7 +527,7 @@
 
 	.caldo-input:hover,
 	.caldo-select:hover {
-		border-color: var(--caldo-text-subtle);
+		box-shadow: inset 0 0 0 1px var(--caldo-text-subtle);
 	}
 
 	.caldo-input:disabled,
@@ -531,7 +540,7 @@
 	.caldo-input.is-error,
 	.caldo-select[aria-invalid="true"],
 	.caldo-select.is-error {
-		border-color: var(--caldo-danger);
+		box-shadow: inset 0 0 0 1px var(--caldo-danger);
 		background: var(--caldo-danger-muted);
 	}
 
@@ -542,9 +551,9 @@
 	}
 
 	.caldo-card {
-		@apply rounded-md border p-4;
+		@apply rounded-lg p-3;
 		background: var(--caldo-surface);
-		border-color: var(--caldo-border);
+		box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.04), inset 0 0 0 1px var(--caldo-border);
 		overflow-wrap: anywhere;
 	}
 
@@ -592,6 +601,11 @@
 
 	.caldo-quick-add-overlay::backdrop {
 		background: rgba(32, 32, 29, 0.38);
+		animation: caldo-fade-in 120ms ease-out;
+	}
+
+	.caldo-quick-add-overlay-panel {
+		animation: caldo-scale-in 150ms ease-out;
 	}
 
 	.caldo-quick-add-overlay-panel {
@@ -640,9 +654,10 @@
 	}
 
 	.caldo-quick-add-chip {
-		@apply inline-flex min-h-7 min-w-0 max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium;
+		@apply inline-flex min-h-6 min-w-0 max-w-full items-center gap-1 rounded-full px-2 py-0.5 font-medium;
+		font-size: 0.6875rem;
 		background: var(--caldo-accent-muted);
-		border-color: var(--caldo-accent-border);
+		box-shadow: inset 0 0 0 1px var(--caldo-accent-border);
 		color: var(--caldo-accent);
 	}
 
@@ -711,6 +726,10 @@
 
 	.caldo-quick-add-corrections {
 		@apply grid gap-3 sm:grid-cols-2;
+	}
+
+	[data-quick-add-corrections][hidden] {
+		display: none;
 	}
 
 	.caldo-quick-add-corrections > .caldo-label:first-child {
@@ -811,9 +830,9 @@
 	}
 
 	.caldo-list-row {
-		@apply rounded-md border p-3 transition;
+		@apply rounded-lg p-2.5 transition-colors duration-100;
 		background: var(--caldo-surface);
-		border-color: var(--caldo-border);
+		box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.03), inset 0 0 0 1px var(--caldo-border);
 		overflow-wrap: anywhere;
 	}
 
@@ -836,7 +855,7 @@
 	}
 
 	.caldo-task-row {
-		@apply border-b px-0 py-2 transition;
+		@apply border-b px-0 py-1.5 transition-colors duration-100;
 		background: transparent;
 		border-color: var(--caldo-border);
 		overflow-wrap: anywhere;
@@ -866,13 +885,32 @@
 		background: var(--caldo-surface-muted);
 	}
 
+	/* Detail-Button erst bei Hover/Focus zeigen */
+	.caldo-task-detail-open {
+		@apply opacity-0 transition-opacity duration-100;
+	}
+	.caldo-task-row:hover .caldo-task-detail-open,
+	.caldo-task-row:focus-within .caldo-task-detail-open,
+	.caldo-task-row:focus-visible .caldo-task-detail-open {
+		@apply opacity-100;
+	}
+
+	/* Favorit-Button subtiler: erst bei Hover sichtbar, außer wenn aktiv */
+	.caldo-task-favorite-button:not(.caldo-task-favorite-button-active) {
+		@apply opacity-0 transition-opacity duration-100;
+	}
+	.caldo-task-row:hover .caldo-task-favorite-button,
+	.caldo-task-row:focus-within .caldo-task-favorite-button {
+		@apply opacity-100;
+	}
+
 	.caldo-task-row-grid {
-		@apply grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] gap-2 px-1;
+		@apply grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] gap-1.5 px-1;
 	}
 
 	@media (min-width: 1024px) {
 		.caldo-task-row-grid {
-			@apply gap-2.5;
+			@apply gap-2;
 		}
 	}
 
@@ -1031,7 +1069,8 @@
 		}
 
 		.caldo-task-title {
-			@apply min-w-0 flex-1 text-sm font-medium leading-5;
+			@apply min-w-0 flex-1 font-medium leading-5;
+			font-size: 0.875rem;
 			color: var(--caldo-text);
 			overflow-wrap: anywhere;
 		}
@@ -1126,7 +1165,7 @@
 		}
 
 		.caldo-task-description-lines-2 {
-			-webkit-line-clamp: 2;
+			-webkit-line-clamp: 1;
 		}
 
 		.caldo-task-description-full {
@@ -1183,9 +1222,9 @@
 
 	.caldo-task-chip,
 	.caldo-task-state {
-		@apply inline-flex min-h-5 max-w-full min-w-0 items-center rounded border px-1.5 text-xs leading-4;
+		@apply inline-flex min-h-4 max-w-full min-w-0 items-center rounded px-1.5 leading-4;
+		font-size: 0.6875rem;
 		background: var(--caldo-surface-muted);
-		border-color: var(--caldo-border);
 		color: var(--caldo-text-subtle);
 		overflow-wrap: anywhere;
 	}
@@ -1369,9 +1408,9 @@
 	}
 
 	.caldo-task-edit-static {
-		@apply block min-h-9 truncate rounded border px-3 py-2 text-sm font-normal;
+		@apply block min-h-9 truncate rounded-lg px-3 py-2 text-sm font-normal;
 		background: var(--caldo-surface-muted);
-		border-color: var(--caldo-border);
+		box-shadow: inset 0 0 0 1px var(--caldo-border);
 		color: var(--caldo-text);
 	}
 
@@ -1470,7 +1509,7 @@
 	}
 
 	.caldo-task-detail-header {
-		@apply flex min-w-0 shrink-0 items-start gap-3 border-b px-4 py-3;
+		@apply flex min-w-0 shrink-0 items-start gap-3 border-b px-4 py-2.5;
 		border-color: var(--caldo-border);
 	}
 
@@ -1499,7 +1538,7 @@
 	}
 
 	.caldo-task-detail-form {
-		@apply min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto px-4 py-4;
+		@apply min-h-0 min-w-0 flex-1 space-y-3 overflow-y-auto px-4 py-3;
 	}
 
 	.caldo-task-detail-field {
@@ -1539,9 +1578,9 @@
 	}
 
 	.caldo-task-detail-static {
-		@apply block min-h-9 rounded border px-3 py-2 text-sm font-normal leading-5;
+		@apply block min-h-9 rounded-lg px-3 py-2 text-sm font-normal leading-5;
 		background: var(--caldo-surface-muted);
-		border-color: var(--caldo-border);
+		box-shadow: inset 0 0 0 1px var(--caldo-border);
 		color: var(--caldo-text);
 		overflow-wrap: anywhere;
 	}
@@ -1556,8 +1595,9 @@
 	}
 
 	.caldo-task-detail-section-heading h3 {
-		@apply text-sm font-semibold leading-5 tracking-normal;
-		color: var(--caldo-text);
+		@apply font-semibold leading-5 tracking-wider uppercase;
+		font-size: 0.6875rem;
+		color: var(--caldo-text-subtle);
 	}
 
 	.caldo-task-detail-attachments {
@@ -1600,6 +1640,12 @@
 	.caldo-task-complete-dialog::backdrop,
 	.caldo-task-delete-dialog::backdrop {
 		background: rgb(0 0 0 / 0.35);
+		animation: caldo-fade-in 150ms ease-out;
+	}
+
+	.caldo-task-complete-dialog,
+	.caldo-task-delete-dialog {
+		animation: caldo-scale-in 150ms ease-out;
 	}
 
 	.caldo-task-complete-shell,
@@ -1771,9 +1817,9 @@
 	}
 
 	.caldo-conflict-summary {
-		@apply grid gap-3 rounded-md border p-4 sm:grid-cols-3;
+		@apply grid gap-3 rounded-lg p-3 sm:grid-cols-3;
 		background: var(--caldo-surface);
-		border-color: var(--caldo-border);
+		box-shadow: inset 0 0 0 1px var(--caldo-border);
 	}
 
 	.caldo-conflict-summary-value {
@@ -1845,9 +1891,9 @@
 	}
 
 	.caldo-conflict-resolution {
-		@apply rounded-md border p-4;
+		@apply rounded-lg p-3;
 		background: var(--caldo-surface);
-		border-color: var(--caldo-border);
+		box-shadow: inset 0 0 0 1px var(--caldo-border);
 	}
 
 	.caldo-conflict-resolution-heading {
@@ -1864,9 +1910,9 @@
 	}
 
 	.caldo-conflict-resolve-form {
-		@apply flex min-w-0 flex-col gap-2 rounded-md border p-3;
+		@apply flex min-w-0 flex-col gap-2 rounded-lg p-3;
 		background: var(--caldo-surface-muted);
-		border-color: var(--caldo-border);
+		box-shadow: inset 0 0 0 1px var(--caldo-border);
 	}
 
 	.caldo-conflict-resolve-form .caldo-button {
@@ -2022,9 +2068,9 @@
 	}
 
 	.caldo-conflict-manual-preview {
-		@apply mt-4 rounded-md border p-3;
+		@apply mt-4 rounded-lg p-3;
 		background: var(--caldo-surface-muted);
-		border-color: var(--caldo-border);
+		box-shadow: inset 0 0 0 1px var(--caldo-border);
 	}
 
 	.caldo-conflict-manual-preview h4 {
@@ -2090,9 +2136,9 @@
 	}
 
 	.caldo-badge {
-		@apply inline-flex min-h-5 min-w-0 max-w-full items-center truncate rounded-full border px-2 text-xs font-medium;
+		@apply inline-flex min-h-5 min-w-0 max-w-full items-center truncate rounded-full px-2 text-xs font-medium;
 		background: var(--caldo-surface-muted);
-		border-color: var(--caldo-border);
+		box-shadow: inset 0 0 0 1px var(--caldo-border);
 		color: var(--caldo-text-muted);
 	}
 
@@ -2109,7 +2155,7 @@
 	}
 
 	.caldo-alert {
-		@apply rounded-md border p-3 text-sm;
+		@apply rounded-lg p-3 text-sm;
 	}
 
 	.caldo-alert-error {
@@ -2131,12 +2177,13 @@
 	}
 
 	.caldo-dialog {
-		@apply w-full max-w-xl overflow-auto rounded-md border p-0;
+		@apply w-full max-w-xl overflow-auto rounded-xl border p-0;
 		background: var(--caldo-surface);
 		border-color: var(--caldo-border-strong);
 		color: var(--caldo-text);
 		max-height: calc(100dvh - 2rem);
 		width: calc(100vw - 1rem);
+		animation: caldo-scale-in 150ms ease-out;
 	}
 
 	@media (min-width: 640px) {
@@ -2148,17 +2195,18 @@
 	.caldo-dialog::backdrop,
 	.caldo-mobile-nav-dialog::backdrop {
 		background: rgb(0 0 0 / 0.35);
+		animation: caldo-fade-in 150ms ease-out;
 	}
 
 	.caldo-kbd {
-		@apply rounded border px-1 py-0.5 text-xs;
+		@apply rounded px-1 py-0.5 text-xs;
 		background: var(--caldo-surface-muted);
-		border-color: var(--caldo-border-strong);
+		box-shadow: inset 0 0 0 1px var(--caldo-border-strong), 0 1px 0 0 var(--caldo-border);
 		color: var(--caldo-text);
 	}
 
 	.caldo-nav-link {
-		@apply flex max-w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium no-underline transition;
+		@apply flex max-w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium no-underline transition-colors duration-100;
 		color: var(--caldo-text-muted);
 	}
 
@@ -2185,6 +2233,7 @@
 	.caldo-nav-link-active {
 		background: var(--caldo-accent-muted);
 		color: var(--caldo-accent);
+		box-shadow: inset 2px 0 0 0 var(--caldo-accent);
 	}
 
 	.caldo-nav-link-active .caldo-nav-count {
@@ -2193,10 +2242,11 @@
 	}
 
 	.caldo-toast {
-		@apply fixed bottom-3 left-3 right-3 rounded-md border px-3 py-2 text-sm shadow-sm;
+		@apply fixed bottom-3 left-3 right-3 rounded-lg px-3 py-2 text-sm;
 		background: var(--caldo-surface);
-		border-color: var(--caldo-border-strong);
+		box-shadow: 0 4px 12px 0 rgb(0 0 0 / 0.08), inset 0 0 0 1px var(--caldo-border-strong);
 		color: var(--caldo-text);
+		animation: caldo-slide-in-up 200ms ease-out;
 	}
 
 	@media (min-width: 640px) {
@@ -2224,7 +2274,7 @@
 
 	.caldo-undo-toast-error {
 		background: var(--caldo-danger-muted);
-		border-color: var(--caldo-danger);
+		box-shadow: inset 3px 0 0 0 var(--caldo-danger), 0 4px 12px 0 rgb(0 0 0 / 0.08);
 		color: var(--caldo-danger);
 	}
 
@@ -2292,6 +2342,31 @@
 		}
 	}
 
+	@keyframes caldo-fade-in {
+		from { opacity: 0; }
+		to { opacity: 1; }
+	}
+
+	@keyframes caldo-slide-in-right {
+		from { transform: translateX(100%); }
+		to { transform: translateX(0); }
+	}
+
+	@keyframes caldo-slide-in-left {
+		from { transform: translateX(-100%); }
+		to { transform: translateX(0); }
+	}
+
+	@keyframes caldo-slide-in-up {
+		from { transform: translateY(100%); opacity: 0; }
+		to { transform: translateY(0); opacity: 1; }
+	}
+
+	@keyframes caldo-scale-in {
+		from { transform: scale(0.97); opacity: 0; }
+		to { transform: scale(1); opacity: 1; }
+	}
+
 	.caldo-loading-lines {
 		@apply mt-3 space-y-2;
 	}
@@ -2299,6 +2374,7 @@
 	.caldo-loading-lines span {
 		@apply block h-3 rounded;
 		background: var(--caldo-surface-muted);
+		animation: caldo-shimmer 1.5s ease-in-out infinite;
 	}
 
 	.caldo-loading-lines span:nth-child(1) {
@@ -2307,16 +2383,27 @@
 
 	.caldo-loading-lines span:nth-child(2) {
 		@apply w-8/12;
+		animation-delay: 0.1s;
 	}
 
 	.caldo-loading-lines span:nth-child(3) {
 		@apply w-10/12;
+		animation-delay: 0.2s;
+	}
+
+	@keyframes caldo-shimmer {
+		0%, 100% { opacity: 0.5; }
+		50% { opacity: 1; }
 	}
 
 	.caldo-mobile-nav-dialog {
 		@apply m-0 h-full max-h-none w-full max-w-none border-0 p-0;
 		background: transparent;
 		color: var(--caldo-text);
+	}
+
+	.caldo-mobile-nav-panel {
+		animation: caldo-slide-in-left 200ms ease-out;
 	}
 
 	.caldo-mobile-nav-dialog[open] {

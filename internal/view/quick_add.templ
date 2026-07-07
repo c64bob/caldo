@@ -40,7 +40,12 @@ templ QuickAddOverlay() {
 		<div class="caldo-quick-add-overlay-panel">
 			<div class="caldo-quick-add-overlay-header">
 				<h2 id="quick-add-overlay-title" class="caldo-page-title">{ Text(ctx).QuickAddTitle }</h2>
-				<button type="button" class="caldo-button caldo-button-ghost" data-quick-add-close>{ Text(ctx).Close }</button>
+				<button type="button" class="caldo-icon-button" data-quick-add-close aria-label={ Text(ctx).Close }>
+					<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+						<path d="M18 6 6 18"></path>
+						<path d="m6 6 12 12"></path>
+					</svg>
+				</button>
 			</div>
 			<div class="caldo-quick-add-overlay-body">
 				<form
@@ -162,7 +167,14 @@ templ quickAddPreviewContent(draft parser.QuickAddDraft, previewID string, surfa
 			data-quick-add-save-form
 			{ quickAddOverlayAttributes(surface)... }
 		>
-			<div class="caldo-quick-add-corrections" data-quick-add-corrections>
+			<button type="button" class="caldo-button caldo-button-ghost text-xs" data-quick-add-corrections-toggle>
+				<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+					<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+					<path d="m15 5 4 4"></path>
+				</svg>
+				<span>Bearbeiten</span>
+			</button>
+			<div class="caldo-quick-add-corrections" data-quick-add-corrections hidden>
 				<label class="caldo-label">
 					{ Text(ctx).QuickAddFieldTitle }
 					<input class="caldo-input" type="text" name="title" value={ draft.Title } data-quick-add-correction="title"/>

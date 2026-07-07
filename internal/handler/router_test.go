@@ -258,7 +258,6 @@ func TestNewRouterAppliesPersistedUIPreferences(t *testing.T) {
 	body := responseRecorder.Body.String()
 	for _, want := range []string{
 		`<html lang="en" data-theme-root data-theme-mode="dark" class="dark">`,
-		`CalDAV tasks`,
 		`System filters`,
 		`New task`,
 		`Task`,

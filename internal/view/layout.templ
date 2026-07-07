@@ -122,7 +122,6 @@ templ BaseLayout(title string, content templ.Component) {
 				<aside class="caldo-sidebar">
 					<div class="caldo-sidebar-header">
 						<a href="/today" class="caldo-brand">Caldo</a>
-						<p class="caldo-meta mt-1">{ Text(ctx).AppSubtitle }</p>
 					</div>
 					<a href="/quick-add" class="caldo-button caldo-button-primary w-full" data-quick-add-open aria-controls="quick-add-overlay" aria-haspopup="dialog">{ Text(ctx).NewTask }</a>
 					<nav class="caldo-sidebar-nav" aria-label={ Text(ctx).MainNavigation }>
@@ -142,7 +141,12 @@ templ BaseLayout(title string, content templ.Component) {
 							</div>
 						</div>
 						<div class="caldo-topbar-actions">
-							<a href="/search" class="caldo-button caldo-button-secondary">{ Text(ctx).Search }</a>
+							<a href="/search" class="caldo-icon-button" aria-label={ Text(ctx).Search }>
+								<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+									<circle cx="11" cy="11" r="8"></circle>
+									<path d="m21 21-4.3-4.3"></path>
+								</svg>
+							</a>
 							<a href="/quick-add" class="caldo-button caldo-button-primary" data-quick-add-open aria-controls="quick-add-overlay" aria-haspopup="dialog">{ Text(ctx).NewTask }</a>
 							@SyncStatusFrame(CurrentSyncStatus(ctx).State, CurrentSyncStatus(ctx).LastSuccess)
 							<button
@@ -198,9 +202,13 @@ templ BaseLayout(title string, content templ.Component) {
 					<div class="caldo-mobile-nav-header">
 						<div class="min-w-0">
 							<a href="/today" class="caldo-brand">Caldo</a>
-							<p class="caldo-meta mt-1">{ Text(ctx).AppSubtitle }</p>
 						</div>
-						<button type="button" data-mobile-nav-close class="caldo-button caldo-button-ghost">{ Text(ctx).Close }</button>
+						<button type="button" data-mobile-nav-close class="caldo-icon-button" aria-label={ Text(ctx).Close }>
+							<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+								<path d="M18 6 6 18"></path>
+								<path d="m6 6 12 12"></path>
+							</svg>
+						</button>
 					</div>
 					<a href="/quick-add" class="caldo-button caldo-button-primary w-full" data-quick-add-open aria-controls="quick-add-overlay" aria-haspopup="dialog">{ Text(ctx).NewTask }</a>
 					<nav class="caldo-mobile-nav" aria-label={ Text(ctx).MobileMainNavigation }>
@@ -216,9 +224,14 @@ templ BaseLayout(title string, content templ.Component) {
 				<div class="p-4 space-y-3">
 					<div class="flex items-center justify-between">
 						<h2 id="shortcut-help-title" class="caldo-page-title">{ Text(ctx).ShortcutHelp }</h2>
-						<button type="button" data-shortcut-help-close class="caldo-button caldo-button-ghost">{ Text(ctx).Close }</button>
+						<button type="button" data-shortcut-help-close class="caldo-icon-button" aria-label={ Text(ctx).Close }>
+							<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+								<path d="M18 6 6 18"></path>
+								<path d="m6 6 12 12"></path>
+							</svg>
+						</button>
 					</div>
-					<ul class="caldo-menu">
+					<ul class="caldo-menu grid grid-cols-1 sm:grid-cols-2 gap-0.5">
 						<li class="caldo-menu-item"><kbd class="caldo-kbd">N</kbd> { Text(ctx).ShortcutNewTask }</li>
 						<li class="caldo-menu-item"><kbd class="caldo-kbd">S</kbd> { Text(ctx).Or } <kbd class="caldo-kbd">/</kbd> { Text(ctx).ShortcutSearch }</li>
 						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> { Text(ctx).Then } <kbd class="caldo-kbd">T</kbd> { Text(ctx).ShortcutToday }</li>

@@ -650,6 +650,35 @@
     }
   }
 
+  function showQuickAddCorrections(element) {
+    if (!element) return;
+    var preview = element.closest('[data-quick-add-preview]');
+    if (!preview) return;
+    var corrections = preview.querySelector('[data-quick-add-corrections]');
+    if (corrections && corrections.hidden) {
+      corrections.hidden = false;
+    }
+  }
+
+  function toggleQuickAddCorrections(trigger) {
+    if (!trigger) return;
+    var preview = trigger.closest('[data-quick-add-preview]');
+    if (!preview) {
+      var overlay = trigger.closest('[data-quick-add-overlay]');
+      preview = overlay ? overlay.querySelector('[data-quick-add-preview]') : null;
+    }
+    if (!preview) return;
+    var corrections = preview.querySelector('[data-quick-add-corrections]');
+    if (!corrections) return;
+    corrections.hidden = !corrections.hidden;
+    if (!corrections.hidden) {
+      var firstInput = corrections.querySelector('input:not([type="hidden"]), select');
+      if (firstInput && typeof firstInput.focus === 'function') {
+        window.setTimeout(function () { firstInput.focus(); }, 0);
+      }
+    }
+  }
+
   function quickAddSaveFormFor(element) {
     if (!element) return null;
     var form = element.closest('[data-quick-add-save-form]');
@@ -2449,6 +2478,14 @@
     if (quickAddClear) {
       event.preventDefault();
       clearQuickAddControl(quickAddClear);
+      showQuickAddCorrections(quickAddClear);
+      return;
+    }
+
+    var quickAddCorrectionsToggle = closestElement(event.target, '[data-quick-add-corrections-toggle]');
+    if (quickAddCorrectionsToggle) {
+      event.preventDefault();
+      toggleQuickAddCorrections(quickAddCorrectionsToggle);
       return;
     }
 

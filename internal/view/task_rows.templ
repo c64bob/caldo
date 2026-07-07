@@ -340,7 +340,12 @@ templ TaskDetailPanel(task TaskRowView) {
 					<p class="caldo-meta">Aufgabe</p>
 					<h2 id={ taskDOMID("task-detail-title", task) } class="caldo-task-detail-title">{ taskRowTitle(task) }</h2>
 				</div>
-				<button type="button" class="caldo-icon-button caldo-task-detail-close" data-task-detail-close aria-label="Details schließen">×</button>
+				<button type="button" class="caldo-icon-button caldo-task-detail-close" data-task-detail-close aria-label="Details schließen">
+					<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+						<path d="M18 6 6 18"></path>
+						<path d="m6 6 12 12"></path>
+					</svg>
+				</button>
 			</header>
 			<div class="caldo-task-detail-state">
 				for _, state := range taskStateChips(task) {
@@ -388,7 +393,7 @@ templ TaskDetailPanel(task TaskRowView) {
 				</label>
 				<label class="caldo-task-detail-field caldo-task-detail-field-wide">
 					<span>Beschreibung</span>
-					<textarea name="description" rows="7" class="caldo-input caldo-task-detail-description" disabled?={ !taskCanDetailEdit(task) }>{ taskRowDescription(task) }</textarea>
+					<textarea name="description" rows="5" class="caldo-input caldo-task-detail-description" disabled?={ !taskCanDetailEdit(task) }>{ taskRowDescription(task) }</textarea>
 				</label>
 				<div class="caldo-task-detail-grid">
 					<label class="caldo-task-detail-field">
@@ -533,7 +538,12 @@ templ TaskCompleteDialog(task TaskRowView) {
 					<p class="caldo-meta">Unteraufgaben</p>
 					<h2 id={ taskDOMID("task-complete-title", task) } class="caldo-task-complete-title">Aufgabe erledigen</h2>
 				</div>
-				<button type="button" class="caldo-icon-button caldo-task-complete-close" data-task-complete-close aria-label="Erledigen abbrechen">×</button>
+				<button type="button" class="caldo-icon-button caldo-task-complete-close" data-task-complete-close aria-label="Erledigen abbrechen">
+					<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+						<path d="M18 6 6 18"></path>
+						<path d="m6 6 12 12"></path>
+					</svg>
+				</button>
 			</header>
 			<div class="caldo-task-complete-body">
 				<p class="caldo-task-complete-copy">"{ taskRowTitle(task) }" hat { taskOpenSubtaskCountLabel(task.OpenSubtaskCount) }.</p>
@@ -595,7 +605,12 @@ templ TaskDeleteDialog(task TaskRowView) {
 					<p class="caldo-meta">Aufgabe</p>
 					<h2 id={ taskDOMID("task-delete-title", task) } class="caldo-task-delete-title">Aufgabe löschen</h2>
 				</div>
-				<button type="button" class="caldo-icon-button caldo-task-delete-close" data-task-delete-close aria-label="Löschen abbrechen">×</button>
+				<button type="button" class="caldo-icon-button caldo-task-delete-close" data-task-delete-close aria-label="Löschen abbrechen">
+					<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+						<path d="M18 6 6 18"></path>
+						<path d="m6 6 12 12"></path>
+					</svg>
+				</button>
 			</header>
 			<div class="caldo-task-delete-body">
 				<p class="caldo-task-delete-copy">"{ taskRowTitle(task) }" wirklich löschen?</p>

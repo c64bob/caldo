@@ -571,6 +571,22 @@ func taskSubtaskCountLabel(count int) string {
 	return strconv.Itoa(count) + " Unteraufgaben"
 }
 
+func taskSubtaskProgressLabel(task TaskRowView) string {
+	if task.SubtaskCount == 0 {
+		return ""
+	}
+	completed := task.SubtaskCount - task.OpenSubtaskCount
+	return strconv.Itoa(completed) + "/" + strconv.Itoa(task.SubtaskCount) + " erledigt"
+}
+
+func taskSubtaskProgressPercent(task TaskRowView) int {
+	if task.SubtaskCount == 0 {
+		return 0
+	}
+	completed := task.SubtaskCount - task.OpenSubtaskCount
+	return (completed * 100) / task.SubtaskCount
+}
+
 func taskOpenSubtaskCountLabel(count int) string {
 	if count == 1 {
 		return "1 offene Unteraufgabe"

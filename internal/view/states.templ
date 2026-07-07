@@ -13,6 +13,20 @@ templ EmptyState(title string, message string) {
 	</section>
 }
 
+templ EmptyStateWithAction(title string, message string, actionLabel string, actionHref string) {
+	<section class="caldo-state" data-empty-state>
+		<div class="caldo-empty-state-icon" aria-hidden="true">
+			<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+				<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+				<polyline points="14 2 14 8 20 8"></polyline>
+			</svg>
+		</div>
+		<p class="caldo-state-title">{ title }</p>
+		<p class="caldo-muted">{ message }</p>
+		<a href={ templ.URL(actionHref) } class="caldo-button caldo-button-primary mt-3">{ actionLabel }</a>
+	</section>
+}
+
 templ ErrorState(action string, errorClass string, retryAllowed bool) {
 	<section class="caldo-state caldo-state-error" data-error-state>
 		<p class="caldo-state-title">{ action } fehlgeschlagen</p>

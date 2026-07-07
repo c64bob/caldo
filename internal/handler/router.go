@@ -77,6 +77,7 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 	router.With(SetupCSRFMiddleware(csrfSecret)).Post("/settings/ui", SettingsUIUpdate(database))
 	router.Get("/quick-add", QuickAddPage(quickAddDependencies{database: database}))
 	router.Post("/quick-add/preview", QuickAddPreview(quickAddDependencies{database: database}))
+	router.Get("/quick-add/suggestions", QuickAddSuggestions(quickAddDependencies{database: database}))
 	router.Get("/conflicts", Conflicts(conflictDependencies{database: database}))
 	router.Get("/conflicts/{conflictID}", ConflictDetail(conflictDependencies{database: database}))
 	router.With(SetupCSRFMiddleware(csrfSecret)).Post("/conflicts/{conflictID}/resolve", ResolveConflict(taskUpdateDependencies{

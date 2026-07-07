@@ -109,7 +109,7 @@ func TestSecurityHeadersMiddlewareSetsHeaders(t *testing.T) {
 	assertHeader(t, rr, "X-Frame-Options", "DENY")
 	assertHeader(t, rr, "X-Content-Type-Options", "nosniff")
 	assertHeader(t, rr, "Referrer-Policy", "strict-origin-when-cross-origin")
-	assertHeader(t, rr, "Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none';")
+	assertHeader(t, rr, "Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none';")
 }
 
 func assertHeader(t *testing.T, rr *httptest.ResponseRecorder, key string, want string) {

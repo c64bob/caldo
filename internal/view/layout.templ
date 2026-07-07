@@ -233,6 +233,7 @@ templ BaseLayout(title string, content templ.Component) {
 					</div>
 					<ul class="caldo-menu grid grid-cols-1 sm:grid-cols-2 gap-0.5">
 						<li class="caldo-menu-item"><kbd class="caldo-kbd">N</kbd> { Text(ctx).ShortcutNewTask }</li>
+						<li class="caldo-menu-item"><kbd class="caldo-kbd">D</kbd> { Text(ctx).ShortcutDueDate }</li>
 						<li class="caldo-menu-item"><kbd class="caldo-kbd">S</kbd> { Text(ctx).Or } <kbd class="caldo-kbd">/</kbd> { Text(ctx).ShortcutSearch }</li>
 						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> { Text(ctx).Then } <kbd class="caldo-kbd">T</kbd> { Text(ctx).ShortcutToday }</li>
 						<li class="caldo-menu-item"><kbd class="caldo-kbd">G</kbd> { Text(ctx).Then } <kbd class="caldo-kbd">U</kbd> { Text(ctx).ShortcutUpcoming }</li>

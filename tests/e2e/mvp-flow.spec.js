@@ -179,11 +179,10 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await inlineEditForm.locator('[name="title"]').press('Enter');
   await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first()).toBeVisible();
   inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
-  const inlineDateForm = await openTaskRowEdit(inlineEditRow, 'date');
-  await inlineDateForm.locator('[name="due_date"]').evaluate((input) => {
+  await inlineEditRow.locator('.caldo-date-dropdown [data-date-hidden-input]').evaluate((input) => {
     input.value = '2099-06-12';
-    input.dispatchEvent(new Event('change', { bubbles: true }));
   });
+  await inlineEditRow.locator('.caldo-date-dropdown form').evaluate((form) => form.requestSubmit());
   await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first()).toBeVisible();
   inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
   await expect(inlineEditRow).toContainText('Fällig 12.06.2099');

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"database/sql"
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -22,6 +23,41 @@ func QuickAddPage(deps quickAddDependencies) http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		ctx := withUIPreferences(r.Context(), deps.database)
 		if err := view.BaseLayout("Quick Add", view.QuickAddPage(nil, "", "")).Render(ctx, w); err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+	}
+}
+
+// QuickAddSuggestions returns project and label suggestions as JSON for the overlay dropdowns.
+func QuickAddSuggestions(deps quickAddDependencies) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		projects, projectsErr := deps.database.ListProjectOptions(r.Context())
+		labels, labelsErr := deps.database.ListLabelOptions(r.Context())
+
+		type suggestion struct {
+			ID   string `json:"id,omitempty"`
+			Name string `json:"name"`
+		}
+		result := map[string]interface{}{
+			"projects": []suggestion{},
+			"labels":   []suggestion{},
+		}
+		if projectsErr == nil {
+			ps := make([]suggestion, 0, len(projects))
+			for _, p := range projects {
+				ps = append(ps, suggestion{ID: strings.TrimSpace(p.ID), Name: strings.TrimSpace(p.DisplayName)})
+			}
+			result["projects"] = ps
+		}
+		if labelsErr == nil {
+			ls := make([]suggestion, 0, len(labels))
+			for _, l := range labels {
+				ls = append(ls, suggestion{Name: strings.TrimSpace(l.Name)})
+			}
+			result["labels"] = ls
+		}
+		if err := json.NewEncoder(w).Encode(result); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}

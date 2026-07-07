@@ -1007,6 +1007,9 @@ async function exerciseQuickAddOverlay(page) {
   await page.keyboard.press('Enter');
   let saveForm = overlay.locator('[data-quick-add-overlay-save-form]');
   await expect(saveForm).toBeVisible();
+  // Input-first: corrections hidden, reveal via toggle
+  await saveForm.locator('[data-quick-add-corrections-toggle]').click();
+  await expect(saveForm.locator('[data-quick-add-corrections]')).toBeVisible();
   await expect(saveForm.locator('input[name="title"]')).toBeFocused();
   await saveForm.locator('input[name="title"]').fill('');
   await page.keyboard.press('Control+Enter');

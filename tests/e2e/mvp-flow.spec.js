@@ -1087,11 +1087,12 @@ async function exerciseQuickAddOverlay(page) {
   await input.fill('E2E Overlay Suggested #Work');
   await previewForm.getByRole('button', { name: 'Vorschau' }).click();
   saveForm = overlay.locator('[data-quick-add-overlay-save-form]');
+  // Input-first: suggestions are inside corrections, reveal first
+  await saveForm.locator('[data-quick-add-corrections-toggle]').click();
+  await expect(saveForm.locator('[data-quick-add-corrections]')).toBeVisible();
   const reviewedSuggestion = overlay.locator('[data-quick-add-label-suggestions] button[data-quick-add-append-label="reviewed"]');
   await expect(reviewedSuggestion).toBeVisible();
   await reviewedSuggestion.click();
-  // Clicking a suggestion reveals the correction fields (input-first pattern)
-  await expect(saveForm.locator('[data-quick-add-corrections]')).toBeVisible();
   await expect(saveForm.locator('input[name="labels"]')).toHaveValue('reviewed');
   await saveForm.getByRole('button', { name: 'Speichern' }).click();
   await expect(overlay).toBeHidden();

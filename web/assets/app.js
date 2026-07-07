@@ -9,6 +9,266 @@
   var focusRefreshState = { inFlight: false, pending: false, lastRun: 0 };
   var taskMoveDragState = null;
 
+  /* ── Toast notification system ───────────────────────────── */
+
+  var toastDefaults = { duration: 3500, maxVisible: 4 };
+  var toastTimers = [];
+
+  function toastContainer() {
+    var el = document.querySelector('[data-toast-container]');
+    if (!el) {
+      el = document.createElement('div');
+      el.setAttribute('data-toast-container', '');
+      el.setAttribute('aria-live', 'polite');
+      el.setAttribute('aria-atomic', 'false');
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+
+  function dismissToast(item) {
+    if (!item || !document.contains(item)) return;
+    item.style.animation = 'caldo-toast-out 180ms ease-in forwards';
+    setTimeout(function () { item.remove(); }, 200);
+  }
+
+  function showToast(message, kind, duration) {
+    var container = toastContainer();
+    kind = kind || 'info';
+    duration = typeof duration === 'number' ? duration : toastDefaults.duration;
+
+    var item = document.createElement('div');
+    item.className = 'caldo-toast-item caldo-toast-' + kind;
+    item.setAttribute('role', 'status');
+
+    var text = document.createElement('span');
+    text.textContent = message;
+    item.appendChild(text);
+
+    var dismiss = document.createElement('button');
+    dismiss.type = 'button';
+    dismiss.className = 'caldo-toast-dismiss';
+    dismiss.setAttribute('aria-label', 'Schließen');
+    dismiss.textContent = '×';
+    dismiss.addEventListener('click', function () {
+      clearTimeout(item.__caldoTimer);
+      dismissToast(item);
+    });
+    item.appendChild(dismiss);
+
+    container.appendChild(item);
+
+    // Enforce maxVisible: remove oldest excess
+    while (container.children.length > toastDefaults.maxVisible) {
+      dismissToast(container.children[0]);
+    }
+
+    if (duration > 0) {
+      item.__caldoTimer = setTimeout(function () { dismissToast(item); }, duration);
+    }
+    return item;
+  }
+
+  /* ── Bulk selection ──────────────────────────────────────── */
+
+  var bulkSelection = { ids: [], lastClicked: null };
+
+  function bulkSelectedSet() {
+    var set = {};
+    bulkSelection.ids.forEach(function (id) { set[id] = true; });
+    return set;
+  }
+
+  function updateBulkSelectionVisuals() {
+    var selected = bulkSelectedSet();
+    taskRows().forEach(function (row) {
+      var id = taskRowID(row);
+      if (selected[id]) {
+        row.classList.add('caldo-task-row-selected');
+      } else {
+        row.classList.remove('caldo-task-row-selected');
+      }
+    });
+    renderBulkBar();
+  }
+
+  function renderBulkBar() {
+    var existing = document.querySelector('.caldo-bulk-bar');
+    if (bulkSelection.ids.length === 0) {
+      if (existing) existing.remove();
+      return;
+    }
+    if (!existing) {
+      existing = document.createElement('div');
+      existing.className = 'caldo-bulk-bar';
+      document.body.appendChild(existing);
+    }
+    var count = bulkSelection.ids.length;
+    existing.innerHTML =
+      '<span class="caldo-bulk-bar-count">' + count + ' Aufgabe' + (count === 1 ? '' : 'n') + ' ausgewählt</span>' +
+      '<div class="caldo-bulk-bar-actions">' +
+      '<button type="button" class="caldo-button caldo-button-ghost" data-bulk-select-all>Alle abwählen</button>' +
+      '<button type="button" class="caldo-button caldo-button-primary" data-bulk-complete>Erledigen</button>' +
+      '</div>';
+  }
+
+  function toggleBulkSelect(taskID) {
+    var idx = bulkSelection.ids.indexOf(taskID);
+    if (idx === -1) {
+      bulkSelection.ids.push(taskID);
+    } else {
+      bulkSelection.ids.splice(idx, 1);
+    }
+    updateBulkSelectionVisuals();
+  }
+
+  function bulkSelectRange(fromID, toID) {
+    var rows = taskRows();
+    var ids = rows.map(taskRowID);
+    var startIdx = ids.indexOf(fromID);
+    var endIdx = ids.indexOf(toID);
+    if (startIdx === -1 || endIdx === -1) return;
+    if (startIdx > endIdx) { var tmp = startIdx; startIdx = endIdx; endIdx = tmp; }
+    for (var i = startIdx; i <= endIdx; i++) {
+      if (bulkSelection.ids.indexOf(ids[i]) === -1) {
+        bulkSelection.ids.push(ids[i]);
+      }
+    }
+    updateBulkSelectionVisuals();
+  }
+
+  function clearBulkSelection() {
+    bulkSelection.ids = [];
+    bulkSelection.lastClicked = null;
+    updateBulkSelectionVisuals();
+  }
+
+  function bulkCompleteTasks() {
+    if (bulkSelection.ids.length === 0) return;
+    var ids = bulkSelection.ids.slice();
+    clearBulkSelection();
+    var pending = ids.length;
+    ids.forEach(function (taskID) {
+      var row = document.querySelector('[data-task-id="' + taskID + '"]');
+      if (!row) { if (--pending <= 0) { showToast(ids.length + ' Aufgaben erledigt.', 'success'); refreshUndoNotification(); } return; }
+      var form = row.querySelector('form[data-task-action-form]');
+      if (!form) { if (--pending <= 0) { showToast(ids.length + ' Aufgaben erledigt.', 'success'); refreshUndoNotification(); } return; }
+      var versionInput = row.querySelector('input[name="expected_version"]');
+      var params = new URLSearchParams();
+      params.set('expected_version', versionInput ? versionInput.value : '');
+      fetch(form.getAttribute('action'), {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'text/html', 'X-CSRF-Token': csrfToken(), 'X-Tab-ID': tabID },
+        body: params.toString()
+      }).then(function (r) { return r.ok; }).then(function (ok) {
+        if (ok) { row.remove(); }
+        if (--pending <= 0) {
+          showToast(ids.length + ' Aufgaben erledigt.', 'success');
+          refreshUndoNotification();
+        }
+      }).catch(function () {
+        if (--pending <= 0) { showToast('Einige Aufgaben konnten nicht erledigt werden.', 'error'); }
+      });
+    });
+  }
+
+  /* ── Task hover preview ──────────────────────────────────── */
+
+  var hoverPreviewState = { el: null, hideTimer: null, fetchTimer: null };
+
+  function showTaskHoverPreview(row, event) {
+    if (!row || hoverPreviewState.el) return;
+    var taskID = taskRowID(row);
+    if (!taskID) return;
+
+    // First try inline description
+    var desc = row.querySelector('.caldo-task-description');
+    var text = desc ? (desc.textContent || '').trim() : '';
+
+    // If no inline description, fetch via AJAX
+    if (!text) {
+      if (hoverPreviewState.fetchTimer) clearTimeout(hoverPreviewState.fetchTimer);
+      hoverPreviewState.fetchTimer = setTimeout(function () {
+        fetchTaskPreview(taskID, row);
+      }, 600);
+      return;
+    }
+
+    if (text.length > 300) text = text.slice(0, 297) + '…';
+    renderHoverPreview(row, 'Beschreibung', text);
+  }
+
+  function fetchTaskPreview(taskID, row) {
+    fetch('/tasks/' + encodeURIComponent(taskID), {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { 'Accept': 'text/html', 'X-Tab-ID': tabID }
+    }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (html) {
+      if (!html) return;
+      var tpl = document.createElement('template');
+      tpl.innerHTML = html.trim();
+      var desc = tpl.content.querySelector('.caldo-task-description');
+      var text = desc ? (desc.textContent || '').trim() : '';
+      if (!text || !document.contains(row)) return;
+      if (text.length > 300) text = text.slice(0, 297) + '…';
+      renderHoverPreview(row, 'Beschreibung', text);
+    }).catch(function () {});
+  }
+
+  function renderHoverPreview(row, label, text) {
+    if (hoverPreviewState.el) return;
+    var preview = document.createElement('div');
+    preview.className = 'caldo-task-hover-preview';
+    var title = document.createElement('div');
+    title.className = 'caldo-task-hover-preview-title';
+    title.textContent = label;
+    var body = document.createElement('div');
+    body.className = 'caldo-task-hover-preview-description';
+    body.textContent = text;
+    preview.appendChild(title);
+    preview.appendChild(body);
+    row.style.position = 'relative';
+    row.appendChild(preview);
+    hoverPreviewState.el = preview;
+  }
+
+  function hideTaskHoverPreview() {
+    if (hoverPreviewState.hideTimer) {
+      clearTimeout(hoverPreviewState.hideTimer);
+      hoverPreviewState.hideTimer = null;
+    }
+    if (hoverPreviewState.fetchTimer) {
+      clearTimeout(hoverPreviewState.fetchTimer);
+      hoverPreviewState.fetchTimer = null;
+    }
+    if (hoverPreviewState.el && document.contains(hoverPreviewState.el)) {
+      hoverPreviewState.el.remove();
+    }
+    hoverPreviewState.el = null;
+  }
+
+  /* ── Skeleton loader for navigation ──────────────────────── */
+
+  function showNavigationSkeleton() {
+    var main = document.querySelector('.caldo-content');
+    if (!main) return;
+    main.setAttribute('data-nav-skeleton', 'true');
+    main.innerHTML =
+      '<section class="caldo-state">' +
+      '<div class="caldo-loading-lines" aria-hidden="true">' +
+      '<span></span><span></span><span></span><span></span><span></span>' +
+      '</div></section>';
+  }
+
+  /* ── Task row insertion animation ────────────────────────── */
+
+  function animateNewTaskRow(row) {
+    if (!row) return;
+    row.classList.add('caldo-task-row-enter');
+    setTimeout(function () { row.classList.remove('caldo-task-row-enter'); }, 250);
+  }
+
   function generateTabID() {
     if (window.crypto && typeof window.crypto.randomUUID === 'function') {
       return window.crypto.randomUUID();
@@ -582,12 +842,29 @@
     syncButton.click();
   }
 
+  function openFocusedTaskDateDropdown() {
+    var focused = document.activeElement;
+    if (!focused) return;
+    var taskRow = closestElement(focused, '[data-task-id]');
+    if (!taskRow) return;
+    var dateDropdown = taskRow.querySelector('.caldo-date-dropdown');
+    if (!dateDropdown) return;
+    var alpineData = dateDropdown.__x || dateDropdown._x_dataStack;
+    if (alpineData && alpineData[0]) {
+      alpineData[0].open = true;
+    } else {
+      var trigger = dateDropdown.querySelector('.caldo-task-date-trigger');
+      if (trigger) trigger.click();
+    }
+  }
+
   function bindQuickAddOverlay() {
     var dialog = quickAddOverlay();
     if (!dialog || dialog.dataset.quickAddOverlayBound === 'true') return;
     dialog.dataset.quickAddOverlayBound = 'true';
     dialog.addEventListener('close', function () {
       resetQuickAddOverlay(dialog);
+      hideQuickAddTokenDropdown();
       var trigger = dialog.__caldoReturnFocus;
       dialog.__caldoReturnFocus = null;
       if (trigger && document.contains(trigger)) {
@@ -599,6 +876,132 @@
         closeQuickAddOverlay(dialog, true);
       }
     });
+
+    // Load suggestions and bind input handler for # and @ dropdowns
+    var input = dialog.querySelector('[data-quick-add-overlay-input]');
+    if (input) {
+      quickAddLoadSuggestions(input);
+      input.addEventListener('input', quickAddTokenInputHandler);
+    }
+  }
+
+  /* ── Quick Add # and @ token dropdown ────────────────────── */
+
+  var quickAddSuggestionCache = null;
+  var quickAddTokenDropdownState = { el: null, input: null, kind: null };
+
+  function quickAddLoadSuggestions(input) {
+    if (quickAddSuggestionCache) return;
+    fetch('/quick-add/suggestions', {
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json', 'X-Tab-ID': tabID }
+    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+      quickAddSuggestionCache = data || { projects: [], labels: [] };
+    }).catch(function () {
+      quickAddSuggestionCache = { projects: [], labels: [] };
+    });
+  }
+
+  function quickAddTokenInputHandler(event) {
+    var input = event.target;
+    if (!input || !input.matches || !input.matches('[data-quick-add-overlay-input]')) return;
+    var value = input.value;
+    var cursor = input.selectionStart || value.length;
+
+    // Find the token trigger (# or @) before the cursor
+    var before = value.slice(0, cursor);
+    var hashIdx = before.lastIndexOf('#');
+    var atIdx = before.lastIndexOf('@');
+    var triggerChar = null;
+    var triggerIdx = -1;
+    if (hashIdx > atIdx) { triggerChar = '#'; triggerIdx = hashIdx; }
+    else if (atIdx > hashIdx) { triggerChar = '@'; triggerIdx = atIdx; }
+
+    if (!triggerChar || triggerIdx < 0) {
+      hideQuickAddTokenDropdown();
+      return;
+    }
+
+    // Check that there's no space between trigger and cursor (simple token mode)
+    var afterTrigger = before.slice(triggerIdx + 1);
+    if (/\s/.test(afterTrigger)) {
+      hideQuickAddTokenDropdown();
+      return;
+    }
+
+    var query = afterTrigger.toLowerCase();
+    var suggestions = [];
+    if (quickAddSuggestionCache) {
+      if (triggerChar === '#') {
+        suggestions = (quickAddSuggestionCache.projects || []).filter(function (p) {
+          return p.name && p.name.toLowerCase().indexOf(query) !== -1;
+        }).slice(0, 8);
+      } else {
+        suggestions = (quickAddSuggestionCache.labels || []).filter(function (l) {
+          return l.name && l.name.toLowerCase().indexOf(query) !== -1;
+        }).slice(0, 8);
+      }
+    }
+
+    if (suggestions.length === 0) {
+      hideQuickAddTokenDropdown();
+      return;
+    }
+
+    showQuickAddTokenDropdown(input, triggerChar, triggerIdx, suggestions);
+  }
+
+  function showQuickAddTokenDropdown(input, kind, triggerIdx, suggestions) {
+    hideQuickAddTokenDropdown();
+
+    var dropdown = document.createElement('div');
+    dropdown.className = 'caldo-quick-add-token-dropdown';
+    dropdown.style.cssText = 'position:absolute;z-index:50;width:100%;max-height:14rem;overflow-y:auto;border-radius:0.5rem;margin-top:0.25rem;box-shadow:0 4px 16px 0 rgb(0 0 0 / 0.12), inset 0 0 0 1px var(--caldo-border-strong);background:var(--caldo-surface);';
+
+    suggestions.forEach(function (s) {
+      var item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'caldo-quick-add-token-item';
+      item.style.cssText = 'display:flex;width:100%;align-items:center;gap:0.5rem;padding:0.375rem 0.75rem;text-align:left;font-size:0.875rem;color:var(--caldo-text);background:transparent;border:0;cursor:pointer;transition:background 75ms;';
+      item.textContent = (kind === '#' ? '#' : '@') + s.name;
+      if (s.id) {
+        var badge = document.createElement('span');
+        badge.style.cssText = 'margin-left:auto;font-size:0.6875rem;color:var(--caldo-text-subtle);';
+        badge.textContent = s.id;
+        item.appendChild(badge);
+      }
+      item.addEventListener('mouseenter', function () { item.style.background = 'var(--caldo-surface-muted)'; });
+      item.addEventListener('mouseleave', function () { item.style.background = 'transparent'; });
+      item.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        var val = input.value;
+        var before = val.slice(0, triggerIdx);
+        var after = val.slice((input.selectionStart || val.length));
+        var insert = kind + s.name + ' ';
+        input.value = before + insert + after;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        hideQuickAddTokenDropdown();
+        input.focus();
+        var newPos = before.length + insert.length;
+        input.setSelectionRange(newPos, newPos);
+      });
+      dropdown.appendChild(item);
+    });
+
+    var wrapper = input.parentElement;
+    if (wrapper) {
+      wrapper.style.position = 'relative';
+      wrapper.appendChild(dropdown);
+    }
+    quickAddTokenDropdownState = { el: dropdown, input: input, kind: kind };
+  }
+
+  function hideQuickAddTokenDropdown() {
+    if (quickAddTokenDropdownState.el && document.contains(quickAddTokenDropdownState.el)) {
+      quickAddTokenDropdownState.el.remove();
+    }
+    quickAddTokenDropdownState = { el: null, input: null, kind: null };
   }
 
   function clearQuickAddControl(button) {
@@ -2217,7 +2620,13 @@
 
   document.body.addEventListener('htmx:beforeRequest', function (event) {
     var method = ((event.detail && event.detail.requestConfig && event.detail.requestConfig.verb) || '').toUpperCase();
-    if (!method || method === 'GET') return;
+    if (method === 'GET') {
+      var target = event.detail && event.detail.target;
+      if (target && target.classList && target.classList.contains('caldo-content')) {
+        showNavigationSkeleton();
+      }
+      return;
+    }
     if (isSyncRequestElement(event.detail && event.detail.elt)) {
       setWriteStatus(null, '');
       return;
@@ -2619,6 +3028,69 @@
     }
   }, true);
 
+  /* ── Bulk selection click handler ─────────────────────────── */
+
+  document.addEventListener('click', function (event) {
+    var bulkSelectAll = closestElement(event.target, '[data-bulk-select-all]');
+    if (bulkSelectAll) {
+      event.preventDefault();
+      clearBulkSelection();
+      return;
+    }
+
+    var bulkComplete = closestElement(event.target, '[data-bulk-complete]');
+    if (bulkComplete) {
+      event.preventDefault();
+      bulkCompleteTasks();
+      return;
+    }
+
+    var taskRow = closestElement(event.target, '[data-task-id]');
+    if (!taskRow) return;
+    // Skip if clicking a link, button, form control, or detail/complete/delete open
+    if (closestElement(event.target, 'a, button, input, select, textarea, label, [data-task-detail-open], [data-task-complete-open], [data-task-delete-open]')) return;
+
+    var taskID = taskRowID(taskRow);
+    if (!taskID) return;
+
+    if (event.shiftKey && bulkSelection.lastClicked) {
+      event.preventDefault();
+      bulkSelectRange(bulkSelection.lastClicked, taskID);
+      bulkSelection.lastClicked = taskID;
+      return;
+    }
+
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+      toggleBulkSelect(taskID);
+      bulkSelection.lastClicked = taskID;
+      return;
+    }
+
+    // Single click without modifier: clear selection if any active
+    if (bulkSelection.ids.length > 0 && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
+      clearBulkSelection();
+    }
+  }, true);
+
+  /* ── Hover preview handlers ──────────────────────────────── */
+
+  document.addEventListener('mouseover', function (event) {
+    var row = closestElement(event.target, '[data-task-id]');
+    if (!row) { hideTaskHoverPreview(); return; }
+    if (hoverPreviewState.el && hoverPreviewState.el.parentElement === row) return;
+    hideTaskHoverPreview();
+    hoverPreviewState.hideTimer = setTimeout(function () { showTaskHoverPreview(row, event); }, 500);
+  });
+
+  document.addEventListener('mouseout', function (event) {
+    var row = closestElement(event.target, '[data-task-id]');
+    if (!row) { hideTaskHoverPreview(); return; }
+    var related = event.relatedTarget instanceof Element ? event.relatedTarget : null;
+    if (related && row.contains(related)) return;
+    hideTaskHoverPreview();
+  });
+
   window.addEventListener('resize', function () {
     if (window.innerWidth >= 768) {
       closeMobileNav();
@@ -2753,6 +3225,12 @@
       return;
     }
 
+    if (key === 'd') {
+      event.preventDefault();
+      openFocusedTaskDateDropdown();
+      return;
+    }
+
     if (helpShortcut) {
       event.preventDefault();
       toggleHelpDialog();
@@ -2775,4 +3253,14 @@
   initializeLocalDateTimes();
   initializeConflictManualPreviews();
   initializeConflictSplitConfirmations();
+
+  /* ── Animate first task row after a write-reload ─────────── */
+
+  function animateFirstTaskRowAfterWrite() {
+    if (!tabState.writeStatus) return;
+    var firstRow = document.querySelector('.caldo-task-list [data-task-id]');
+    if (firstRow) animateNewTaskRow(firstRow);
+  }
+
+  animateFirstTaskRowAfterWrite();
 })();

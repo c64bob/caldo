@@ -92,7 +92,7 @@ func SearchLiveResults(query string, results []TaskRowView, create InlineTaskCre
 			}
 		}
 		if strings.TrimSpace(query) == "" {
-			templ_7745c5c3_Err = EmptyState("Noch keine Suche", "Gib einen Suchbegriff ein.").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = EmptyStateWithAction("Noch keine Suche", "Gib einen Suchbegriff ein.", "Aufgabe erstellen", "/quick-add").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

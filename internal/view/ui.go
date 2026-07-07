@@ -146,6 +146,7 @@ type Texts struct {
 	ShortcutSettings         string
 	ShortcutSyncNow          string
 	ShortcutOpenHelp         string
+	ShortcutDueDate          string
 	Or                       string
 	Then                     string
 	OpenItemsAria            string
@@ -291,6 +292,7 @@ var germanTexts = Texts{ // #nosec G101 -- text catalog values are UI labels, no
 	ShortcutSettings:         "Einstellungen",
 	ShortcutSyncNow:          "Jetzt synchronisieren",
 	ShortcutOpenHelp:         "Hilfe öffnen",
+	ShortcutDueDate:          "Fälligkeit setzen",
 	Or:                       "oder",
 	Then:                     "dann",
 	OpenItemsAria:            "offene Einträge",
@@ -436,6 +438,7 @@ var englishTexts = Texts{ // #nosec G101 -- text catalog values are UI labels, n
 	ShortcutSettings:         "Settings",
 	ShortcutSyncNow:          "Sync now",
 	ShortcutOpenHelp:         "Open help",
+	ShortcutDueDate:          "Set due date",
 	Or:                       "or",
 	Then:                     "then",
 	OpenItemsAria:            "open items",

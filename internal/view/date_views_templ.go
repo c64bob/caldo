@@ -34,7 +34,7 @@ func DateScopedTasksPage(heading string, emptyMessage string, tasks []TaskRowVie
 			return templ_7745c5c3_Err
 		}
 		if len(tasks) == 0 {
-			templ_7745c5c3_Err = EmptyState(emptyMessage, "Es gibt in dieser Ansicht gerade nichts zu bearbeiten.").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = EmptyStateWithAction(emptyMessage, "Es gibt in dieser Ansicht gerade nichts zu bearbeiten.", "Aufgabe erstellen", "/quick-add").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

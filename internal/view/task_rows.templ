@@ -159,6 +159,14 @@ templ TaskRow(task TaskRowView) {
 					for _, state := range taskStateChips(task) {
 						<span class={ state.Class }>{ state.Label }</span>
 					}
+						if !task.IsSubtask && task.SubtaskCount > 0 {
+						<span class="caldo-task-chip caldo-task-chip-subtask caldo-task-subtask-progress" aria-label={ taskSubtaskProgressLabel(task) }>
+							<span class="caldo-task-subtask-progress-bar">
+								<span class="caldo-task-subtask-progress-fill" style={ "width: " + fmt.Sprintf("%d", taskSubtaskProgressPercent(task)) + "%" }></span>
+							</span>
+							<span>{ taskSubtaskProgressLabel(task) }</span>
+						</span>
+					}
 						if taskUsesConflictLink(task) {
 						<a
 							class="caldo-task-detail-open"

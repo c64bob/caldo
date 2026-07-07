@@ -2521,6 +2521,10 @@
 		background: var(--caldo-surface-muted);
 	}
 
+	.caldo-toast-dismissing {
+		animation: caldo-toast-out 180ms ease-in forwards;
+	}
+
 	.caldo-toast-success {
 		background: var(--caldo-success-muted);
 		box-shadow: inset 3px 0 0 0 var(--caldo-success), 0 4px 12px 0 rgb(0 0 0 / 0.08);
@@ -2595,6 +2599,9 @@
 	}
 
 	/* Task hover preview */
+	.caldo-task-row-relative {
+		@apply relative;
+	}
 	.caldo-task-hover-preview {
 		@apply absolute z-30 max-w-xs rounded-lg border px-3 py-2 text-sm;
 		background: var(--caldo-surface);
@@ -2616,6 +2623,34 @@
 		@apply text-sm leading-5 max-h-24 overflow-hidden;
 		color: var(--caldo-text-muted);
 		overflow-wrap: anywhere;
+	}
+
+	/* Quick Add token dropdown */
+	.caldo-token-input-wrapper {
+		@apply relative;
+	}
+
+	.caldo-quick-add-token-dropdown {
+		@apply absolute z-50 max-h-56 w-full overflow-y-auto rounded-lg py-1;
+		background: var(--caldo-surface);
+		box-shadow: 0 4px 16px 0 rgb(0 0 0 / 0.12), inset 0 0 0 1px var(--caldo-border-strong);
+		margin-top: 0.25rem;
+	}
+
+	.caldo-quick-add-token-item {
+		@apply flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors duration-75;
+		color: var(--caldo-text);
+		background: transparent;
+		border: 0;
+	}
+
+	.caldo-quick-add-token-item:hover {
+		background: var(--caldo-surface-muted);
+	}
+
+	.caldo-quick-add-token-item-badge {
+		@apply ml-auto text-xs;
+		color: var(--caldo-text-subtle);
 	}
 
 	.caldo-mobile-nav-dialog {

@@ -110,7 +110,7 @@ func RecoveryMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 
 // SecurityHeadersMiddleware sets security response headers for all requests.
 func SecurityHeadersMiddleware() func(http.Handler) http.Handler {
-	const csp = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none';"
+	const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none';"
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

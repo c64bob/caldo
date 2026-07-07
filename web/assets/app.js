@@ -28,7 +28,7 @@
 
   function dismissToast(item) {
     if (!item || !document.contains(item)) return;
-    item.style.animation = 'caldo-toast-out 180ms ease-in forwards';
+    item.classList.add('caldo-toast-dismissing');
     setTimeout(function () { item.remove(); }, 200);
   }
 
@@ -228,7 +228,7 @@
     body.textContent = text;
     preview.appendChild(title);
     preview.appendChild(body);
-    row.style.position = 'relative';
+    row.classList.add('caldo-task-row-relative');
     row.appendChild(preview);
     hoverPreviewState.el = preview;
   }
@@ -956,22 +956,18 @@
 
     var dropdown = document.createElement('div');
     dropdown.className = 'caldo-quick-add-token-dropdown';
-    dropdown.style.cssText = 'position:absolute;z-index:50;width:100%;max-height:14rem;overflow-y:auto;border-radius:0.5rem;margin-top:0.25rem;box-shadow:0 4px 16px 0 rgb(0 0 0 / 0.12), inset 0 0 0 1px var(--caldo-border-strong);background:var(--caldo-surface);';
 
     suggestions.forEach(function (s) {
       var item = document.createElement('button');
       item.type = 'button';
       item.className = 'caldo-quick-add-token-item';
-      item.style.cssText = 'display:flex;width:100%;align-items:center;gap:0.5rem;padding:0.375rem 0.75rem;text-align:left;font-size:0.875rem;color:var(--caldo-text);background:transparent;border:0;cursor:pointer;transition:background 75ms;';
       item.textContent = (kind === '#' ? '#' : '@') + s.name;
       if (s.id) {
         var badge = document.createElement('span');
-        badge.style.cssText = 'margin-left:auto;font-size:0.6875rem;color:var(--caldo-text-subtle);';
+        badge.className = 'caldo-quick-add-token-item-badge';
         badge.textContent = s.id;
         item.appendChild(badge);
       }
-      item.addEventListener('mouseenter', function () { item.style.background = 'var(--caldo-surface-muted)'; });
-      item.addEventListener('mouseleave', function () { item.style.background = 'transparent'; });
       item.addEventListener('click', function (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -991,7 +987,7 @@
 
     var wrapper = input.parentElement;
     if (wrapper) {
-      wrapper.style.position = 'relative';
+      wrapper.classList.add('caldo-token-input-wrapper');
       wrapper.appendChild(dropdown);
     }
     quickAddTokenDropdownState = { el: dropdown, input: input, kind: kind };

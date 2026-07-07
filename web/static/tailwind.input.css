@@ -1485,7 +1485,6 @@
 		inset: 0 0 0 auto;
 		max-width: min(100vw, 34rem);
 		width: min(100vw, 34rem);
-		animation: caldo-slide-in-right 200ms ease-out;
 	}
 
 	@media (max-width: 639px) {
@@ -1503,11 +1502,6 @@
 
 	.caldo-task-detail-dialog::backdrop {
 		background: rgb(0 0 0 / 0.35);
-		animation: caldo-fade-in 150ms ease-out;
-	}
-
-	.caldo-task-detail-dialog {
-		animation: caldo-slide-in-right 200ms ease-out;
 	}
 
 	.caldo-task-detail-shell {

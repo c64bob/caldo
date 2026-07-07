@@ -57,7 +57,7 @@ func TestQuickAddOverlayUsesDistinctPreviewTarget(t *testing.T) {
 		`data-quick-add-overlay-form`,
 		`id="quick-add-overlay-text"`,
 		`hx-target="#quick-add-overlay-preview"`,
-		`hx-trigger="input changed delay:350ms, submit"`,
+		`hx-trigger="input changed delay:200ms, submit"`,
 		`name="surface" value="overlay"`,
 		`aria-describedby="quick-add-overlay-error"`,
 		`id="quick-add-overlay-error"`,

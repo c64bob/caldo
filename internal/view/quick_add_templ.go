@@ -175,7 +175,7 @@ func QuickAddOverlay() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\"><svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" focusable=\"false\"><path d=\"M18 6 6 18\"></path> <path d=\"m6 6 12 12\"></path></svg></button></div><div class=\"caldo-quick-add-overlay-body\"><form method=\"post\" action=\"/quick-add/preview\" hx-post=\"/quick-add/preview\" hx-target=\"#quick-add-overlay-preview\" hx-trigger=\"input changed delay:350ms, submit\" hx-swap=\"outerHTML\" hx-disabled-elt=\"find button\" class=\"caldo-quick-add-form\" data-quick-add-overlay-form aria-describedby=\"quick-add-overlay-error\"><input type=\"hidden\" name=\"surface\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\"><svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" focusable=\"false\"><path d=\"M18 6 6 18\"></path> <path d=\"m6 6 12 12\"></path></svg></button></div><div class=\"caldo-quick-add-overlay-body\"><form method=\"post\" action=\"/quick-add/preview\" hx-post=\"/quick-add/preview\" hx-target=\"#quick-add-overlay-preview\" hx-trigger=\"input changed delay:200ms, submit\" hx-swap=\"outerHTML\" hx-disabled-elt=\"find button\" class=\"caldo-quick-add-form\" data-quick-add-overlay-form aria-describedby=\"quick-add-overlay-error\"><input type=\"hidden\" name=\"surface\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

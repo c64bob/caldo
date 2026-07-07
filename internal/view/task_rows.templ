@@ -196,37 +196,109 @@ templ TaskRow(task TaskRowView) {
 						</div>
 						<div class="caldo-task-date-slot">
 							if taskCanInlineEdit(task) {
-								<div class="caldo-task-date-edit-shell" data-inline-task-edit-scope data-inline-task-edit-focus="date">
-									<button
-										type="button"
-										class={ taskDueStateChip(task).Class, "caldo-task-date-trigger" }
-										data-inline-task-edit-open
-										data-inline-task-edit-focus="date"
-										aria-expanded="false"
-										aria-label={ taskDateEditLabel(task) }
-									>
-										{ taskDueStateChip(task).Label }
-									</button>
+								<div class="caldo-date-dropdown" x-data="{ open: false }" @keydown.escape.window="open = false" @click.outside="open = false">
 									<form
 										method="post"
 										action={ taskEditPath(task) }
 										hx-patch={ taskEditPath(task) }
-										hx-trigger="change, submit"
 										hx-swap="none"
 										hx-disabled-elt="find button"
 										hx-headers={ taskCSRFHeaders(ctx) }
 										data-refresh-after-write="true"
-										data-inline-task-edit-form
-										data-inline-task-edit-kind="date"
-										class="caldo-task-inline-edit-form caldo-task-date-edit-form"
+										class="caldo-task-date-edit-form"
 										aria-label={ taskDateEditLabel(task) }
-										aria-describedby={ taskDOMID("task-edit-error", task) }
-										hidden
 									>
 										<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
-										<input type="date" name="due_date" value={ task.DueISODate } class="caldo-input caldo-task-date-edit-input" data-inline-task-edit-date aria-label={ taskDateEditLabel(task) } aria-describedby={ taskDOMID("task-edit-error", task) }/>
+										<input type="hidden" name="due_date" value={ task.DueISODate } data-date-hidden-input/>
 										<button type="submit" class="sr-only">Speichern</button>
 									</form>
+									<button
+										type="button"
+										class={ taskDueStateChip(task).Class, "caldo-task-date-trigger" }
+										@click="open = !open"
+										:aria-expanded="open"
+										aria-haspopup="menu"
+										aria-label={ taskDateEditLabel(task) }
+									>
+										{ taskDueStateChip(task).Label }
+									</button>
+									<div
+										class="caldo-date-dropdown-menu"
+										x-show="open"
+										x-transition:enter="caldo-date-dropdown-enter"
+										x-transition:enter-start="caldo-date-dropdown-enter-start"
+										x-transition:enter-end="caldo-date-dropdown-enter-end"
+										x-transition:leave="caldo-date-dropdown-leave"
+										x-transition:leave-start="caldo-date-dropdown-leave-start"
+										x-transition:leave-end="caldo-date-dropdown-leave-end"
+										role="menu"
+									>
+										<button type="button" class="caldo-date-quick-action" role="menuitem"
+											@click="
+												const form = $el.closest('.caldo-date-dropdown').querySelector('form');
+												form.querySelector('[data-date-hidden-input]').value = new Date().toISOString().slice(0, 10);
+												form.requestSubmit();
+												open = false;
+											"
+										>Heute</button>
+										<button type="button" class="caldo-date-quick-action" role="menuitem"
+											@click="
+												const d = new Date(); d.setDate(d.getDate() + 1);
+												const form = $el.closest('.caldo-date-dropdown').querySelector('form');
+												form.querySelector('[data-date-hidden-input]').value = d.toISOString().slice(0, 10);
+												form.requestSubmit();
+												open = false;
+											"
+										>Morgen</button>
+										<button type="button" class="caldo-date-quick-action" role="menuitem"
+											@click="
+												const d = new Date(); d.setDate(d.getDate() + 2);
+												const form = $el.closest('.caldo-date-dropdown').querySelector('form');
+												form.querySelector('[data-date-hidden-input]').value = d.toISOString().slice(0, 10);
+												form.requestSubmit();
+												open = false;
+											"
+										>Übermorgen</button>
+										<button type="button" class="caldo-date-quick-action" role="menuitem"
+											@click="
+												const d = new Date(); const day = d.getDay(); const diff = ((1 + 7 - day) % 7) || 7; d.setDate(d.getDate() + diff);
+												const form = $el.closest('.caldo-date-dropdown').querySelector('form');
+												form.querySelector('[data-date-hidden-input]').value = d.toISOString().slice(0, 10);
+												form.requestSubmit();
+												open = false;
+											"
+										>Nächster Montag</button>
+										<button type="button" class="caldo-date-quick-action" role="menuitem"
+											@click="
+												const d = new Date(); const day = d.getDay(); const diff = ((6 + 7 - day) % 7) || 7; d.setDate(d.getDate() + diff);
+												const form = $el.closest('.caldo-date-dropdown').querySelector('form');
+												form.querySelector('[data-date-hidden-input]').value = d.toISOString().slice(0, 10);
+												form.requestSubmit();
+												open = false;
+											"
+										>Nächstes Wochenende</button>
+										<div class="caldo-date-dropdown-divider"></div>
+										<label class="caldo-date-quick-action caldo-date-custom" role="menuitem">
+											<input type="date" class="caldo-date-custom-input"
+												@change="
+													const form = $el.closest('.caldo-date-dropdown').querySelector('form');
+													form.querySelector('[data-date-hidden-input]').value = $el.value;
+													form.requestSubmit();
+													open = false;
+												"
+											/>
+											<span>Benutzerdefiniertes Datum</span>
+										</label>
+										<div class="caldo-date-dropdown-divider"></div>
+										<button type="button" class="caldo-date-quick-action caldo-date-clear" role="menuitem"
+											@click="
+												const form = $el.closest('.caldo-date-dropdown').querySelector('form');
+												form.querySelector('[data-date-hidden-input]').value = '';
+												form.requestSubmit();
+												open = false;
+											"
+										>Kein Datum</button>
+									</div>
 								</div>
 							} else {
 								<span class={ taskDueStateChip(task).Class }>{ taskDueStateChip(task).Label }</span>

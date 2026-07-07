@@ -303,7 +303,7 @@
 
 	@media (min-width: 1280px) {
 		.caldo-content {
-			@apply max-w-6xl;
+			max-width: 90rem;
 		}
 	}
 
@@ -1079,22 +1079,25 @@
 			appearance: none;
 			background: transparent;
 			border: 0;
-			border-radius: 0.125rem;
+			border-radius: 0.25rem;
 			cursor: text;
-			padding: 0;
+			padding: 0.125rem 0.25rem;
+			margin: -0.125rem -0.25rem;
 			text-align: left;
-			width: 100%;
+			width: calc(100% + 0.5rem);
+			transition: background-color 100ms ease-out;
 		}
 
-		.caldo-task-title-edit-trigger:hover,
-		.caldo-task-title-edit-trigger:focus-visible {
+		.caldo-task-title-edit-trigger:hover {
+			background: var(--caldo-surface-muted);
 			color: var(--caldo-accent);
-			outline: 2px solid transparent;
-			outline-offset: 2px;
 		}
 
 		.caldo-task-title-edit-trigger:focus-visible {
-			outline-color: var(--caldo-focus);
+			outline: 2px solid var(--caldo-focus);
+			outline-offset: 2px;
+			box-shadow: var(--caldo-focus-ring);
+			color: var(--caldo-accent);
 		}
 
 		.caldo-task-inline-edit-form {
@@ -1278,6 +1281,73 @@
 			width: 8.5rem;
 		}
 
+	/* Date Dropdown */
+	.caldo-date-dropdown {
+		@apply relative;
+	}
+
+	.caldo-date-dropdown-menu {
+		@apply absolute right-0 z-30 mt-1 min-w-[12rem] rounded-lg py-1;
+		background: var(--caldo-surface);
+		box-shadow: 0 4px 16px 0 rgb(0 0 0 / 0.12), inset 0 0 0 1px var(--caldo-border);
+	}
+
+	.caldo-date-dropdown-enter {
+		@apply transition ease-out duration-100;
+	}
+	.caldo-date-dropdown-enter-start {
+		@apply opacity-0 scale-95;
+	}
+	.caldo-date-dropdown-enter-end {
+		@apply opacity-100 scale-100;
+	}
+	.caldo-date-dropdown-leave {
+		@apply transition ease-in duration-75;
+	}
+	.caldo-date-dropdown-leave-start {
+		@apply opacity-100 scale-100;
+	}
+	.caldo-date-dropdown-leave-end {
+		@apply opacity-0 scale-95;
+	}
+
+	.caldo-date-quick-action {
+		@apply flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors duration-75;
+		color: var(--caldo-text);
+	}
+
+	.caldo-date-quick-action:hover {
+		background: var(--caldo-surface-muted);
+		color: var(--caldo-accent);
+	}
+
+	.caldo-date-quick-action:focus-visible {
+		outline: 2px solid var(--caldo-focus);
+		outline-offset: -2px;
+	}
+
+	.caldo-date-custom {
+		@apply cursor-pointer;
+	}
+
+	.caldo-date-custom-input {
+		@apply sr-only;
+	}
+
+	.caldo-date-clear {
+		color: var(--caldo-text-muted);
+	}
+
+	.caldo-date-clear:hover {
+		color: var(--caldo-danger);
+	}
+
+	.caldo-date-dropdown-divider {
+		@apply my-1;
+		height: 1px;
+		background: var(--caldo-border);
+	}
+
 		.caldo-task-date-trigger:hover,
 		.caldo-task-date-trigger:focus-visible {
 			background: var(--caldo-surface);
@@ -1433,7 +1503,7 @@
 	}
 
 	.caldo-task-detail-section .caldo-subtask-create {
-		@apply mt-0 px-0;
+		@apply mt-0;
 		grid-column: auto;
 	}
 
@@ -1483,8 +1553,8 @@
 		color: var(--caldo-text);
 		height: 100dvh;
 		inset: 0 0 0 auto;
-		max-width: min(100vw, 34rem);
-		width: min(100vw, 34rem);
+		max-width: min(100vw, 40rem);
+		width: min(100vw, 40rem);
 	}
 
 	@media (max-width: 639px) {

@@ -1027,6 +1027,14 @@ async function exerciseQuickAddOverlay(page) {
   await expect(overlay.locator('[data-quick-add-chips]')).toContainText('urgent');
   await expect(overlay.locator('[data-quick-add-chips]')).toContainText('Wöchentlich');
   await expect(overlay.locator('[data-quick-add-chips]')).toContainText('P2 Mittel');
+
+  // Input-first: correction fields hidden by default, toggle via "Bearbeiten"
+  const corrections = saveForm.locator('[data-quick-add-corrections]');
+  await expect(corrections).toBeHidden();
+  const editToggle = saveForm.locator('[data-quick-add-corrections-toggle]');
+  await expect(editToggle).toBeVisible();
+  await editToggle.click();
+  await expect(corrections).toBeVisible();
   await expect(saveForm.locator('input[name="title"]')).toHaveValue('E2E Overlay Chips');
   await expect(saveForm.locator('input[name="title"]')).toBeFocused();
   await expect(saveForm.locator('input[name="labels"]')).toHaveValue('urgent');
@@ -1079,6 +1087,8 @@ async function exerciseQuickAddOverlay(page) {
   const reviewedSuggestion = overlay.locator('[data-quick-add-label-suggestions] button[data-quick-add-append-label="reviewed"]');
   await expect(reviewedSuggestion).toBeVisible();
   await reviewedSuggestion.click();
+  // Clicking a suggestion reveals the correction fields (input-first pattern)
+  await expect(saveForm.locator('[data-quick-add-corrections]')).toBeVisible();
   await expect(saveForm.locator('input[name="labels"]')).toHaveValue('reviewed');
   await saveForm.getByRole('button', { name: 'Speichern' }).click();
   await expect(overlay).toBeHidden();

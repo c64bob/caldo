@@ -2464,6 +2464,7 @@
     if (quickAddAppendLabel) {
       event.preventDefault();
       appendQuickAddLabel(quickAddAppendLabel);
+      showQuickAddCorrections(quickAddAppendLabel);
       return;
     }
 
@@ -2471,6 +2472,7 @@
     if (quickAddRemoveLabel) {
       event.preventDefault();
       removeQuickAddLabel(quickAddRemoveLabel);
+      showQuickAddCorrections(quickAddRemoveLabel);
       return;
     }
 

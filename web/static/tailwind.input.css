@@ -1304,11 +1304,25 @@
 		@apply absolute right-0 z-30 mt-1 min-w-[12rem] rounded-lg py-1;
 		background: var(--caldo-surface);
 		box-shadow: 0 4px 16px 0 rgb(0 0 0 / 0.12), inset 0 0 0 1px var(--caldo-border);
-		animation: caldo-fade-in 100ms ease-out;
 	}
 
-	.caldo-date-dropdown-menu[hidden] {
-		display: none;
+	.caldo-date-dropdown-enter {
+		@apply transition ease-out duration-100;
+	}
+	.caldo-date-dropdown-enter-start {
+		@apply opacity-0 scale-95;
+	}
+	.caldo-date-dropdown-enter-end {
+		@apply opacity-100 scale-100;
+	}
+	.caldo-date-dropdown-leave {
+		@apply transition ease-in duration-75;
+	}
+	.caldo-date-dropdown-leave-start {
+		@apply opacity-100 scale-100;
+	}
+	.caldo-date-dropdown-leave-end {
+		@apply opacity-0 scale-95;
 	}
 
 	.caldo-date-quick-action {

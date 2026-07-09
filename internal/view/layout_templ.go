@@ -910,7 +910,7 @@ func BaseLayout(title string, content templ.Component) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "<div id=\"write-status\" data-write-status class=\"hidden caldo-toast\" role=\"status\" aria-live=\"polite\"></div><div id=\"notifications\" aria-live=\"polite\"></div><dialog data-shortcut-help-dialog class=\"caldo-dialog\" aria-labelledby=\"shortcut-help-title\"><div class=\"p-4 space-y-3\"><div class=\"flex items-center justify-between\"><h2 id=\"shortcut-help-title\" class=\"caldo-page-title\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "<div id=\"write-status\" data-write-status class=\"hidden caldo-toast\" role=\"status\" aria-live=\"polite\"></div><div id=\"notifications\" data-toast-container aria-live=\"polite\"></div><dialog data-shortcut-help-dialog class=\"caldo-dialog\" aria-labelledby=\"shortcut-help-title\"><div class=\"p-4 space-y-3\"><div class=\"flex items-center justify-between\"><h2 id=\"shortcut-help-title\" class=\"caldo-page-title\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -876,13 +876,14 @@
     if (input) {
       quickAddLoadSuggestions(input);
       input.addEventListener('input', quickAddTokenInputHandler);
+      input.addEventListener('keydown', quickAddTokenKeydownHandler);
     }
   }
 
   /* ── Quick Add # and @ token dropdown ────────────────────── */
 
   var quickAddSuggestionCache = null;
-  var quickAddTokenDropdownState = { el: null, input: null, kind: null };
+  var quickAddTokenDropdownState = { el: null, input: null, kind: null, triggerIdx: -1, items: [], activeIndex: -1 };
 
   function quickAddLoadSuggestions(input) {
     if (quickAddSuggestionCache) return;
@@ -891,6 +892,9 @@
       headers: { 'Accept': 'application/json', 'X-Tab-ID': tabID }
     }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
       quickAddSuggestionCache = data || { projects: [], labels: [] };
+      if (document.activeElement === input) {
+        quickAddTokenInputHandler({ target: input });
+      }
     }).catch(function () {
       quickAddSuggestionCache = { projects: [], labels: [] };
     });
@@ -950,11 +954,20 @@
 
     var dropdown = document.createElement('div');
     dropdown.className = 'caldo-quick-add-token-dropdown';
+    dropdown.id = input.getAttribute('aria-controls') || 'quick-add-token-suggestions';
+    dropdown.setAttribute('role', 'listbox');
 
-    suggestions.forEach(function (s) {
+    var items = [];
+
+    suggestions.forEach(function (s, index) {
       var item = document.createElement('button');
       item.type = 'button';
       item.className = 'caldo-quick-add-token-item';
+      item.id = dropdown.id + '-option-' + index;
+      item.setAttribute('role', 'option');
+      item.setAttribute('aria-selected', 'false');
+      item.setAttribute('tabindex', '-1');
+      item.setAttribute('data-quick-add-token-name', s.name);
       item.textContent = (kind === '#' ? '#' : '@') + s.name;
       if (s.id) {
         var badge = document.createElement('span');
@@ -965,18 +978,10 @@
       item.addEventListener('click', function (event) {
         event.preventDefault();
         event.stopPropagation();
-        var val = input.value;
-        var before = val.slice(0, triggerIdx);
-        var after = val.slice((input.selectionStart || val.length));
-        var insert = kind + s.name + ' ';
-        input.value = before + insert + after;
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        hideQuickAddTokenDropdown();
-        input.focus();
-        var newPos = before.length + insert.length;
-        input.setSelectionRange(newPos, newPos);
+        insertQuickAddToken(item);
       });
       dropdown.appendChild(item);
+      items.push(item);
     });
 
     var wrapper = input.parentElement;
@@ -984,14 +989,90 @@
       wrapper.classList.add('caldo-token-input-wrapper');
       wrapper.appendChild(dropdown);
     }
-    quickAddTokenDropdownState = { el: dropdown, input: input, kind: kind };
+    quickAddTokenDropdownState = {
+      el: dropdown,
+      input: input,
+      kind: kind,
+      triggerIdx: triggerIdx,
+      items: items,
+      activeIndex: -1
+    };
+    input.setAttribute('aria-expanded', 'true');
+    setQuickAddTokenActiveIndex(0);
+  }
+
+  function setQuickAddTokenActiveIndex(index) {
+    var state = quickAddTokenDropdownState;
+    if (!state.input || !state.items.length) return;
+    var boundedIndex = Math.max(0, Math.min(index, state.items.length - 1));
+    state.items.forEach(function (item, itemIndex) {
+      var active = itemIndex === boundedIndex;
+      item.classList.toggle('caldo-quick-add-token-item-active', active);
+      item.setAttribute('aria-selected', String(active));
+    });
+    state.activeIndex = boundedIndex;
+    state.input.setAttribute('aria-activedescendant', state.items[boundedIndex].id);
+    state.items[boundedIndex].scrollIntoView({ block: 'nearest' });
+  }
+
+  function insertQuickAddToken(item) {
+    var state = quickAddTokenDropdownState;
+    if (!item || !state.input || !state.el || !state.el.contains(item)) return;
+    var input = state.input;
+    var name = item.getAttribute('data-quick-add-token-name') || '';
+    var val = input.value;
+    var cursor = input.selectionStart === null ? val.length : input.selectionStart;
+    var before = val.slice(0, state.triggerIdx);
+    var after = val.slice(cursor);
+    var insert = state.kind + name + ' ';
+    var newPos = before.length + insert.length;
+    input.value = before + insert + after;
+    hideQuickAddTokenDropdown();
+    input.focus();
+    input.setSelectionRange(newPos, newPos);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function quickAddTokenKeydownHandler(event) {
+    var state = quickAddTokenDropdownState;
+    if (!state.el || state.input !== event.target || !state.items.length) return;
+    var nextIndex = state.activeIndex;
+    if (event.key === 'ArrowDown') {
+      nextIndex = (state.activeIndex + 1) % state.items.length;
+    } else if (event.key === 'ArrowUp') {
+      nextIndex = (state.activeIndex - 1 + state.items.length) % state.items.length;
+    } else if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = state.items.length - 1;
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      event.stopPropagation();
+      insertQuickAddToken(state.items[state.activeIndex]);
+      return;
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      hideQuickAddTokenDropdown();
+      return;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    setQuickAddTokenActiveIndex(nextIndex);
   }
 
   function hideQuickAddTokenDropdown() {
+    var input = quickAddTokenDropdownState.input;
     if (quickAddTokenDropdownState.el && document.contains(quickAddTokenDropdownState.el)) {
       quickAddTokenDropdownState.el.remove();
     }
-    quickAddTokenDropdownState = { el: null, input: null, kind: null };
+    if (input) {
+      input.setAttribute('aria-expanded', 'false');
+      input.removeAttribute('aria-activedescendant');
+    }
+    quickAddTokenDropdownState = { el: null, input: null, kind: null, triggerIdx: -1, items: [], activeIndex: -1 };
   }
 
   function clearQuickAddControl(button) {

@@ -62,7 +62,19 @@ templ QuickAddOverlay() {
 				>
 					<input type="hidden" name="surface" value={ quickAddOverlaySurface }/>
 					<label for="quick-add-overlay-text" class="caldo-label">{ Text(ctx).QuickAddTaskLabel }</label>
-					<input id="quick-add-overlay-text" name="text" type="text" class="caldo-input" data-quick-add-overlay-input aria-describedby="quick-add-overlay-error"/>
+					<input
+						id="quick-add-overlay-text"
+						name="text"
+						type="text"
+						class="caldo-input"
+						autocomplete="off"
+						role="combobox"
+						aria-autocomplete="list"
+						aria-expanded="false"
+						aria-controls="quick-add-token-suggestions"
+						aria-describedby="quick-add-overlay-error"
+						data-quick-add-overlay-input
+					/>
 					<div class="caldo-quick-add-actions">
 						<button type="submit" accesskey="q" class="caldo-button caldo-button-secondary">{ Text(ctx).QuickAddPreviewAction }</button>
 						<span class="htmx-indicator caldo-meta" aria-live="polite">{ Text(ctx).QuickAddPreviewPending }</span>

@@ -861,13 +861,7 @@
     if (!taskRow) return;
     var dateDropdown = taskRow.querySelector('.caldo-date-dropdown');
     if (!dateDropdown) return;
-    var alpineData = dateDropdown.__x || dateDropdown._x_dataStack;
-    if (alpineData && alpineData[0]) {
-      alpineData[0].open = true;
-    } else {
-      var trigger = dateDropdown.querySelector('.caldo-task-date-trigger');
-      if (trigger) trigger.click();
-    }
+    openDateDropdown(dateDropdown, true);
   }
 
   function bindQuickAddOverlay() {
@@ -894,13 +888,14 @@
     if (input) {
       quickAddLoadSuggestions(input);
       input.addEventListener('input', quickAddTokenInputHandler);
+      input.addEventListener('keydown', quickAddTokenKeydownHandler);
     }
   }
 
   /* ── Quick Add # and @ token dropdown ────────────────────── */
 
   var quickAddSuggestionCache = null;
-  var quickAddTokenDropdownState = { el: null, input: null, kind: null };
+  var quickAddTokenDropdownState = { el: null, input: null, kind: null, triggerIdx: -1, items: [], activeIndex: -1 };
 
   function quickAddLoadSuggestions(input) {
     if (quickAddSuggestionCache) return;
@@ -909,6 +904,9 @@
       headers: { 'Accept': 'application/json', 'X-Tab-ID': tabID }
     }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
       quickAddSuggestionCache = data || { projects: [], labels: [] };
+      if (document.activeElement === input) {
+        quickAddTokenInputHandler({ target: input });
+      }
     }).catch(function () {
       quickAddSuggestionCache = { projects: [], labels: [] };
     });
@@ -968,11 +966,20 @@
 
     var dropdown = document.createElement('div');
     dropdown.className = 'caldo-quick-add-token-dropdown';
+    dropdown.id = input.getAttribute('aria-controls') || 'quick-add-token-suggestions';
+    dropdown.setAttribute('role', 'listbox');
 
-    suggestions.forEach(function (s) {
+    var items = [];
+
+    suggestions.forEach(function (s, index) {
       var item = document.createElement('button');
       item.type = 'button';
       item.className = 'caldo-quick-add-token-item';
+      item.id = dropdown.id + '-option-' + index;
+      item.setAttribute('role', 'option');
+      item.setAttribute('aria-selected', 'false');
+      item.setAttribute('tabindex', '-1');
+      item.setAttribute('data-quick-add-token-name', s.name);
       item.textContent = (kind === '#' ? '#' : '@') + s.name;
       if (s.id) {
         var badge = document.createElement('span');
@@ -983,18 +990,10 @@
       item.addEventListener('click', function (event) {
         event.preventDefault();
         event.stopPropagation();
-        var val = input.value;
-        var before = val.slice(0, triggerIdx);
-        var after = val.slice((input.selectionStart || val.length));
-        var insert = kind + s.name + ' ';
-        input.value = before + insert + after;
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        hideQuickAddTokenDropdown();
-        input.focus();
-        var newPos = before.length + insert.length;
-        input.setSelectionRange(newPos, newPos);
+        insertQuickAddToken(item);
       });
       dropdown.appendChild(item);
+      items.push(item);
     });
 
     var wrapper = input.parentElement;
@@ -1002,14 +1001,90 @@
       wrapper.classList.add('caldo-token-input-wrapper');
       wrapper.appendChild(dropdown);
     }
-    quickAddTokenDropdownState = { el: dropdown, input: input, kind: kind };
+    quickAddTokenDropdownState = {
+      el: dropdown,
+      input: input,
+      kind: kind,
+      triggerIdx: triggerIdx,
+      items: items,
+      activeIndex: -1
+    };
+    input.setAttribute('aria-expanded', 'true');
+    setQuickAddTokenActiveIndex(0);
+  }
+
+  function setQuickAddTokenActiveIndex(index) {
+    var state = quickAddTokenDropdownState;
+    if (!state.input || !state.items.length) return;
+    var boundedIndex = Math.max(0, Math.min(index, state.items.length - 1));
+    state.items.forEach(function (item, itemIndex) {
+      var active = itemIndex === boundedIndex;
+      item.classList.toggle('caldo-quick-add-token-item-active', active);
+      item.setAttribute('aria-selected', String(active));
+    });
+    state.activeIndex = boundedIndex;
+    state.input.setAttribute('aria-activedescendant', state.items[boundedIndex].id);
+    state.items[boundedIndex].scrollIntoView({ block: 'nearest' });
+  }
+
+  function insertQuickAddToken(item) {
+    var state = quickAddTokenDropdownState;
+    if (!item || !state.input || !state.el || !state.el.contains(item)) return;
+    var input = state.input;
+    var name = item.getAttribute('data-quick-add-token-name') || '';
+    var val = input.value;
+    var cursor = input.selectionStart === null ? val.length : input.selectionStart;
+    var before = val.slice(0, state.triggerIdx);
+    var after = val.slice(cursor);
+    var insert = state.kind + name + ' ';
+    var newPos = before.length + insert.length;
+    input.value = before + insert + after;
+    hideQuickAddTokenDropdown();
+    input.focus();
+    input.setSelectionRange(newPos, newPos);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function quickAddTokenKeydownHandler(event) {
+    var state = quickAddTokenDropdownState;
+    if (!state.el || state.input !== event.target || !state.items.length) return;
+    var nextIndex = state.activeIndex;
+    if (event.key === 'ArrowDown') {
+      nextIndex = (state.activeIndex + 1) % state.items.length;
+    } else if (event.key === 'ArrowUp') {
+      nextIndex = (state.activeIndex - 1 + state.items.length) % state.items.length;
+    } else if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = state.items.length - 1;
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      event.stopPropagation();
+      insertQuickAddToken(state.items[state.activeIndex]);
+      return;
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      hideQuickAddTokenDropdown();
+      return;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    setQuickAddTokenActiveIndex(nextIndex);
   }
 
   function hideQuickAddTokenDropdown() {
+    var input = quickAddTokenDropdownState.input;
     if (quickAddTokenDropdownState.el && document.contains(quickAddTokenDropdownState.el)) {
       quickAddTokenDropdownState.el.remove();
     }
-    quickAddTokenDropdownState = { el: null, input: null, kind: null };
+    if (input) {
+      input.setAttribute('aria-expanded', 'false');
+      input.removeAttribute('aria-activedescendant');
+    }
+    quickAddTokenDropdownState = { el: null, input: null, kind: null, triggerIdx: -1, items: [], activeIndex: -1 };
   }
 
   function clearQuickAddControl(button) {
@@ -1609,7 +1684,36 @@
     }
   }
 
-  function openInlineEdit(root, focusTarget) {
+  function textOffsetAtPoint(element, clientX, clientY) {
+    if (!element || typeof clientX !== 'number' || typeof clientY !== 'number') return null;
+    var node = null;
+    var nodeOffset = 0;
+    if (typeof document.caretPositionFromPoint === 'function') {
+      var position = document.caretPositionFromPoint(clientX, clientY);
+      if (position) {
+        node = position.offsetNode;
+        nodeOffset = position.offset;
+      }
+    } else if (typeof document.caretRangeFromPoint === 'function') {
+      var pointRange = document.caretRangeFromPoint(clientX, clientY);
+      if (pointRange) {
+        node = pointRange.startContainer;
+        nodeOffset = pointRange.startOffset;
+      }
+    }
+    if (!node || (node !== element && !element.contains(node))) return null;
+
+    var textRange = document.createRange();
+    textRange.selectNodeContents(element);
+    try {
+      textRange.setEnd(node, nodeOffset);
+    } catch (_) {
+      return null;
+    }
+    return textRange.toString().length;
+  }
+
+  function openInlineEdit(root, focusTarget, caretOffset) {
     if (!root) return;
     focusTarget = focusTarget || 'title';
     var scope = root.querySelector('[data-inline-task-edit-scope][data-inline-task-edit-focus="' + focusTarget + '"]') || root.querySelector('[data-inline-task-edit-scope]');
@@ -1633,6 +1737,10 @@
     if (input) {
       window.setTimeout(function () {
         input.focus();
+        if (focusTarget === 'title' && typeof caretOffset === 'number' && typeof input.setSelectionRange === 'function') {
+          var boundedOffset = Math.max(0, Math.min(caretOffset, input.value.length));
+          input.setSelectionRange(boundedOffset, boundedOffset);
+        }
       }, 0);
     }
   }
@@ -2948,7 +3056,11 @@
     var inlineEditOpen = closestElement(event.target, '[data-inline-task-edit-open]');
     if (inlineEditOpen && !closestElement(event.target, '[data-inline-task-edit-form]')) {
       event.preventDefault();
-      openInlineEdit(inlineEditOpen.closest('[data-task-id]'), inlineEditOpen.getAttribute('data-inline-task-edit-focus') || 'title');
+      var inlineEditFocus = inlineEditOpen.getAttribute('data-inline-task-edit-focus') || 'title';
+      var caretOffset = event.detail > 0 && inlineEditFocus === 'title'
+        ? textOffsetAtPoint(inlineEditOpen, event.clientX, event.clientY)
+        : null;
+      openInlineEdit(inlineEditOpen.closest('[data-task-id]'), inlineEditFocus, caretOffset);
       return;
     }
 
@@ -3101,17 +3213,54 @@
 
   /* ── Date dropdown handlers (Alpine.js replacement) ─────── */
 
-  function closeAllDateDropdowns(except) {
+  function dateDropdownMenuItems(menu) {
+    if (!menu) return [];
+    return Array.prototype.filter.call(menu.querySelectorAll('[role="menuitem"]'), function (item) {
+      return !item.hasAttribute('disabled');
+    });
+  }
+
+  function closeDateDropdown(dropdown, restoreFocus) {
+    if (!dropdown) return;
+    var menu = dropdown.querySelector('.caldo-date-dropdown-menu');
+    var trigger = dropdown.querySelector('[data-date-dropdown-trigger]');
+    if (menu) menu.hidden = true;
+    if (trigger) {
+      trigger.setAttribute('aria-expanded', 'false');
+      if (restoreFocus) trigger.focus();
+    }
+  }
+
+  function openDateDropdown(dropdown, focusFirstItem) {
+    if (!dropdown) return;
+    var menu = dropdown.querySelector('.caldo-date-dropdown-menu');
+    var trigger = dropdown.querySelector('[data-date-dropdown-trigger]');
+    if (!menu || !trigger) return;
+    closeAllDateDropdowns(dropdown, false);
+    menu.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    if (focusFirstItem) {
+      var items = dateDropdownMenuItems(menu);
+      if (items.length > 0) items[0].focus();
+    }
+  }
+
+  function closeAllDateDropdowns(except, restoreFocus) {
     var openMenus = document.querySelectorAll('.caldo-date-dropdown-menu:not([hidden])');
     for (var i = 0; i < openMenus.length; i++) {
       var menu = openMenus[i];
       var dropdown = menu.closest('.caldo-date-dropdown');
       if (dropdown && dropdown !== except) {
-        menu.hidden = true;
-        var trigger = dropdown.querySelector('[data-date-dropdown-trigger]');
-        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+        closeDateDropdown(dropdown, restoreFocus);
       }
     }
+  }
+
+  function formatLocalCalendarDate(date) {
+    var year = String(date.getFullYear());
+    var month = String(date.getMonth() + 1).padStart(2, '0');
+    var day = String(date.getDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
   }
 
   document.addEventListener('click', function (event) {
@@ -3122,9 +3271,11 @@
       var dropdown = trigger.closest('.caldo-date-dropdown');
       var menu = dropdown.querySelector('.caldo-date-dropdown-menu');
       var isOpen = !menu.hidden;
-      closeAllDateDropdowns(dropdown);
-      menu.hidden = isOpen;
-      trigger.setAttribute('aria-expanded', String(!isOpen));
+      if (isOpen) {
+        closeDateDropdown(dropdown, false);
+      } else {
+        openDateDropdown(dropdown, false);
+      }
       return;
     }
 
@@ -3142,23 +3293,21 @@
       var days = action.getAttribute('data-date-days');
       if (days === 'clear') {
         input.value = '';
-      } else if (days === 'next-monday') {
-        var d = new Date(); var day = d.getDay(); var diff = ((1 + 7 - day) % 7) || 7; d.setDate(d.getDate() + diff);
-        input.value = d.toISOString().slice(0, 10);
-      } else if (days === 'next-weekend') {
-        var d = new Date(); var day = d.getDay(); var diff = ((6 + 7 - day) % 7) || 7; d.setDate(d.getDate() + diff);
-        input.value = d.toISOString().slice(0, 10);
       } else {
-        var offset = parseInt(days, 10) || 0;
-        var d = new Date(); d.setDate(d.getDate() + offset);
-        input.value = d.toISOString().slice(0, 10);
+        var selectedDate = new Date();
+        var selectedDay = selectedDate.getDay();
+        if (days === 'next-monday') {
+          selectedDate.setDate(selectedDate.getDate() + (((1 + 7 - selectedDay) % 7) || 7));
+        } else if (days === 'next-weekend') {
+          selectedDate.setDate(selectedDate.getDate() + (((6 + 7 - selectedDay) % 7) || 7));
+        } else {
+          selectedDate.setDate(selectedDate.getDate() + (parseInt(days, 10) || 0));
+        }
+        input.value = formatLocalCalendarDate(selectedDate);
       }
 
       form.requestSubmit();
-      var menu = dropdown.querySelector('.caldo-date-dropdown-menu');
-      if (menu) menu.hidden = true;
-      var trigger = dropdown.querySelector('[data-date-dropdown-trigger]');
-      if (trigger) trigger.setAttribute('aria-expanded', 'false');
+      closeDateDropdown(dropdown, true);
       return;
     }
 
@@ -3181,15 +3330,53 @@
     if (!hidden) return;
     hidden.value = input.value;
     form.requestSubmit();
-    var menu = dropdown.querySelector('.caldo-date-dropdown-menu');
-    if (menu) menu.hidden = true;
-    var trigger = dropdown.querySelector('[data-date-dropdown-trigger]');
-    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    closeDateDropdown(dropdown, true);
   }, true);
 
   document.addEventListener('keydown', function (event) {
+    var menu = closestElement(event.target, '.caldo-date-dropdown-menu:not([hidden])');
+    if (menu) {
+      var dropdown = menu.closest('.caldo-date-dropdown');
+      var items = dateDropdownMenuItems(menu);
+      var activeItem = closestElement(event.target, '[role="menuitem"]');
+      var activeIndex = items.indexOf(activeItem);
+      var nextIndex = -1;
+      if (event.key === 'ArrowDown') {
+        nextIndex = activeIndex < 0 ? 0 : (activeIndex + 1) % items.length;
+      } else if (event.key === 'ArrowUp') {
+        nextIndex = activeIndex <= 0 ? items.length - 1 : activeIndex - 1;
+      } else if (event.key === 'Home') {
+        nextIndex = 0;
+      } else if (event.key === 'End') {
+        nextIndex = items.length - 1;
+      }
+      if (nextIndex >= 0 && items[nextIndex]) {
+        event.preventDefault();
+        items[nextIndex].focus();
+        return;
+      }
+      if ((event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') && activeItem) {
+        event.preventDefault();
+        activeItem.click();
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeDateDropdown(dropdown, true);
+        return;
+      }
+      if (event.key === 'Tab') {
+        closeDateDropdown(dropdown, false);
+      }
+      return;
+    }
+
     if (event.key === 'Escape') {
-      closeAllDateDropdowns(null);
+      var openMenu = document.querySelector('.caldo-date-dropdown-menu:not([hidden])');
+      if (openMenu) {
+        event.preventDefault();
+        closeDateDropdown(openMenu.closest('.caldo-date-dropdown'), true);
+      }
     }
   });
 

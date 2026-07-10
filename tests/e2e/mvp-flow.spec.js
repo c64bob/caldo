@@ -562,6 +562,9 @@ function expectedBrowserConsoleError(message, projectName) {
   if (projectName === 'webkit' && isWebKitSyncStatusAccessError(message)) {
     return true;
   }
+  if (projectName === 'webkit' && isWebKitQuickAddSuggestionsAccessError(message)) {
+    return true;
+  }
 
   return [
     'Failed to load resource: the server responded with a status of 400 (Bad Request)',
@@ -573,6 +576,10 @@ function expectedBrowserConsoleError(message, projectName) {
 
 function isWebKitSyncStatusAccessError(message) {
   return /\/127\.0\.0\.1:\d+\/sync\/status due to access control checks\.$/.test(message);
+}
+
+function isWebKitQuickAddSuggestionsAccessError(message) {
+  return /\/127\.0\.0\.1:\d+\/quick-add\/suggestions due to access control checks\.$/.test(message);
 }
 
 async function dragTaskRowToProject(page, row, projectName) {

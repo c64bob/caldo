@@ -112,9 +112,17 @@ templ BaseLayout(title string, content templ.Component) {
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<meta name="application-name" content="Caldo"/>
+			<meta name="apple-mobile-web-app-title" content="Caldo"/>
+			<meta name="color-scheme" content="light dark"/>
+			<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>
+			<meta name="theme-color" content="#151513" media="(prefers-color-scheme: dark)"/>
 			<title>{ DisplayTitle(ctx, title) }</title>
 			<meta name="csrf-token" content={ CSRFToken(ctx) }/>
 			<meta name="htmx-config" content='{"includeIndicatorStyles":false,"attributesToSettle":["class","width","height"]}'/>
+			<link rel="icon" type="image/svg+xml" href={ AssetPath(ctx, "favicon.svg") }/>
+			<link rel="icon" type="image/png" sizes="32x32" href={ AssetPath(ctx, "favicon.png") }/>
+			<link rel="apple-touch-icon" sizes="180x180" href={ AssetPath(ctx, "apple-touch-icon.png") }/>
 			<link rel="stylesheet" href={ AssetPath(ctx, "app.css") }/>
 		</head>
 		<body class="min-h-screen">

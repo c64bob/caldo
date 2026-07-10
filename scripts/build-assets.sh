@@ -79,12 +79,34 @@ build_app_js() {
 	echo "$target_name"
 }
 
+build_source_asset() {
+	source_name=$1
+	target_pattern=$2
+	target_prefix=$3
+	target_suffix=$4
+	source_path="$ASSET_DIR/$source_name"
+	if [ ! -f "$source_path" ]; then
+		echo "missing source asset: $source_path" >&2
+		exit 1
+	fi
+
+	hash=$(hash_file "$source_path")
+	target_name="${target_prefix}.${hash}${target_suffix}"
+	rm -f "$STATIC_DIR"/$target_pattern
+	cp "$source_path" "$STATIC_DIR/$target_name"
+	chmod 0644 "$STATIC_DIR/$target_name"
+	echo "$target_name"
+}
+
 write_manifest() {
 	css_name=$1
 	app_js_name=$2
 	htmx_name=$3
 	htmx_sse_name=$4
 	alpine_name=$5
+	favicon_svg_name=$6
+	favicon_png_name=$7
+	apple_touch_icon_name=$8
 	tmp_manifest=$(mktemp "${TMPDIR:-/tmp}/caldo-manifest.XXXXXX")
 
 	{
@@ -93,7 +115,10 @@ write_manifest() {
 		printf '  "app.js": "%s",\n' "$app_js_name"
 		printf '  "htmx.min.js": "%s",\n' "$htmx_name"
 		printf '  "htmx-sse.js": "%s",\n' "$htmx_sse_name"
-		printf '  "alpine.min.js": "%s"\n' "$alpine_name"
+		printf '  "alpine.min.js": "%s",\n' "$alpine_name"
+		printf '  "favicon.svg": "%s",\n' "$favicon_svg_name"
+		printf '  "favicon.png": "%s",\n' "$favicon_png_name"
+		printf '  "apple-touch-icon.png": "%s"\n' "$apple_touch_icon_name"
 		printf '}\n'
 	} > "$tmp_manifest"
 
@@ -105,5 +130,8 @@ app_js_name=$(build_app_js)
 htmx_name=$(rehash_static_asset "htmx.*.min.js" "htmx" ".min.js")
 htmx_sse_name=$(rehash_static_asset "htmx-sse.*.js" "htmx-sse" ".js")
 alpine_name=$(rehash_static_asset "alpine.*.min.js" "alpine" ".min.js")
+favicon_svg_name=$(build_source_asset "favicon.svg" "favicon.*.svg" "favicon" ".svg")
+favicon_png_name=$(build_source_asset "favicon-32.png" "favicon.*.png" "favicon" ".png")
+apple_touch_icon_name=$(build_source_asset "apple-touch-icon.png" "apple-touch-icon.*.png" "apple-touch-icon" ".png")
 
-write_manifest "$css_name" "$app_js_name" "$htmx_name" "$htmx_sse_name" "$alpine_name"
+write_manifest "$css_name" "$app_js_name" "$htmx_name" "$htmx_sse_name" "$alpine_name" "$favicon_svg_name" "$favicon_png_name" "$apple_touch_icon_name"

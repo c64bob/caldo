@@ -56,8 +56,12 @@ func TestQuickAddOverlayUsesDistinctPreviewTarget(t *testing.T) {
 		`data-quick-add-overlay`,
 		`data-quick-add-overlay-form`,
 		`id="quick-add-overlay-text"`,
+		`role="combobox"`,
+		`aria-autocomplete="list"`,
+		`aria-expanded="false"`,
+		`aria-controls="quick-add-token-suggestions"`,
 		`hx-target="#quick-add-overlay-preview"`,
-		`hx-trigger="input changed delay:200ms, submit"`,
+		`hx-trigger="input changed delay:200ms from:#quick-add-overlay-text, submit"`,
 		`name="surface" value="overlay"`,
 		`aria-describedby="quick-add-overlay-error"`,
 		`id="quick-add-overlay-error"`,
@@ -97,6 +101,32 @@ func TestQuickAddOverlayPreviewUsesOverlayTargetAndSaveHook(t *testing.T) {
 	}
 	if strings.Contains(output, `id="quick-add-preview"`) {
 		t.Fatalf("expected overlay preview to avoid page preview id: %s", output)
+	}
+}
+
+func TestQuickAddPreviewShowsRecognizedDateAndAmbiguityInVisibleChip(t *testing.T) {
+	t.Parallel()
+
+	draft := parser.QuickAddDraft{
+		Title:        "Anrufen",
+		Due:          "2026-07-15",
+		DueSource:    "Mittwoch",
+		DueAmbiguous: true,
+	}
+	var rendered bytes.Buffer
+	if err := QuickAddOverlayPreview(draft, "Anrufen Mittwoch").Render(context.Background(), &rendered); err != nil {
+		t.Fatalf("render quick add overlay preview: %v", err)
+	}
+
+	output := rendered.String()
+	visibleChip := `data-quick-add-chips><button type="button" class="caldo-quick-add-chip" data-quick-add-clear="[name='due_date']" data-quick-add-date-chip`
+	if !strings.Contains(output, visibleChip) {
+		t.Fatalf("expected recognized date resolution in visible chip: %s", output)
+	}
+	for _, want := range []string{"Mittwoch -&gt; 2026-07-15", `data-quick-add-date-warning`, "Datum prüfen"} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected visible date chip to include %q in %s", want, output)
+		}
 	}
 }
 

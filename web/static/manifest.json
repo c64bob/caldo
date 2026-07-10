@@ -1,7 +1,10 @@
 {
-  "app.css": "app.0d35bef.css",
-  "app.js": "app.b5caea1.js",
+  "app.css": "app.2de8350.css",
+  "app.js": "app.27faf74.js",
   "htmx.min.js": "htmx.449317a.min.js",
   "htmx-sse.js": "htmx-sse.be05b2e.js",
-  "alpine.min.js": "alpine.2988023.min.js"
+  "alpine.min.js": "alpine.2988023.min.js",
+  "favicon.svg": "favicon.97aa390.svg",
+  "favicon.png": "favicon.bfa4c28.png",
+  "apple-touch-icon.png": "apple-touch-icon.3020fe1.png"
 }

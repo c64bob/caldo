@@ -71,6 +71,34 @@ func TestManifestIncludesFaviconSet(t *testing.T) {
 	}
 }
 
+func TestCompiledTaskNoteLineClamps(t *testing.T) {
+	t.Parallel()
+
+	manifestPath := filepath.Join("..", "..", "web", "static", "manifest.json")
+	manifest, err := LoadManifest(manifestPath)
+	if err != nil {
+		t.Fatalf("LoadManifest returned error: %v", err)
+	}
+
+	cssName, err := manifest.Resolve("app.css")
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+	css, err := os.ReadFile(filepath.Join(filepath.Dir(manifestPath), cssName))
+	if err != nil {
+		t.Fatalf("read app css: %v", err)
+	}
+
+	for _, want := range []string{
+		".caldo-task-description-lines-1{-webkit-line-clamp:1}",
+		".caldo-task-description-lines-2{-webkit-line-clamp:2}",
+	} {
+		if !strings.Contains(string(css), want) {
+			t.Fatalf("compiled app css does not contain %q", want)
+		}
+	}
+}
+
 func TestLoadManifestFailsForMissingFile(t *testing.T) {
 	t.Parallel()
 

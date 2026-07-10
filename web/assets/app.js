@@ -1597,7 +1597,36 @@
     }
   }
 
-  function openInlineEdit(root, focusTarget) {
+  function textOffsetAtPoint(element, clientX, clientY) {
+    if (!element || typeof clientX !== 'number' || typeof clientY !== 'number') return null;
+    var node = null;
+    var nodeOffset = 0;
+    if (typeof document.caretPositionFromPoint === 'function') {
+      var position = document.caretPositionFromPoint(clientX, clientY);
+      if (position) {
+        node = position.offsetNode;
+        nodeOffset = position.offset;
+      }
+    } else if (typeof document.caretRangeFromPoint === 'function') {
+      var pointRange = document.caretRangeFromPoint(clientX, clientY);
+      if (pointRange) {
+        node = pointRange.startContainer;
+        nodeOffset = pointRange.startOffset;
+      }
+    }
+    if (!node || (node !== element && !element.contains(node))) return null;
+
+    var textRange = document.createRange();
+    textRange.selectNodeContents(element);
+    try {
+      textRange.setEnd(node, nodeOffset);
+    } catch (_) {
+      return null;
+    }
+    return textRange.toString().length;
+  }
+
+  function openInlineEdit(root, focusTarget, caretOffset) {
     if (!root) return;
     focusTarget = focusTarget || 'title';
     var scope = root.querySelector('[data-inline-task-edit-scope][data-inline-task-edit-focus="' + focusTarget + '"]') || root.querySelector('[data-inline-task-edit-scope]');
@@ -1621,6 +1650,10 @@
     if (input) {
       window.setTimeout(function () {
         input.focus();
+        if (focusTarget === 'title' && typeof caretOffset === 'number' && typeof input.setSelectionRange === 'function') {
+          var boundedOffset = Math.max(0, Math.min(caretOffset, input.value.length));
+          input.setSelectionRange(boundedOffset, boundedOffset);
+        }
       }, 0);
     }
   }
@@ -2936,7 +2969,11 @@
     var inlineEditOpen = closestElement(event.target, '[data-inline-task-edit-open]');
     if (inlineEditOpen && !closestElement(event.target, '[data-inline-task-edit-form]')) {
       event.preventDefault();
-      openInlineEdit(inlineEditOpen.closest('[data-task-id]'), inlineEditOpen.getAttribute('data-inline-task-edit-focus') || 'title');
+      var inlineEditFocus = inlineEditOpen.getAttribute('data-inline-task-edit-focus') || 'title';
+      var caretOffset = event.detail > 0 && inlineEditFocus === 'title'
+        ? textOffsetAtPoint(inlineEditOpen, event.clientX, event.clientY)
+        : null;
+      openInlineEdit(inlineEditOpen.closest('[data-task-id]'), inlineEditFocus, caretOffset);
       return;
     }
 

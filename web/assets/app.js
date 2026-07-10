@@ -849,13 +849,7 @@
     if (!taskRow) return;
     var dateDropdown = taskRow.querySelector('.caldo-date-dropdown');
     if (!dateDropdown) return;
-    var alpineData = dateDropdown.__x || dateDropdown._x_dataStack;
-    if (alpineData && alpineData[0]) {
-      alpineData[0].open = true;
-    } else {
-      var trigger = dateDropdown.querySelector('.caldo-task-date-trigger');
-      if (trigger) trigger.click();
-    }
+    openDateDropdown(dateDropdown, true);
   }
 
   function bindQuickAddOverlay() {
@@ -3089,15 +3083,45 @@
 
   /* ── Date dropdown handlers (Alpine.js replacement) ─────── */
 
-  function closeAllDateDropdowns(except) {
+  function dateDropdownMenuItems(menu) {
+    if (!menu) return [];
+    return Array.prototype.filter.call(menu.querySelectorAll('[role="menuitem"]'), function (item) {
+      return !item.hasAttribute('disabled');
+    });
+  }
+
+  function closeDateDropdown(dropdown, restoreFocus) {
+    if (!dropdown) return;
+    var menu = dropdown.querySelector('.caldo-date-dropdown-menu');
+    var trigger = dropdown.querySelector('[data-date-dropdown-trigger]');
+    if (menu) menu.hidden = true;
+    if (trigger) {
+      trigger.setAttribute('aria-expanded', 'false');
+      if (restoreFocus) trigger.focus();
+    }
+  }
+
+  function openDateDropdown(dropdown, focusFirstItem) {
+    if (!dropdown) return;
+    var menu = dropdown.querySelector('.caldo-date-dropdown-menu');
+    var trigger = dropdown.querySelector('[data-date-dropdown-trigger]');
+    if (!menu || !trigger) return;
+    closeAllDateDropdowns(dropdown, false);
+    menu.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    if (focusFirstItem) {
+      var items = dateDropdownMenuItems(menu);
+      if (items.length > 0) items[0].focus();
+    }
+  }
+
+  function closeAllDateDropdowns(except, restoreFocus) {
     var openMenus = document.querySelectorAll('.caldo-date-dropdown-menu:not([hidden])');
     for (var i = 0; i < openMenus.length; i++) {
       var menu = openMenus[i];
       var dropdown = menu.closest('.caldo-date-dropdown');
       if (dropdown && dropdown !== except) {
-        menu.hidden = true;
-        var trigger = dropdown.querySelector('[data-date-dropdown-trigger]');
-        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+        closeDateDropdown(dropdown, restoreFocus);
       }
     }
   }
@@ -3110,9 +3134,11 @@
       var dropdown = trigger.closest('.caldo-date-dropdown');
       var menu = dropdown.querySelector('.caldo-date-dropdown-menu');
       var isOpen = !menu.hidden;
-      closeAllDateDropdowns(dropdown);
-      menu.hidden = isOpen;
-      trigger.setAttribute('aria-expanded', String(!isOpen));
+      if (isOpen) {
+        closeDateDropdown(dropdown, false);
+      } else {
+        openDateDropdown(dropdown, false);
+      }
       return;
     }
 
@@ -3143,10 +3169,7 @@
       }
 
       form.requestSubmit();
-      var menu = dropdown.querySelector('.caldo-date-dropdown-menu');
-      if (menu) menu.hidden = true;
-      var trigger = dropdown.querySelector('[data-date-dropdown-trigger]');
-      if (trigger) trigger.setAttribute('aria-expanded', 'false');
+      closeDateDropdown(dropdown, true);
       return;
     }
 
@@ -3169,15 +3192,53 @@
     if (!hidden) return;
     hidden.value = input.value;
     form.requestSubmit();
-    var menu = dropdown.querySelector('.caldo-date-dropdown-menu');
-    if (menu) menu.hidden = true;
-    var trigger = dropdown.querySelector('[data-date-dropdown-trigger]');
-    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    closeDateDropdown(dropdown, true);
   }, true);
 
   document.addEventListener('keydown', function (event) {
+    var menu = closestElement(event.target, '.caldo-date-dropdown-menu:not([hidden])');
+    if (menu) {
+      var dropdown = menu.closest('.caldo-date-dropdown');
+      var items = dateDropdownMenuItems(menu);
+      var activeItem = closestElement(event.target, '[role="menuitem"]');
+      var activeIndex = items.indexOf(activeItem);
+      var nextIndex = -1;
+      if (event.key === 'ArrowDown') {
+        nextIndex = activeIndex < 0 ? 0 : (activeIndex + 1) % items.length;
+      } else if (event.key === 'ArrowUp') {
+        nextIndex = activeIndex <= 0 ? items.length - 1 : activeIndex - 1;
+      } else if (event.key === 'Home') {
+        nextIndex = 0;
+      } else if (event.key === 'End') {
+        nextIndex = items.length - 1;
+      }
+      if (nextIndex >= 0 && items[nextIndex]) {
+        event.preventDefault();
+        items[nextIndex].focus();
+        return;
+      }
+      if ((event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') && activeItem) {
+        event.preventDefault();
+        activeItem.click();
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeDateDropdown(dropdown, true);
+        return;
+      }
+      if (event.key === 'Tab') {
+        closeDateDropdown(dropdown, false);
+      }
+      return;
+    }
+
     if (event.key === 'Escape') {
-      closeAllDateDropdowns(null);
+      var openMenu = document.querySelector('.caldo-date-dropdown-menu:not([hidden])');
+      if (openMenu) {
+        event.preventDefault();
+        closeDateDropdown(openMenu.closest('.caldo-date-dropdown'), true);
+      }
     }
   });
 

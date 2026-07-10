@@ -292,6 +292,8 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 		`aria-controls="task-labels-edit-task-1"`,
 		`data-inline-task-edit-control`,
 		`data-inline-task-edit-autosave`,
+		`data-bulk-select-control`,
+		`aria-label="Für Mehrfachbearbeitung auswählen: Editierbare Aufgabe"`,
 		`caldo-date-dropdown`,
 		`data-date-hidden-input`,
 		`caldo-date-quick-action`,

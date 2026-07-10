@@ -172,6 +172,10 @@ func TestQuickAddPreviewDoesNotPersistTask(t *testing.T) {
 	if count != 0 {
 		t.Fatalf("expected preview to avoid persisting tasks, got %d", count)
 	}
+	body := w.Body.String()
+	if !strings.Contains(body, `name="title" value="Nur Vorschau"`) {
+		t.Fatalf("expected preview title to exclude recognized date token: %s", body)
+	}
 }
 
 func TestQuickAddPreviewUsesProjectTokenWhenProjectExists(t *testing.T) {

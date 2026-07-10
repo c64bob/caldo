@@ -416,6 +416,14 @@ func taskCanInlineEdit(task TaskRowView) bool {
 	return taskCanToggleCompletion(task)
 }
 
+func taskCanBulkSelect(task TaskRowView) bool {
+	return !taskIsCompleted(task) && taskCanToggleCompletion(task)
+}
+
+func taskBulkSelectionLabel(task TaskRowView) string {
+	return "Für Mehrfachbearbeitung auswählen: " + taskRowTitle(task)
+}
+
 func taskCanOpenDetail(task TaskRowView) bool {
 	return strings.TrimSpace(task.ID) != "" && task.ServerVersion > 0
 }

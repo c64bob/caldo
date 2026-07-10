@@ -8,6 +8,7 @@
   var undoExpiryTimer = 0;
   var focusRefreshState = { inFlight: false, pending: false, lastRun: 0 };
   var taskMoveDragState = null;
+  var explicitQuickAddPreviewRequests = new WeakSet();
 
   /* ── Toast notification system ───────────────────────────── */
 
@@ -71,7 +72,7 @@
 
   /* ── Bulk selection ──────────────────────────────────────── */
 
-  var bulkSelection = { ids: [], lastClicked: null };
+  var bulkSelection = { ids: [], lastClicked: null, running: false };
 
   function bulkSelectedSet() {
     var set = {};
@@ -83,10 +84,12 @@
     var selected = bulkSelectedSet();
     taskRows().forEach(function (row) {
       var id = taskRowID(row);
-      if (selected[id]) {
-        row.classList.add('caldo-task-row-selected');
-      } else {
-        row.classList.remove('caldo-task-row-selected');
+      var isSelected = !!selected[id];
+      row.classList.toggle('caldo-task-row-selected', isSelected);
+      var control = row.querySelector('[data-bulk-select-control]');
+      if (control) {
+        control.checked = isSelected;
+        control.disabled = bulkSelection.running;
       }
     });
     renderBulkBar();
@@ -101,14 +104,17 @@
     if (!existing) {
       existing = document.createElement('div');
       existing.className = 'caldo-bulk-bar';
+      existing.setAttribute('role', 'region');
+      existing.setAttribute('aria-label', 'Mehrfachbearbeitung');
       document.body.appendChild(existing);
     }
     var count = bulkSelection.ids.length;
+    var disabled = bulkSelection.running ? ' disabled' : '';
     existing.innerHTML =
       '<span class="caldo-bulk-bar-count">' + count + ' Aufgabe' + (count === 1 ? '' : 'n') + ' ausgewählt</span>' +
       '<div class="caldo-bulk-bar-actions">' +
-      '<button type="button" class="caldo-button caldo-button-ghost" data-bulk-select-all>Alle abwählen</button>' +
-      '<button type="button" class="caldo-button caldo-button-primary" data-bulk-complete>Erledigen</button>' +
+      '<button type="button" class="caldo-button caldo-button-ghost" data-bulk-select-all' + disabled + '>Alle abwählen</button>' +
+      '<button type="button" class="caldo-button caldo-button-primary" data-bulk-complete' + disabled + '>' + (bulkSelection.running ? 'Speichern ...' : 'Erledigen') + '</button>' +
       '</div>';
   }
 
@@ -123,7 +129,9 @@
   }
 
   function bulkSelectRange(fromID, toID) {
-    var rows = taskRows();
+    var rows = taskRows().filter(function (row) {
+      return !!row.querySelector('[data-bulk-select-control]');
+    });
     var ids = rows.map(taskRowID);
     var startIdx = ids.indexOf(fromID);
     var endIdx = ids.indexOf(toID);
@@ -138,39 +146,105 @@
   }
 
   function clearBulkSelection() {
+    if (bulkSelection.running) return;
     bulkSelection.ids = [];
     bulkSelection.lastClicked = null;
     updateBulkSelectionVisuals();
   }
 
   function bulkCompleteTasks() {
-    if (bulkSelection.ids.length === 0) return;
+    if (bulkSelection.ids.length === 0 || bulkSelection.running) return;
     var ids = bulkSelection.ids.slice();
-    clearBulkSelection();
-    var pending = ids.length;
-    ids.forEach(function (taskID) {
+    bulkSelection.running = true;
+    updateBulkSelectionVisuals();
+    var requests = ids.map(function (taskID) {
       var row = document.querySelector('[data-task-id="' + taskID + '"]');
-      if (!row) { if (--pending <= 0) { showToast(ids.length + ' Aufgaben erledigt.', 'success'); refreshUndoNotification(); } return; }
+      if (!row) return Promise.resolve({ taskID: taskID, ok: false });
       var form = row.querySelector('form[data-task-action-form]');
-      if (!form) { if (--pending <= 0) { showToast(ids.length + ' Aufgaben erledigt.', 'success'); refreshUndoNotification(); } return; }
-      var versionInput = row.querySelector('input[name="expected_version"]');
+      if (!form) return Promise.resolve({ taskID: taskID, ok: false });
+      var versionInput = form.querySelector('input[name="expected_version"]');
       var params = new URLSearchParams();
       params.set('expected_version', versionInput ? versionInput.value : '');
-      fetch(form.getAttribute('action'), {
+      return fetch(form.getAttribute('action'), {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'text/html', 'X-CSRF-Token': csrfToken(), 'X-Tab-ID': tabID },
         body: params.toString()
-      }).then(function (r) { return r.ok; }).then(function (ok) {
-        if (ok) { row.remove(); }
-        if (--pending <= 0) {
-          showToast(ids.length + ' Aufgaben erledigt.', 'success');
-          refreshUndoNotification();
-        }
+      }).then(function (response) {
+        return { taskID: taskID, ok: response.ok, row: row };
       }).catch(function () {
-        if (--pending <= 0) { showToast('Einige Aufgaben konnten nicht erledigt werden.', 'error'); }
+        return { taskID: taskID, ok: false, row: row };
       });
     });
+    Promise.all(requests).then(function (results) {
+      var succeeded = results.filter(function (result) { return result.ok; });
+      var failed = results.filter(function (result) { return !result.ok; });
+      succeeded.forEach(function (result) {
+        if (result.row && document.contains(result.row)) result.row.remove();
+      });
+      bulkSelection.running = false;
+      bulkSelection.ids = failed.map(function (result) { return result.taskID; });
+      bulkSelection.lastClicked = bulkSelection.ids.length ? bulkSelection.ids[bulkSelection.ids.length - 1] : null;
+      updateBulkSelectionVisuals();
+
+      if (succeeded.length > 0) refreshUndoNotification();
+      if (failed.length > 0) {
+        var failedMessage = failed.length === 1 ? '1 Aufgabe konnte nicht erledigt werden.' : failed.length + ' Aufgaben konnten nicht erledigt werden.';
+        if (succeeded.length > 0) {
+          failedMessage = succeeded.length + ' Aufgabe' + (succeeded.length === 1 ? '' : 'n') + ' erledigt, ' + failedMessage;
+        }
+        showToast(failedMessage, 'error');
+        return;
+      }
+      showToast(succeeded.length + ' Aufgabe' + (succeeded.length === 1 ? '' : 'n') + ' erledigt.', 'success');
+    });
+  }
+
+  function activateBulkSelection(row, extendRange) {
+    var taskID = taskRowID(row);
+    if (!taskID || !row.querySelector('[data-bulk-select-control]') || bulkSelection.running) return false;
+    if (extendRange && bulkSelection.lastClicked) {
+      bulkSelectRange(bulkSelection.lastClicked, taskID);
+    } else {
+      toggleBulkSelect(taskID);
+    }
+    bulkSelection.lastClicked = taskID;
+    return true;
+  }
+
+  function handleBulkSelectionClick(event) {
+    var clearButton = closestElement(event.target, '[data-bulk-select-all]');
+    if (clearButton) {
+      event.preventDefault();
+      clearBulkSelection();
+      return true;
+    }
+    var completeButton = closestElement(event.target, '[data-bulk-complete]');
+    if (completeButton) {
+      event.preventDefault();
+      bulkCompleteTasks();
+      return true;
+    }
+
+    var row = closestElement(event.target, '[data-task-id]');
+    if (!row) return false;
+    var explicitControl = closestElement(event.target, '[data-bulk-select-control]');
+    var modifierSelection = event.shiftKey || event.ctrlKey || event.metaKey;
+    if ((explicitControl || modifierSelection) && row.querySelector('[data-bulk-select-control]')) {
+      event.preventDefault();
+      activateBulkSelection(row, event.shiftKey);
+      return true;
+    }
+    if (bulkSelection.ids.length > 0) clearBulkSelection();
+    return false;
+  }
+
+  function handleBulkSelectionKeydown(event) {
+    var control = closestElement(event.target, '[data-bulk-select-control]');
+    if (!control || (event.key !== ' ' && event.key !== 'Enter')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    activateBulkSelection(control.closest('[data-task-id]'), event.shiftKey);
   }
 
   /* ── Task hover preview ──────────────────────────────────── */
@@ -793,6 +867,17 @@
     return false;
   }
 
+  function rememberQuickAddPreviewFocusIntent(detail) {
+    if (!detail || !detail.xhr) return;
+    var previewForm = closestElement(detail.elt, '.caldo-quick-add-form');
+    if (!previewForm || previewForm.getAttribute('action') !== '/quick-add/preview') return;
+    var requestConfig = detail.requestConfig || {};
+    var triggeringEvent = requestConfig.triggeringEvent || detail.triggeringEvent;
+    if (triggeringEvent && triggeringEvent.type === 'submit') {
+      explicitQuickAddPreviewRequests.add(detail.xhr);
+    }
+  }
+
   function pad2(value) {
     return String(value).padStart(2, '0');
   }
@@ -849,13 +934,7 @@
     if (!taskRow) return;
     var dateDropdown = taskRow.querySelector('.caldo-date-dropdown');
     if (!dateDropdown) return;
-    var alpineData = dateDropdown.__x || dateDropdown._x_dataStack;
-    if (alpineData && alpineData[0]) {
-      alpineData[0].open = true;
-    } else {
-      var trigger = dateDropdown.querySelector('.caldo-task-date-trigger');
-      if (trigger) trigger.click();
-    }
+    openDateDropdown(dateDropdown, true);
   }
 
   function bindQuickAddOverlay() {
@@ -882,13 +961,14 @@
     if (input) {
       quickAddLoadSuggestions(input);
       input.addEventListener('input', quickAddTokenInputHandler);
+      input.addEventListener('keydown', quickAddTokenKeydownHandler);
     }
   }
 
   /* ── Quick Add # and @ token dropdown ────────────────────── */
 
   var quickAddSuggestionCache = null;
-  var quickAddTokenDropdownState = { el: null, input: null, kind: null };
+  var quickAddTokenDropdownState = { el: null, input: null, kind: null, triggerIdx: -1, items: [], activeIndex: -1 };
 
   function quickAddLoadSuggestions(input) {
     if (quickAddSuggestionCache) return;
@@ -897,6 +977,9 @@
       headers: { 'Accept': 'application/json', 'X-Tab-ID': tabID }
     }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
       quickAddSuggestionCache = data || { projects: [], labels: [] };
+      if (document.activeElement === input) {
+        quickAddTokenInputHandler({ target: input });
+      }
     }).catch(function () {
       quickAddSuggestionCache = { projects: [], labels: [] };
     });
@@ -956,11 +1039,20 @@
 
     var dropdown = document.createElement('div');
     dropdown.className = 'caldo-quick-add-token-dropdown';
+    dropdown.id = input.getAttribute('aria-controls') || 'quick-add-token-suggestions';
+    dropdown.setAttribute('role', 'listbox');
 
-    suggestions.forEach(function (s) {
+    var items = [];
+
+    suggestions.forEach(function (s, index) {
       var item = document.createElement('button');
       item.type = 'button';
       item.className = 'caldo-quick-add-token-item';
+      item.id = dropdown.id + '-option-' + index;
+      item.setAttribute('role', 'option');
+      item.setAttribute('aria-selected', 'false');
+      item.setAttribute('tabindex', '-1');
+      item.setAttribute('data-quick-add-token-name', s.name);
       item.textContent = (kind === '#' ? '#' : '@') + s.name;
       if (s.id) {
         var badge = document.createElement('span');
@@ -971,18 +1063,10 @@
       item.addEventListener('click', function (event) {
         event.preventDefault();
         event.stopPropagation();
-        var val = input.value;
-        var before = val.slice(0, triggerIdx);
-        var after = val.slice((input.selectionStart || val.length));
-        var insert = kind + s.name + ' ';
-        input.value = before + insert + after;
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        hideQuickAddTokenDropdown();
-        input.focus();
-        var newPos = before.length + insert.length;
-        input.setSelectionRange(newPos, newPos);
+        insertQuickAddToken(item);
       });
       dropdown.appendChild(item);
+      items.push(item);
     });
 
     var wrapper = input.parentElement;
@@ -990,14 +1074,90 @@
       wrapper.classList.add('caldo-token-input-wrapper');
       wrapper.appendChild(dropdown);
     }
-    quickAddTokenDropdownState = { el: dropdown, input: input, kind: kind };
+    quickAddTokenDropdownState = {
+      el: dropdown,
+      input: input,
+      kind: kind,
+      triggerIdx: triggerIdx,
+      items: items,
+      activeIndex: -1
+    };
+    input.setAttribute('aria-expanded', 'true');
+    setQuickAddTokenActiveIndex(0);
+  }
+
+  function setQuickAddTokenActiveIndex(index) {
+    var state = quickAddTokenDropdownState;
+    if (!state.input || !state.items.length) return;
+    var boundedIndex = Math.max(0, Math.min(index, state.items.length - 1));
+    state.items.forEach(function (item, itemIndex) {
+      var active = itemIndex === boundedIndex;
+      item.classList.toggle('caldo-quick-add-token-item-active', active);
+      item.setAttribute('aria-selected', String(active));
+    });
+    state.activeIndex = boundedIndex;
+    state.input.setAttribute('aria-activedescendant', state.items[boundedIndex].id);
+    state.items[boundedIndex].scrollIntoView({ block: 'nearest' });
+  }
+
+  function insertQuickAddToken(item) {
+    var state = quickAddTokenDropdownState;
+    if (!item || !state.input || !state.el || !state.el.contains(item)) return;
+    var input = state.input;
+    var name = item.getAttribute('data-quick-add-token-name') || '';
+    var val = input.value;
+    var cursor = input.selectionStart === null ? val.length : input.selectionStart;
+    var before = val.slice(0, state.triggerIdx);
+    var after = val.slice(cursor);
+    var insert = state.kind + name + ' ';
+    var newPos = before.length + insert.length;
+    input.value = before + insert + after;
+    hideQuickAddTokenDropdown();
+    input.focus();
+    input.setSelectionRange(newPos, newPos);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function quickAddTokenKeydownHandler(event) {
+    var state = quickAddTokenDropdownState;
+    if (!state.el || state.input !== event.target || !state.items.length) return;
+    var nextIndex = state.activeIndex;
+    if (event.key === 'ArrowDown') {
+      nextIndex = (state.activeIndex + 1) % state.items.length;
+    } else if (event.key === 'ArrowUp') {
+      nextIndex = (state.activeIndex - 1 + state.items.length) % state.items.length;
+    } else if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = state.items.length - 1;
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      event.stopPropagation();
+      insertQuickAddToken(state.items[state.activeIndex]);
+      return;
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      hideQuickAddTokenDropdown();
+      return;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    setQuickAddTokenActiveIndex(nextIndex);
   }
 
   function hideQuickAddTokenDropdown() {
+    var input = quickAddTokenDropdownState.input;
     if (quickAddTokenDropdownState.el && document.contains(quickAddTokenDropdownState.el)) {
       quickAddTokenDropdownState.el.remove();
     }
-    quickAddTokenDropdownState = { el: null, input: null, kind: null };
+    if (input) {
+      input.setAttribute('aria-expanded', 'false');
+      input.removeAttribute('aria-activedescendant');
+    }
+    quickAddTokenDropdownState = { el: null, input: null, kind: null, triggerIdx: -1, items: [], activeIndex: -1 };
   }
 
   function clearQuickAddControl(button) {
@@ -1597,7 +1757,36 @@
     }
   }
 
-  function openInlineEdit(root, focusTarget) {
+  function textOffsetAtPoint(element, clientX, clientY) {
+    if (!element || typeof clientX !== 'number' || typeof clientY !== 'number') return null;
+    var node = null;
+    var nodeOffset = 0;
+    if (typeof document.caretPositionFromPoint === 'function') {
+      var position = document.caretPositionFromPoint(clientX, clientY);
+      if (position) {
+        node = position.offsetNode;
+        nodeOffset = position.offset;
+      }
+    } else if (typeof document.caretRangeFromPoint === 'function') {
+      var pointRange = document.caretRangeFromPoint(clientX, clientY);
+      if (pointRange) {
+        node = pointRange.startContainer;
+        nodeOffset = pointRange.startOffset;
+      }
+    }
+    if (!node || (node !== element && !element.contains(node))) return null;
+
+    var textRange = document.createRange();
+    textRange.selectNodeContents(element);
+    try {
+      textRange.setEnd(node, nodeOffset);
+    } catch (_) {
+      return null;
+    }
+    return textRange.toString().length;
+  }
+
+  function openInlineEdit(root, focusTarget, caretOffset) {
     if (!root) return;
     focusTarget = focusTarget || 'title';
     var scope = root.querySelector('[data-inline-task-edit-scope][data-inline-task-edit-focus="' + focusTarget + '"]') || root.querySelector('[data-inline-task-edit-scope]');
@@ -1620,6 +1809,10 @@
     if (input) {
       window.setTimeout(function () {
         input.focus();
+        if (focusTarget === 'title' && typeof caretOffset === 'number' && typeof input.setSelectionRange === 'function') {
+          var boundedOffset = Math.max(0, Math.min(caretOffset, input.value.length));
+          input.setSelectionRange(boundedOffset, boundedOffset);
+        }
       }, 0);
     }
   }
@@ -2614,6 +2807,7 @@
   });
 
   document.body.addEventListener('htmx:beforeRequest', function (event) {
+    rememberQuickAddPreviewFocusIntent(event.detail);
     var method = ((event.detail && event.detail.requestConfig && event.detail.requestConfig.verb) || '').toUpperCase();
     if (method === 'GET') {
       var target = event.detail && event.detail.target;
@@ -2666,9 +2860,7 @@
   });
 
   document.body.addEventListener('htmx:afterSwap', function (event) {
-    var requestElement = event.detail && event.detail.elt;
     var targetElement = event.detail && event.detail.target instanceof Element ? event.detail.target : null;
-    focusQuickAddPreviewResult(requestElement, targetElement);
     initializeFormErrors(targetElement || document);
     initializeLocalDateTimes(targetElement || document);
     initializeSetupImport(targetElement || document);
@@ -2677,6 +2869,7 @@
   });
 
   document.body.addEventListener('htmx:afterSettle', function (event) {
+    if (!event.detail || !event.detail.xhr || !explicitQuickAddPreviewRequests.has(event.detail.xhr)) return;
     var requestElement = event.detail && event.detail.elt;
     var targetElement = event.detail && event.detail.target instanceof Element ? event.detail.target : null;
     focusQuickAddPreviewResult(requestElement, targetElement);
@@ -2812,6 +3005,7 @@
     submitForm(form);
   }, true);
   document.addEventListener('submit', handleQuickAddSaveSubmit, true);
+  document.addEventListener('keydown', handleBulkSelectionKeydown, true);
 
   document.addEventListener('dragstart', function (event) {
     var row = closestElement(event.target, '[data-task-drag-move]');
@@ -2869,6 +3063,8 @@
   document.addEventListener('dragend', clearTaskMoveDragState);
 
   document.addEventListener('click', function (event) {
+    if (handleBulkSelectionClick(event)) return;
+
     var quickAddAppendLabel = closestElement(event.target, '[data-quick-add-append-label]');
     if (quickAddAppendLabel) {
       event.preventDefault();
@@ -2940,7 +3136,11 @@
     var inlineEditOpen = closestElement(event.target, '[data-inline-task-edit-open]');
     if (inlineEditOpen && !closestElement(event.target, '[data-inline-task-edit-form]')) {
       event.preventDefault();
-      openInlineEdit(inlineEditOpen.closest('[data-task-id]'), inlineEditOpen.getAttribute('data-inline-task-edit-focus') || 'title');
+      var inlineEditFocus = inlineEditOpen.getAttribute('data-inline-task-edit-focus') || 'title';
+      var caretOffset = event.detail > 0 && inlineEditFocus === 'title'
+        ? textOffsetAtPoint(inlineEditOpen, event.clientX, event.clientY)
+        : null;
+      openInlineEdit(inlineEditOpen.closest('[data-task-id]'), inlineEditFocus, caretOffset);
       return;
     }
 
@@ -3028,51 +3228,6 @@
     }
   }, true);
 
-  /* ── Bulk selection click handler ─────────────────────────── */
-
-  document.addEventListener('click', function (event) {
-    var bulkSelectAll = closestElement(event.target, '[data-bulk-select-all]');
-    if (bulkSelectAll) {
-      event.preventDefault();
-      clearBulkSelection();
-      return;
-    }
-
-    var bulkComplete = closestElement(event.target, '[data-bulk-complete]');
-    if (bulkComplete) {
-      event.preventDefault();
-      bulkCompleteTasks();
-      return;
-    }
-
-    var taskRow = closestElement(event.target, '[data-task-id]');
-    if (!taskRow) return;
-    // Skip if clicking a link, button, form control, or detail/complete/delete open
-    if (closestElement(event.target, 'a, button, input, select, textarea, label, [data-task-detail-open], [data-task-complete-open], [data-task-delete-open]')) return;
-
-    var taskID = taskRowID(taskRow);
-    if (!taskID) return;
-
-    if (event.shiftKey && bulkSelection.lastClicked) {
-      event.preventDefault();
-      bulkSelectRange(bulkSelection.lastClicked, taskID);
-      bulkSelection.lastClicked = taskID;
-      return;
-    }
-
-    if (event.ctrlKey || event.metaKey) {
-      event.preventDefault();
-      toggleBulkSelect(taskID);
-      bulkSelection.lastClicked = taskID;
-      return;
-    }
-
-    // Single click without modifier: clear selection if any active
-    if (bulkSelection.ids.length > 0 && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
-      clearBulkSelection();
-    }
-  }, true);
-
   /* ── Hover preview handlers ──────────────────────────────── */
 
   document.addEventListener('mouseover', function (event) {
@@ -3093,17 +3248,54 @@
 
   /* ── Date dropdown handlers (Alpine.js replacement) ─────── */
 
-  function closeAllDateDropdowns(except) {
+  function dateDropdownMenuItems(menu) {
+    if (!menu) return [];
+    return Array.prototype.filter.call(menu.querySelectorAll('[role="menuitem"]'), function (item) {
+      return !item.hasAttribute('disabled');
+    });
+  }
+
+  function closeDateDropdown(dropdown, restoreFocus) {
+    if (!dropdown) return;
+    var menu = dropdown.querySelector('.caldo-date-dropdown-menu');
+    var trigger = dropdown.querySelector('[data-date-dropdown-trigger]');
+    if (menu) menu.hidden = true;
+    if (trigger) {
+      trigger.setAttribute('aria-expanded', 'false');
+      if (restoreFocus) trigger.focus();
+    }
+  }
+
+  function openDateDropdown(dropdown, focusFirstItem) {
+    if (!dropdown) return;
+    var menu = dropdown.querySelector('.caldo-date-dropdown-menu');
+    var trigger = dropdown.querySelector('[data-date-dropdown-trigger]');
+    if (!menu || !trigger) return;
+    closeAllDateDropdowns(dropdown, false);
+    menu.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    if (focusFirstItem) {
+      var items = dateDropdownMenuItems(menu);
+      if (items.length > 0) items[0].focus();
+    }
+  }
+
+  function closeAllDateDropdowns(except, restoreFocus) {
     var openMenus = document.querySelectorAll('.caldo-date-dropdown-menu:not([hidden])');
     for (var i = 0; i < openMenus.length; i++) {
       var menu = openMenus[i];
       var dropdown = menu.closest('.caldo-date-dropdown');
       if (dropdown && dropdown !== except) {
-        menu.hidden = true;
-        var trigger = dropdown.querySelector('[data-date-dropdown-trigger]');
-        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+        closeDateDropdown(dropdown, restoreFocus);
       }
     }
+  }
+
+  function formatLocalCalendarDate(date) {
+    var year = String(date.getFullYear());
+    var month = String(date.getMonth() + 1).padStart(2, '0');
+    var day = String(date.getDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
   }
 
   document.addEventListener('click', function (event) {
@@ -3114,9 +3306,11 @@
       var dropdown = trigger.closest('.caldo-date-dropdown');
       var menu = dropdown.querySelector('.caldo-date-dropdown-menu');
       var isOpen = !menu.hidden;
-      closeAllDateDropdowns(dropdown);
-      menu.hidden = isOpen;
-      trigger.setAttribute('aria-expanded', String(!isOpen));
+      if (isOpen) {
+        closeDateDropdown(dropdown, false);
+      } else {
+        openDateDropdown(dropdown, false);
+      }
       return;
     }
 
@@ -3134,23 +3328,21 @@
       var days = action.getAttribute('data-date-days');
       if (days === 'clear') {
         input.value = '';
-      } else if (days === 'next-monday') {
-        var d = new Date(); var day = d.getDay(); var diff = ((1 + 7 - day) % 7) || 7; d.setDate(d.getDate() + diff);
-        input.value = d.toISOString().slice(0, 10);
-      } else if (days === 'next-weekend') {
-        var d = new Date(); var day = d.getDay(); var diff = ((6 + 7 - day) % 7) || 7; d.setDate(d.getDate() + diff);
-        input.value = d.toISOString().slice(0, 10);
       } else {
-        var offset = parseInt(days, 10) || 0;
-        var d = new Date(); d.setDate(d.getDate() + offset);
-        input.value = d.toISOString().slice(0, 10);
+        var selectedDate = new Date();
+        var selectedDay = selectedDate.getDay();
+        if (days === 'next-monday') {
+          selectedDate.setDate(selectedDate.getDate() + (((1 + 7 - selectedDay) % 7) || 7));
+        } else if (days === 'next-weekend') {
+          selectedDate.setDate(selectedDate.getDate() + (((6 + 7 - selectedDay) % 7) || 7));
+        } else {
+          selectedDate.setDate(selectedDate.getDate() + (parseInt(days, 10) || 0));
+        }
+        input.value = formatLocalCalendarDate(selectedDate);
       }
 
       form.requestSubmit();
-      var menu = dropdown.querySelector('.caldo-date-dropdown-menu');
-      if (menu) menu.hidden = true;
-      var trigger = dropdown.querySelector('[data-date-dropdown-trigger]');
-      if (trigger) trigger.setAttribute('aria-expanded', 'false');
+      closeDateDropdown(dropdown, true);
       return;
     }
 
@@ -3173,15 +3365,53 @@
     if (!hidden) return;
     hidden.value = input.value;
     form.requestSubmit();
-    var menu = dropdown.querySelector('.caldo-date-dropdown-menu');
-    if (menu) menu.hidden = true;
-    var trigger = dropdown.querySelector('[data-date-dropdown-trigger]');
-    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    closeDateDropdown(dropdown, true);
   }, true);
 
   document.addEventListener('keydown', function (event) {
+    var menu = closestElement(event.target, '.caldo-date-dropdown-menu:not([hidden])');
+    if (menu) {
+      var dropdown = menu.closest('.caldo-date-dropdown');
+      var items = dateDropdownMenuItems(menu);
+      var activeItem = closestElement(event.target, '[role="menuitem"]');
+      var activeIndex = items.indexOf(activeItem);
+      var nextIndex = -1;
+      if (event.key === 'ArrowDown') {
+        nextIndex = activeIndex < 0 ? 0 : (activeIndex + 1) % items.length;
+      } else if (event.key === 'ArrowUp') {
+        nextIndex = activeIndex <= 0 ? items.length - 1 : activeIndex - 1;
+      } else if (event.key === 'Home') {
+        nextIndex = 0;
+      } else if (event.key === 'End') {
+        nextIndex = items.length - 1;
+      }
+      if (nextIndex >= 0 && items[nextIndex]) {
+        event.preventDefault();
+        items[nextIndex].focus();
+        return;
+      }
+      if ((event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') && activeItem) {
+        event.preventDefault();
+        activeItem.click();
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeDateDropdown(dropdown, true);
+        return;
+      }
+      if (event.key === 'Tab') {
+        closeDateDropdown(dropdown, false);
+      }
+      return;
+    }
+
     if (event.key === 'Escape') {
-      closeAllDateDropdowns(null);
+      var openMenu = document.querySelector('.caldo-date-dropdown-menu:not([hidden])');
+      if (openMenu) {
+        event.preventDefault();
+        closeDateDropdown(openMenu.closest('.caldo-date-dropdown'), true);
+      }
     }
   });
 

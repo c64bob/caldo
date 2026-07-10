@@ -187,12 +187,44 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
   await expect(inlineEditRow).toContainText('Fällig 12.06.2099');
 
+  let priorityEditForm = await openTaskRowEdit(inlineEditRow, 'priority');
+  await expect(priorityEditForm.locator('[name="priority"]')).toBeFocused();
+  await priorityEditForm.locator('[name="priority"]').press('Escape');
+  await expect(priorityEditForm).toBeHidden();
+  await expect(inlineEditRow).toContainText('Keine Priorität');
+  priorityEditForm = await openTaskRowEdit(inlineEditRow, 'priority');
+  await priorityEditForm.locator('[name="priority"]').selectOption('5');
+  inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
+  await expect(inlineEditRow).toContainText('P2 Mittel');
+
+  let labelsEditForm = await openTaskRowEdit(inlineEditRow, 'labels');
+  await expect(labelsEditForm.locator('[name="labels"]')).toBeFocused();
+  await labelsEditForm.locator('[name="labels"]').fill('failed inline label');
+  await exerciseWriteStatusForFailedInlineMetadata(page, inlineEditRow, labelsEditForm.locator('[name="labels"]'));
+  await labelsEditForm.locator('[name="labels"]').fill('browser, inline');
+  await labelsEditForm.locator('[name="labels"]').press('Enter');
+  inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
+  await expect(inlineEditRow).toContainText('browser');
+  await expect(inlineEditRow).toContainText('inline');
+
+  let projectEditForm = await openTaskRowEdit(inlineEditRow, 'project');
+  await expect(projectEditForm.locator('[name="project_id"]')).toBeFocused();
+  await projectEditForm.locator('[name="project_id"]').selectOption({ label: 'E2E Empty Project' });
+  await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' })).toHaveCount(0);
+  await gotoApp(page, '/search?q=%23E2E%20Empty%20Project');
+  inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
+  await expect(inlineEditRow).toBeVisible();
+  await expect(inlineEditRow).toContainText('E2E Empty Project');
+  projectEditForm = await openTaskRowEdit(inlineEditRow, 'project');
+  await projectEditForm.locator('[name="project_id"]').selectOption({ label: 'Work' });
+  await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' })).toHaveCount(0);
+  await gotoApp(page, '/search?q=%23Work');
+  inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
+  await expect(inlineEditRow).toBeVisible();
+
   await inlineEditRow.getByRole('button', { name: 'Details' }).click();
   const inlineDetailDialog = inlineEditRow.locator('[data-task-detail-dialog]');
   await inlineDetailDialog.locator('[name="description"]').fill('edited inline through browser https://example.com/browser');
-  await inlineDetailDialog.locator('[name="priority"]').selectOption('5');
-  await inlineDetailDialog.locator('[name="labels"]').fill('browser, inline');
-  await expect(inlineDetailDialog.locator('[data-task-labels-input]')).toHaveValue('browser, inline');
   await inlineDetailDialog.getByRole('button', { name: 'Speichern' }).focus();
   await page.keyboard.press('Enter');
   inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
@@ -560,6 +592,9 @@ function expectedBrowserConsoleError(message, projectName) {
     return true;
   }
   if (projectName === 'webkit' && isWebKitSyncStatusAccessError(message)) {
+    return true;
+  }
+  if (/^Response Status Error Code 502 from \/tasks\/[^/]+$/.test(message)) {
     return true;
   }
   if (projectName === 'webkit' && isWebKitQuickAddSuggestionsAccessError(message)) {
@@ -1267,6 +1302,33 @@ async function exerciseWriteStatusForFailedInlineCreate(page, inlineCreateRoot, 
     await expect(titleInput).toHaveValue('E2E Inline Preserved');
     await expect(page.locator('[data-write-status]')).toContainText('Speichern fehlgeschlagen');
     await expect.poll(async () => browserWouldBlockUnload(page)).toBe(false);
+  } finally {
+    await page.unroute(routePattern, routeHandler);
+  }
+}
+
+async function exerciseWriteStatusForFailedInlineMetadata(page, taskRow, input) {
+  const routePattern = '**/tasks/*';
+  const routeHandler = async (route) => {
+    const requestURL = new URL(route.request().url());
+    if (route.request().method() !== 'PATCH' || !/^\/tasks\/[^/]+$/.test(requestURL.pathname)) {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 502,
+      headers: { 'content-type': 'text/plain; charset=utf-8' },
+      body: 'failed to update task on caldav server'
+    });
+  };
+
+  await page.route(routePattern, routeHandler);
+  try {
+    await input.press('Enter');
+    await expect(taskRow.locator('[data-inline-task-edit-error]')).toBeVisible();
+    await expect(taskRow.locator('[data-inline-task-edit-error]')).toContainText('Aufgabe konnte nicht gespeichert werden.');
+    await expect(input).toHaveValue('failed inline label');
+    await expect(page.locator('[data-write-status]')).toContainText('Speichern fehlgeschlagen');
   } finally {
     await page.unroute(routePattern, routeHandler);
   }

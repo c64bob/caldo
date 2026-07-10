@@ -1211,6 +1211,61 @@
 			@apply flex min-w-0 flex-wrap items-center gap-1;
 		}
 
+		.caldo-task-meta-edit-shell,
+		.caldo-task-meta-inline-form {
+			@apply min-w-0;
+		}
+
+		.caldo-task-meta-edit-trigger,
+		.caldo-task-labels-edit-trigger {
+			appearance: none;
+			border: 0;
+			cursor: pointer;
+			transition: background-color 100ms ease-out, color 100ms ease-out;
+		}
+
+		.caldo-task-meta-edit-trigger:hover,
+		.caldo-task-labels-edit-trigger:hover .caldo-task-chip {
+			background: var(--caldo-accent-muted);
+			color: var(--caldo-accent);
+		}
+
+		.caldo-task-meta-edit-trigger:focus-visible,
+		.caldo-task-labels-edit-trigger:focus-visible {
+			outline: 2px solid var(--caldo-focus);
+			outline-offset: 2px;
+			box-shadow: var(--caldo-focus-ring);
+		}
+
+		.caldo-task-labels-edit-trigger {
+			@apply flex min-w-0 max-w-full flex-wrap items-center gap-1 rounded;
+			background: transparent;
+		}
+
+		.caldo-task-meta-edit-placeholder {
+			color: var(--caldo-text-subtle);
+		}
+
+		.caldo-task-meta-inline-form .caldo-select,
+		.caldo-task-meta-inline-form .caldo-input {
+			@apply mt-0 text-xs leading-4;
+			border-radius: 0.25rem;
+			min-height: 1.5rem;
+		}
+
+		.caldo-task-meta-select {
+			max-width: 12rem;
+			min-width: 7rem;
+			padding: 0.25rem 1.5rem 0.25rem 0.375rem;
+			width: auto;
+		}
+
+		.caldo-task-meta-labels-input {
+			max-width: 100%;
+			padding: 0.25rem 0.375rem;
+			width: min(18rem, 60vw);
+		}
+
 		.caldo-task-date-slot {
 			@apply flex min-w-0 shrink-0 items-center;
 		}

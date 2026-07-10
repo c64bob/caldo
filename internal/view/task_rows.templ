@@ -205,11 +205,17 @@ templ TaskRow(task TaskRowView) {
 							for _, chip := range taskRelationshipChips(task) {
 								<span class={ chip.Class }>{ chip.Label }</span>
 							}
-							for _, chip := range taskMetaChips(task) {
-								<span class={ chip.Class }>{ chip.Label }</span>
-							}
-							for _, chip := range taskLabelChips(task) {
-								<span class={ chip.Class }>{ chip.Label }</span>
+							if taskCanInlineEdit(task) {
+								@TaskProjectInlineEditor(task)
+								@TaskPriorityInlineEditor(task)
+								@TaskLabelsInlineEditor(task)
+							} else {
+								for _, chip := range taskMetaChips(task) {
+									<span class={ chip.Class }>{ chip.Label }</span>
+								}
+								for _, chip := range taskLabelChips(task) {
+									<span class={ chip.Class }>{ chip.Label }</span>
+								}
 							}
 						</div>
 						<div class="caldo-task-date-slot">
@@ -295,6 +301,140 @@ templ TaskRow(task TaskRowView) {
 			@TaskDeleteDialog(task)
 		}
 	</li>
+}
+
+templ TaskProjectInlineEditor(task TaskRowView) {
+	if len(taskProjectOptions(task)) > 0 {
+		<div class="caldo-task-meta-edit-shell caldo-task-project-edit-shell" data-inline-task-edit-scope data-inline-task-edit-focus="project">
+			<button
+				type="button"
+				class="caldo-task-chip caldo-task-meta-edit-trigger"
+				data-inline-task-edit-open
+				data-inline-task-edit-focus="project"
+				aria-expanded="false"
+				aria-controls={ taskDOMID("task-project-edit", task) }
+				aria-label={ "Projekt bearbeiten: " + taskProjectEditLabel(task) }
+			>
+				{ taskProjectEditLabel(task) }
+			</button>
+			<form
+				id={ taskDOMID("task-project-edit", task) }
+				method="post"
+				action={ taskEditPath(task) }
+				hx-patch={ taskEditPath(task) }
+				hx-swap="none"
+				hx-disabled-elt="find [data-inline-task-edit-control]"
+				hx-headers={ taskCSRFHeaders(ctx) }
+				data-refresh-after-write="true"
+				data-inline-task-edit-form
+				data-inline-task-edit-kind="project"
+				class="caldo-task-inline-edit-form caldo-task-meta-inline-form"
+				aria-label={ "Projekt bearbeiten: " + taskProjectEditLabel(task) }
+				aria-describedby={ taskDOMID("task-edit-error", task) }
+				hidden
+			>
+				<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
+				<select name="project_id" class="caldo-select caldo-task-meta-select" data-inline-task-edit-control data-inline-task-edit-autosave aria-describedby={ taskDOMID("task-edit-error", task) }>
+					for _, project := range taskProjectOptions(task) {
+						<option value={ project.ID } selected?={ strings.TrimSpace(project.ID) == strings.TrimSpace(task.ProjectID) }>{ project.Name }</option>
+					}
+				</select>
+				<button type="submit" class="sr-only">Speichern</button>
+			</form>
+		</div>
+	} else if taskProjectEditLabel(task) != "" {
+		<span class="caldo-task-chip">{ taskProjectEditLabel(task) }</span>
+	}
+}
+
+templ TaskPriorityInlineEditor(task TaskRowView) {
+	<div class="caldo-task-meta-edit-shell caldo-task-priority-edit-shell" data-inline-task-edit-scope data-inline-task-edit-focus="priority">
+		<button
+			type="button"
+			class={ "caldo-task-chip", "caldo-task-meta-edit-trigger", taskPriorityClass(task) }
+			data-inline-task-edit-open
+			data-inline-task-edit-focus="priority"
+			aria-expanded="false"
+			aria-controls={ taskDOMID("task-priority-edit", task) }
+			aria-label={ "Priorität bearbeiten: " + taskPriorityEditLabel(task) }
+		>
+			{ taskPriorityEditLabel(task) }
+		</button>
+		<form
+			id={ taskDOMID("task-priority-edit", task) }
+			method="post"
+			action={ taskEditPath(task) }
+			hx-patch={ taskEditPath(task) }
+			hx-swap="none"
+			hx-disabled-elt="find [data-inline-task-edit-control]"
+			hx-headers={ taskCSRFHeaders(ctx) }
+			data-refresh-after-write="true"
+			data-inline-task-edit-form
+			data-inline-task-edit-kind="priority"
+			class="caldo-task-inline-edit-form caldo-task-meta-inline-form"
+			aria-label={ "Priorität bearbeiten: " + taskPriorityEditLabel(task) }
+			aria-describedby={ taskDOMID("task-edit-error", task) }
+			hidden
+		>
+			<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
+			<select name="priority" class="caldo-select caldo-task-meta-select" data-inline-task-edit-control data-inline-task-edit-autosave aria-describedby={ taskDOMID("task-edit-error", task) }>
+				for _, priority := range taskDetailPriorityOptions(task) {
+					<option value={ priority.Value } selected?={ priority.Value == taskPriorityValue(task) }>{ priority.Label }</option>
+				}
+			</select>
+			<button type="submit" class="sr-only">Speichern</button>
+		</form>
+	</div>
+}
+
+templ TaskLabelsInlineEditor(task TaskRowView) {
+	<div class="caldo-task-meta-edit-shell caldo-task-labels-edit-shell" data-inline-task-edit-scope data-inline-task-edit-focus="labels">
+		<button
+			type="button"
+			class="caldo-task-labels-edit-trigger"
+			data-inline-task-edit-open
+			data-inline-task-edit-focus="labels"
+			aria-expanded="false"
+			aria-controls={ taskDOMID("task-labels-edit", task) }
+			aria-label={ taskLabelsEditAriaLabel(task) }
+		>
+			if len(taskLabelChips(task)) > 0 {
+				for _, chip := range taskLabelChips(task) {
+					<span class={ chip.Class }>{ chip.Label }</span>
+				}
+			} else {
+				<span class="caldo-task-chip caldo-task-meta-edit-placeholder">Labels</span>
+			}
+		</button>
+		<form
+			id={ taskDOMID("task-labels-edit", task) }
+			method="post"
+			action={ taskEditPath(task) }
+			hx-patch={ taskEditPath(task) }
+			hx-swap="none"
+			hx-disabled-elt="find [data-inline-task-edit-control]"
+			hx-headers={ taskCSRFHeaders(ctx) }
+			data-refresh-after-write="true"
+			data-inline-task-edit-form
+			data-inline-task-edit-kind="labels"
+			class="caldo-task-inline-edit-form caldo-task-meta-inline-form caldo-task-labels-inline-form"
+			aria-label={ taskLabelsEditAriaLabel(task) }
+			aria-describedby={ taskDOMID("task-edit-error", task) }
+			hidden
+		>
+			<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
+			<input
+				type="text"
+				name="labels"
+				value={ taskEditableLabels(task) }
+				class="caldo-input caldo-task-meta-labels-input"
+				autocomplete="off"
+				data-inline-task-edit-control
+				aria-describedby={ taskDOMID("task-edit-error", task) }
+			/>
+			<button type="submit" class="sr-only">Speichern</button>
+		</form>
+	</div>
 }
 
 templ TaskDescriptionMarkdown(description string) {

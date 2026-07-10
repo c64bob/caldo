@@ -9,6 +9,42 @@ import (
 	"caldo/internal/assets"
 )
 
+func TestBaseLayoutDeclaresFaviconsAndBrowserMetadata(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithAssetManifest(context.Background(), assets.Manifest{
+		"app.css":              "app.hash.css",
+		"htmx.min.js":          "htmx.hash.js",
+		"htmx-sse.js":          "htmx-sse.hash.js",
+		"alpine.min.js":        "alpine.hash.js",
+		"app.js":               "app.hash.js",
+		"favicon.svg":          "favicon.svg-hash.svg",
+		"favicon.png":          "favicon.png-hash.png",
+		"apple-touch-icon.png": "apple-touch-icon.hash.png",
+	})
+
+	var rendered bytes.Buffer
+	if err := BaseLayout("Heute", EmptyContent()).Render(ctx, &rendered); err != nil {
+		t.Fatalf("render layout: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`<meta name="application-name" content="Caldo">`,
+		`<meta name="apple-mobile-web-app-title" content="Caldo">`,
+		`<meta name="color-scheme" content="light dark">`,
+		`<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">`,
+		`<meta name="theme-color" content="#151513" media="(prefers-color-scheme: dark)">`,
+		`<link rel="icon" type="image/svg+xml" href="/static/favicon.svg-hash.svg">`,
+		`<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon.png-hash.png">`,
+		`<link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.hash.png">`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected browser metadata to include %q in %s", want, output)
+		}
+	}
+}
+
 func TestBaseLayoutIncludesWriteStatusRegion(t *testing.T) {
 	t.Parallel()
 

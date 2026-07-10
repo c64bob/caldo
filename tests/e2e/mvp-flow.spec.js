@@ -274,6 +274,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await detailRow.getByRole('button', { name: 'Details' }).click();
   let actionDetailDialog = detailRow.locator('[data-task-detail-dialog]');
   await expect(actionDetailDialog).toBeVisible();
+  await expectSubtaskSectionAligned(actionDetailDialog);
   await actionDetailDialog.getByRole('button', { name: 'Unteraufgabe hinzufügen' }).click();
   const subtaskForm = detailRow.locator('[data-subtask-create-form]');
   await expect(subtaskForm).toBeVisible();
@@ -306,6 +307,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await detailRow.getByRole('button', { name: 'Details' }).click();
   detailDialog = detailRow.locator('[data-task-detail-dialog]');
   await expect(detailDialog).toBeVisible();
+  await expectSubtaskSectionAligned(detailDialog);
   const panelBox = await detailDialog.boundingBox();
   expect(panelBox.x).toBeGreaterThanOrEqual(0);
   expect(panelBox.y).toBeGreaterThanOrEqual(0);
@@ -820,6 +822,14 @@ async function expectTabletTouchTargets(page) {
   }
 }
 
+async function expectSubtaskSectionAligned(detailDialog) {
+  const titleBox = await detailDialog.locator('[data-task-detail-title]').boundingBox();
+  const subtaskHeadingBox = await detailDialog.locator('section[aria-label="Unteraufgaben"] h3').boundingBox();
+  expect(titleBox).not.toBeNull();
+  expect(subtaskHeadingBox).not.toBeNull();
+  expect(Math.abs(subtaskHeadingBox.x - titleBox.x)).toBeLessThanOrEqual(1);
+}
+
 async function exerciseTabletTaskActions(page, panelTaskID) {
   await page.setViewportSize(tabletViewport);
   await gotoApp(page, '/search?q=E2E%20Panel%20Edited');
@@ -832,6 +842,7 @@ async function exerciseTabletTaskActions(page, panelTaskID) {
   let detailDialog = row.locator('[data-task-detail-dialog]');
   await expect(detailDialog).toBeVisible();
   await expectElementWithinViewport(detailDialog, tabletViewport);
+  await expectSubtaskSectionAligned(detailDialog);
   await detailDialog.locator('[name="description"]').fill('edited through tablet detail panel');
   await detailDialog.getByRole('button', { name: 'Speichern' }).click();
   row = page.locator(`[data-task-id="${panelTaskID}"]`);

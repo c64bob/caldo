@@ -1638,7 +1638,12 @@
       }
     }).then(function (response) {
       if (response.status === 404) {
-        removeTaskRow(row);
+        if (!document.contains(row)) return '';
+        if (rowHasDirtyOpenForm(row)) {
+          markStaleLocalChanges(row);
+        } else {
+          removeTaskRow(row);
+        }
         return '';
       }
       if (!response.ok) {
@@ -1647,6 +1652,11 @@
       return response.text();
     }).then(function (html) {
       if (html) {
+        if (!document.contains(row)) return;
+        if (rowHasDirtyOpenForm(row)) {
+          markStaleLocalChanges(row);
+          return;
+        }
         replaceTaskRow(row, html);
       }
     }).catch(function () {

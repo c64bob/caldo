@@ -1616,8 +1616,7 @@
     trigger.setAttribute('aria-expanded', 'true');
     form.hidden = false;
     setInlineEditError(root, '');
-    var selector = focusTarget === 'date' ? '[data-inline-task-edit-date]' : '[data-inline-task-edit-title]';
-    var input = form.querySelector(selector) || form.querySelector('[data-inline-task-edit-title]');
+    var input = form.querySelector('[data-inline-task-edit-control]') || form.querySelector('[data-inline-task-edit-title]');
     if (input) {
       window.setTimeout(function () {
         input.focus();
@@ -2802,6 +2801,11 @@
   document.addEventListener('change', handleConflictManualControlEvent, true);
   document.addEventListener('change', handleConflictSplitConfirmationEvent, true);
   document.addEventListener('change', function (event) {
+    var inlineEditAutosave = closestElement(event.target, '[data-inline-task-edit-autosave]');
+    if (inlineEditAutosave && !inlineEditAutosave.disabled) {
+      submitForm(inlineEditAutosave.closest('[data-inline-task-edit-form]'));
+      return;
+    }
     var checkbox = closestElement(event.target, '[data-task-completion-checkbox]');
     if (!checkbox) return;
     var form = checkbox.closest('[data-task-action-form]');
@@ -3239,6 +3243,7 @@
         return;
       }
       if (event.key === 'Enter' && !event.shiftKey) {
+        if (closestElement(event.target, '[data-inline-task-edit-autosave]')) return;
         event.preventDefault();
         submitForm(inlineEditForm);
         return;

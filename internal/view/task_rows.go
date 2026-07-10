@@ -527,6 +527,30 @@ func taskMetaChips(task TaskRowView) []taskRowChip {
 	return chips
 }
 
+func taskProjectEditLabel(task TaskRowView) string {
+	project := strings.TrimSpace(task.ProjectName)
+	if project == "" {
+		return "Projekt"
+	}
+	return project
+}
+
+func taskPriorityEditLabel(task TaskRowView) string {
+	priority := taskPriorityLabel(task)
+	if priority == "" {
+		return "Keine Priorität"
+	}
+	return priority
+}
+
+func taskLabelsEditAriaLabel(task TaskRowView) string {
+	labels := taskEditableLabels(task)
+	if labels == "" {
+		return "Labels bearbeiten: keine Labels"
+	}
+	return "Labels bearbeiten: " + labels
+}
+
 func taskCheckboxPriorityClass(task TaskRowView) string {
 	if taskIsFavorite(task) {
 		return "caldo-task-checkbox-priority-high"

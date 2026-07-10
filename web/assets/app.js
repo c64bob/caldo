@@ -3139,6 +3139,13 @@
     }
   }
 
+  function formatLocalCalendarDate(date) {
+    var year = String(date.getFullYear());
+    var month = String(date.getMonth() + 1).padStart(2, '0');
+    var day = String(date.getDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
   document.addEventListener('click', function (event) {
     var trigger = closestElement(event.target, '[data-date-dropdown-trigger]');
     if (trigger) {
@@ -3167,16 +3174,17 @@
       var days = action.getAttribute('data-date-days');
       if (days === 'clear') {
         input.value = '';
-      } else if (days === 'next-monday') {
-        var d = new Date(); var day = d.getDay(); var diff = ((1 + 7 - day) % 7) || 7; d.setDate(d.getDate() + diff);
-        input.value = d.toISOString().slice(0, 10);
-      } else if (days === 'next-weekend') {
-        var d = new Date(); var day = d.getDay(); var diff = ((6 + 7 - day) % 7) || 7; d.setDate(d.getDate() + diff);
-        input.value = d.toISOString().slice(0, 10);
       } else {
-        var offset = parseInt(days, 10) || 0;
-        var d = new Date(); d.setDate(d.getDate() + offset);
-        input.value = d.toISOString().slice(0, 10);
+        var selectedDate = new Date();
+        var selectedDay = selectedDate.getDay();
+        if (days === 'next-monday') {
+          selectedDate.setDate(selectedDate.getDate() + (((1 + 7 - selectedDay) % 7) || 7));
+        } else if (days === 'next-weekend') {
+          selectedDate.setDate(selectedDate.getDate() + (((6 + 7 - selectedDay) % 7) || 7));
+        } else {
+          selectedDate.setDate(selectedDate.getDate() + (parseInt(days, 10) || 0));
+        }
+        input.value = formatLocalCalendarDate(selectedDate);
       }
 
       form.requestSubmit();

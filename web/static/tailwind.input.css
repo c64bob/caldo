@@ -1660,6 +1660,10 @@
 		border-color: var(--caldo-border);
 	}
 
+	.caldo-task-detail-subtasks {
+		@apply px-4 pb-3;
+	}
+
 	.caldo-task-detail-section-heading {
 		@apply flex min-w-0 items-center justify-between gap-3;
 	}

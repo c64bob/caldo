@@ -1591,7 +1591,36 @@
     }
   }
 
-  function openInlineEdit(root, focusTarget) {
+  function textOffsetAtPoint(element, clientX, clientY) {
+    if (!element || typeof clientX !== 'number' || typeof clientY !== 'number') return null;
+    var node = null;
+    var nodeOffset = 0;
+    if (typeof document.caretPositionFromPoint === 'function') {
+      var position = document.caretPositionFromPoint(clientX, clientY);
+      if (position) {
+        node = position.offsetNode;
+        nodeOffset = position.offset;
+      }
+    } else if (typeof document.caretRangeFromPoint === 'function') {
+      var pointRange = document.caretRangeFromPoint(clientX, clientY);
+      if (pointRange) {
+        node = pointRange.startContainer;
+        nodeOffset = pointRange.startOffset;
+      }
+    }
+    if (!node || (node !== element && !element.contains(node))) return null;
+
+    var textRange = document.createRange();
+    textRange.selectNodeContents(element);
+    try {
+      textRange.setEnd(node, nodeOffset);
+    } catch (_) {
+      return null;
+    }
+    return textRange.toString().length;
+  }
+
+  function openInlineEdit(root, focusTarget, caretOffset) {
     if (!root) return;
     focusTarget = focusTarget || 'title';
     var scope = root.querySelector('[data-inline-task-edit-scope][data-inline-task-edit-focus="' + focusTarget + '"]') || root.querySelector('[data-inline-task-edit-scope]');
@@ -1615,6 +1644,10 @@
     if (input) {
       window.setTimeout(function () {
         input.focus();
+        if (focusTarget === 'title' && typeof caretOffset === 'number' && typeof input.setSelectionRange === 'function') {
+          var boundedOffset = Math.max(0, Math.min(caretOffset, input.value.length));
+          input.setSelectionRange(boundedOffset, boundedOffset);
+        }
       }, 0);
     }
   }
@@ -2930,7 +2963,11 @@
     var inlineEditOpen = closestElement(event.target, '[data-inline-task-edit-open]');
     if (inlineEditOpen && !closestElement(event.target, '[data-inline-task-edit-form]')) {
       event.preventDefault();
-      openInlineEdit(inlineEditOpen.closest('[data-task-id]'), inlineEditOpen.getAttribute('data-inline-task-edit-focus') || 'title');
+      var inlineEditFocus = inlineEditOpen.getAttribute('data-inline-task-edit-focus') || 'title';
+      var caretOffset = event.detail > 0 && inlineEditFocus === 'title'
+        ? textOffsetAtPoint(inlineEditOpen, event.clientX, event.clientY)
+        : null;
+      openInlineEdit(inlineEditOpen.closest('[data-task-id]'), inlineEditFocus, caretOffset);
       return;
     }
 
@@ -3126,6 +3163,13 @@
     }
   }
 
+  function formatLocalCalendarDate(date) {
+    var year = String(date.getFullYear());
+    var month = String(date.getMonth() + 1).padStart(2, '0');
+    var day = String(date.getDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
   document.addEventListener('click', function (event) {
     var trigger = closestElement(event.target, '[data-date-dropdown-trigger]');
     if (trigger) {
@@ -3156,16 +3200,17 @@
       var days = action.getAttribute('data-date-days');
       if (days === 'clear') {
         input.value = '';
-      } else if (days === 'next-monday') {
-        var d = new Date(); var day = d.getDay(); var diff = ((1 + 7 - day) % 7) || 7; d.setDate(d.getDate() + diff);
-        input.value = d.toISOString().slice(0, 10);
-      } else if (days === 'next-weekend') {
-        var d = new Date(); var day = d.getDay(); var diff = ((6 + 7 - day) % 7) || 7; d.setDate(d.getDate() + diff);
-        input.value = d.toISOString().slice(0, 10);
       } else {
-        var offset = parseInt(days, 10) || 0;
-        var d = new Date(); d.setDate(d.getDate() + offset);
-        input.value = d.toISOString().slice(0, 10);
+        var selectedDate = new Date();
+        var selectedDay = selectedDate.getDay();
+        if (days === 'next-monday') {
+          selectedDate.setDate(selectedDate.getDate() + (((1 + 7 - selectedDay) % 7) || 7));
+        } else if (days === 'next-weekend') {
+          selectedDate.setDate(selectedDate.getDate() + (((6 + 7 - selectedDay) % 7) || 7));
+        } else {
+          selectedDate.setDate(selectedDate.getDate() + (parseInt(days, 10) || 0));
+        }
+        input.value = formatLocalCalendarDate(selectedDate);
       }
 
       form.requestSubmit();

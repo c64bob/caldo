@@ -3,6 +3,7 @@ package assets
 import (
 	"crypto/sha256"
 	"fmt"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,6 +29,73 @@ func TestLoadManifest(t *testing.T) {
 
 	for _, resolved := range manifest {
 		assertAssetNameContainsHashPrefix(t, filepath.Dir(manifestPath), resolved)
+	}
+}
+
+func TestManifestIncludesFaviconSet(t *testing.T) {
+	t.Parallel()
+
+	manifestPath := filepath.Join("..", "..", "web", "static", "manifest.json")
+	manifest, err := LoadManifest(manifestPath)
+	if err != nil {
+		t.Fatalf("LoadManifest returned error: %v", err)
+	}
+
+	for logicalName, wantSize := range map[string]int{
+		"favicon.png":          32,
+		"apple-touch-icon.png": 180,
+	} {
+		resolved, err := manifest.Resolve(logicalName)
+		if err != nil {
+			t.Fatalf("Resolve(%q) returned error: %v", logicalName, err)
+		}
+		file, err := os.Open(filepath.Join(filepath.Dir(manifestPath), resolved))
+		if err != nil {
+			t.Fatalf("open %q: %v", logicalName, err)
+		}
+		config, err := png.DecodeConfig(file)
+		closeErr := file.Close()
+		if err != nil {
+			t.Fatalf("decode %q: %v", logicalName, err)
+		}
+		if closeErr != nil {
+			t.Fatalf("close %q: %v", logicalName, closeErr)
+		}
+		if config.Width != wantSize || config.Height != wantSize {
+			t.Fatalf("unexpected %q dimensions: got %dx%d want %dx%d", logicalName, config.Width, config.Height, wantSize, wantSize)
+		}
+	}
+
+	if _, err := manifest.Resolve("favicon.svg"); err != nil {
+		t.Fatalf("Resolve favicon.svg returned error: %v", err)
+	}
+}
+
+func TestCompiledTaskNoteLineClamps(t *testing.T) {
+	t.Parallel()
+
+	manifestPath := filepath.Join("..", "..", "web", "static", "manifest.json")
+	manifest, err := LoadManifest(manifestPath)
+	if err != nil {
+		t.Fatalf("LoadManifest returned error: %v", err)
+	}
+
+	cssName, err := manifest.Resolve("app.css")
+	if err != nil {
+		t.Fatalf("Resolve returned error: %v", err)
+	}
+	css, err := os.ReadFile(filepath.Join(filepath.Dir(manifestPath), cssName))
+	if err != nil {
+		t.Fatalf("read app css: %v", err)
+	}
+
+	for _, want := range []string{
+		".caldo-task-description-lines-1{-webkit-line-clamp:1}",
+		".caldo-task-description-lines-2{-webkit-line-clamp:2}",
+	} {
+		if !strings.Contains(string(css), want) {
+			t.Fatalf("compiled app css does not contain %q", want)
+		}
 	}
 }
 

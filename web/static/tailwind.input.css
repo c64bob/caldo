@@ -2630,8 +2630,10 @@
 		border: 0;
 	}
 
-	.caldo-quick-add-token-item:hover {
+	.caldo-quick-add-token-item:hover,
+	.caldo-quick-add-token-item-active {
 		background: var(--caldo-surface-muted);
+		color: var(--caldo-accent);
 	}
 
 	.caldo-quick-add-token-item-badge {

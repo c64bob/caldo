@@ -246,12 +246,14 @@ func handleTaskUpdate(w http.ResponseWriter, r *http.Request, deps taskUpdateDep
 
 func markTaskUpdateConflict(ctx context.Context, deps taskUpdateDependencies, credentials caldav.Credentials, taskID string, pendingVersion int, href string, baseVTODO string, localVTODO string) error {
 	remoteVTODO := ""
+	remoteETag := ""
 	if deps.todos != nil {
-		if raw, _, err := deps.todos.GetVTODO(ctx, credentials, href); err == nil {
+		if raw, etag, err := deps.todos.GetVTODO(ctx, credentials, href); err == nil {
 			remoteVTODO = raw
+			remoteETag = etag
 		}
 	}
-	return deps.database.MarkTaskUpdateConflict(ctx, taskID, pendingVersion, baseVTODO, localVTODO, remoteVTODO)
+	return deps.database.MarkTaskUpdateConflict(ctx, taskID, pendingVersion, baseVTODO, localVTODO, remoteVTODO, remoteETag)
 }
 
 func parseOptionalInt(raw string) *int {

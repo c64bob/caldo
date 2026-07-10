@@ -308,7 +308,7 @@ WHERE id = ? AND server_version = ?;
 }
 
 // MarkTaskUpdateConflict marks a pending task update as conflict and stores the versions for visible resolution.
-func (d *Database) MarkTaskUpdateConflict(ctx context.Context, taskID string, expectedVersion int, baseVTODO string, localVTODO string, remoteVTODO string) error {
+func (d *Database) MarkTaskUpdateConflict(ctx context.Context, taskID string, expectedVersion int, baseVTODO string, localVTODO string, remoteVTODO string, remoteETag string) error {
 	d.WriteMu.Lock()
 	defer d.WriteMu.Unlock()
 
@@ -321,9 +321,10 @@ func (d *Database) MarkTaskUpdateConflict(ctx context.Context, taskID string, ex
 	result, err := tx.ExecContext(ctx, `
 UPDATE tasks
 SET sync_status = 'conflict',
+    etag = COALESCE(?, etag),
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ? AND server_version = ?;
-`, taskID, expectedVersion)
+`, nullableString(remoteETag), taskID, expectedVersion)
 	if err != nil {
 		return fmt.Errorf("mark task update conflict: update task: %w", err)
 	}

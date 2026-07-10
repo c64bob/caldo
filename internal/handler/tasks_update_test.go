@@ -515,11 +515,12 @@ func TestTaskUpdatePreconditionFailedMarksConflict(t *testing.T) {
 
 	var syncStatus string
 	var version int
-	if err := database.Conn.QueryRowContext(context.Background(), `SELECT sync_status, server_version FROM tasks WHERE id = 'task-1';`).Scan(&syncStatus, &version); err != nil {
+	var etag string
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT sync_status, server_version, etag FROM tasks WHERE id = 'task-1';`).Scan(&syncStatus, &version, &etag); err != nil {
 		t.Fatalf("query task: %v", err)
 	}
-	if syncStatus != "conflict" || version != 3 {
-		t.Fatalf("unexpected row: status=%q version=%d", syncStatus, version)
+	if syncStatus != "conflict" || version != 3 || etag != `"etag-remote"` {
+		t.Fatalf("unexpected row: status=%q version=%d etag=%q", syncStatus, version, etag)
 	}
 	assertSingleIntResult(t, database, `
 SELECT COUNT(*)

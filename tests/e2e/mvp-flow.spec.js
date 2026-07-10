@@ -1010,6 +1010,26 @@ async function exerciseQuickAddOverlay(page) {
   await expect(overlay).toBeVisible();
   await expect(input).toBeFocused();
   await expect(page).toHaveURL(searchURL);
+
+  await input.fill('E2E Live Date morgen');
+  await input.evaluate((element) => element.setSelectionRange(5, 5));
+  let liveDateChip = overlay.locator('[data-quick-add-chips] [data-quick-add-date-chip]');
+  await expect(liveDateChip).toBeVisible();
+  await expect(liveDateChip).toContainText('morgen');
+  await expect(liveDateChip).toContainText(/\d{4}-\d{2}-\d{2}/);
+  await expect(input).toBeFocused();
+  await expect.poll(async () => input.evaluate((element) => element.selectionStart)).toBe(5);
+  const liveSaveForm = overlay.locator('[data-quick-add-overlay-save-form]');
+  await expect(liveSaveForm.locator('input[name="title"]')).toHaveValue('E2E Live Date');
+
+  await input.fill('E2E Live Weekday Mittwoch');
+  await input.evaluate((element) => element.setSelectionRange(4, 4));
+  liveDateChip = overlay.locator('[data-quick-add-chips] [data-quick-add-date-chip]');
+  await expect(liveDateChip).toContainText('Mittwoch');
+  await expect(liveDateChip.locator('[data-quick-add-date-warning]')).toBeVisible();
+  await expect(input).toBeFocused();
+  await expect.poll(async () => input.evaluate((element) => element.selectionStart)).toBe(4);
+
   await input.fill('E2E Overlay Canceled');
   await page.keyboard.press('Escape');
   await expect(overlay).toBeHidden();

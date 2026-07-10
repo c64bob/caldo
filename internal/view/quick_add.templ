@@ -13,7 +13,7 @@ templ QuickAddPage(draft *parser.QuickAddDraft, text string, errorMessage string
 			action="/quick-add/preview"
 			hx-post="/quick-add/preview"
 			hx-target="#quick-add-preview"
-			hx-trigger="input changed delay:350ms, submit"
+			hx-trigger="input changed delay:350ms from:#quick-add-text, submit"
 			hx-swap="outerHTML"
 			hx-disabled-elt="find button"
 			class="caldo-quick-add-form"
@@ -53,7 +53,7 @@ templ QuickAddOverlay() {
 					action="/quick-add/preview"
 					hx-post="/quick-add/preview"
 					hx-target="#quick-add-overlay-preview"
-					hx-trigger="input changed delay:200ms, submit"
+					hx-trigger="input changed delay:200ms from:#quick-add-overlay-text, submit"
 					hx-swap="outerHTML"
 					hx-disabled-elt="find button"
 					class="caldo-quick-add-form"
@@ -121,9 +121,12 @@ templ quickAddPreviewContent(draft parser.QuickAddDraft, previewID string, surfa
 					</button>
 				}
 				if strings.TrimSpace(draft.Due) != "" {
-					<button type="button" class="caldo-quick-add-chip" data-quick-add-clear="[name='due_date']" aria-label={ quickAddRemoveTokenLabel(ctx, Text(ctx).QuickAddFieldDate, quickAddDueChipLabel(draft)) }>
+					<button type="button" class="caldo-quick-add-chip" data-quick-add-clear="[name='due_date']" data-quick-add-date-chip aria-label={ quickAddRemoveTokenLabel(ctx, Text(ctx).QuickAddFieldDate, quickAddDueChipLabel(draft)) }>
 						<span>{ Text(ctx).QuickAddFieldDate }</span>
 						<strong>{ quickAddDueChipLabel(draft) }</strong>
+						if draft.DueAmbiguous {
+							<span class="caldo-badge caldo-badge-warning" data-quick-add-date-warning>{ Text(ctx).QuickAddDateReviewHint }</span>
+						}
 					</button>
 				}
 				if strings.TrimSpace(draft.Recurrence) != "" {

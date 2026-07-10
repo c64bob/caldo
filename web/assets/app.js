@@ -8,6 +8,7 @@
   var undoExpiryTimer = 0;
   var focusRefreshState = { inFlight: false, pending: false, lastRun: 0 };
   var taskMoveDragState = null;
+  var explicitQuickAddPreviewRequests = new WeakSet();
 
   /* ── Toast notification system ───────────────────────────── */
 
@@ -791,6 +792,17 @@
       return focusQuickAddSaveStart(document.querySelector('#quick-add-preview [data-quick-add-save-form]'));
     }
     return false;
+  }
+
+  function rememberQuickAddPreviewFocusIntent(detail) {
+    if (!detail || !detail.xhr) return;
+    var previewForm = closestElement(detail.elt, '.caldo-quick-add-form');
+    if (!previewForm || previewForm.getAttribute('action') !== '/quick-add/preview') return;
+    var requestConfig = detail.requestConfig || {};
+    var triggeringEvent = requestConfig.triggeringEvent || detail.triggeringEvent;
+    if (triggeringEvent && triggeringEvent.type === 'submit') {
+      explicitQuickAddPreviewRequests.add(detail.xhr);
+    }
   }
 
   function pad2(value) {
@@ -2723,6 +2735,7 @@
   });
 
   document.body.addEventListener('htmx:beforeRequest', function (event) {
+    rememberQuickAddPreviewFocusIntent(event.detail);
     var method = ((event.detail && event.detail.requestConfig && event.detail.requestConfig.verb) || '').toUpperCase();
     if (method === 'GET') {
       var target = event.detail && event.detail.target;
@@ -2775,9 +2788,7 @@
   });
 
   document.body.addEventListener('htmx:afterSwap', function (event) {
-    var requestElement = event.detail && event.detail.elt;
     var targetElement = event.detail && event.detail.target instanceof Element ? event.detail.target : null;
-    focusQuickAddPreviewResult(requestElement, targetElement);
     initializeFormErrors(targetElement || document);
     initializeLocalDateTimes(targetElement || document);
     initializeSetupImport(targetElement || document);
@@ -2786,6 +2797,7 @@
   });
 
   document.body.addEventListener('htmx:afterSettle', function (event) {
+    if (!event.detail || !event.detail.xhr || !explicitQuickAddPreviewRequests.has(event.detail.xhr)) return;
     var requestElement = event.detail && event.detail.elt;
     var targetElement = event.detail && event.detail.target instanceof Element ? event.detail.target : null;
     focusQuickAddPreviewResult(requestElement, targetElement);

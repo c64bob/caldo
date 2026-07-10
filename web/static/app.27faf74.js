@@ -72,7 +72,7 @@
 
   /* ── Bulk selection ──────────────────────────────────────── */
 
-  var bulkSelection = { ids: [], lastClicked: null };
+  var bulkSelection = { ids: [], lastClicked: null, running: false };
 
   function bulkSelectedSet() {
     var set = {};
@@ -84,10 +84,12 @@
     var selected = bulkSelectedSet();
     taskRows().forEach(function (row) {
       var id = taskRowID(row);
-      if (selected[id]) {
-        row.classList.add('caldo-task-row-selected');
-      } else {
-        row.classList.remove('caldo-task-row-selected');
+      var isSelected = !!selected[id];
+      row.classList.toggle('caldo-task-row-selected', isSelected);
+      var control = row.querySelector('[data-bulk-select-control]');
+      if (control) {
+        control.checked = isSelected;
+        control.disabled = bulkSelection.running;
       }
     });
     renderBulkBar();
@@ -102,14 +104,17 @@
     if (!existing) {
       existing = document.createElement('div');
       existing.className = 'caldo-bulk-bar';
+      existing.setAttribute('role', 'region');
+      existing.setAttribute('aria-label', 'Mehrfachbearbeitung');
       document.body.appendChild(existing);
     }
     var count = bulkSelection.ids.length;
+    var disabled = bulkSelection.running ? ' disabled' : '';
     existing.innerHTML =
       '<span class="caldo-bulk-bar-count">' + count + ' Aufgabe' + (count === 1 ? '' : 'n') + ' ausgewählt</span>' +
       '<div class="caldo-bulk-bar-actions">' +
-      '<button type="button" class="caldo-button caldo-button-ghost" data-bulk-select-all>Alle abwählen</button>' +
-      '<button type="button" class="caldo-button caldo-button-primary" data-bulk-complete>Erledigen</button>' +
+      '<button type="button" class="caldo-button caldo-button-ghost" data-bulk-select-all' + disabled + '>Alle abwählen</button>' +
+      '<button type="button" class="caldo-button caldo-button-primary" data-bulk-complete' + disabled + '>' + (bulkSelection.running ? 'Speichern ...' : 'Erledigen') + '</button>' +
       '</div>';
   }
 
@@ -124,7 +129,9 @@
   }
 
   function bulkSelectRange(fromID, toID) {
-    var rows = taskRows();
+    var rows = taskRows().filter(function (row) {
+      return !!row.querySelector('[data-bulk-select-control]');
+    });
     var ids = rows.map(taskRowID);
     var startIdx = ids.indexOf(fromID);
     var endIdx = ids.indexOf(toID);
@@ -139,39 +146,105 @@
   }
 
   function clearBulkSelection() {
+    if (bulkSelection.running) return;
     bulkSelection.ids = [];
     bulkSelection.lastClicked = null;
     updateBulkSelectionVisuals();
   }
 
   function bulkCompleteTasks() {
-    if (bulkSelection.ids.length === 0) return;
+    if (bulkSelection.ids.length === 0 || bulkSelection.running) return;
     var ids = bulkSelection.ids.slice();
-    clearBulkSelection();
-    var pending = ids.length;
-    ids.forEach(function (taskID) {
+    bulkSelection.running = true;
+    updateBulkSelectionVisuals();
+    var requests = ids.map(function (taskID) {
       var row = document.querySelector('[data-task-id="' + taskID + '"]');
-      if (!row) { if (--pending <= 0) { showToast(ids.length + ' Aufgaben erledigt.', 'success'); refreshUndoNotification(); } return; }
+      if (!row) return Promise.resolve({ taskID: taskID, ok: false });
       var form = row.querySelector('form[data-task-action-form]');
-      if (!form) { if (--pending <= 0) { showToast(ids.length + ' Aufgaben erledigt.', 'success'); refreshUndoNotification(); } return; }
-      var versionInput = row.querySelector('input[name="expected_version"]');
+      if (!form) return Promise.resolve({ taskID: taskID, ok: false });
+      var versionInput = form.querySelector('input[name="expected_version"]');
       var params = new URLSearchParams();
       params.set('expected_version', versionInput ? versionInput.value : '');
-      fetch(form.getAttribute('action'), {
+      return fetch(form.getAttribute('action'), {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'text/html', 'X-CSRF-Token': csrfToken(), 'X-Tab-ID': tabID },
         body: params.toString()
-      }).then(function (r) { return r.ok; }).then(function (ok) {
-        if (ok) { row.remove(); }
-        if (--pending <= 0) {
-          showToast(ids.length + ' Aufgaben erledigt.', 'success');
-          refreshUndoNotification();
-        }
+      }).then(function (response) {
+        return { taskID: taskID, ok: response.ok, row: row };
       }).catch(function () {
-        if (--pending <= 0) { showToast('Einige Aufgaben konnten nicht erledigt werden.', 'error'); }
+        return { taskID: taskID, ok: false, row: row };
       });
     });
+    Promise.all(requests).then(function (results) {
+      var succeeded = results.filter(function (result) { return result.ok; });
+      var failed = results.filter(function (result) { return !result.ok; });
+      succeeded.forEach(function (result) {
+        if (result.row && document.contains(result.row)) result.row.remove();
+      });
+      bulkSelection.running = false;
+      bulkSelection.ids = failed.map(function (result) { return result.taskID; });
+      bulkSelection.lastClicked = bulkSelection.ids.length ? bulkSelection.ids[bulkSelection.ids.length - 1] : null;
+      updateBulkSelectionVisuals();
+
+      if (succeeded.length > 0) refreshUndoNotification();
+      if (failed.length > 0) {
+        var failedMessage = failed.length === 1 ? '1 Aufgabe konnte nicht erledigt werden.' : failed.length + ' Aufgaben konnten nicht erledigt werden.';
+        if (succeeded.length > 0) {
+          failedMessage = succeeded.length + ' Aufgabe' + (succeeded.length === 1 ? '' : 'n') + ' erledigt, ' + failedMessage;
+        }
+        showToast(failedMessage, 'error');
+        return;
+      }
+      showToast(succeeded.length + ' Aufgabe' + (succeeded.length === 1 ? '' : 'n') + ' erledigt.', 'success');
+    });
+  }
+
+  function activateBulkSelection(row, extendRange) {
+    var taskID = taskRowID(row);
+    if (!taskID || !row.querySelector('[data-bulk-select-control]') || bulkSelection.running) return false;
+    if (extendRange && bulkSelection.lastClicked) {
+      bulkSelectRange(bulkSelection.lastClicked, taskID);
+    } else {
+      toggleBulkSelect(taskID);
+    }
+    bulkSelection.lastClicked = taskID;
+    return true;
+  }
+
+  function handleBulkSelectionClick(event) {
+    var clearButton = closestElement(event.target, '[data-bulk-select-all]');
+    if (clearButton) {
+      event.preventDefault();
+      clearBulkSelection();
+      return true;
+    }
+    var completeButton = closestElement(event.target, '[data-bulk-complete]');
+    if (completeButton) {
+      event.preventDefault();
+      bulkCompleteTasks();
+      return true;
+    }
+
+    var row = closestElement(event.target, '[data-task-id]');
+    if (!row) return false;
+    var explicitControl = closestElement(event.target, '[data-bulk-select-control]');
+    var modifierSelection = event.shiftKey || event.ctrlKey || event.metaKey;
+    if ((explicitControl || modifierSelection) && row.querySelector('[data-bulk-select-control]')) {
+      event.preventDefault();
+      activateBulkSelection(row, event.shiftKey);
+      return true;
+    }
+    if (bulkSelection.ids.length > 0) clearBulkSelection();
+    return false;
+  }
+
+  function handleBulkSelectionKeydown(event) {
+    var control = closestElement(event.target, '[data-bulk-select-control]');
+    if (!control || (event.key !== ' ' && event.key !== 'Enter')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    activateBulkSelection(control.closest('[data-task-id]'), event.shiftKey);
   }
 
   /* ── Task hover preview ──────────────────────────────────── */
@@ -2928,6 +3001,7 @@
     submitForm(form);
   }, true);
   document.addEventListener('submit', handleQuickAddSaveSubmit, true);
+  document.addEventListener('keydown', handleBulkSelectionKeydown, true);
 
   document.addEventListener('dragstart', function (event) {
     var row = closestElement(event.target, '[data-task-drag-move]');
@@ -2985,6 +3059,8 @@
   document.addEventListener('dragend', clearTaskMoveDragState);
 
   document.addEventListener('click', function (event) {
+    if (handleBulkSelectionClick(event)) return;
+
     var quickAddAppendLabel = closestElement(event.target, '[data-quick-add-append-label]');
     if (quickAddAppendLabel) {
       event.preventDefault();
@@ -3145,51 +3221,6 @@
     var dialog = closeButton.closest('dialog');
     if (dialog) {
       closeDialog(dialog);
-    }
-  }, true);
-
-  /* ── Bulk selection click handler ─────────────────────────── */
-
-  document.addEventListener('click', function (event) {
-    var bulkSelectAll = closestElement(event.target, '[data-bulk-select-all]');
-    if (bulkSelectAll) {
-      event.preventDefault();
-      clearBulkSelection();
-      return;
-    }
-
-    var bulkComplete = closestElement(event.target, '[data-bulk-complete]');
-    if (bulkComplete) {
-      event.preventDefault();
-      bulkCompleteTasks();
-      return;
-    }
-
-    var taskRow = closestElement(event.target, '[data-task-id]');
-    if (!taskRow) return;
-    // Skip if clicking a link, button, form control, or detail/complete/delete open
-    if (closestElement(event.target, 'a, button, input, select, textarea, label, [data-task-detail-open], [data-task-complete-open], [data-task-delete-open]')) return;
-
-    var taskID = taskRowID(taskRow);
-    if (!taskID) return;
-
-    if (event.shiftKey && bulkSelection.lastClicked) {
-      event.preventDefault();
-      bulkSelectRange(bulkSelection.lastClicked, taskID);
-      bulkSelection.lastClicked = taskID;
-      return;
-    }
-
-    if (event.ctrlKey || event.metaKey) {
-      event.preventDefault();
-      toggleBulkSelect(taskID);
-      bulkSelection.lastClicked = taskID;
-      return;
-    }
-
-    // Single click without modifier: clear selection if any active
-    if (bulkSelection.ids.length > 0 && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
-      clearBulkSelection();
     }
   }, true);
 

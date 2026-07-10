@@ -186,6 +186,16 @@ templ TaskRow(task TaskRowView) {
 							Details
 						</button>
 					}
+					if taskCanBulkSelect(task) {
+						<label class="caldo-task-select-control" title={ taskBulkSelectionLabel(task) }>
+							<input
+								type="checkbox"
+								class="caldo-check caldo-task-select-input"
+								aria-label={ taskBulkSelectionLabel(task) }
+								data-bulk-select-control
+							/>
+						</label>
+					}
 					</div>
 					if taskRowDescriptionVisible(ctx, task) {
 						<div class={ "caldo-task-description", taskRowDescriptionClass(ctx) }>@TaskDescriptionMarkdown(taskRowDescription(task))</div>

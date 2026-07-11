@@ -37,6 +37,7 @@ type TaskRowView struct {
 	RRule            string
 	Attachments      []model.Attachment
 	ProjectOptions   []TaskProjectOption
+	CreatedAt        string
 }
 
 // TaskProjectOption contains one project selectable from inline task editing.

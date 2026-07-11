@@ -70,5 +70,6 @@ func taskRowFromDatedRow(row db.DatedTaskViewRow, projectOptions []view.TaskProj
 		RRule:            fields.RRule,
 		Attachments:      fields.Attachments,
 		ProjectOptions:   projectOptions,
+		CreatedAt:        row.CreatedAt,
 	}
 }

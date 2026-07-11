@@ -70,6 +70,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await gotoApp(page, '/search?q=Stage');
   await expectCurrentView(page, 'Suche');
   await expect(page.locator('[data-search-results]').filter({ hasText: 'Stage Seed Task' })).toBeVisible();
+  await exerciseTaskListDisplayPreferences(page);
   await exerciseKeyboardShortcuts(page);
   await exerciseQuickAddOverlay(page);
   await exerciseKeyboardFocusAccessibility(page, testInfo);
@@ -685,6 +686,44 @@ async function exerciseKeyboardFocusAccessibility(page, testInfo) {
   await expect(detailButton).toBeFocused();
 
   await page.screenshot({ path: `${browserArtifactDir(testInfo)}/accessibility-focus-dialogs.png`, fullPage: true, caret: 'initial' });
+}
+
+async function exerciseTaskListDisplayPreferences(page) {
+  await page.setViewportSize(mobileViewport);
+  await ensureBrowserCSRFCookie(page);
+
+  const display = page.locator('[data-task-display]');
+  const trigger = display.locator('summary');
+  await expect(trigger).toBeVisible();
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+
+  const form = display.locator('[data-task-display-form]');
+  await expect(form).toBeVisible();
+  await page.locator('[data-live-search-input]').fill('Stage Seed');
+  await expect(form.locator('[name="search_query"]')).toHaveValue('Stage Seed');
+  await form.locator('[name="group_by"]').selectOption('priority');
+  await form.locator('[name="sort_by"]').selectOption('name');
+  await expect(form.locator('[data-task-display-order-field]')).toBeVisible();
+  await form.locator('[name="sort_order"]').selectOption('desc');
+  await expectElementHorizontallyWithinViewport(form, mobileViewport);
+
+  await form.getByRole('button', { name: 'Anwenden' }).click();
+  await expect(page).toHaveURL(/\/search\?q=Stage\+Seed$/);
+  await expect(page.locator('[data-task-display] summary')).toContainText('Priorität');
+  await expect(page.locator('[data-task-display] summary')).toContainText('Name');
+  await expect(page.locator('[data-task-display] summary')).toContainText('Absteigend');
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('[data-task-display] summary').click();
+  await expect(page.locator('[data-task-display-form] [name="group_by"]')).toHaveValue('priority');
+  await expect(page.locator('[data-task-display-form] [name="sort_by"]')).toHaveValue('name');
+  await expect(page.locator('[data-task-display-form] [name="sort_order"]')).toHaveValue('desc');
+
+  await page.getByRole('button', { name: 'Zurücksetzen' }).click();
+  await expect(page).toHaveURL(/\/search\?q=Stage\+Seed$/);
+  await expect(page.locator('[data-task-display] summary span')).toHaveCount(0);
+  await page.setViewportSize(desktopViewport);
 }
 
 async function exerciseMobileNavigationAndSettings(page, testInfo) {

@@ -829,6 +829,84 @@
 		@apply space-y-0;
 	}
 
+	.caldo-task-display-toolbar {
+		@apply flex min-h-9 justify-end;
+	}
+
+	.caldo-task-display {
+		@apply relative;
+	}
+
+	.caldo-task-display > summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.caldo-task-display-trigger {
+		@apply flex h-9 max-w-full cursor-pointer list-none items-center gap-2 rounded-md border px-2.5 text-sm font-medium;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border);
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-task-display-trigger:hover,
+	.caldo-task-display[open] > .caldo-task-display-trigger {
+		background: var(--caldo-surface-muted);
+		color: var(--caldo-text);
+	}
+
+	.caldo-task-display-trigger:focus-visible {
+		outline: 2px solid var(--caldo-focus);
+		outline-offset: 2px;
+		box-shadow: var(--caldo-focus-ring);
+	}
+
+	.caldo-task-display-trigger svg {
+		@apply h-4 w-4 shrink-0;
+	}
+
+	.caldo-task-display-trigger span {
+		@apply max-w-56 truncate;
+	}
+
+	.caldo-task-display-menu {
+		@apply absolute right-0 z-30 mt-2 grid w-[min(18rem,calc(100vw-2rem))] gap-3 rounded-md border p-3 shadow-lg;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-task-display-field {
+		@apply grid gap-1 text-sm font-medium;
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-task-display-actions {
+		@apply flex flex-wrap justify-end gap-2 border-t pt-3;
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-task-groups {
+		@apply space-y-4;
+	}
+
+	.caldo-task-group {
+		@apply min-w-0;
+	}
+
+	.caldo-task-group-heading {
+		@apply mb-1 flex min-h-7 items-center gap-2 border-b pb-1;
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-task-group-heading h2 {
+		@apply min-w-0 truncate text-sm font-semibold;
+		color: var(--caldo-text);
+	}
+
+	.caldo-task-group-heading span {
+		@apply text-xs tabular-nums;
+		color: var(--caldo-text-subtle);
+	}
+
 	.caldo-list-row {
 		@apply rounded-lg p-2.5 transition-colors duration-100;
 		background: var(--caldo-surface);

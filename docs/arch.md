@@ -397,6 +397,7 @@ Die folgende Tabelle ist die kanonische Routing-Übersicht für den MVP. Sie leg
 | `DELETE` | `/filters/{filter_id}` | Gespeicherten Filter löschen | HTML/Fragment | ja | ja | ja | ja |
 | `GET` | `/favorites` | Favoritenansicht | HTML | ja | nein | optional | nein |
 | `GET` | `/search` | Globale Suche und Suchergebnisse | HTML/Fragment | ja | nein | optional | nein |
+| `POST` | `/task-view-preferences` | Lokale Sortierung und Gruppierung einer Aufgabenansicht speichern oder zurücksetzen | Redirect/HTMX | ja | ja | optional | nein |
 | `GET` | `/tasks/{task_id}` | Task-Detailansicht oder editierbares Fragment | HTML/Fragment | ja | nein | optional | nein |
 | `POST` | `/tasks` | Aufgabe erstellen, inklusive Quick Add | HTML/Fragment | ja | ja | ja | nein |
 | `PATCH` | `/tasks/{task_id}` | Aufgabe bearbeiten | HTML/Fragment | ja | ja | ja | ja |
@@ -1010,6 +1011,31 @@ Hinweise:
   Wenn ein Projekt oder Label inzwischen gelöscht wurde, ergibt die entsprechende Bedingung
   leere Ergebnisse (konsistent mit SQL-Compiler-Invariante 5 in Abschnitt 20.5).
 - `server_version` dient für Optimistic Locking bei UI-Änderungen an gespeicherten Filtern.
+
+### 9.8 Task View Preferences
+
+Sortierung und Gruppierung sind lokale Anzeigeeinstellungen. Sie werden pro statischer Ansicht beziehungsweise pro Projekt, Label oder gespeichertem Filter abgelegt und niemals nach CalDAV synchronisiert.
+
+```sql
+CREATE TABLE task_view_preferences (
+  view_kind  TEXT NOT NULL,
+  view_id    TEXT NOT NULL DEFAULT '',
+  sort_by    TEXT NOT NULL DEFAULT 'default',
+  sort_order TEXT NOT NULL DEFAULT 'asc',
+  group_by   TEXT NOT NULL DEFAULT 'none',
+  updated_at DATETIME NOT NULL,
+  PRIMARY KEY (view_kind, view_id)
+);
+```
+
+Invarianten:
+
+1. Statische Ansichten und die Suche verwenden eine leere `view_id`; Projekt-, Label- und Filteransichten verwenden ihre jeweilige ID.
+2. `sort_by` ist `default`, `due`, `priority`, `name` oder `added`.
+3. `sort_order` ist `asc` oder `desc`; bei `sort_by = 'default'` wird `asc` gespeichert.
+4. `group_by` ist `none`, `project`, `due`, `added` oder `priority`.
+5. Nicht sinnvolle Gruppierungen werden im Handler abgelehnt und in der betreffenden Ansicht nicht angeboten.
+6. Das Zurücksetzen löscht die Präferenzzeile; die Ansicht fällt damit auf ihr bestehendes Standardverhalten zurück.
 
 ---
 

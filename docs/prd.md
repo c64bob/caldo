@@ -426,7 +426,16 @@ Eine Aufgabe besteht mindestens aus:
 - Die Demnächst-Ansicht zeigt Aufgaben in einem konfigurierbaren Zeitraum.
 - Default-Zeitraum: 7 Tage.
 
-### 8.5 Erledigte Aufgaben
+### 8.5 Sortierung und Gruppierung
+
+- Aufgabenlisten bieten pro Ansicht lokale Anzeigeoptionen für Gruppierung, Sortierung und Sortierrichtung.
+- Sortiert werden kann nach dem Ansichtsstandard, Fälligkeitsdatum, Priorität, Name und Hinzufügedatum.
+- Gruppiert werden kann nach Projekt, Fälligkeitsdatum, Hinzufügedatum und Priorität, soweit das Kriterium in der jeweiligen Ansicht sinnvoll ist.
+- Hauptaufgaben und ihre Unteraufgaben bleiben bei Sortierung und Gruppierung zusammen; die Hauptaufgabe bestimmt Position und Gruppe.
+- Die Auswahl wird pro Ansicht gespeichert und kann auf den jeweiligen Ansichtsstandard zurückgesetzt werden.
+- Anzeigeoptionen verändern keine VTODO-Inhalte und werden nicht zu CalDAV synchronisiert.
+
+### 8.6 Erledigte Aufgaben
 
 - Erledigen setzt die Aufgabe in CalDAV auf `completed`.
 - Erledigte Aufgaben sind standardmäßig ausgeblendet.
@@ -440,14 +449,14 @@ Eine Aufgabe besteht mindestens aus:
   - Aktion abbrechen.
 - Die gewählte Aktion muss wie jede andere Änderung sofort zu CalDAV geschrieben werden.
 
-### 8.6 Löschen
+### 8.7 Löschen
 
 - Das Löschen einer Aufgabe ist endgültig.
 - Vor dem Löschen einer Aufgabe reicht eine normale Bestätigung.
 - Es gibt keinen Papierkorb.
 - Gelöschte Aufgaben können bei Konflikten dennoch zu Konfliktfällen führen.
 
-### 8.7 Undo
+### 8.8 Undo
 
 Eine einfache Undo-Funktion für die letzte Undo-fähige Aktion ist Pflicht.
 

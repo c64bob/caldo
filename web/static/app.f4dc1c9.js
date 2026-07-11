@@ -2997,6 +2997,12 @@
   });
 
   document.addEventListener('input', handleTaskRecurrenceControlEvent, true);
+  document.addEventListener('input', function (event) {
+    var searchInput = closestElement(event.target, '[data-live-search-input]');
+    if (!searchInput) return;
+    var searchQuery = document.querySelector('[data-task-display-form] input[name="search_query"]');
+    if (searchQuery) searchQuery.value = searchInput.value;
+  }, true);
   document.addEventListener('change', handleTaskRecurrenceControlEvent, true);
   document.addEventListener('input', handleQuickAddRecurrenceInputEvent, true);
   document.addEventListener('change', handleQuickAddRecurrenceInputEvent, true);
@@ -3004,6 +3010,15 @@
   document.addEventListener('change', handleConflictManualControlEvent, true);
   document.addEventListener('change', handleConflictSplitConfirmationEvent, true);
   document.addEventListener('change', function (event) {
+    var taskDisplaySort = closestElement(event.target, '[data-task-display-sort]');
+    if (taskDisplaySort) {
+      var taskDisplayForm = taskDisplaySort.closest('[data-task-display-form]');
+      var orderField = taskDisplayForm && taskDisplayForm.querySelector('[data-task-display-order-field]');
+      var orderSelect = taskDisplayForm && taskDisplayForm.querySelector('[data-task-display-order]');
+      if (orderField) orderField.hidden = taskDisplaySort.value === 'default';
+      if (orderSelect && taskDisplaySort.value === 'default') orderSelect.value = 'asc';
+      return;
+    }
     var inlineEditAutosave = closestElement(event.target, '[data-inline-task-edit-autosave]');
     if (inlineEditAutosave && !inlineEditAutosave.disabled) {
       submitForm(inlineEditAutosave.closest('[data-inline-task-edit-form]'));

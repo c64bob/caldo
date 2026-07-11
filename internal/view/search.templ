@@ -4,28 +4,40 @@ import "strings"
 
 templ SearchPage(query string, results []TaskRowView, create InlineTaskCreateView, saveFilter SearchSaveFilterView) {
 	<section class="caldo-page">
-		<form method="get" action="/search" class="space-y-2" role="search" aria-label="Globale Suche">
-			<label for="global-search" class="caldo-label">Suche nach Aufgaben, #Projekt oder @Label</label>
-			<input
-				id="global-search"
-				type="search"
-				name="q"
-				value={ query }
-				class="caldo-input"
-				placeholder="z. B. Rechnung #Finanzen @Büro"
-				autofocus
-				accesskey="k"
-				hx-get="/search/results"
-				hx-trigger="input changed delay:350ms, search"
-				hx-target="#search-live-results"
-				hx-swap="outerHTML"
-				hx-push-url="false"
-				data-live-search-input
-			/>
-			<p class="caldo-muted">Tastaturkürzel: Alt+Shift+K (Browser-Standard für accesskey).</p>
-		</form>
+		@SearchForm(query)
 		@SearchLiveResults(query, results, create, saveFilter)
 	</section>
+}
+
+templ ConfigurableSearchPage(query string, groups []TaskListGroupView, display TaskListDisplayView, create InlineTaskCreateView, saveFilter SearchSaveFilterView) {
+	<section class="caldo-page">
+		@SearchForm(query)
+		@TaskListDisplayControls(display)
+		@ConfigurableSearchLiveResults(query, groups, create, saveFilter)
+	</section>
+}
+
+templ SearchForm(query string) {
+	<form method="get" action="/search" class="space-y-2" role="search" aria-label="Globale Suche">
+		<label for="global-search" class="caldo-label">Suche nach Aufgaben, #Projekt oder @Label</label>
+		<input
+			id="global-search"
+			type="search"
+			name="q"
+			value={ query }
+			class="caldo-input"
+			placeholder="z. B. Rechnung #Finanzen @Büro"
+			autofocus
+			accesskey="k"
+			hx-get="/search/results"
+			hx-trigger="input changed delay:350ms, search"
+			hx-target="#search-live-results"
+			hx-swap="outerHTML"
+			hx-push-url="false"
+			data-live-search-input
+		/>
+		<p class="caldo-muted">Tastaturkürzel: Alt+Shift+K (Browser-Standard für accesskey).</p>
+	</form>
 }
 
 templ SearchLiveResults(query string, results []TaskRowView, create InlineTaskCreateView, saveFilter SearchSaveFilterView) {
@@ -43,6 +55,22 @@ templ SearchLiveResults(query string, results []TaskRowView, create InlineTaskCr
 					@TaskRow(result)
 				}
 			</ul>
+		}
+		@InlineTaskCreate(create)
+	</div>
+}
+
+templ ConfigurableSearchLiveResults(query string, groups []TaskListGroupView, create InlineTaskCreateView, saveFilter SearchSaveFilterView) {
+	<div id="search-live-results" data-search-live-results aria-live="polite">
+		if saveFilter.Enabled {
+			@SearchSaveFilterForm(saveFilter)
+		}
+		if strings.TrimSpace(query) == "" {
+			@EmptyStateWithAction("Noch keine Suche", "Gib einen Suchbegriff ein.", "Aufgabe erstellen", "/quick-add")
+		} else if len(groups) == 0 {
+			@EmptyState("Keine aktiven Aufgaben gefunden", "Passe den Suchbegriff oder Projekt- und Labeltokens an.")
+		} else {
+			@TaskListGroups(groups, "search")
 		}
 		@InlineTaskCreate(create)
 	</div>

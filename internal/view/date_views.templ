@@ -14,3 +14,107 @@ templ DateScopedTasksPage(heading string, emptyMessage string, tasks []TaskRowVi
 		@InlineTaskCreate(create)
 	</section>
 }
+
+templ ConfigurableTaskListPage(heading string, emptyMessage string, groups []TaskListGroupView, display TaskListDisplayView, create InlineTaskCreateView) {
+	<section class="caldo-page">
+		@TaskListDisplayControls(display)
+		if len(groups) == 0 {
+			@EmptyStateWithAction(emptyMessage, "Es gibt in dieser Ansicht gerade nichts zu bearbeiten.", "Aufgabe erstellen", "/quick-add")
+		} else {
+			@TaskListGroups(groups, "date")
+		}
+		@InlineTaskCreate(create)
+	</section>
+}
+
+templ TaskListDisplayControls(display TaskListDisplayView) {
+	<div class="caldo-task-display-toolbar">
+		<details class="caldo-task-display" data-task-display>
+			<summary class="caldo-task-display-trigger" title={ taskListDisplayControlTitle(ctx) } aria-label={ taskListDisplayControlTitle(ctx) }>
+				<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M4 21v-7"></path>
+					<path d="M4 10V3"></path>
+					<path d="M12 21v-9"></path>
+					<path d="M12 8V3"></path>
+					<path d="M20 21v-5"></path>
+					<path d="M20 12V3"></path>
+					<path d="M1 14h6"></path>
+					<path d="M9 8h6"></path>
+					<path d="M17 16h6"></path>
+				</svg>
+				if taskListDisplaySummary(ctx, display) != "" {
+					<span>{ taskListDisplaySummary(ctx, display) }</span>
+				}
+			</summary>
+			<form
+				class="caldo-task-display-menu"
+				method="post"
+				action="/task-view-preferences"
+				hx-post="/task-view-preferences"
+				hx-swap="none"
+				hx-disabled-elt="find button, find select"
+				hx-headers={ "{\"X-CSRF-Token\":\"" + CSRFToken(ctx) + "\"}" }
+				data-task-display-form
+			>
+				<input type="hidden" name="view_kind" value={ display.Preference.ViewKind }/>
+				<input type="hidden" name="view_id" value={ display.Preference.ViewID }/>
+				<input type="hidden" name="search_query" value={ display.SearchQuery }/>
+				<label class="caldo-task-display-field">
+					<span>{ taskListDisplayFieldLabel(ctx, "group") }</span>
+					<select class="caldo-select" name="group_by">
+						for _, value := range taskListGroupValues(display) {
+							<option value={ value } selected?={ value == display.Preference.GroupBy }>{ taskListDisplayLabel(ctx, value) }</option>
+						}
+					</select>
+				</label>
+				<label class="caldo-task-display-field">
+					<span>{ taskListDisplayFieldLabel(ctx, "sort") }</span>
+					<select class="caldo-select" name="sort_by" data-task-display-sort>
+						for _, value := range taskListSortValues() {
+							<option value={ value } selected?={ value == display.Preference.SortBy }>{ taskListDisplayLabel(ctx, value) }</option>
+						}
+					</select>
+				</label>
+				<label class="caldo-task-display-field" hidden?={ !taskListDisplayOrderVisible(display) } data-task-display-order-field>
+					<span>{ taskListDisplayFieldLabel(ctx, "order") }</span>
+					<select class="caldo-select" name="sort_order" data-task-display-order>
+						<option value="asc" selected?={ display.Preference.SortOrder == "asc" }>{ taskListDisplayLabel(ctx, "asc") }</option>
+						<option value="desc" selected?={ display.Preference.SortOrder == "desc" }>{ taskListDisplayLabel(ctx, "desc") }</option>
+					</select>
+				</label>
+				<div class="caldo-task-display-actions">
+					<button type="submit" class="caldo-button caldo-button-primary">{ taskListDisplayActionLabel(ctx, "apply") }</button>
+					<button type="submit" name="action" value="reset" class="caldo-button caldo-button-ghost" disabled?={ taskListDisplayIsDefault(display) }>{ taskListDisplayActionLabel(ctx, "reset") }</button>
+				</div>
+			</form>
+		</details>
+	</div>
+}
+
+templ TaskListGroups(groups []TaskListGroupView, source string) {
+	<div class="caldo-task-groups" data-task-groups>
+		for _, group := range groups {
+			<section class="caldo-task-group" data-task-group={ group.Key }>
+				if group.Label != "" {
+					<header class="caldo-task-group-heading">
+						<h2>{ group.Label }</h2>
+						<span>{ taskListGroupCountLabel(group) }</span>
+					</header>
+				}
+				if source == "search" {
+					<ul class="caldo-list caldo-task-list" data-search-results>
+						for _, task := range group.Tasks {
+							@TaskRow(task)
+						}
+					</ul>
+				} else {
+					<ul class="caldo-list caldo-task-list" data-date-view-results>
+						for _, task := range group.Tasks {
+							@TaskRow(task)
+						}
+					</ul>
+				}
+			</section>
+		}
+	</div>
+}

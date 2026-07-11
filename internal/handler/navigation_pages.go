@@ -9,6 +9,7 @@ import (
 
 	"caldo/internal/caldav"
 	"caldo/internal/db"
+	"caldo/internal/model"
 	"caldo/internal/view"
 	"github.com/go-chi/chi/v5"
 )
@@ -73,8 +74,14 @@ func ProjectTasksPage(deps dateViewDependencies) http.HandlerFunc {
 			Placeholder: "Aufgabe in " + project.DisplayName + " hinzufügen",
 		}
 
+		display, groups, err := datedTaskListPresentation(r.Context(), deps.database, taskListScope{Kind: model.TaskViewProject, ID: project.ID}, tasks, projectOptions, reference)
+		if err != nil {
+			renderPageError(w, r, project.DisplayName, "Projekt laden", http.StatusInternalServerError)
+			return
+		}
+
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout(project.DisplayName, view.DateScopedTasksPage(project.DisplayName, "Keine offenen Aufgaben in diesem Projekt.", datedTaskRows(tasks, projectOptions, reference), create)).Render(ctx, w); err != nil {
+		if err := view.BaseLayout(project.DisplayName, view.ConfigurableTaskListPage(project.DisplayName, "Keine offenen Aufgaben in diesem Projekt.", groups, display, create)).Render(ctx, w); err != nil {
 			http.Error(w, "render page", http.StatusInternalServerError)
 		}
 	}
@@ -220,9 +227,15 @@ func LabelTasksPage(deps dateViewDependencies) http.HandlerFunc {
 			return
 		}
 
+		display, groups, err := datedTaskListPresentation(r.Context(), deps.database, taskListScope{Kind: model.TaskViewLabel, ID: label.ID}, tasks, projectOptions, reference)
+		if err != nil {
+			renderPageError(w, r, label.Name, "Label laden", http.StatusInternalServerError)
+			return
+		}
+
 		ctx := view.WithNavigation(r.Context(), navigationSnapshotViewWithActiveLabel(snapshot, label.ID))
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout(label.Name, view.DateScopedTasksPage(label.Name, "Keine Aufgaben mit diesem Label.", datedTaskRows(tasks, projectOptions, reference), view.InlineTaskCreateView{})).Render(ctx, w); err != nil {
+		if err := view.BaseLayout(label.Name, view.ConfigurableTaskListPage(label.Name, "Keine Aufgaben mit diesem Label.", groups, display, view.InlineTaskCreateView{})).Render(ctx, w); err != nil {
 			http.Error(w, "render page", http.StatusInternalServerError)
 		}
 	}

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"caldo/internal/db"
+	"caldo/internal/model"
 	"caldo/internal/view"
 	"github.com/go-chi/chi/v5"
 )
@@ -69,8 +70,14 @@ func SavedFilterTasks(deps savedFilterDependencies) http.HandlerFunc {
 			return
 		}
 
+		display, groups, err := datedTaskListPresentation(r.Context(), deps.database, taskListScope{Kind: model.TaskViewFilter, ID: filter.ID}, results, projectOptions, reference)
+		if err != nil {
+			renderPageError(w, r, filter.Name, "Filter laden", http.StatusInternalServerError)
+			return
+		}
+
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout(filter.Name, view.DateScopedTasksPage(filter.Name, "Keine Aufgaben für diesen Filter.", datedTaskRows(results, projectOptions, reference), view.InlineTaskCreateView{})).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout(filter.Name, view.ConfigurableTaskListPage(filter.Name, "Keine Aufgaben für diesen Filter.", groups, display, view.InlineTaskCreateView{})).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}

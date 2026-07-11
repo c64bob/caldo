@@ -17,7 +17,8 @@ type searchDependencies struct {
 
 type searchPageData struct {
 	query      string
-	items      []view.TaskRowView
+	groups     []view.TaskListGroupView
+	display    view.TaskListDisplayView
 	create     view.InlineTaskCreateView
 	saveFilter view.SearchSaveFilterView
 }
@@ -32,7 +33,7 @@ func Search(deps searchDependencies) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout("Suche", view.SearchPage(data.query, data.items, data.create, data.saveFilter)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Suche", view.ConfigurableSearchPage(data.query, data.groups, data.display, data.create, data.saveFilter)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -48,7 +49,7 @@ func SearchResults(deps searchDependencies) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.SearchLiveResults(data.query, data.items, data.create, data.saveFilter).Render(r.Context(), w); err != nil {
+		if err := view.ConfigurableSearchLiveResults(data.query, data.groups, data.create, data.saveFilter).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -94,12 +95,19 @@ func loadSearchPageData(ctx context.Context, database *db.Database, rawQuery str
 			RRule:            fields.RRule,
 			Attachments:      fields.Attachments,
 			ProjectOptions:   projectOptions,
+			CreatedAt:        result.CreatedAt,
 		})
+	}
+
+	display, groups, err := loadTaskListPresentation(ctx, database, taskListScope{Kind: model.TaskViewSearch, SearchQuery: query}, items, time.Now())
+	if err != nil {
+		return searchPageData{}, err
 	}
 
 	return searchPageData{
 		query:      query,
-		items:      items,
+		groups:     groups,
+		display:    display,
 		create:     inlineCreateForSearch(ctx, database, query),
 		saveFilter: saveFilterForSearchQuery(query),
 	}, nil

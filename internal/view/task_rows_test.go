@@ -301,6 +301,7 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 		`aria-label="Favorit entfernen"`,
 		`aria-pressed="true"`,
 		`data-task-action-form`,
+		`hx-disabled-elt="find input[data-task-completion-checkbox]"`,
 		`data-task-action-error`,
 		`data-task-delete-open`,
 		`aria-controls="task-delete-task-1"`,

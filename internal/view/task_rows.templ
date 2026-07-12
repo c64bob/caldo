@@ -31,7 +31,7 @@ templ TaskRow(task TaskRowView) {
 				action={ taskCompletionPath(task) }
 				hx-post={ taskCompletionPath(task) }
 				hx-swap="none"
-				hx-disabled-elt="find button"
+				hx-disabled-elt="find input[data-task-completion-checkbox]"
 				hx-headers={ taskCSRFHeaders(ctx) }
 				data-refresh-after-write="true"
 				data-task-action-form

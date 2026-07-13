@@ -432,6 +432,7 @@ Eine Aufgabe besteht mindestens aus:
 - Sortiert werden kann nach dem Ansichtsstandard, Fälligkeitsdatum, Priorität, Name und Hinzufügedatum.
 - Gruppiert werden kann nach Projekt, Fälligkeitsdatum, Hinzufügedatum und Priorität, soweit das Kriterium in der jeweiligen Ansicht sinnvoll ist.
 - Hauptaufgaben und ihre Unteraufgaben bleiben bei Sortierung und Gruppierung zusammen; die Hauptaufgabe bestimmt Position und Gruppe.
+- Passt nur eine Unteraufgabe auf die aktuelle Ansicht, bleibt sie ein eigenständiges Filterergebnis ohne Einrückung und verweist anklickbar auf ihre nicht eingeblendete Elternaufgabe.
 - Die Auswahl wird pro Ansicht gespeichert und kann auf den jeweiligen Ansichtsstandard zurückgesetzt werden.
 - Anzeigeoptionen verändern keine VTODO-Inhalte und werden nicht zu CalDAV synchronisiert.
 

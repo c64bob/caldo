@@ -354,12 +354,24 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await actionDetailDialog.getByRole('button', { name: 'Details schließen' }).click();
 
   await gotoApp(page, '/search?q=E2E%20Browser%20Subtask');
-  const subtaskRow = page.locator('[data-task-id].caldo-task-row-subtask').filter({ hasText: 'E2E Browser Subtask' }).first();
+  const subtaskRow = page.locator('.caldo-task-row[data-task-id]').filter({ hasText: 'E2E Browser Subtask' }).first();
   await expect(subtaskRow).toBeVisible();
+  await expect(subtaskRow).not.toHaveClass(/caldo-task-row-subtask/);
   await expect(subtaskRow).toContainText('Unteraufgabe von E2E Panel Edited');
   await expect(subtaskRow.locator('.caldo-task-checkbox-label[aria-label="Aufgabe erledigen"]')).toBeVisible();
   await expect(subtaskRow.getByRole('checkbox', { name: 'Aufgabe erledigen' })).toBeAttached();
   await expect(subtaskRow.getByRole('button', { name: 'Unteraufgabe hinzufügen' })).toHaveCount(0);
+  const parentReference = subtaskRow.getByRole('button', { name: 'Elternaufgabe öffnen: E2E Panel Edited' });
+  await parentReference.click();
+  const parentContextDialog = page.locator('[data-task-parent-context-row] > [data-task-detail-dialog]');
+  await expect(parentContextDialog).toBeVisible();
+  await expect(parentContextDialog.locator(':scope > .caldo-task-detail-shell > [data-task-detail-form] [data-task-detail-title]')).toHaveValue('E2E Panel Edited');
+  await parentContextDialog.locator(':scope > .caldo-task-detail-shell > .caldo-task-detail-header [data-task-detail-close]').click();
+  await expect(parentContextDialog).toHaveCount(0);
+  await expect(parentReference).toBeFocused();
+
+  await gotoApp(page, '/search?q=E2E');
+  await expect(page.locator('.caldo-task-row[data-task-id]').filter({ hasText: 'E2E Browser Subtask' }).first()).toHaveClass(/caldo-task-row-subtask/);
 
   await gotoApp(page, '/search?q=E2E%20Panel%20Edited');
   await expect(page.locator('.caldo-task-row-subtask')).toHaveCount(0);

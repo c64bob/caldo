@@ -237,8 +237,16 @@ func TestSavedFilterTasksRendersMatchingTasks(t *testing.T) {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
 	}
 	body := responseRecorder.Body.String()
-	if !strings.Contains(body, "Heute Büro") || !strings.Contains(body, "Heute Aufgabe") || strings.Contains(body, "Morgen Aufgabe") {
+	if !strings.Contains(body, "Heute Büro") || !strings.Contains(body, "Heute Aufgabe") || !strings.Contains(body, "Heute Unteraufgabe") || strings.Contains(body, `data-task-id="task-tomorrow"`) {
 		t.Fatalf("unexpected saved filter task page: %q", body)
+	}
+	for _, want := range []string{"Unteraufgabe von Morgen Aufgabe", `data-task-parent-open`, `data-parent-task-id="task-tomorrow"`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("saved filter orphaned child missing %q: %q", want, body)
+		}
+	}
+	if strings.Contains(body, `caldo-task-row-subtask`) {
+		t.Fatalf("saved filter child must not be indented without its parent: %q", body)
 	}
 }
 
@@ -301,17 +309,22 @@ INSERT INTO projects (id, calendar_href, display_name, sync_strategy, created_at
 VALUES ('project-1', '/cal/work/', 'Work', 'fullscan', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 INSERT INTO tasks (
 	id, project_id, uid, href, etag, server_version, title, description, status, raw_vtodo, base_vtodo,
-	priority, label_names, project_name, sync_status, due_date, created_at, updated_at
+	priority, label_names, project_name, sync_status, due_date, parent_id, created_at, updated_at
 ) VALUES
 (
 	'task-today', 'project-1', 'uid-today', '/cal/work/today.ics', '"etag-1"', 1,
 	'Heute Aufgabe', '', 'needs-action', 'BEGIN:VTODO\nUID:uid-today\nEND:VTODO',
-	'BEGIN:VTODO\nUID:uid-today\nEND:VTODO', NULL, 'Büro,urgent', 'Work', 'synced', '2026-04-28', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+	'BEGIN:VTODO\nUID:uid-today\nEND:VTODO', NULL, 'Büro,urgent', 'Work', 'synced', '2026-04-28', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 ),
 (
 	'task-tomorrow', 'project-1', 'uid-tomorrow', '/cal/work/tomorrow.ics', '"etag-2"', 1,
 	'Morgen Aufgabe', '', 'needs-action', 'BEGIN:VTODO\nUID:uid-tomorrow\nEND:VTODO',
-	'BEGIN:VTODO\nUID:uid-tomorrow\nEND:VTODO', NULL, 'Büro,urgent', 'Work', 'synced', '2026-04-29', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+	'BEGIN:VTODO\nUID:uid-tomorrow\nEND:VTODO', NULL, 'Büro,urgent', 'Work', 'synced', '2026-04-29', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+),
+(
+	'task-today-child', 'project-1', 'uid-today-child', '/cal/work/today-child.ics', '"etag-3"', 1,
+	'Heute Unteraufgabe', '', 'needs-action', 'BEGIN:VTODO\nUID:uid-today-child\nRELATED-TO;RELTYPE=PARENT:uid-tomorrow\nEND:VTODO',
+	'BEGIN:VTODO\nUID:uid-today-child\nRELATED-TO;RELTYPE=PARENT:uid-tomorrow\nEND:VTODO', NULL, 'urgent', 'Work', 'synced', '2026-04-28', 'task-tomorrow', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 );
 INSERT INTO saved_filters (id, name, query, is_favorite, created_at, updated_at)
 VALUES

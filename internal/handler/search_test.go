@@ -138,6 +138,43 @@ func TestSearchResultsRouteRendersLivePartial(t *testing.T) {
 	}
 }
 
+func TestSearchRouteAlignsChildWhoseParentDoesNotMatch(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	seedSearchRouteProjectAndTasks(t, database)
+
+	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
+	request := httptest.NewRequest(http.MethodGet, "/search?q=Unteraufgabe", nil)
+	request.Header.Set("X-Forwarded-User", "alice")
+	responseRecorder := httptest.NewRecorder()
+
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), database, context.Background(), nil).ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	body := responseRecorder.Body.String()
+	for _, want := range []string{
+		"Rechnung Unteraufgabe",
+		"Unteraufgabe von Überweisung Rechnung",
+		`data-task-parent-open`,
+		`data-parent-task-id="task-active"`,
+		`aria-label="Elternaufgabe öffnen: Überweisung Rechnung"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("orphaned search result missing %q: %q", want, body)
+		}
+	}
+	if strings.Contains(body, `data-task-id="task-active"`) || strings.Contains(body, `caldo-task-row-subtask`) {
+		t.Fatalf("search must not inject or indent the filtered parent: %q", body)
+	}
+}
+
 func TestSearchRouteOmitsBottomCreateForProjectContext(t *testing.T) {
 	t.Parallel()
 

@@ -25,6 +25,7 @@ type TaskRowView struct {
 	TodayISODate     string
 	ParentID         string
 	ParentTitle      string
+	ParentVisible    bool
 	Status           string
 	SyncStatus       string
 	Priority         int
@@ -555,6 +556,14 @@ func taskRelationshipChips(task TaskRowView) []taskRowChip {
 		chips = append(chips, taskRowChip{Label: taskSubtaskCountLabel(task.SubtaskCount), Class: "caldo-task-chip caldo-task-chip-subtask"})
 	}
 	return chips
+}
+
+func taskParentReferenceLabel(task TaskRowView) string {
+	parent := iCalendarTextDisplay(strings.TrimSpace(task.ParentTitle))
+	if parent == "" {
+		return "Elternaufgabe öffnen"
+	}
+	return "Elternaufgabe öffnen: " + parent
 }
 
 func taskSubtaskCountLabel(count int) string {

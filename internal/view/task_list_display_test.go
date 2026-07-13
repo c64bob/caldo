@@ -23,6 +23,11 @@ func TestBuildTaskListGroupsSortsParentsAndKeepsChildrenTogether(t *testing.T) {
 
 	groups := BuildTaskListGroups(tasks, display, time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC))
 	assertTaskIDs(t, groups[0].Tasks, []string{"parent-a", "child-a", "parent-z", "child-z-2", "child-z-1"})
+	for _, index := range []int{1, 3, 4} {
+		if !groups[0].Tasks[index].ParentVisible {
+			t.Fatalf("bundled child %q must be marked with a visible parent", groups[0].Tasks[index].ID)
+		}
+	}
 }
 
 func TestBuildTaskListGroupsUsesParentPriority(t *testing.T) {
@@ -82,12 +87,36 @@ func TestBuildTaskListGroupsBuildsDueDateBuckets(t *testing.T) {
 	}
 }
 
-func TestBuildTaskListGroupsLeavesDefaultOrderUntouched(t *testing.T) {
+func TestBuildTaskListGroupsBundlesParentAndChildInDefaultOrder(t *testing.T) {
 	t.Parallel()
 	tasks := []TaskRowView{{ID: "child", ParentID: "parent", IsSubtask: true}, {ID: "parent"}}
 	display := TaskListDisplayView{Preference: model.DefaultTaskViewPreference(model.TaskViewSearch, "")}
 	groups := BuildTaskListGroups(tasks, display, time.Time{})
-	assertTaskIDs(t, groups[0].Tasks, []string{"child", "parent"})
+	assertTaskIDs(t, groups[0].Tasks, []string{"parent", "child"})
+	if !groups[0].Tasks[1].ParentVisible {
+		t.Fatal("child bundled with its parent must be marked with a visible parent")
+	}
+}
+
+func TestBuildTaskListGroupsLeavesOrphanedResultsAtTopLevel(t *testing.T) {
+	t.Parallel()
+	tasks := []TaskRowView{
+		{ID: "child-2", ParentID: "filtered-parent", ParentTitle: "Filtered parent", IsSubtask: true},
+		{ID: "child-1", ParentID: "filtered-parent", ParentTitle: "Filtered parent", IsSubtask: true},
+		{ID: "normal"},
+	}
+	display := TaskListDisplayView{Preference: model.TaskViewPreference{SortBy: model.TaskSortName, SortOrder: model.TaskSortAscending, GroupBy: model.TaskGroupPriority}}
+
+	groups := BuildTaskListGroups(tasks, display, time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC))
+	if len(groups) != 1 {
+		t.Fatalf("group count=%d want=1", len(groups))
+	}
+	assertTaskIDs(t, groups[0].Tasks, []string{"child-2", "child-1", "normal"})
+	for _, task := range groups[0].Tasks[:2] {
+		if task.ParentVisible {
+			t.Fatalf("orphaned child %q must not be marked with a visible parent", task.ID)
+		}
+	}
 }
 
 func TestBuildTaskListGroupsReversesOnlyPrimarySortKey(t *testing.T) {

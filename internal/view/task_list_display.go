@@ -162,11 +162,11 @@ func BuildTaskListGroups(tasks []TaskRowView, display TaskListDisplayView, refer
 		return nil
 	}
 	preference := display.Preference
+	bundles := buildTaskListBundles(tasks)
 	if preference.SortBy == model.TaskSortDefault && preference.GroupBy == model.TaskGroupNone {
-		return []TaskListGroupView{{Tasks: append([]TaskRowView(nil), tasks...)}}
+		return []TaskListGroupView{{Tasks: flattenTaskListBundles(bundles)}}
 	}
 
-	bundles := buildTaskListBundles(tasks)
 	if preference.SortBy != model.TaskSortDefault {
 		sort.SliceStable(bundles, func(i, j int) bool {
 			comparison := compareTaskListBundles(bundles[i], bundles[j], preference.SortBy)
@@ -242,10 +242,15 @@ func buildTaskListBundles(tasks []TaskRowView) []taskListBundle {
 
 func bundleRows(bundle taskListBundle) []TaskRowView {
 	rows := make([]TaskRowView, 0, len(bundle.children)+1)
+	parentVisible := bundle.parent != nil
 	if bundle.parent != nil {
 		rows = append(rows, *bundle.parent)
 	}
-	return append(rows, bundle.children...)
+	for _, child := range bundle.children {
+		child.ParentVisible = parentVisible
+		rows = append(rows, child)
+	}
+	return rows
 }
 
 func flattenTaskListBundles(bundles []taskListBundle) []TaskRowView {

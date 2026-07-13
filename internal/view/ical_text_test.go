@@ -14,8 +14,8 @@ func TestICalendarTextDisplay(t *testing.T) {
 		input string
 		want  string
 	}{
-		{name: "lowercase newline", input: `line 1\nline 2`, want: "line 1\nline 2"},
-		{name: "uppercase newline", input: `line 1\Nline 2`, want: "line 1\nline 2"},
+		{name: "newline n", input: `line 1\nline 2`, want: "line 1\nline 2"},
+		{name: "newline N", input: `line 1\Nline 2`, want: "line 1\nline 2"},
 		{name: "text punctuation", input: `one\, two\; three`, want: "one, two; three"},
 		{name: "backslash", input: `path\\segment`, want: `path\segment`},
 		{name: "all escapes", input: `one\ntwo\Nthree\, four\; five\\six`, want: "one\ntwo\nthree, four; five\\six"},

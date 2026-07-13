@@ -57,10 +57,6 @@ func TestTodayRouteShowsTodayAndOverdueTasks(t *testing.T) {
 		"urgent",
 		"P1 Hoch",
 		"Speichert",
-		`data-inline-task-create`,
-		`Aufgabe für heute hinzufügen`,
-		`name="due_date" value="2026-04-28"`,
-		`hx-post="/tasks/"`,
 		`data-inline-task-edit-form`,
 		`hx-patch="/tasks/task-overdue-active"`,
 		`name="project_id"`,
@@ -71,6 +67,9 @@ func TestTodayRouteShowsTodayAndOverdueTasks(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Fatalf("response body missing task row detail %q: %q", want, body)
 		}
+	}
+	if strings.Contains(body, `class="caldo-inline-create"`) {
+		t.Fatalf("today page must not render the bottom task creator: %q", body)
 	}
 }
 
@@ -153,7 +152,6 @@ func TestAdditionalSystemFilters(t *testing.T) {
 
 	checkContains("/favorites", Favorites(dateViewDependencies{database: database, now: fixedNow}), "Favorisierte Aufgabe")
 	checkContains("/no-date", NoDate(dateViewDependencies{database: database, now: fixedNow}), "Ohne Fälligkeit")
-	checkContains("/no-date", NoDate(dateViewDependencies{database: database, now: fixedNow}), "Aufgabe ohne Datum hinzufügen")
 
 	req := httptest.NewRequest(http.MethodGet, "/completed", nil)
 	rr := httptest.NewRecorder()
@@ -198,12 +196,13 @@ func TestProjectTasksRouteShowsProjectTasksAndActiveSidebar(t *testing.T) {
 		`aria-current="page"`,
 		`caldo-sidebar-project-list`,
 		`data-nav-projects`,
-		`name="project_id" value="project-1"`,
-		"Aufgabe in Work hinzufügen",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("project page missing %q: %q", want, body)
 		}
+	}
+	if strings.Contains(body, `class="caldo-inline-create"`) {
+		t.Fatalf("project page must not render the bottom task creator: %q", body)
 	}
 	if strings.Contains(body, "Überfällig erledigt") {
 		t.Fatalf("project page should hide completed tasks by default: %q", body)

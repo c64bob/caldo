@@ -435,9 +435,8 @@
 		.caldo-task-description-link:focus-visible,
 		.caldo-task-attachment-link:focus-visible,
 		.caldo-task-detail-attachment-link:focus-visible,
-		.caldo-task-detail-open:focus-visible,
+	.caldo-task-detail-open:focus-visible,
 	.caldo-subtask-create-trigger:focus-visible,
-	.caldo-inline-create-trigger:focus-visible,
 	.caldo-menu-item:focus-visible,
 	summary.caldo-button:focus-visible {
 		outline: 2px solid var(--caldo-focus);
@@ -2017,51 +2016,8 @@
 		@apply flex min-w-0 flex-wrap items-center gap-2;
 	}
 
-	.caldo-inline-create {
-		@apply border-b py-2;
-		border-color: var(--caldo-border);
-	}
-
-	.caldo-inline-create-trigger {
-		@apply flex min-h-9 w-full items-center gap-2 rounded-sm px-1 text-sm transition;
-		color: var(--caldo-text-subtle);
-	}
-
-	.caldo-inline-create-trigger:hover,
-	.caldo-inline-create-trigger:focus-visible {
-		background: var(--caldo-surface-muted);
-		color: var(--caldo-accent);
-		outline: 2px solid transparent;
-		outline-offset: 2px;
-	}
-
-	.caldo-inline-create-trigger:focus-visible {
-		outline-color: var(--caldo-focus);
-	}
-
-	.caldo-inline-create-plus {
-		@apply flex h-5 w-5 shrink-0 items-center justify-center text-lg leading-none;
-		color: var(--caldo-accent);
-	}
-
-	.caldo-inline-create-form {
-		@apply space-y-2 px-1 py-1;
-	}
-
-	.caldo-inline-create-input {
-		@apply mt-0;
-	}
-
-	.caldo-inline-create-meta {
-		@apply flex min-w-0 flex-wrap items-center gap-1.5;
-	}
-
 	.caldo-inline-create-error {
 		@apply py-2;
-	}
-
-	.caldo-inline-create-actions {
-		@apply flex min-w-0 flex-wrap items-center gap-2;
 	}
 
 	.caldo-list-link {

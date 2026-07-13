@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import "strings"
 
-func SearchPage(query string, results []TaskRowView, create InlineTaskCreateView, saveFilter SearchSaveFilterView) templ.Component {
+func SearchPage(query string, results []TaskRowView, saveFilter SearchSaveFilterView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -39,7 +39,7 @@ func SearchPage(query string, results []TaskRowView, create InlineTaskCreateView
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = SearchLiveResults(query, results, create, saveFilter).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = SearchLiveResults(query, results, saveFilter).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -51,7 +51,7 @@ func SearchPage(query string, results []TaskRowView, create InlineTaskCreateView
 	})
 }
 
-func ConfigurableSearchPage(query string, groups []TaskListGroupView, display TaskListDisplayView, create InlineTaskCreateView, saveFilter SearchSaveFilterView) templ.Component {
+func ConfigurableSearchPage(query string, groups []TaskListGroupView, display TaskListDisplayView, saveFilter SearchSaveFilterView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -84,7 +84,7 @@ func ConfigurableSearchPage(query string, groups []TaskListGroupView, display Ta
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = ConfigurableSearchLiveResults(query, groups, create, saveFilter).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = ConfigurableSearchLiveResults(query, groups, saveFilter).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -138,7 +138,7 @@ func SearchForm(query string) templ.Component {
 	})
 }
 
-func SearchLiveResults(query string, results []TaskRowView, create InlineTaskCreateView, saveFilter SearchSaveFilterView) templ.Component {
+func SearchLiveResults(query string, results []TaskRowView, saveFilter SearchSaveFilterView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -195,10 +195,6 @@ func SearchLiveResults(query string, results []TaskRowView, create InlineTaskCre
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = InlineTaskCreate(create).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -207,7 +203,7 @@ func SearchLiveResults(query string, results []TaskRowView, create InlineTaskCre
 	})
 }
 
-func ConfigurableSearchLiveResults(query string, groups []TaskListGroupView, create InlineTaskCreateView, saveFilter SearchSaveFilterView) templ.Component {
+func ConfigurableSearchLiveResults(query string, groups []TaskListGroupView, saveFilter SearchSaveFilterView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -254,10 +250,6 @@ func ConfigurableSearchLiveResults(query string, groups []TaskListGroupView, cre
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = InlineTaskCreate(create).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -294,7 +286,7 @@ func SearchSaveFilterForm(saveFilter SearchSaveFilterView) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue("{\"X-CSRF-Token\":\"" + CSRFToken(ctx) + "\"}")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/search.templ`, Line: 89, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/search.templ`, Line: 87, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
@@ -307,7 +299,7 @@ func SearchSaveFilterForm(saveFilter SearchSaveFilterView) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(saveFilter.Query)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/search.templ`, Line: 93, Col: 60}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/search.templ`, Line: 91, Col: 60}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
@@ -320,7 +312,7 @@ func SearchSaveFilterForm(saveFilter SearchSaveFilterView) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(saveFilter.Query)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/search.templ`, Line: 101, Col: 75}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/search.templ`, Line: 99, Col: 75}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {

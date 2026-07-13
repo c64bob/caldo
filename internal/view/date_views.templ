@@ -1,6 +1,6 @@
 package view
 
-templ DateScopedTasksPage(heading string, emptyMessage string, tasks []TaskRowView, create InlineTaskCreateView) {
+templ DateScopedTasksPage(heading string, emptyMessage string, tasks []TaskRowView) {
 	<section class="caldo-page">
 		if len(tasks) == 0 {
 			@EmptyStateWithAction(emptyMessage, "Es gibt in dieser Ansicht gerade nichts zu bearbeiten.", "Aufgabe erstellen", "/quick-add")
@@ -11,11 +11,10 @@ templ DateScopedTasksPage(heading string, emptyMessage string, tasks []TaskRowVi
 				}
 			</ul>
 		}
-		@InlineTaskCreate(create)
 	</section>
 }
 
-templ ConfigurableTaskListPage(heading string, emptyMessage string, groups []TaskListGroupView, display TaskListDisplayView, create InlineTaskCreateView) {
+templ ConfigurableTaskListPage(heading string, emptyMessage string, groups []TaskListGroupView, display TaskListDisplayView) {
 	<section class="caldo-page">
 		@TaskListDisplayControls(display)
 		if len(groups) == 0 {
@@ -23,7 +22,6 @@ templ ConfigurableTaskListPage(heading string, emptyMessage string, groups []Tas
 		} else {
 			@TaskListGroups(groups, "date")
 		}
-		@InlineTaskCreate(create)
 	</section>
 }
 

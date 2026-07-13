@@ -138,7 +138,7 @@ func TestSearchResultsRouteRendersLivePartial(t *testing.T) {
 	}
 }
 
-func TestSearchRouteRendersInlineCreateForProjectContext(t *testing.T) {
+func TestSearchRouteOmitsBottomCreateForProjectContext(t *testing.T) {
 	t.Parallel()
 
 	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
@@ -166,10 +166,6 @@ func TestSearchRouteRendersInlineCreateForProjectContext(t *testing.T) {
 
 	body := responseRecorder.Body.String()
 	for _, want := range []string{
-		`data-inline-task-create`,
-		`Aufgabe in Finanzen hinzufügen`,
-		`name="project_id" value="project-1"`,
-		`hx-post="/tasks/"`,
 		`data-search-save-filter-form`,
 		`hx-post="/filters"`,
 		`name="query" value="#Finanzen"`,
@@ -180,6 +176,9 @@ func TestSearchRouteRendersInlineCreateForProjectContext(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Fatalf("response body missing project inline create detail %q: %q", want, body)
 		}
+	}
+	if strings.Contains(body, `class="caldo-inline-create"`) {
+		t.Fatalf("search page must not render the bottom task creator: %q", body)
 	}
 }
 

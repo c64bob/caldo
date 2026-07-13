@@ -20,7 +20,7 @@ func TestNormalPageContentDoesNotRepeatTopbarPageTitle(t *testing.T) {
 	}{
 		{
 			name:      "date scoped tasks",
-			component: DateScopedTasksPage("Heute", "Keine Aufgaben", nil, InlineTaskCreateView{}),
+			component: DateScopedTasksPage("Heute", "Keine Aufgaben", nil),
 			unwanted:  `<h2 class="caldo-page-title">Heute</h2>`,
 		},
 		{
@@ -35,7 +35,7 @@ func TestNormalPageContentDoesNotRepeatTopbarPageTitle(t *testing.T) {
 		},
 		{
 			name:      "search",
-			component: SearchPage("", nil, InlineTaskCreateView{}, SearchSaveFilterView{}),
+			component: SearchPage("", nil, SearchSaveFilterView{}),
 			unwanted:  `<h2 class="caldo-page-title">Globale Suche</h2>`,
 		},
 		{

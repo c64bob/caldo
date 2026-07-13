@@ -8,7 +8,7 @@ package view
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-func DateScopedTasksPage(heading string, emptyMessage string, tasks []TaskRowView, create InlineTaskCreateView) templ.Component {
+func DateScopedTasksPage(heading string, emptyMessage string, tasks []TaskRowView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -54,10 +54,6 @@ func DateScopedTasksPage(heading string, emptyMessage string, tasks []TaskRowVie
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = InlineTaskCreate(create).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -66,7 +62,7 @@ func DateScopedTasksPage(heading string, emptyMessage string, tasks []TaskRowVie
 	})
 }
 
-func ConfigurableTaskListPage(heading string, emptyMessage string, groups []TaskListGroupView, display TaskListDisplayView, create InlineTaskCreateView) templ.Component {
+func ConfigurableTaskListPage(heading string, emptyMessage string, groups []TaskListGroupView, display TaskListDisplayView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -106,10 +102,6 @@ func ConfigurableTaskListPage(heading string, emptyMessage string, groups []Task
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = InlineTaskCreate(create).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -146,7 +138,7 @@ func TaskListDisplayControls(display TaskListDisplayView) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(taskListDisplayControlTitle(ctx))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 33, Col: 87}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 31, Col: 87}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -159,7 +151,7 @@ func TaskListDisplayControls(display TaskListDisplayView) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(taskListDisplayControlTitle(ctx))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 33, Col: 135}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 31, Col: 135}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -177,7 +169,7 @@ func TaskListDisplayControls(display TaskListDisplayView) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(taskListDisplaySummary(ctx, display))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 46, Col: 49}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 44, Col: 49}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -195,7 +187,7 @@ func TaskListDisplayControls(display TaskListDisplayView) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue("{\"X-CSRF-Token\":\"" + CSRFToken(ctx) + "\"}")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 56, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 54, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 		if templ_7745c5c3_Err != nil {
@@ -208,7 +200,7 @@ func TaskListDisplayControls(display TaskListDisplayView) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(display.Preference.ViewKind)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 59, Col: 77}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 57, Col: 77}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
@@ -221,7 +213,7 @@ func TaskListDisplayControls(display TaskListDisplayView) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(display.Preference.ViewID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 60, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 58, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
@@ -234,7 +226,7 @@ func TaskListDisplayControls(display TaskListDisplayView) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(display.SearchQuery)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 61, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 59, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 		if templ_7745c5c3_Err != nil {
@@ -247,7 +239,7 @@ func TaskListDisplayControls(display TaskListDisplayView) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(taskListDisplayFieldLabel(ctx, "group"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 63, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 61, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -265,7 +257,7 @@ func TaskListDisplayControls(display TaskListDisplayView) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 66, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 64, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 			if templ_7745c5c3_Err != nil {
@@ -288,7 +280,7 @@ func TaskListDisplayControls(display TaskListDisplayView) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(taskListDisplayLabel(ctx, value))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 66, Col: 115}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 64, Col: 115}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -306,7 +298,7 @@ func TaskListDisplayControls(display TaskListDisplayView) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(taskListDisplayFieldLabel(ctx, "sort"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 71, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 69, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -324,7 +316,7 @@ func TaskListDisplayControls(display TaskListDisplayView) templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 74, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 72, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 			if templ_7745c5c3_Err != nil {
@@ -347,7 +339,7 @@ func TaskListDisplayControls(display TaskListDisplayView) templ.Component {
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(taskListDisplayLabel(ctx, value))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 74, Col: 114}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 72, Col: 114}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -375,7 +367,7 @@ func TaskListDisplayControls(display TaskListDisplayView) templ.Component {
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(taskListDisplayFieldLabel(ctx, "order"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 79, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 77, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
@@ -398,7 +390,7 @@ func TaskListDisplayControls(display TaskListDisplayView) templ.Component {
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(taskListDisplayLabel(ctx, "asc"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 81, Col: 112}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 79, Col: 112}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
@@ -421,7 +413,7 @@ func TaskListDisplayControls(display TaskListDisplayView) templ.Component {
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(taskListDisplayLabel(ctx, "desc"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 82, Col: 115}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 80, Col: 115}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -434,7 +426,7 @@ func TaskListDisplayControls(display TaskListDisplayView) templ.Component {
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(taskListDisplayActionLabel(ctx, "apply"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 86, Col: 111}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 84, Col: 111}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -457,7 +449,7 @@ func TaskListDisplayControls(display TaskListDisplayView) templ.Component {
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(taskListDisplayActionLabel(ctx, "reset"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 87, Col: 185}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 85, Col: 185}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
@@ -504,7 +496,7 @@ func TaskListGroups(groups []TaskListGroupView, source string) templ.Component {
 			var templ_7745c5c3_Var23 string
 			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.ResolveAttributeValue(group.Key)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 97, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 95, Col: 64}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var23)
 			if templ_7745c5c3_Err != nil {
@@ -522,7 +514,7 @@ func TaskListGroups(groups []TaskListGroupView, source string) templ.Component {
 				var templ_7745c5c3_Var24 string
 				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(group.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 100, Col: 23}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 98, Col: 23}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 				if templ_7745c5c3_Err != nil {
@@ -535,7 +527,7 @@ func TaskListGroups(groups []TaskListGroupView, source string) templ.Component {
 				var templ_7745c5c3_Var25 string
 				templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(taskListGroupCountLabel(group))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 101, Col: 44}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/view/date_views.templ`, Line: 99, Col: 44}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 				if templ_7745c5c3_Err != nil {

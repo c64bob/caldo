@@ -19,7 +19,6 @@ type searchPageData struct {
 	query      string
 	groups     []view.TaskListGroupView
 	display    view.TaskListDisplayView
-	create     view.InlineTaskCreateView
 	saveFilter view.SearchSaveFilterView
 }
 
@@ -33,7 +32,7 @@ func Search(deps searchDependencies) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout("Suche", view.ConfigurableSearchPage(data.query, data.groups, data.display, data.create, data.saveFilter)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout("Suche", view.ConfigurableSearchPage(data.query, data.groups, data.display, data.saveFilter)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -49,7 +48,7 @@ func SearchResults(deps searchDependencies) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.ConfigurableSearchLiveResults(data.query, data.groups, data.create, data.saveFilter).Render(r.Context(), w); err != nil {
+		if err := view.ConfigurableSearchLiveResults(data.query, data.groups, data.saveFilter).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -108,7 +107,6 @@ func loadSearchPageData(ctx context.Context, database *db.Database, rawQuery str
 		query:      query,
 		groups:     groups,
 		display:    display,
-		create:     inlineCreateForSearch(ctx, database, query),
 		saveFilter: saveFilterForSearchQuery(query),
 	}, nil
 }
@@ -127,36 +125,4 @@ func saveFilterForSearchQuery(rawQuery string) view.SearchSaveFilterView {
 		Query:      filterQuery,
 		IsFavorite: true,
 	}
-}
-
-func inlineCreateForSearch(ctx context.Context, database *db.Database, query string) view.InlineTaskCreateView {
-	if database == nil {
-		return view.InlineTaskCreateView{}
-	}
-	projectName, ok := projectOnlySearchQuery(query)
-	if !ok {
-		return view.InlineTaskCreateView{}
-	}
-	project, err := database.LoadProjectByName(ctx, projectName)
-	if err != nil {
-		return view.InlineTaskCreateView{}
-	}
-	return view.InlineTaskCreateView{
-		Enabled:     true,
-		ProjectID:   project.ID,
-		ProjectName: project.DisplayName,
-		Placeholder: "Aufgabe in " + project.DisplayName + " hinzufügen",
-	}
-}
-
-func projectOnlySearchQuery(query string) (string, bool) {
-	trimmed := strings.TrimSpace(query)
-	if !strings.HasPrefix(trimmed, "#") {
-		return "", false
-	}
-	projectName := strings.TrimSpace(strings.TrimPrefix(trimmed, "#"))
-	if projectName == "" || strings.Contains(projectName, "#") || strings.Contains(projectName, "@") {
-		return "", false
-	}
-	return projectName, true
 }

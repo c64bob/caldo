@@ -224,7 +224,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(inlineEditRow).toBeVisible();
 
   await inlineEditRow.getByRole('button', { name: 'Details' }).click();
-  const inlineDetailDialog = inlineEditRow.locator('[data-task-detail-dialog]');
+  const inlineDetailDialog = inlineEditRow.locator(':scope > [data-task-detail-dialog]');
   await inlineDetailDialog.locator('[name="description"]').fill('edited inline through browser https://example.com/browser');
   await inlineDetailDialog.getByRole('button', { name: 'Speichern' }).focus();
   await page.keyboard.press('Enter');
@@ -266,7 +266,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
   await expect(inlineEditRow).toBeVisible();
 
-  let detailDialog = inlineEditRow.locator('[data-task-detail-dialog]');
+  let detailDialog = inlineEditRow.locator(':scope > [data-task-detail-dialog]');
   await expect(detailDialog).toBeHidden();
   await inlineEditRow.getByRole('button', { name: 'Details' }).click();
   await expect(detailDialog).toBeVisible();
@@ -275,7 +275,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(detailDialog).toBeHidden();
 
   await inlineEditRow.getByRole('button', { name: 'Details' }).click();
-  detailDialog = inlineEditRow.locator('[data-task-detail-dialog]');
+  detailDialog = inlineEditRow.locator(':scope > [data-task-detail-dialog]');
   await detailDialog.locator('[data-task-detail-title]').fill('E2E Panel Edited');
   await detailDialog.locator('[name="description"]').fill('edited through task detail panel');
   await detailDialog.locator('[name="due_date"]').fill('2099-06-11');
@@ -305,7 +305,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await ensureBrowserCSRFCookie(page);
   await expect(detailRow.getByRole('button', { name: 'Unteraufgabe hinzufügen' })).toHaveCount(0);
   await detailRow.getByRole('button', { name: 'Details' }).click();
-  let actionDetailDialog = detailRow.locator('[data-task-detail-dialog]');
+  let actionDetailDialog = detailRow.locator(':scope > [data-task-detail-dialog]');
   await expect(actionDetailDialog).toBeVisible();
   await expectSubtaskSectionAligned(actionDetailDialog);
   await actionDetailDialog.getByRole('button', { name: 'Unteraufgabe hinzufügen' }).click();
@@ -315,14 +315,38 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(subtaskTitle).toBeFocused();
   await subtaskTitle.fill('E2E Browser Subtask');
   await subtaskTitle.press('Enter');
+  detailRow = page.locator(`.caldo-task-row[data-task-id="${panelTaskID}"]`);
+  actionDetailDialog = detailRow.locator(':scope > [data-task-detail-dialog]');
+  await expect(actionDetailDialog).toBeVisible();
+  const detailSubtask = actionDetailDialog.locator('[data-task-detail-subtask]').filter({ hasText: 'E2E Browser Subtask' });
+  await expect(detailSubtask).toBeVisible();
+  await expect(detailSubtask).toContainText('Offen');
+  await expect(detailSubtask.getByRole('checkbox', { name: 'Aufgabe erledigen' })).toBeAttached();
+  await detailSubtask.getByRole('button', { name: 'E2E Browser Subtask' }).click();
+  const subtaskDetailDialog = detailSubtask.locator(':scope > [data-task-detail-dialog]');
+  await expect(subtaskDetailDialog).toBeVisible();
+  await expect(subtaskDetailDialog.locator('[data-task-detail-title]')).toHaveValue('E2E Browser Subtask');
+  await subtaskDetailDialog.getByRole('button', { name: 'Details schließen' }).click();
+  await expect(subtaskDetailDialog).toBeHidden();
+  await expect(actionDetailDialog).toBeVisible();
+  await actionDetailDialog.getByRole('button', { name: 'Details schließen' }).click();
+
+  await gotoApp(page, '/search?q=E2E%20Browser%20Subtask');
   const subtaskRow = page.locator('[data-task-id].caldo-task-row-subtask').filter({ hasText: 'E2E Browser Subtask' }).first();
   await expect(subtaskRow).toBeVisible();
   await expect(subtaskRow).toContainText('Unteraufgabe von E2E Panel Edited');
   await expect(subtaskRow.locator('.caldo-task-checkbox-label[aria-label="Aufgabe erledigen"]')).toBeVisible();
   await expect(subtaskRow.getByRole('checkbox', { name: 'Aufgabe erledigen' })).toBeAttached();
   await expect(subtaskRow.getByRole('button', { name: 'Unteraufgabe hinzufügen' })).toHaveCount(0);
-  detailRow = page.locator(`[data-task-id="${panelTaskID}"]`);
+
+  await gotoApp(page, '/search?q=E2E%20Panel%20Edited');
+  await expect(page.locator('.caldo-task-row-subtask')).toHaveCount(0);
+  detailRow = page.locator(`.caldo-task-row[data-task-id="${panelTaskID}"]`);
   await expect(detailRow).toContainText('1 Unteraufgabe');
+  await detailRow.getByRole('button', { name: 'Details' }).click();
+  actionDetailDialog = detailRow.locator(':scope > [data-task-detail-dialog]');
+  await expect(actionDetailDialog.locator('[data-task-detail-subtask]').filter({ hasText: 'E2E Browser Subtask' })).toBeVisible();
+  await actionDetailDialog.getByRole('button', { name: 'Details schließen' }).click();
   await exerciseTabletTaskActions(page, panelTaskID);
   await exerciseMobileTaskEditing(page, testInfo, panelTaskID);
   detailRow = page.locator(`[data-task-id="${panelTaskID}"]`);
@@ -338,7 +362,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
 
   await page.setViewportSize(mobileViewport);
   await detailRow.getByRole('button', { name: 'Details' }).click();
-  detailDialog = detailRow.locator('[data-task-detail-dialog]');
+  detailDialog = detailRow.locator(':scope > [data-task-detail-dialog]');
   await expect(detailDialog).toBeVisible();
   await expectSubtaskSectionAligned(detailDialog);
   const panelBox = await detailDialog.boundingBox();
@@ -352,10 +376,10 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
 
   await gotoApp(page, '/search?q=E2E%20Panel%20Edited');
   detailRow = page.locator(`[data-task-id="${panelTaskID}"]`);
-  const parentDeleteDialog = detailRow.locator('[data-task-delete-dialog]');
+  const parentDeleteDialog = detailRow.locator(':scope > [data-task-delete-dialog]');
   await expect(detailRow.getByRole('button', { name: 'Löschen' })).toHaveCount(0);
   await detailRow.getByRole('button', { name: 'Details' }).click();
-  actionDetailDialog = detailRow.locator('[data-task-detail-dialog]');
+  actionDetailDialog = detailRow.locator(':scope > [data-task-detail-dialog]');
   await expect(actionDetailDialog).toBeVisible();
   await actionDetailDialog.getByRole('button', { name: 'Löschen' }).click();
   await expect(parentDeleteDialog).toBeVisible();
@@ -435,11 +459,11 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await gotoApp(page, `/search?q=${encodeURIComponent(currentLocalTitle)}`);
   await ensureBrowserCSRFCookie(page);
   let deleteRow = page.locator('[data-task-id]').filter({ hasText: currentLocalTitle }).first();
-  let deleteDialog = deleteRow.locator('[data-task-delete-dialog]');
+  let deleteDialog = deleteRow.locator(':scope > [data-task-delete-dialog]');
   await expect(deleteDialog).toBeHidden();
   await expect(deleteRow.getByRole('button', { name: 'Löschen' })).toHaveCount(0);
   await deleteRow.getByRole('button', { name: 'Details' }).click();
-  let deleteDetailDialog = deleteRow.locator('[data-task-detail-dialog]');
+  let deleteDetailDialog = deleteRow.locator(':scope > [data-task-detail-dialog]');
   await expect(deleteDetailDialog).toBeVisible();
   await deleteDetailDialog.getByRole('button', { name: 'Löschen' }).click();
   await expect(deleteDialog).toBeVisible();
@@ -449,7 +473,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(deleteRow).toBeVisible();
 
   await deleteRow.getByRole('button', { name: 'Details' }).click();
-  deleteDetailDialog = deleteRow.locator('[data-task-detail-dialog]');
+  deleteDetailDialog = deleteRow.locator(':scope > [data-task-detail-dialog]');
   await expect(deleteDetailDialog).toBeVisible();
   await deleteDetailDialog.getByRole('button', { name: 'Löschen' }).click();
   await expect(deleteDialog).toBeVisible();
@@ -471,9 +495,9 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(page.locator('[data-task-id]').filter({ hasText: currentLocalTitle }).first()).toBeVisible();
 
   deleteRow = page.locator('[data-task-id]').filter({ hasText: currentLocalTitle }).first();
-  deleteDialog = deleteRow.locator('[data-task-delete-dialog]');
+  deleteDialog = deleteRow.locator(':scope > [data-task-delete-dialog]');
   await deleteRow.getByRole('button', { name: 'Details' }).click();
-  deleteDetailDialog = deleteRow.locator('[data-task-detail-dialog]');
+  deleteDetailDialog = deleteRow.locator(':scope > [data-task-detail-dialog]');
   await expect(deleteDetailDialog).toBeVisible();
   await deleteDetailDialog.getByRole('button', { name: 'Löschen' }).click();
   await expect(deleteDialog).toBeVisible();
@@ -674,7 +698,7 @@ async function exerciseKeyboardFocusAccessibility(page, testInfo) {
   const detailButton = detailRow.getByRole('button', { name: 'Details' });
   await detailButton.focus();
   await page.keyboard.press('Enter');
-  const detailDialog = detailRow.locator('[data-task-detail-dialog]');
+  const detailDialog = detailRow.locator(':scope > [data-task-detail-dialog]');
   await expect(detailDialog).toBeVisible();
   await expect(detailDialog.locator('[data-task-detail-title]')).toBeFocused();
   await expectIconButtonsHaveAccessibleNames(page);
@@ -903,9 +927,13 @@ async function expectTabletTouchTargets(page) {
   }
 }
 
+function taskDetailForm(detailDialog) {
+  return detailDialog.locator(':scope > .caldo-task-detail-shell > [data-task-detail-form]');
+}
+
 async function expectSubtaskSectionAligned(detailDialog) {
-  const titleBox = await detailDialog.locator('[data-task-detail-title]').boundingBox();
-  const subtaskHeadingBox = await detailDialog.locator('section[aria-label="Unteraufgaben"] h3').boundingBox();
+  const titleBox = await taskDetailForm(detailDialog).locator('[data-task-detail-title]').boundingBox();
+  const subtaskHeadingBox = await detailDialog.locator(':scope > .caldo-task-detail-shell > section[aria-label="Unteraufgaben"] > .caldo-task-detail-section-heading > h3').boundingBox();
   expect(titleBox).not.toBeNull();
   expect(subtaskHeadingBox).not.toBeNull();
   expect(Math.abs(subtaskHeadingBox.x - titleBox.x)).toBeLessThanOrEqual(1);
@@ -920,11 +948,11 @@ async function exerciseTabletTaskActions(page, panelTaskID) {
   let row = page.locator(`[data-task-id="${panelTaskID}"]`);
   await expect(row).toBeVisible();
   await row.getByRole('button', { name: 'Details' }).click();
-  let detailDialog = row.locator('[data-task-detail-dialog]');
+  let detailDialog = row.locator(':scope > [data-task-detail-dialog]');
   await expect(detailDialog).toBeVisible();
   await expectElementWithinViewport(detailDialog, tabletViewport);
   await expectSubtaskSectionAligned(detailDialog);
-  await detailDialog.locator('[name="description"]').fill('edited through tablet detail panel');
+  await taskDetailForm(detailDialog).locator('[name="description"]').fill('edited through tablet detail panel');
   await detailDialog.getByRole('button', { name: 'Speichern' }).click();
   row = page.locator(`[data-task-id="${panelTaskID}"]`);
   await expect(row).toContainText('edited through tablet detail panel');
@@ -941,10 +969,10 @@ async function exerciseTabletTaskActions(page, panelTaskID) {
   await expect(completeDialog).toBeHidden();
 
   row = page.locator(`[data-task-id="${panelTaskID}"]`);
-  const deleteDialog = row.locator('[data-task-delete-dialog]');
+  const deleteDialog = row.locator(':scope > [data-task-delete-dialog]');
   await expect(row.getByRole('button', { name: 'Löschen' })).toHaveCount(0);
   await row.getByRole('button', { name: 'Details' }).click();
-  detailDialog = row.locator('[data-task-detail-dialog]');
+  detailDialog = row.locator(':scope > [data-task-detail-dialog]');
   await expect(detailDialog).toBeVisible();
   await detailDialog.getByRole('button', { name: 'Löschen' }).click();
   await expect(deleteDialog).toBeVisible();
@@ -979,10 +1007,10 @@ async function exerciseMobileTaskEditing(page, testInfo, panelTaskID) {
 
   row = page.locator(`[data-task-id="${panelTaskID}"]`);
   await row.getByRole('button', { name: 'Details' }).click();
-  const detailDialog = row.locator('[data-task-detail-dialog]');
+  const detailDialog = row.locator(':scope > [data-task-detail-dialog]');
   await expect(detailDialog).toBeVisible();
   await expectElementWithinViewport(detailDialog, narrowMobileViewport);
-  await detailDialog.locator('[data-task-detail-title]').fill('E2E Mobile Detail Draft');
+  await taskDetailForm(detailDialog).locator('[data-task-detail-title]').fill('E2E Mobile Detail Draft');
   await expectNoHorizontalOverflow(page);
   await detailDialog.getByRole('button', { name: 'Details schließen' }).click();
   await expect(detailDialog).toBeHidden();

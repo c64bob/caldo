@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -300,6 +301,69 @@ WHERE t.id = ?;
 		return DatedTaskViewRow{}, fmt.Errorf("load task view: %w", err)
 	}
 	return row, nil
+}
+
+// ListDirectSubtaskViews returns all direct child tasks for detail-pane rendering.
+func (d *Database) ListDirectSubtaskViews(ctx context.Context, parentTaskID string) ([]DatedTaskViewRow, error) {
+	trimmedParentTaskID := strings.TrimSpace(parentTaskID)
+	if trimmedParentTaskID == "" {
+		return nil, fmt.Errorf("list direct subtask views: parent task id is required")
+	}
+
+	rows, err := d.Conn.QueryContext(ctx, `
+SELECT
+	t.id,
+	t.project_id,
+	t.title,
+	COALESCE(t.description, ''),
+	t.status,
+	COALESCE(t.project_name, ''),
+	COALESCE(
+		date(t.due_at),
+		date(substr(t.due_at, 1, 19)),
+		date(substr(t.due_at, 1, 10)),
+		date(t.due_date),
+		''
+	),
+	COALESCE(t.priority, 0),
+	t.priority IS NOT NULL,
+	COALESCE(t.label_names, ''),
+	t.sync_status,
+	t.server_version,
+	COALESCE(t.parent_id, ''),
+	COALESCE(parent.title, ''),
+	t.parent_id IS NOT NULL,
+	(SELECT COUNT(1) FROM tasks child WHERE child.parent_id = t.id),
+	(SELECT COUNT(1) FROM tasks child WHERE child.parent_id = t.id AND child.status != 'completed'),
+	COALESCE((SELECT c.id FROM conflicts c WHERE c.task_id = t.id AND c.resolved_at IS NULL ORDER BY c.created_at DESC LIMIT 1), ''),
+	COALESCE(t.raw_vtodo, ''),
+	COALESCE(t.created_at, '')
+FROM tasks t
+LEFT JOIN tasks parent ON parent.id = t.parent_id
+WHERE t.parent_id = ?
+ORDER BY
+	CASE WHEN LOWER(t.status) = 'completed' THEN 1 ELSE 0 END,
+	t.created_at ASC,
+	t.id ASC;
+`, trimmedParentTaskID)
+	if err != nil {
+		return nil, fmt.Errorf("list direct subtask views: query subtasks: %w", err)
+	}
+	defer rows.Close()
+
+	results := make([]DatedTaskViewRow, 0)
+	for rows.Next() {
+		var row DatedTaskViewRow
+		if err := rows.Scan(&row.ID, &row.ProjectID, &row.Title, &row.Description, &row.Status, &row.ProjectName, &row.DueISODate, &row.Priority, &row.HasPriority, &row.LabelNames, &row.SyncStatus, &row.ServerVersion, &row.ParentID, &row.ParentTitle, &row.IsSubtask, &row.SubtaskCount, &row.OpenSubtaskCount, &row.UnresolvedConflictID, &row.RawVTODO, &row.CreatedAt); err != nil {
+			return nil, fmt.Errorf("list direct subtask views: scan subtask: %w", err)
+		}
+		results = append(results, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list direct subtask views: iterate subtasks: %w", err)
+	}
+
+	return results, nil
 }
 
 func (d *Database) listSimpleSystemTasks(ctx context.Context, whereSQL string, limit int) ([]DatedTaskViewRow, error) {

@@ -45,6 +45,57 @@ func TaskFragment(deps dateViewDependencies) http.HandlerFunc {
 	}
 }
 
+// TaskSubtasksFragment renders all direct child tasks for a parent detail pane.
+func TaskSubtasksFragment(deps dateViewDependencies) http.HandlerFunc {
+	nowFn := withDefaultNow(deps.now)
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		parentTaskID := strings.TrimSpace(chi.URLParam(r, "taskID"))
+		if parentTaskID == "" {
+			http.Error(w, "task id is required", http.StatusBadRequest)
+			return
+		}
+
+		parent, err := deps.database.LoadTaskView(r.Context(), parentTaskID)
+		if err != nil {
+			if errors.Is(err, db.ErrTaskNotFound) {
+				http.Error(w, "task not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		if parent.IsSubtask {
+			http.Error(w, "subtasks cannot have subtasks", http.StatusConflict)
+			return
+		}
+
+		rows, err := deps.database.ListDirectSubtaskViews(r.Context(), parentTaskID)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		projectOptions, err := taskEditProjectOptions(r.Context(), deps.database)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		todayISODate := nowFn().UTC().Format("2006-01-02")
+		subtasks := make([]view.TaskRowView, 0, len(rows))
+		for _, row := range rows {
+			subtask := taskRowFromDatedRow(row, projectOptions, todayISODate)
+			subtask.DOMIDScope = "parent-detail-" + parentTaskID
+			subtasks = append(subtasks, subtask)
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := view.TaskDetailSubtaskList(subtasks).Render(r.Context(), w); err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+	}
+}
+
 func taskRowFromDatedRow(row db.DatedTaskViewRow, projectOptions []view.TaskProjectOption, todayISODate string) view.TaskRowView {
 	fields := model.ParseVTODOFields(row.RawVTODO)
 	return view.TaskRowView{

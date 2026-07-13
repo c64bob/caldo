@@ -1805,6 +1805,63 @@
 		@apply px-4 pb-3;
 	}
 
+	.caldo-task-detail-subtask-results {
+		@apply min-w-0;
+	}
+
+	.caldo-task-detail-subtask-list {
+		@apply min-w-0 divide-y overflow-y-auto;
+		border-color: var(--caldo-border);
+		max-height: min(18rem, 40dvh);
+		overscroll-behavior: contain;
+	}
+
+	.caldo-task-detail-subtask-item {
+		@apply grid min-w-0 items-center gap-x-3 gap-y-1 py-2;
+		grid-template-columns: auto minmax(0, 1fr);
+	}
+
+	.caldo-task-detail-subtask-main {
+		@apply flex min-w-0 items-center justify-between gap-3;
+	}
+
+	.caldo-task-detail-subtask-title {
+		@apply min-w-0 flex-1 rounded-sm text-left text-sm font-medium leading-5 transition;
+		color: var(--caldo-text);
+		overflow-wrap: anywhere;
+	}
+
+	button.caldo-task-detail-subtask-title:hover,
+	button.caldo-task-detail-subtask-title:focus-visible,
+	a.caldo-task-detail-subtask-title:hover,
+	a.caldo-task-detail-subtask-title:focus-visible {
+		color: var(--caldo-accent);
+	}
+
+	button.caldo-task-detail-subtask-title:focus-visible,
+	a.caldo-task-detail-subtask-title:focus-visible {
+		outline: 2px solid var(--caldo-focus);
+		outline-offset: 2px;
+	}
+
+	.caldo-task-detail-subtask-status {
+		@apply shrink-0 text-xs;
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-task-detail-subtask-completed .caldo-task-detail-subtask-title {
+		color: var(--caldo-text-subtle);
+		text-decoration: line-through;
+	}
+
+	.caldo-task-detail-subtask-item > .caldo-task-action-error {
+		grid-column: 1 / -1;
+	}
+
+	.caldo-task-detail-subtask-empty {
+		@apply py-1 text-sm;
+	}
+
 	.caldo-task-detail-section-heading {
 		@apply flex min-w-0 items-center justify-between gap-3;
 	}

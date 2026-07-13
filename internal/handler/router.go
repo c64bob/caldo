@@ -108,6 +108,7 @@ func NewRouter(logger *slog.Logger, proxyUserHeader string, manifest assets.Mani
 			calendar:      caldav.NewCalendarClient(nil),
 			broker:        syncBroker,
 		}))
+		taskRouter.Get("/{taskID}/subtasks", TaskSubtasksFragment(dateViewDependencies{database: database}))
 		taskRouter.Get("/{taskID}", TaskFragment(dateViewDependencies{database: database}))
 		taskRouter.Patch("/{taskID}", TaskUpdate(taskUpdateDependencies{
 			database:      database,

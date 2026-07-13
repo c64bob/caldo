@@ -436,6 +436,7 @@
 		.caldo-task-attachment-link:focus-visible,
 		.caldo-task-detail-attachment-link:focus-visible,
 	.caldo-task-detail-open:focus-visible,
+	.caldo-task-parent-reference:focus-visible,
 	.caldo-subtask-create-trigger:focus-visible,
 	.caldo-menu-item:focus-visible,
 	summary.caldo-button:focus-visible {
@@ -1002,6 +1003,27 @@
 		position: absolute;
 		top: 0.75rem;
 		border-left: 2px solid var(--caldo-border-strong);
+	}
+
+	.caldo-task-parent-reference {
+		@apply cursor-pointer text-left transition-colors duration-100;
+	}
+
+	.caldo-task-parent-reference:hover {
+		border-color: var(--caldo-accent-border);
+		color: var(--caldo-accent);
+	}
+
+	.caldo-task-row[data-task-parent-context-row] {
+		border: 0;
+		height: 0;
+		padding: 0;
+		position: fixed;
+		width: 0;
+	}
+
+	.caldo-task-row[data-task-parent-context-row] > .caldo-task-row-grid {
+		display: none;
 	}
 
 	.caldo-task-check-form {

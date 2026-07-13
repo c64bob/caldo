@@ -1614,6 +1614,10 @@
     var taskID = taskRowID(row);
     var nextRow = taskRowFromHTML(html, taskID);
     if (!nextRow) return null;
+    if (row.hasAttribute('data-task-parent-visible')) {
+      nextRow.setAttribute('data-task-parent-visible', '');
+      nextRow.classList.add('caldo-task-row-subtask');
+    }
     row.replaceWith(nextRow);
     if (window.htmx && typeof window.htmx.process === 'function') {
       window.htmx.process(nextRow);
@@ -1847,6 +1851,11 @@
     }
   }
 
+  function removeParentContextRow(dialog) {
+    var contextRow = dialog ? dialog.closest('[data-task-parent-context-row]') : null;
+    if (contextRow) contextRow.remove();
+  }
+
   function bindTaskDetail(dialog) {
     if (!dialog || dialog.dataset.taskDetailBound === 'true') return;
     dialog.dataset.taskDetailBound = 'true';
@@ -1862,6 +1871,7 @@
         trigger.setAttribute('aria-expanded', 'false');
         trigger.focus();
       }
+      removeParentContextRow(dialog);
     });
     dialog.addEventListener('click', function (event) {
       if (event.target === dialog) {
@@ -1870,14 +1880,14 @@
     });
   }
 
-  function openTaskDetail(trigger) {
+  function openTaskDetail(trigger, returnFocus) {
     if (!trigger) return;
     var task = trigger.closest('[data-task-id]');
     var dialog = controlledTaskDialog(trigger, task, '[data-task-detail-dialog]');
     if (!dialog) return;
     bindTaskDetail(dialog);
-    dialog.__caldoReturnFocus = trigger;
-    trigger.setAttribute('aria-expanded', 'true');
+    dialog.__caldoReturnFocus = returnFocus || trigger;
+    dialog.__caldoReturnFocus.setAttribute('aria-expanded', 'true');
     if (typeof dialog.showModal === 'function') {
       if (!dialog.open) {
         dialog.showModal();
@@ -1895,6 +1905,70 @@
       }
       if (close) close.focus();
     }, 0);
+  }
+
+  function taskRowForID(taskID) {
+    var rows = document.querySelectorAll('.caldo-task-row[data-task-id]');
+    for (var i = 0; i < rows.length; i += 1) {
+      if (!rows[i].hasAttribute('data-task-parent-context-row') && taskRowID(rows[i]) === taskID) {
+        return rows[i];
+      }
+    }
+    return null;
+  }
+
+  function openTaskRowContext(row, returnFocus) {
+    if (!row) return false;
+    var grid = row.firstElementChild && row.firstElementChild.matches('.caldo-task-row-grid') ? row.firstElementChild : null;
+    var detailTrigger = grid ? grid.querySelector('[data-task-detail-open]') : null;
+    if (detailTrigger) {
+      openTaskDetail(detailTrigger, returnFocus);
+      return true;
+    }
+    var conflictLink = grid ? grid.querySelector('[data-task-conflict-link]') : null;
+    if (conflictLink && conflictLink.href) {
+      window.location.href = conflictLink.href;
+      return true;
+    }
+    return false;
+  }
+
+  function openParentTaskDetail(trigger) {
+    if (!trigger || trigger.getAttribute('aria-busy') === 'true') return;
+    var parentTaskID = (trigger.getAttribute('data-parent-task-id') || '').trim();
+    if (!parentTaskID) return;
+
+    var existingRow = taskRowForID(parentTaskID);
+    if (existingRow && openTaskRowContext(existingRow, trigger)) return;
+
+    trigger.setAttribute('aria-busy', 'true');
+    window.fetch('/tasks/' + encodeURIComponent(parentTaskID), {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'text/html',
+        'X-Tab-ID': tabID
+      }
+    }).then(function (response) {
+      if (!response.ok) throw response;
+      return response.text();
+    }).then(function (html) {
+      var parentRow = taskRowFromHTML(html, parentTaskID);
+      if (!parentRow) throw new Error('parent task fragment missing');
+      parentRow.setAttribute('data-task-parent-context-row', '');
+      document.body.appendChild(parentRow);
+      if (window.htmx && typeof window.htmx.process === 'function') {
+        window.htmx.process(parentRow);
+      }
+      if (!openTaskRowContext(parentRow, trigger)) {
+        parentRow.remove();
+        throw new Error('parent task details unavailable');
+      }
+    }).catch(function () {
+      setTaskActionError(trigger.closest('[data-task-id]'), 'Elternaufgabe konnte nicht geladen werden.');
+    }).finally(function () {
+      if (document.contains(trigger)) trigger.removeAttribute('aria-busy');
+    });
   }
 
   function requestTaskDetailSubtasks(dialog) {
@@ -1930,6 +2004,7 @@
       trigger.setAttribute('aria-expanded', 'false');
       trigger.focus();
     }
+    removeParentContextRow(dialog);
   }
 
   function taskDetailFailureMessage(status) {
@@ -3275,6 +3350,13 @@
     if (taskDetailOpen) {
       event.preventDefault();
       openTaskDetail(taskDetailOpen);
+      return;
+    }
+
+    var taskParentOpen = closestElement(event.target, '[data-task-parent-open]');
+    if (taskParentOpen) {
+      event.preventDefault();
+      openParentTaskDetail(taskParentOpen);
       return;
     }
 

@@ -9,6 +9,7 @@ templ TaskRow(task TaskRowView) {
 	<li
 		data-task-id={ task.ID }
 		data-parent-task-id={ task.ParentID }
+		data-task-parent-visible?={ task.IsSubtask && task.ParentVisible }
 		data-sync-status={ task.SyncStatus }
 		data-task-status={ task.Status }
 		data-server-version={ fmt.Sprint(task.ServerVersion) }
@@ -18,7 +19,7 @@ templ TaskRow(task TaskRowView) {
 		draggable={ taskDragMoveDraggable(task) }
 		class={
 			"caldo-task-row",
-			templ.KV("caldo-task-row-subtask", task.IsSubtask),
+			templ.KV("caldo-task-row-subtask", task.IsSubtask && task.ParentVisible),
 			templ.KV("caldo-task-row-completed", taskIsCompleted(task)),
 			templ.KV("caldo-task-row-conflict", strings.EqualFold(task.SyncStatus, "conflict")),
 			templ.KV("caldo-task-row-error", strings.EqualFold(task.SyncStatus, "error")),
@@ -195,7 +196,19 @@ templ TaskRow(task TaskRowView) {
 					<div class="caldo-task-meta-line">
 						<div class="caldo-task-meta-main">
 							for _, chip := range taskRelationshipChips(task) {
-								<span class={ chip.Class }>{ chip.Label }</span>
+								if task.IsSubtask && strings.TrimSpace(task.ParentID) != "" {
+									<button
+										type="button"
+										class={ chip.Class, "caldo-task-parent-reference" }
+										data-task-parent-open
+										data-parent-task-id={ task.ParentID }
+										aria-haspopup="dialog"
+										aria-expanded="false"
+										aria-label={ taskParentReferenceLabel(task) }
+									>{ chip.Label }</button>
+								} else {
+									<span class={ chip.Class }>{ chip.Label }</span>
+								}
 							}
 							if taskCanInlineEdit(task) {
 								@TaskProjectInlineEditor(task)

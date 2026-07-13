@@ -1700,7 +1700,8 @@ Für Tiefe 2+ gilt:
 
 ### 17.3 UI
 
-- Unteraufgaben werden eingerückt angezeigt.
+- Unteraufgaben werden eingerückt angezeigt, wenn ihre Elternaufgabe im selben dargestellten Aufgabenverbund sichtbar ist.
+- Passt nur die Unteraufgabe auf eine Ansicht oder einen Filter, wird sie ohne Einrückung dargestellt; eine anklickbare Parent-Referenz öffnet die echte Elternaufgabe, ohne sie dem Filterergebnis hinzuzufügen.
 - Unteraufgaben werden nur über „Unteraufgabe hinzufügen“ erstellt.
 - Keine Unteraufgabenerstellung über Quick Add.
 - Unteraufgaben können selbst keine Unteraufgaben haben.

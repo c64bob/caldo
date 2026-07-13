@@ -254,6 +254,7 @@ func TestTaskRowRendersCompletedReopenControlAndConflictState(t *testing.T) {
 		SyncStatus:    "conflict",
 		ServerVersion: 4,
 		IsSubtask:     true,
+		ParentVisible: true,
 	})
 
 	var rendered bytes.Buffer
@@ -596,6 +597,7 @@ func TestTaskRowRendersSubtaskRelationshipWithoutCreateAction(t *testing.T) {
 		Title:         "Kindaufgabe",
 		ParentID:      "parent-1",
 		ParentTitle:   "Hauptaufgabe",
+		ParentVisible: true,
 		Status:        "needs-action",
 		SyncStatus:    "synced",
 		ServerVersion: 7,
@@ -611,9 +613,13 @@ func TestTaskRowRendersSubtaskRelationshipWithoutCreateAction(t *testing.T) {
 	for _, want := range []string{
 		`data-task-id="child-1"`,
 		`data-parent-task-id="parent-1"`,
+		`data-task-parent-visible`,
 		`caldo-task-row-subtask`,
 		`caldo-task-chip-subtask`,
 		`Unteraufgabe von Hauptaufgabe`,
+		`data-task-parent-open`,
+		`data-parent-task-id="parent-1"`,
+		`aria-label="Elternaufgabe öffnen: Hauptaufgabe"`,
 		`hx-post="/tasks/child-1/complete"`,
 		`name="expected_version" value="7"`,
 		`type="checkbox"`,
@@ -654,10 +660,11 @@ func TestTaskRowRendersFaultySubtaskRelationshipWithoutParentTitle(t *testing.T)
 
 	output := rendered.String()
 	for _, want := range []string{
-		`caldo-task-row-subtask`,
 		`caldo-task-row-completed`,
 		`caldo-task-chip-subtask`,
-		`>Unteraufgabe<`,
+		`>Unteraufgabe</button>`,
+		`data-task-parent-open`,
+		`aria-label="Elternaufgabe öffnen"`,
 		`hx-post="/tasks/child-missing-parent/reopen"`,
 		`type="checkbox"`,
 		`checked`,
@@ -665,6 +672,9 @@ func TestTaskRowRendersFaultySubtaskRelationshipWithoutParentTitle(t *testing.T)
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected faulty subtask row to include %q in %s", want, output)
 		}
+	}
+	if strings.Contains(output, `caldo-task-row-subtask`) || strings.Contains(output, `data-task-parent-visible`) {
+		t.Fatalf("subtask without a visible parent must not be indented: %s", output)
 	}
 	if strings.Contains(output, `Unteraufgabe von`) {
 		t.Fatalf("missing parent title must render a generic subtask chip: %s", output)

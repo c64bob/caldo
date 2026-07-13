@@ -78,6 +78,17 @@ func TestUpcomingRouteShowsTasksInsideConfiguredWindow(t *testing.T) {
 
 	database := openDateViewRouteDB(t)
 	seedDateViewRouteTasks(t, database)
+	if _, err := database.Conn.Exec(`
+INSERT INTO tasks (
+	id, project_id, uid, href, etag, server_version, title, description, status, raw_vtodo, base_vtodo,
+	priority, label_names, project_name, sync_status, due_date, parent_id, created_at, updated_at
+) VALUES (
+	'task-upcoming-child','project-1','uid-upcoming-child','/calendars/work/task-upcoming-child.ics','"etag-upcoming-child"',1,
+	'Bald Unteraufgabe','','needs-action','BEGIN:VTODO\nUID:uid-upcoming-child\nRELATED-TO;RELTYPE=PARENT:uid-today-active\nEND:VTODO',
+	'BEGIN:VTODO\nUID:uid-upcoming-child\nRELATED-TO;RELTYPE=PARENT:uid-today-active\nEND:VTODO',NULL,'','Work','synced','2026-05-01','task-today-active',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+);`); err != nil {
+		t.Fatalf("seed upcoming child: %v", err)
+	}
 
 	if _, err := database.Conn.Exec(`UPDATE settings SET upcoming_days = 3 WHERE id = 'default';`); err != nil {
 		t.Fatalf("update upcoming days: %v", err)
@@ -96,6 +107,14 @@ func TestUpcomingRouteShowsTasksInsideConfiguredWindow(t *testing.T) {
 	body := responseRecorder.Body.String()
 	if !strings.Contains(body, "Bald Aufgabe") {
 		t.Fatalf("response body missing in-range upcoming task")
+	}
+	for _, want := range []string{"Bald Unteraufgabe", "Unteraufgabe von Heute Aufgabe", `data-task-parent-open`, `data-parent-task-id="task-today-active"`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("upcoming orphaned child missing %q: %q", want, body)
+		}
+	}
+	if strings.Contains(body, `caldo-task-row-subtask`) {
+		t.Fatalf("upcoming child must not be indented without its parent: %q", body)
 	}
 	if strings.Contains(body, "In 7 Tagen") {
 		t.Fatalf("response body unexpectedly contains out-of-window task")
@@ -250,6 +269,44 @@ INSERT INTO task_labels (task_id, label_id) VALUES
 	}
 	if strings.Contains(body, "Überfällig erledigt") || strings.Contains(body, "Ohne Fälligkeit") {
 		t.Fatalf("label page should only show matching visible tasks: %q", body)
+	}
+}
+
+func TestLabelTasksRouteAlignsChildWhoseParentDoesNotMatch(t *testing.T) {
+	t.Parallel()
+
+	database := openDateViewRouteDB(t)
+	seedDateViewRouteTasks(t, database)
+	if _, err := database.Conn.Exec(`
+INSERT INTO labels (id, name, created_at) VALUES ('label-kind', 'Kind', CURRENT_TIMESTAMP);
+INSERT INTO task_labels (task_id, label_id) VALUES ('task-today-child', 'label-kind');
+`); err != nil {
+		t.Fatalf("seed child-only label: %v", err)
+	}
+
+	router := chi.NewRouter()
+	router.Get("/labels/{labelID}", LabelTasksPage(dateViewDependencies{database: database, now: fixedNow}))
+
+	request := httptest.NewRequest(http.MethodGet, "/labels/label-kind", nil)
+	responseRecorder := httptest.NewRecorder()
+	router.ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)
+	}
+	body := responseRecorder.Body.String()
+	for _, want := range []string{
+		"Heute Unteraufgabe",
+		"Unteraufgabe von Heute Aufgabe",
+		`data-task-parent-open`,
+		`data-parent-task-id="task-today-active"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("child-only label result missing %q: %q", want, body)
+		}
+	}
+	if strings.Contains(body, `data-task-id="task-today-active"`) || strings.Contains(body, `caldo-task-row-subtask`) {
+		t.Fatalf("label result must not inject or indent the filtered parent: %q", body)
 	}
 }
 

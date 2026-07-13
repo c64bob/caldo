@@ -2455,6 +2455,7 @@
   }
 
   var writeState = { pendingRequests: 0 };
+  var trackedHTMXWriteRequests = new WeakSet();
 
   function beginWriteRequest(message) {
     writeState.pendingRequests += 1;
@@ -2465,6 +2466,34 @@
     if (writeState.pendingRequests > 0) {
       writeState.pendingRequests -= 1;
     }
+  }
+
+  function isTaskDisplayPreferenceRequest(detail) {
+    return !!closestElement(detail && detail.elt, '[data-task-display-form]');
+  }
+
+  function shouldTrackHTMXWrite(detail) {
+    var method = ((detail && detail.requestConfig && detail.requestConfig.verb) || '').toUpperCase();
+    if (!method || method === 'GET') return false;
+    if (isSyncRequestElement(detail && detail.elt)) return false;
+    return !isTaskDisplayPreferenceRequest(detail);
+  }
+
+  function beginTrackedHTMXWrite(detail) {
+    var xhr = detail && detail.xhr;
+    if (!xhr || !shouldTrackHTMXWrite(detail) || trackedHTMXWriteRequests.has(xhr)) return;
+    trackedHTMXWriteRequests.add(xhr);
+    beginWriteRequest('Speichern ...');
+    xhr.addEventListener('loadend', function () {
+      finishTrackedHTMXWrite(xhr);
+    }, { once: true });
+  }
+
+  function finishTrackedHTMXWrite(xhr) {
+    if (!xhr || !trackedHTMXWriteRequests.has(xhr)) return false;
+    trackedHTMXWriteRequests.delete(xhr);
+    finishWriteRequest();
+    return true;
   }
 
   function rememberWriteStatus(kind, message) {
@@ -2848,7 +2877,6 @@
       setWriteStatus(null, '');
       return;
     }
-    beginWriteRequest('Speichern ...');
     var quickAddOverlayRequest = closestElement(event.detail && event.detail.elt, '[data-quick-add-overlay]');
     if (quickAddOverlayRequest) {
       setQuickAddOverlayError(quickAddOverlayRequest, '');
@@ -2887,6 +2915,20 @@
     }
   });
 
+  document.body.addEventListener('htmx:beforeSend', function (event) {
+    beginTrackedHTMXWrite(event.detail);
+  });
+
+  document.body.addEventListener('htmx:beforeOnLoad', function (event) {
+    finishTrackedHTMXWrite(event.detail && event.detail.xhr);
+  });
+
+  ['htmx:sendAbort', 'htmx:sendError', 'htmx:timeout'].forEach(function (eventName) {
+    document.body.addEventListener(eventName, function (event) {
+      finishTrackedHTMXWrite(event.detail && event.detail.xhr);
+    });
+  });
+
   document.body.addEventListener('htmx:afterSwap', function (event) {
     var targetElement = event.detail && event.detail.target instanceof Element ? event.detail.target : null;
     initializeFormErrors(targetElement || document);
@@ -2913,7 +2955,7 @@
       }
       return;
     }
-    finishWriteRequest();
+    finishTrackedHTMXWrite(event.detail && event.detail.xhr);
 
     if (!successful) {
       setWriteStatus('error', 'Speichern fehlgeschlagen. Änderungen prüfen.');

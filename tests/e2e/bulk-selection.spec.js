@@ -25,9 +25,9 @@ test('bulk selection is reachable and reports partial completion failures', asyn
   const firstControl = firstRow.getByRole('checkbox', { name: /Mehrfachbearbeitung/ });
   const secondControl = secondRow.getByRole('checkbox', { name: /Mehrfachbearbeitung/ });
 
-  await firstRow.getByRole('button', { name: 'Erste Aufgabe' }).click({ modifiers: ['Control'] });
+  await firstRow.getByRole('textbox', { name: 'Erste Aufgabe' }).click({ modifiers: ['Control'] });
   await expect(firstControl).toBeChecked();
-  await expect(firstRow.locator('[data-inline-task-edit-form]')).toBeHidden();
+  await expect(firstRow.locator('[data-inline-task-edit-form]')).toBeVisible();
 
   await secondControl.focus();
   await page.keyboard.press('Shift+Enter');
@@ -57,8 +57,9 @@ function taskRow(id, title) {
       <form action="/tasks/${id}/complete" data-task-action-form>
         <input type="hidden" name="expected_version" value="1">
       </form>
-      <button type="button" data-inline-task-edit-open data-inline-task-edit-focus="title" aria-label="${title}">${title}</button>
-      <form data-inline-task-edit-form hidden><input data-inline-task-edit-title value="${title}"></form>
+      <form data-inline-task-edit-form data-inline-task-edit-persistent>
+        <input name="title" data-inline-task-edit-title aria-label="${title}" value="${title}">
+      </form>
       <label>
         <input type="checkbox" data-bulk-select-control aria-label="Für Mehrfachbearbeitung auswählen: ${title}">
       </label>

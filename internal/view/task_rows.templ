@@ -80,16 +80,6 @@ templ TaskRow(task TaskRowView) {
 					<div class="caldo-task-title-line">
 						if taskCanInlineEdit(task) {
 							<div class="caldo-task-title-edit-shell" data-inline-task-edit-scope data-inline-task-edit-focus="title">
-								<button
-									type="button"
-									class="caldo-task-title caldo-task-title-edit-trigger"
-									data-inline-task-edit-open
-									data-inline-task-edit-focus="title"
-									aria-expanded="false"
-									aria-label={ "Titel bearbeiten: " + taskRowTitle(task) }
-								>
-									{ taskRowTitle(task) }
-								</button>
 								<form
 									method="post"
 									action={ taskEditPath(task) }
@@ -100,10 +90,10 @@ templ TaskRow(task TaskRowView) {
 									data-refresh-after-write="true"
 									data-inline-task-edit-form
 									data-inline-task-edit-kind="title"
+									data-inline-task-edit-persistent
 									class="caldo-task-inline-edit-form caldo-task-title-edit-form"
 									aria-label={ "Titel bearbeiten: " + taskRowTitle(task) }
 									aria-describedby={ taskDOMID("task-edit-error", task) }
-									hidden
 								>
 									<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
 									<input
@@ -111,9 +101,11 @@ templ TaskRow(task TaskRowView) {
 										name="title"
 										required
 										autocomplete="off"
-										class="caldo-input caldo-task-edit-title"
+										draggable="false"
+										class="caldo-task-title caldo-task-edit-title"
 										value={ taskRowTitle(task) }
 										data-inline-task-edit-title
+										aria-label={ "Titel bearbeiten: " + taskRowTitle(task) }
 										aria-describedby={ taskDOMID("task-edit-error", task) }
 									/>
 									<button type="submit" class="sr-only">Speichern</button>

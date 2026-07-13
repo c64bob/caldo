@@ -1161,29 +1161,34 @@
 			overflow-wrap: anywhere;
 		}
 
-		.caldo-task-title-edit-trigger {
+		.caldo-task-edit-title {
 			appearance: none;
 			background: transparent;
 			border: 0;
 			border-radius: 0.25rem;
+			box-shadow: none;
 			cursor: text;
-			padding: 0.125rem 0.25rem;
 			margin: -0.125rem -0.25rem;
-			text-align: left;
+			min-height: 1.5rem;
+			padding: 0.125rem 0.25rem;
 			width: calc(100% + 0.5rem);
 			transition: background-color 100ms ease-out;
 		}
 
-		.caldo-task-title-edit-trigger:hover {
+		.caldo-task-edit-title:hover:not(:focus) {
 			background: var(--caldo-surface-muted);
-			color: var(--caldo-accent);
 		}
 
-		.caldo-task-title-edit-trigger:focus-visible {
+		.caldo-task-edit-title:focus-visible {
+			background: var(--caldo-surface);
 			outline: 2px solid var(--caldo-focus);
 			outline-offset: 2px;
 			box-shadow: var(--caldo-focus-ring);
-			color: var(--caldo-accent);
+		}
+
+		.caldo-task-edit-title[aria-invalid="true"] {
+			background: var(--caldo-danger-muted);
+			box-shadow: inset 0 0 0 1px var(--caldo-danger);
 		}
 
 		.caldo-task-inline-edit-form {
@@ -1192,12 +1197,6 @@
 
 		.caldo-task-title-edit-form {
 			@apply w-full;
-		}
-
-		.caldo-task-title-edit-form .caldo-input {
-			@apply w-full text-sm font-medium leading-5;
-			min-height: 1.5rem;
-			padding: 0 0.25rem;
 		}
 
 	.caldo-task-row-completed .caldo-task-title {

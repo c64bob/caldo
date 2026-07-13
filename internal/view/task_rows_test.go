@@ -279,6 +279,9 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 		`data-task-move-path="/tasks/task-1/move"`,
 		`data-task-drag-move`,
 		`draggable="true"`,
+		`data-inline-task-edit-persistent`,
+		`data-inline-task-edit-title`,
+		`aria-label="Titel bearbeiten: Editierbare Aufgabe"`,
 		`data-inline-task-edit-open`,
 		`data-inline-task-edit-focus="title"`,
 		`data-inline-task-edit-focus="project"`,
@@ -351,6 +354,9 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 	}
 	if strings.Contains(output, `>Aufgabe erledigen<`) {
 		t.Fatalf("completion must be available only through the checkbox control: %s", output)
+	}
+	if strings.Contains(output, `data-inline-task-edit-open data-inline-task-edit-focus="title"`) {
+		t.Fatalf("expected task title to use the persistent native input in %s", output)
 	}
 }
 

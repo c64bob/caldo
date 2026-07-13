@@ -191,15 +191,36 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
   await expect(inlineEditRow).toContainText('Fällig 12.06.2099');
 
-  let priorityEditForm = await openTaskRowEdit(inlineEditRow, 'priority');
-  await expect(priorityEditForm.locator('[name="priority"]')).toBeFocused();
-  await priorityEditForm.locator('[name="priority"]').press('Escape');
-  await expect(priorityEditForm).toBeHidden();
-  await expect(inlineEditRow).toContainText('Keine Priorität');
-  priorityEditForm = await openTaskRowEdit(inlineEditRow, 'priority');
-  await priorityEditForm.locator('[name="priority"]').selectOption('5');
+  let priorityEditForm = inlineEditRow.locator('[data-inline-task-edit-form][data-inline-task-edit-kind="priority"]');
+  await expect(priorityEditForm).toBeVisible();
+  await expect(priorityEditForm.locator('[data-inline-task-edit-open]')).toHaveCount(0);
+  let prioritySelect = priorityEditForm.locator('[data-inline-task-priority-select]');
+  await prioritySelect.click();
+  await expect(prioritySelect).toBeFocused();
+  await prioritySelect.press('Escape');
+  await expect(priorityEditForm).toBeVisible();
+  await expect(prioritySelect).toHaveValue('');
+  await prioritySelect.selectOption('5');
   inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
   await expect(inlineEditRow).toContainText('P2 Mittel');
+
+  prioritySelect = inlineEditRow.locator('[data-inline-task-priority-select]');
+  await exerciseWriteStatusForFailedInlinePriority(page, inlineEditRow, prioritySelect, '1');
+  await expect(prioritySelect).toHaveClass(/caldo-task-priority-p1/);
+  await prioritySelect.press('ArrowDown');
+  inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
+  await expect(inlineEditRow).toContainText('P2 Mittel');
+
+  prioritySelect = inlineEditRow.locator('[data-inline-task-priority-select]');
+  await prioritySelect.focus();
+  await prioritySelect.press('ArrowDown');
+  inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
+  await expect(inlineEditRow).toContainText('P3 Niedrig');
+
+  await exerciseTouchPrioritySelection(page, 'E2E Inline Edited', '', 'Keine Priorität');
+  await gotoApp(page, '/search?q=%23Work');
+  inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
+  await expect(inlineEditRow).toContainText('Keine Priorität');
 
   let labelsEditForm = await openTaskRowEdit(inlineEditRow, 'labels');
   await expect(labelsEditForm.locator('[name="labels"]')).toBeFocused();
@@ -1441,6 +1462,59 @@ async function exerciseWriteStatusForFailedInlineMetadata(page, taskRow, input) 
     await expect(page.locator('[data-write-status]')).toContainText('Speichern fehlgeschlagen');
   } finally {
     await page.unroute(routePattern, routeHandler);
+  }
+}
+
+async function exerciseWriteStatusForFailedInlinePriority(page, taskRow, select, value) {
+  const routePattern = '**/tasks/*';
+  const routeHandler = async (route) => {
+    const requestURL = new URL(route.request().url());
+    if (route.request().method() !== 'PATCH' || !/^\/tasks\/[^/]+$/.test(requestURL.pathname)) {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 502,
+      headers: { 'content-type': 'text/plain; charset=utf-8' },
+      body: 'failed to update task on caldav server'
+    });
+  };
+
+  await page.route(routePattern, routeHandler);
+  try {
+    await select.selectOption(value);
+    await expect(taskRow.locator('[data-inline-task-edit-error]')).toBeVisible();
+    await expect(taskRow.locator('[data-inline-task-edit-error]')).toContainText('Aufgabe konnte nicht gespeichert werden.');
+    await expect(select).toHaveValue(value);
+    await expect(select).toBeEnabled();
+    await expect(page.locator('[data-write-status]')).toContainText('Speichern fehlgeschlagen');
+  } finally {
+    await page.unroute(routePattern, routeHandler);
+  }
+}
+
+async function exerciseTouchPrioritySelection(page, title, value, expectedLabel) {
+  const browser = page.context().browser();
+  const state = readState();
+  const touchContext = await browser.newContext({
+    hasTouch: true,
+    viewport: tabletViewport,
+    extraHTTPHeaders: { [state.proxyUserHeader]: 'e2e-user' }
+  });
+  const touchPage = await touchContext.newPage();
+
+  try {
+    await gotoApp(touchPage, `/search?q=${encodeURIComponent(title)}`);
+    await ensureBrowserCSRFCookie(touchPage);
+    const row = touchPage.locator('[data-task-id]').filter({ hasText: title }).first();
+    const select = row.locator('[data-inline-task-priority-select]');
+    await expect(select).toBeVisible();
+    await select.tap();
+    await expect(select).toBeFocused();
+    await select.selectOption(value);
+    await expect(touchPage.locator('[data-task-id]').filter({ hasText: title }).first()).toContainText(expectedLabel);
+  } finally {
+    await touchContext.close();
   }
 }
 

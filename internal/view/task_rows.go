@@ -733,6 +733,17 @@ func taskDetailPriorityOptions(task TaskRowView) []taskPriorityOption {
 	return options
 }
 
+func taskInlinePriorityOptions(task TaskRowView) []taskPriorityOption {
+	options := taskDetailPriorityOptions(task)
+	for i := range options {
+		if options[i].Value == "" {
+			options[i].Label = "Keine Priorität"
+			break
+		}
+	}
+	return options
+}
+
 func taskPriorityCanonicalValue(priority int) string {
 	switch {
 	case priority <= 0:

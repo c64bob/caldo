@@ -3070,6 +3070,23 @@
   document.addEventListener('input', handleConflictManualControlEvent, true);
   document.addEventListener('change', handleConflictManualControlEvent, true);
   document.addEventListener('change', handleConflictSplitConfirmationEvent, true);
+
+  function updateInlinePriorityAppearance(control) {
+    if (!control) return;
+    var priority = parseInt(control.value || '', 10);
+    control.classList.remove('caldo-task-priority-p1', 'caldo-task-priority-p2', 'caldo-task-priority-p3');
+    if (!Number.isFinite(priority) || priority <= 0) return;
+    if (priority <= 4) {
+      control.classList.add('caldo-task-priority-p1');
+      return;
+    }
+    if (priority <= 6) {
+      control.classList.add('caldo-task-priority-p2');
+      return;
+    }
+    control.classList.add('caldo-task-priority-p3');
+  }
+
   document.addEventListener('change', function (event) {
     var taskDisplaySort = closestElement(event.target, '[data-task-display-sort]');
     if (taskDisplaySort) {
@@ -3082,6 +3099,7 @@
     }
     var inlineEditAutosave = closestElement(event.target, '[data-inline-task-edit-autosave]');
     if (inlineEditAutosave && !inlineEditAutosave.disabled) {
+      updateInlinePriorityAppearance(closestElement(inlineEditAutosave, '[data-inline-task-priority-select]'));
       submitForm(inlineEditAutosave.closest('[data-inline-task-edit-form]'));
       return;
     }
@@ -3570,6 +3588,7 @@
     var inlineEditForm = closestElement(event.target, '[data-inline-task-edit-form]');
     if (inlineEditForm) {
       if (event.key === 'Escape') {
+        if (closestElement(event.target, '[data-inline-task-priority-select]')) return;
         event.preventDefault();
         closeInlineEdit(inlineEditForm.closest('[data-task-id]'), inlineEditForm);
         return;

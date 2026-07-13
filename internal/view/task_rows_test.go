@@ -129,6 +129,41 @@ func TestTaskRowRendersDescriptionMarkdownReadOnlyWithoutChangingRawEditValue(t 
 	}
 }
 
+func TestTaskRowRendersDecodedReadOnlyTextAndRawEditValues(t *testing.T) {
+	t.Parallel()
+
+	component := TaskRow(TaskRowView{
+		ID:            "task-escaped",
+		ProjectID:     "project-1",
+		Title:         `Plan\, phase 2\; team\\blue`,
+		Description:   `First\nSecond\, item`,
+		ParentTitle:   `Parent\, task`,
+		IsSubtask:     true,
+		Status:        "needs-action",
+		SyncStatus:    "pending",
+		ServerVersion: 2,
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(context.Background(), &rendered); err != nil {
+		t.Fatalf("render task row: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`<p class="caldo-task-title">Plan, phase 2; team\blue</p>`,
+		`<h2 id="task-detail-title-task-escaped" class="caldo-task-detail-title">Plan, phase 2; team\blue</h2>`,
+		`Unteraufgabe von Parent, task`,
+		`First<br>Second, item`,
+		`value="Plan\, phase 2\; team\\blue"`,
+		`>First\nSecond\, item</textarea>`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected decoded display and raw edit value %q in %s", want, output)
+		}
+	}
+}
+
 func TestTaskRowHonorsTaskNoteDisplayPreference(t *testing.T) {
 	t.Parallel()
 

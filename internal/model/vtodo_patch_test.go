@@ -76,6 +76,29 @@ func TestPatchVTODOChangesRRULEOnlyWhenExplicitlyPatched(t *testing.T) {
 	}
 }
 
+func TestPatchVTODOPreservesEscapedTextWhenPatchingAnotherField(t *testing.T) {
+	raw := strings.Join([]string{
+		"BEGIN:VTODO",
+		"UID:uid-escaped",
+		`SUMMARY:Plan\, phase 2\; team\\blue`,
+		`DESCRIPTION:First\nSecond\, item`,
+		"STATUS:NEEDS-ACTION",
+		"END:VTODO",
+	}, "\r\n")
+
+	priority := 5
+	patched := PatchVTODO(raw, VTODOPatch{Priority: &priority})
+
+	for _, want := range []string{
+		`SUMMARY:Plan\, phase 2\; team\\blue`,
+		`DESCRIPTION:First\nSecond\, item`,
+	} {
+		if !strings.Contains(patched, want) {
+			t.Fatalf("expected unrelated patch to preserve %q in %q", want, patched)
+		}
+	}
+}
+
 func TestPatchVTODOUpdatesDueCategoriesAndCompleted(t *testing.T) {
 	raw := strings.Join([]string{
 		"BEGIN:VTODO",

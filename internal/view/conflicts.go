@@ -151,7 +151,7 @@ func conflictProjectLabel(projectName string) string {
 
 func conflictTaskTitle(title string) string {
 	if trimmed := strings.TrimSpace(title); trimmed != "" {
-		return trimmed
+		return iCalendarTextDisplay(trimmed)
 	}
 	return "(gelöschte Aufgabe)"
 }
@@ -635,14 +635,14 @@ func conflictManualOptionClass(option conflictManualOption) string {
 
 func conflictTitleValue(fields model.VTODOFields) string {
 	if trimmed := strings.TrimSpace(fields.Title); trimmed != "" {
-		return trimmed
+		return iCalendarTextDisplay(trimmed)
 	}
 	return "Ohne Titel"
 }
 
 func conflictDescriptionValue(fields model.VTODOFields) string {
 	if trimmed := strings.TrimSpace(fields.Description); trimmed != "" {
-		return trimmed
+		return iCalendarTextDisplay(trimmed)
 	}
 	return "Keine Beschreibung"
 }

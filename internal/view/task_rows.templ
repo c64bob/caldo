@@ -103,7 +103,7 @@ templ TaskRow(task TaskRowView) {
 										autocomplete="off"
 										draggable="false"
 										class="caldo-task-title caldo-task-edit-title"
-										value={ taskRowTitle(task) }
+										value={ taskEditableTitle(task) }
 										data-inline-task-edit-title
 										aria-label={ "Titel bearbeiten: " + taskRowTitle(task) }
 										aria-describedby={ taskDOMID("task-edit-error", task) }
@@ -636,7 +636,7 @@ templ TaskDetailPanel(task TaskRowView) {
 						required
 						autocomplete="off"
 						class="caldo-input caldo-task-detail-title-input"
-						value={ taskRowTitle(task) }
+						value={ taskEditableTitle(task) }
 						data-task-detail-title
 						aria-describedby={ taskDOMID("task-detail-error", task) }
 						disabled?={ !taskCanDetailEdit(task) }

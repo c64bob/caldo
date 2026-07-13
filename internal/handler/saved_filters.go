@@ -77,7 +77,7 @@ func SavedFilterTasks(deps savedFilterDependencies) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout(filter.Name, view.ConfigurableTaskListPage(filter.Name, "Keine Aufgaben für diesen Filter.", groups, display, view.InlineTaskCreateView{})).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayout(filter.Name, view.ConfigurableTaskListPage(filter.Name, "Keine Aufgaben für diesen Filter.", groups, display)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}

@@ -11,7 +11,7 @@ func TestSearchPageRendersSaveFilterFormForEligibleQuery(t *testing.T) {
 	t.Parallel()
 
 	ctx := WithCSRFToken(context.Background(), "token-123")
-	component := SearchPage("#Work", nil, InlineTaskCreateView{}, SearchSaveFilterView{
+	component := SearchPage("#Work", nil, SearchSaveFilterView{
 		Enabled:    true,
 		Query:      "#Work",
 		IsFavorite: true,
@@ -56,7 +56,7 @@ func TestSearchPageRendersSaveFilterFormForEligibleQuery(t *testing.T) {
 func TestSearchPageOmitsSaveFilterFormWhenQueryIsNotEligible(t *testing.T) {
 	t.Parallel()
 
-	component := SearchPage("plain text", nil, InlineTaskCreateView{}, SearchSaveFilterView{})
+	component := SearchPage("plain text", nil, SearchSaveFilterView{})
 
 	var rendered bytes.Buffer
 	if err := component.Render(context.Background(), &rendered); err != nil {

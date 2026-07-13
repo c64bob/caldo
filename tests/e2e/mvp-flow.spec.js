@@ -102,6 +102,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expectCurrentView(page, 'E2E Empty Project');
   await expect(page.locator('.caldo-sidebar [data-nav-projects] a[aria-current="page"]').filter({ hasText: 'E2E Empty Project' })).toBeVisible();
   await expect(page.getByText('Keine offenen Aufgaben in diesem Projekt.')).toBeVisible();
+  await expectNoBottomTaskCreator(page);
   await gotoApp(page, '/search?q=%23Work');
   const searchSaveFilterForm = page.locator('[data-search-save-filter-form]');
   await expect(searchSaveFilterForm).toBeVisible();
@@ -127,8 +128,10 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(page.locator('[data-saved-filter-list]').filter({ hasText: 'E2E Broken Filter' })).toHaveCount(0);
   await expect(page.locator('[data-nav-user-filters] a').filter({ hasText: 'E2E Broken Filter' })).toHaveCount(0);
   await gotoApp(page, '/today');
+  await expectNoBottomTaskCreator(page);
   await captureBaselineSet(page, testInfo, 'today');
   await gotoApp(page, '/upcoming');
+  await expectNoBottomTaskCreator(page);
   await captureBaselineSet(page, testInfo, 'upcoming');
   await gotoApp(page, '/search?q=Stage');
   await captureBaselineSet(page, testInfo, 'search');
@@ -142,25 +145,20 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await exerciseMobileNavigationAndSettings(page, testInfo);
 
   await gotoApp(page, '/search?q=%23Work');
-  const mainInlineCreate = page.locator('.caldo-inline-create').first();
-  const inlineTrigger = mainInlineCreate.locator('[data-inline-task-create-trigger]');
-  await expect(inlineTrigger).toBeVisible();
+  await expectNoBottomTaskCreator(page);
+  const quickAddOpen = page.locator('.caldo-topbar [data-quick-add-open]');
+  await expect(quickAddOpen).toBeVisible();
   await ensureBrowserCSRFCookie(page);
-  await inlineTrigger.click();
-  const inlineTitle = mainInlineCreate.locator('[data-inline-task-create-title]');
-  await expect(inlineTitle).toBeFocused();
-  await inlineTitle.fill('E2E Inline Canceled');
-  await inlineTitle.press('Escape');
-  await expect(inlineTitle).toBeHidden();
-  await inlineTrigger.click();
-  await expect(inlineTitle).toHaveValue('');
-  await inlineTitle.fill('E2E Inline Preserved');
-  await exerciseWriteStatusForFailedInlineCreate(page, mainInlineCreate, inlineTitle);
-  await inlineTitle.fill('E2E Inline Created');
-  await inlineTitle.press('Enter');
-  await expect.poll(async () => page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Created' }).count()).toBe(1);
-  await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Created' }).first()).toBeVisible();
+  await quickAddOpen.click();
+  const quickAddOverlay = page.locator('[data-quick-add-overlay]');
+  const quickAddInput = quickAddOverlay.locator('[data-quick-add-overlay-input]');
+  await expect(quickAddInput).toBeFocused();
+  await quickAddInput.fill('E2E Inline Created #Work');
+  await quickAddInput.press('Enter');
+  await quickAddOverlay.locator('[data-quick-add-overlay-save-form]').getByRole('button', { name: 'Speichern' }).click();
+  await expect(quickAddOverlay).toBeHidden();
   await expect(page.locator('[data-write-status]')).toContainText('Gespeichert');
+  await waitForSearchResult(page, 'E2E Inline Created');
 
   await gotoApp(page, '/search?q=%23Work');
   let inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Created' }).first();
@@ -678,6 +676,10 @@ async function dragTaskRowToProject(page, row, projectName) {
 
 async function expectCurrentView(page, title) {
   await expect(page.locator('.caldo-topbar-heading')).toHaveText(title);
+}
+
+async function expectNoBottomTaskCreator(page) {
+  await expect(page.locator('[data-inline-task-create]:not([data-subtask-create])')).toHaveCount(0);
 }
 
 async function openLabelDetail(page, labelName) {
@@ -1394,47 +1396,6 @@ async function exerciseSSESyncStatus(page) {
     await expect(page.locator('[data-write-status]')).not.toContainText('Gespeichert');
   } finally {
     await page.unroute(eventsRoute);
-  }
-}
-
-async function exerciseWriteStatusForFailedInlineCreate(page, inlineCreateRoot, titleInput) {
-  let resolveIntercepted;
-  let releaseResponse;
-  const requestIntercepted = new Promise((resolve) => {
-    resolveIntercepted = resolve;
-  });
-  const responseGate = new Promise((resolve) => {
-    releaseResponse = resolve;
-  });
-  const routePattern = '**/tasks/';
-  const routeHandler = async (route) => {
-    if (route.request().method() !== 'POST') {
-      await route.continue();
-      return;
-    }
-    resolveIntercepted();
-    await responseGate;
-    await route.fulfill({
-      status: 502,
-      headers: { 'content-type': 'text/plain; charset=utf-8' },
-      body: 'failed to update task on caldav server'
-    });
-  };
-
-  await page.route(routePattern, routeHandler);
-  try {
-    await titleInput.press('Enter');
-    await requestIntercepted;
-    await expect(page.locator('[data-write-status]')).toContainText('Speichern ...');
-    await expect.poll(async () => browserWouldBlockUnload(page)).toBe(true);
-    releaseResponse();
-    await expect(inlineCreateRoot.locator('[data-inline-task-create-error]')).toBeVisible();
-    await expect(inlineCreateRoot.locator('[data-inline-task-create-error]')).toContainText('Aufgabe konnte nicht gespeichert werden.');
-    await expect(titleInput).toHaveValue('E2E Inline Preserved');
-    await expect(page.locator('[data-write-status]')).toContainText('Speichern fehlgeschlagen');
-    await expect.poll(async () => browserWouldBlockUnload(page)).toBe(false);
-  } finally {
-    await page.unroute(routePattern, routeHandler);
   }
 }
 

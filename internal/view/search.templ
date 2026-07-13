@@ -2,18 +2,18 @@ package view
 
 import "strings"
 
-templ SearchPage(query string, results []TaskRowView, create InlineTaskCreateView, saveFilter SearchSaveFilterView) {
+templ SearchPage(query string, results []TaskRowView, saveFilter SearchSaveFilterView) {
 	<section class="caldo-page">
 		@SearchForm(query)
-		@SearchLiveResults(query, results, create, saveFilter)
+		@SearchLiveResults(query, results, saveFilter)
 	</section>
 }
 
-templ ConfigurableSearchPage(query string, groups []TaskListGroupView, display TaskListDisplayView, create InlineTaskCreateView, saveFilter SearchSaveFilterView) {
+templ ConfigurableSearchPage(query string, groups []TaskListGroupView, display TaskListDisplayView, saveFilter SearchSaveFilterView) {
 	<section class="caldo-page">
 		@SearchForm(query)
 		@TaskListDisplayControls(display)
-		@ConfigurableSearchLiveResults(query, groups, create, saveFilter)
+		@ConfigurableSearchLiveResults(query, groups, saveFilter)
 	</section>
 }
 
@@ -40,7 +40,7 @@ templ SearchForm(query string) {
 	</form>
 }
 
-templ SearchLiveResults(query string, results []TaskRowView, create InlineTaskCreateView, saveFilter SearchSaveFilterView) {
+templ SearchLiveResults(query string, results []TaskRowView, saveFilter SearchSaveFilterView) {
 	<div id="search-live-results" data-search-live-results aria-live="polite">
 		if saveFilter.Enabled {
 			@SearchSaveFilterForm(saveFilter)
@@ -56,11 +56,10 @@ templ SearchLiveResults(query string, results []TaskRowView, create InlineTaskCr
 				}
 			</ul>
 		}
-		@InlineTaskCreate(create)
 	</div>
 }
 
-templ ConfigurableSearchLiveResults(query string, groups []TaskListGroupView, create InlineTaskCreateView, saveFilter SearchSaveFilterView) {
+templ ConfigurableSearchLiveResults(query string, groups []TaskListGroupView, saveFilter SearchSaveFilterView) {
 	<div id="search-live-results" data-search-live-results aria-live="polite">
 		if saveFilter.Enabled {
 			@SearchSaveFilterForm(saveFilter)
@@ -72,7 +71,6 @@ templ ConfigurableSearchLiveResults(query string, groups []TaskListGroupView, cr
 		} else {
 			@TaskListGroups(groups, "search")
 		}
-		@InlineTaskCreate(create)
 	</div>
 }
 

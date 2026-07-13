@@ -1337,6 +1337,46 @@
 			width: auto;
 		}
 
+		.caldo-task-priority-inline-form {
+			@apply relative inline-flex min-w-0 shrink-0 items-center;
+		}
+
+		.caldo-task-priority-select {
+			appearance: none;
+			border: 0;
+			cursor: pointer;
+			font-family: inherit;
+			font-weight: 500;
+			min-height: 1.25rem;
+			padding: 0 1.125rem 0 0.375rem;
+			width: 7rem;
+		}
+
+		.caldo-task-priority-select-caret {
+			color: var(--caldo-text-subtle);
+			font-size: 0.625rem;
+			line-height: 1;
+			pointer-events: none;
+			position: absolute;
+			right: 0.375rem;
+			top: 50%;
+			transform: translateY(-50%);
+		}
+
+		.caldo-task-priority-select:hover {
+			background: var(--caldo-accent-muted);
+		}
+
+		.caldo-task-priority-select:focus-visible {
+			box-shadow: var(--caldo-focus-ring);
+			outline: 2px solid var(--caldo-focus);
+			outline-offset: 2px;
+		}
+
+		.caldo-task-priority-select:disabled {
+			@apply cursor-wait opacity-60;
+		}
+
 		.caldo-task-meta-labels-input {
 			max-width: 100%;
 			padding: 0.25rem 0.375rem;

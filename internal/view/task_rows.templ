@@ -340,43 +340,40 @@ templ TaskProjectInlineEditor(task TaskRowView) {
 }
 
 templ TaskPriorityInlineEditor(task TaskRowView) {
-	<div class="caldo-task-meta-edit-shell caldo-task-priority-edit-shell" data-inline-task-edit-scope data-inline-task-edit-focus="priority">
-		<button
-			type="button"
-			class={ "caldo-task-chip", "caldo-task-meta-edit-trigger", taskPriorityClass(task) }
-			data-inline-task-edit-open
-			data-inline-task-edit-focus="priority"
-			aria-expanded="false"
-			aria-controls={ taskDOMID("task-priority-edit", task) }
-			aria-label={ "Priorität bearbeiten: " + taskPriorityEditLabel(task) }
-		>
-			{ taskPriorityEditLabel(task) }
-		</button>
-		<form
-			id={ taskDOMID("task-priority-edit", task) }
-			method="post"
-			action={ taskEditPath(task) }
-			hx-patch={ taskEditPath(task) }
-			hx-swap="none"
-			hx-disabled-elt="find [data-inline-task-edit-control]"
-			hx-headers={ taskCSRFHeaders(ctx) }
-			data-refresh-after-write="true"
-			data-inline-task-edit-form
-			data-inline-task-edit-kind="priority"
-			class="caldo-task-inline-edit-form caldo-task-meta-inline-form"
+	<form
+		method="post"
+		action={ taskEditPath(task) }
+		hx-patch={ taskEditPath(task) }
+		hx-swap="none"
+		hx-disabled-elt="find [data-inline-task-edit-control]"
+		hx-headers={ taskCSRFHeaders(ctx) }
+		data-refresh-after-write="true"
+		data-inline-task-edit-form
+		data-inline-task-edit-kind="priority"
+		data-inline-task-edit-persistent
+		data-inline-task-edit-scope
+		data-inline-task-edit-focus="priority"
+		class="caldo-task-inline-edit-form caldo-task-priority-inline-form"
+		aria-label={ "Priorität bearbeiten: " + taskPriorityEditLabel(task) }
+		aria-describedby={ taskDOMID("task-edit-error", task) }
+	>
+		<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
+		<select
+			name="priority"
+			class={ "caldo-task-chip", "caldo-task-priority-select", taskPriorityClass(task) }
+			data-inline-task-edit-control
+			data-inline-task-edit-autosave
+			data-inline-task-priority-select
 			aria-label={ "Priorität bearbeiten: " + taskPriorityEditLabel(task) }
 			aria-describedby={ taskDOMID("task-edit-error", task) }
-			hidden
 		>
-			<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
-			<select name="priority" class="caldo-select caldo-task-meta-select" data-inline-task-edit-control data-inline-task-edit-autosave aria-describedby={ taskDOMID("task-edit-error", task) }>
-				for _, priority := range taskDetailPriorityOptions(task) {
-					<option value={ priority.Value } selected?={ priority.Value == taskPriorityValue(task) }>{ priority.Label }</option>
-				}
-			</select>
-			<button type="submit" class="sr-only">Speichern</button>
-		</form>
-	</div>
+			for _, priority := range taskInlinePriorityOptions(task) {
+				<option value={ priority.Value } selected?={ priority.Value == taskPriorityValue(task) }>{ priority.Label }</option>
+			}
+		</select>
+		<span class="caldo-task-priority-select-caret" aria-hidden="true">▾</span>
+		<button type="submit" class="sr-only">Speichern</button>
+	</form>
 }
 
 templ TaskLabelsInlineEditor(task TaskRowView) {

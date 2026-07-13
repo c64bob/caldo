@@ -324,7 +324,8 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 		`aria-controls="task-project-edit-task-1"`,
 		`data-inline-task-edit-focus="priority"`,
 		`data-inline-task-edit-kind="priority"`,
-		`aria-controls="task-priority-edit-task-1"`,
+		`data-inline-task-priority-select`,
+		`caldo-task-priority-select`,
 		`data-inline-task-edit-focus="labels"`,
 		`data-inline-task-edit-kind="labels"`,
 		`aria-controls="task-labels-edit-task-1"`,
@@ -392,6 +393,51 @@ func TestTaskRowRendersInlineEditFormForSyncedTask(t *testing.T) {
 	}
 	if strings.Contains(output, `data-inline-task-edit-open data-inline-task-edit-focus="title"`) {
 		t.Fatalf("expected task title to use the persistent native input in %s", output)
+	}
+}
+
+func TestTaskPriorityInlineEditorRendersPersistentNativeSelect(t *testing.T) {
+	t.Parallel()
+
+	component := TaskPriorityInlineEditor(TaskRowView{
+		ID:            "task-priority",
+		Priority:      4,
+		HasPriority:   true,
+		ServerVersion: 7,
+	})
+
+	var rendered bytes.Buffer
+	if err := component.Render(WithCSRFToken(context.Background(), "token-123"), &rendered); err != nil {
+		t.Fatalf("render priority editor: %v", err)
+	}
+
+	output := rendered.String()
+	for _, want := range []string{
+		`data-inline-task-edit-kind="priority"`,
+		`data-inline-task-edit-persistent`,
+		`data-inline-task-priority-select`,
+		`name="priority"`,
+		`caldo-task-priority-select`,
+		`caldo-task-priority-select-caret`,
+		`caldo-task-priority-p1`,
+		`aria-label="Priorität bearbeiten: P1 Hoch"`,
+		`<option value="4" selected>P1 Hoch</option>`,
+		`<option value="5">P2 Mittel</option>`,
+		`<option value="9">P3 Niedrig</option>`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected one-click priority editor to include %q in %s", want, output)
+		}
+	}
+	for _, unwanted := range []string{
+		`data-inline-task-edit-open`,
+		`aria-controls=`,
+		`<option value="1">P1 Hoch</option>`,
+		` hidden`,
+	} {
+		if strings.Contains(output, unwanted) {
+			t.Fatalf("one-click priority editor must not include %q in %s", unwanted, output)
+		}
 	}
 }
 

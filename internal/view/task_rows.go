@@ -38,6 +38,7 @@ type TaskRowView struct {
 	Attachments      []model.Attachment
 	ProjectOptions   []TaskProjectOption
 	CreatedAt        string
+	DOMIDScope       string
 }
 
 // TaskProjectOption contains one project selectable from inline task editing.
@@ -366,16 +367,24 @@ func taskDOMID(prefix string, task TaskRowView) string {
 		id = "task"
 	}
 	builder := strings.Builder{}
-	builder.WriteString(prefix)
+	appendTaskDOMIDSegment(&builder, prefix)
+	if scope := strings.TrimSpace(task.DOMIDScope); scope != "" {
+		builder.WriteString("-")
+		appendTaskDOMIDSegment(&builder, scope)
+	}
 	builder.WriteString("-")
-	for _, r := range id {
+	appendTaskDOMIDSegment(&builder, id)
+	return builder.String()
+}
+
+func appendTaskDOMIDSegment(builder *strings.Builder, value string) {
+	for _, r := range value {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' {
 			builder.WriteRune(r)
 			continue
 		}
 		builder.WriteRune('-')
 	}
-	return builder.String()
 }
 
 func taskCSRFHeaders(ctx context.Context) string {

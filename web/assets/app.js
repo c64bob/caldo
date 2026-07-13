@@ -1492,7 +1492,7 @@
   }
 
   function taskRows() {
-    return Array.prototype.slice.call(document.querySelectorAll('[data-task-id]'));
+    return Array.prototype.slice.call(document.querySelectorAll('[data-task-id]:not([data-task-detail-subtask])'));
   }
 
   function taskRowID(row) {
@@ -1612,12 +1612,12 @@
   function replaceTaskRow(row, html) {
     var taskID = taskRowID(row);
     var nextRow = taskRowFromHTML(html, taskID);
-    if (!nextRow) return false;
+    if (!nextRow) return null;
     row.replaceWith(nextRow);
     if (window.htmx && typeof window.htmx.process === 'function') {
       window.htmx.process(nextRow);
     }
-    return true;
+    return nextRow;
   }
 
   function removeTaskRow(row) {
@@ -1652,15 +1652,17 @@
       return response.text();
     }).then(function (html) {
       if (html) {
-        if (!document.contains(row)) return;
+        if (!document.contains(row)) return null;
         if (rowHasDirtyOpenForm(row)) {
           markStaleLocalChanges(row);
-          return;
+          return null;
         }
-        replaceTaskRow(row, html);
+        return replaceTaskRow(row, html);
       }
+      return null;
     }).catch(function () {
       // Focus refresh is opportunistic; normal writes still surface their own errors.
+      return null;
     });
   }
 
@@ -1895,7 +1897,7 @@
   function openTaskDetail(trigger) {
     if (!trigger) return;
     var task = trigger.closest('[data-task-id]');
-    var dialog = task ? task.querySelector('[data-task-detail-dialog]') : null;
+    var dialog = controlledTaskDialog(trigger, task, '[data-task-detail-dialog]');
     if (!dialog) return;
     bindTaskDetail(dialog);
     dialog.__caldoReturnFocus = trigger;
@@ -1907,6 +1909,7 @@
     } else {
       dialog.setAttribute('open', '');
     }
+    requestTaskDetailSubtasks(dialog);
     var input = dialog.querySelector('[data-task-detail-title]');
     var close = dialog.querySelector('[data-task-detail-close]');
     window.setTimeout(function () {
@@ -1916,6 +1919,21 @@
       }
       if (close) close.focus();
     }, 0);
+  }
+
+  function requestTaskDetailSubtasks(dialog) {
+    var list = dialog ? dialog.querySelector('[data-task-detail-subtask-list]') : null;
+    if (!list || !window.htmx || typeof window.htmx.trigger !== 'function') return;
+    window.htmx.trigger(list, 'caldo:task-detail-open');
+  }
+
+  function controlledTaskDialog(trigger, task, selector) {
+    var controlledID = trigger ? trigger.getAttribute('aria-controls') || '' : '';
+    var controlled = controlledID ? document.getElementById(controlledID) : null;
+    if (controlled && controlled.matches(selector)) {
+      return controlled;
+    }
+    return task ? task.querySelector(selector) : null;
   }
 
   function closeTaskDetail(dialog) {
@@ -1988,7 +2006,7 @@
   function openTaskComplete(trigger) {
     if (!trigger) return;
     var task = trigger.closest('[data-task-id]');
-    var dialog = task ? task.querySelector('[data-task-complete-dialog]') : null;
+    var dialog = controlledTaskDialog(trigger, task, '[data-task-complete-dialog]');
     if (!dialog) return;
     bindTaskComplete(dialog);
     dialog.__caldoReturnFocus = trigger;
@@ -2064,7 +2082,7 @@
   function openTaskDelete(trigger, returnFocus) {
     if (!trigger) return;
     var task = trigger.closest('[data-task-id]');
-    var dialog = task ? task.querySelector('[data-task-delete-dialog]') : null;
+    var dialog = controlledTaskDialog(trigger, task, '[data-task-delete-dialog]');
     if (!dialog) return;
     bindTaskDelete(dialog);
     dialog.__caldoDeleteTrigger = trigger;
@@ -2959,6 +2977,21 @@
       clearSavedStatusSoon();
     }
 
+    var successfulSubtaskCreate = closestElement(event.detail && event.detail.elt, '[data-subtask-create-form]');
+    if (successfulSubtaskCreate) {
+      var subtaskCreateRoot = successfulSubtaskCreate.closest('[data-subtask-create]');
+      var subtaskParentRow = successfulSubtaskCreate.closest('.caldo-task-row[data-task-id]');
+      closeInlineCreate(subtaskCreateRoot);
+      fetchTaskFragment(subtaskParentRow).then(function (refreshedParentRow) {
+        if (!refreshedParentRow) {
+          requestTaskDetailSubtasks(subtaskParentRow && subtaskParentRow.querySelector('[data-task-detail-dialog]'));
+          return;
+        }
+        openTaskDetail(refreshedParentRow.querySelector('[data-task-detail-open]'));
+      });
+      return;
+    }
+
     var successfulQuickAddOverlaySave = closestElement(event.detail && event.detail.elt, '[data-quick-add-overlay-save-form]');
     if (successfulQuickAddOverlaySave) {
       closeQuickAddOverlay(successfulQuickAddOverlaySave.closest('[data-quick-add-overlay]'), true);
@@ -2974,11 +3007,21 @@
     var successfulTaskDelete = closestElement(event.detail && event.detail.elt, '[data-task-delete-form]');
     if (successfulTaskDelete) {
       var deleteRow = successfulTaskDelete.closest('[data-task-id]');
+      var deletedSubtaskParentRow = deleteRow && deleteRow.matches('[data-task-detail-subtask]')
+        ? deleteRow.closest('.caldo-task-row[data-task-id]')
+        : null;
       closeTaskDelete(successfulTaskDelete.closest('[data-task-delete-dialog]'));
       removeDeletedTaskRows(deleteRow);
       setWriteStatus('saved', 'Gespeichert');
       clearSavedStatusSoon();
       refreshUndoNotification();
+      if (deletedSubtaskParentRow) {
+        fetchTaskFragment(deletedSubtaskParentRow).then(function (refreshedParentRow) {
+          if (refreshedParentRow) {
+            openTaskDetail(refreshedParentRow.querySelector('[data-task-detail-open]'));
+          }
+        });
+      }
       return;
     }
 

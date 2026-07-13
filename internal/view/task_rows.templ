@@ -473,7 +473,6 @@ templ SubtaskCreate(task TaskRowView) {
 			hx-swap="none"
 			hx-disabled-elt="find button"
 			hx-headers={ taskCSRFHeaders(ctx) }
-			data-refresh-after-write="true"
 			data-inline-task-create-form
 			data-subtask-create-form
 			class="caldo-subtask-create-form"
@@ -499,6 +498,91 @@ templ SubtaskCreate(task TaskRowView) {
 			</div>
 		</form>
 	</div>
+}
+
+templ TaskDetailSubtaskList(tasks []TaskRowView) {
+	if len(tasks) == 0 {
+		<p class="caldo-muted caldo-task-detail-subtask-empty">Keine Unteraufgaben vorhanden.</p>
+	} else {
+		<ul class="caldo-task-detail-subtask-list" data-task-detail-subtask-items>
+			for _, task := range tasks {
+				@TaskDetailSubtask(task)
+			}
+		</ul>
+	}
+}
+
+templ TaskDetailSubtask(task TaskRowView) {
+	<li
+		class={
+			"caldo-task-detail-subtask-item",
+			templ.KV("caldo-task-detail-subtask-completed", taskIsCompleted(task)),
+		}
+		data-task-id={ task.ID }
+		data-task-status={ task.Status }
+		data-server-version={ fmt.Sprint(task.ServerVersion) }
+		data-task-project-id={ task.ProjectID }
+		data-task-detail-subtask
+	>
+		<form
+			method="post"
+			action={ taskCompletionPath(task) }
+			hx-post={ taskCompletionPath(task) }
+			hx-swap="none"
+			hx-disabled-elt="find input[data-task-completion-checkbox]"
+			hx-headers={ taskCSRFHeaders(ctx) }
+			data-refresh-after-write="true"
+			data-task-action-form
+			class="caldo-task-check-form"
+		>
+			<input type="hidden" name="expected_version" value={ fmt.Sprint(task.ServerVersion) }/>
+			<label class="caldo-task-checkbox-label" aria-label={ taskCompletionLabel(task) }>
+				<input
+					type="checkbox"
+					class="caldo-task-checkbox-input"
+					aria-label={ taskCompletionLabel(task) }
+					checked?={ taskIsCompleted(task) }
+					disabled?={ !taskCanToggleCompletion(task) }
+					data-task-completion-checkbox
+				/>
+				<span class={ "caldo-task-checkbox", taskCheckboxPriorityClass(task) } aria-hidden="true">
+					<span aria-hidden="true" class="caldo-task-checkbox-mark"></span>
+				</span>
+			</label>
+		</form>
+		<div class="caldo-task-detail-subtask-main">
+			if taskUsesConflictLink(task) {
+				<a class="caldo-task-detail-subtask-title" href={ templ.URL(taskConflictPath(task)) } data-task-conflict-link>{ taskRowTitle(task) }</a>
+			} else if taskCanOpenDetail(task) {
+				<button
+					type="button"
+					class="caldo-task-detail-subtask-title"
+					data-task-detail-open
+					aria-haspopup="dialog"
+					aria-controls={ taskDOMID("task-detail", task) }
+					aria-expanded="false"
+				>
+					{ taskRowTitle(task) }
+				</button>
+			} else {
+				<span class="caldo-task-detail-subtask-title">{ taskRowTitle(task) }</span>
+			}
+			<span class="caldo-task-detail-subtask-status">
+				if taskIsCompleted(task) {
+					Erledigt
+				} else {
+					Offen
+				}
+			</span>
+		</div>
+		<p id={ taskDOMID("task-action-error", task) } class="caldo-alert caldo-alert-error caldo-task-action-error" data-task-action-error role="alert" aria-live="polite" hidden>Aktion konnte nicht ausgeführt werden.</p>
+		if taskCanOpenDetail(task) && !taskUsesConflictLink(task) {
+			@TaskDetailPanel(task)
+		}
+		if taskCanDelete(task) {
+			@TaskDeleteDialog(task)
+		}
+	</li>
 }
 
 templ TaskDetailPanel(task TaskRowView) {
@@ -691,6 +775,15 @@ templ TaskDetailPanel(task TaskRowView) {
 				<section class="caldo-task-detail-section caldo-task-detail-subtasks" aria-label="Unteraufgaben">
 					<div class="caldo-task-detail-section-heading">
 						<h3>Unteraufgaben</h3>
+					</div>
+					<div
+						class="caldo-task-detail-subtask-results"
+						hx-get={ taskSubtaskCreatePath(task) }
+						hx-trigger="caldo:task-detail-open"
+						hx-swap="innerHTML"
+						data-task-detail-subtask-list
+					>
+						<span class="htmx-indicator caldo-meta" aria-live="polite">Unteraufgaben laden ...</span>
 					</div>
 					@SubtaskCreate(task)
 				</section>

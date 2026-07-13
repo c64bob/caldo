@@ -63,6 +63,55 @@ func TestLoadTaskViewReturnsSingleTaskMetadata(t *testing.T) {
 	}
 }
 
+func TestListDirectSubtaskViewsReturnsAllDirectChildren(t *testing.T) {
+	t.Parallel()
+
+	database := openViewTestDB(t)
+	seedViewTasks(t, database)
+	if _, err := database.Conn.Exec(`
+INSERT INTO tasks (
+	id, project_id, uid, href, etag, server_version, title, description, status, raw_vtodo, base_vtodo,
+	priority, label_names, project_name, sync_status, due_date, parent_id, created_at, updated_at
+) VALUES
+(
+	'task-child-open-z', 'project-1', 'uid-child-open', '/calendars/work/task-child-open.ics', '"etag-child-open"', 4,
+	'Offene Unteraufgabe', 'Kindbeschreibung', 'needs-action', 'BEGIN:VTODO\nUID:uid-child-open\nEND:VTODO',
+	'BEGIN:VTODO\nUID:uid-child-open\nEND:VTODO', 5, 'kind', 'Work', 'synced', '2026-05-02', 'task-today-active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+),
+(
+	'task-child-completed-a', 'project-1', 'uid-child-completed', '/calendars/work/task-child-completed.ics', '"etag-child-completed"', 2,
+	'Erledigte Unteraufgabe', '', 'completed', 'BEGIN:VTODO\nUID:uid-child-completed\nEND:VTODO',
+	'BEGIN:VTODO\nUID:uid-child-completed\nEND:VTODO', NULL, '', 'Work', 'synced', NULL, 'task-today-active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+),
+(
+	'task-grandchild', 'project-1', 'uid-grandchild', '/calendars/work/task-grandchild.ics', '"etag-grandchild"', 1,
+	'Nicht direktes Kind', '', 'needs-action', 'BEGIN:VTODO\nUID:uid-grandchild\nEND:VTODO',
+	'BEGIN:VTODO\nUID:uid-grandchild\nEND:VTODO', NULL, '', 'Work', 'synced', NULL, 'task-child-open-z', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+),
+(
+	'task-unrelated', 'project-1', 'uid-unrelated', '/calendars/work/task-unrelated.ics', '"etag-unrelated"', 1,
+	'Andere Aufgabe', '', 'needs-action', 'BEGIN:VTODO\nUID:uid-unrelated\nEND:VTODO',
+	'BEGIN:VTODO\nUID:uid-unrelated\nEND:VTODO', NULL, '', 'Work', 'synced', NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+);
+`); err != nil {
+		t.Fatalf("seed direct subtasks: %v", err)
+	}
+
+	rows, err := database.ListDirectSubtaskViews(context.Background(), "task-today-active")
+	if err != nil {
+		t.Fatalf("list direct subtask views: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("unexpected direct subtask count: got %d want 2", len(rows))
+	}
+	if rows[0].ID != "task-child-open-z" || rows[1].ID != "task-child-completed-a" {
+		t.Fatalf("unexpected direct subtask order: %#v", rows)
+	}
+	if !rows[0].IsSubtask || rows[0].ParentID != "task-today-active" || rows[0].ParentTitle != "Heute Aufgabe" || rows[0].Description != "Kindbeschreibung" || rows[0].DueISODate != "2026-05-02" || rows[0].Priority != 5 || !rows[0].HasPriority || rows[0].ServerVersion != 4 {
+		t.Fatalf("direct subtask metadata is incomplete: %#v", rows[0])
+	}
+}
+
 func TestListProjectTasksFiltersByProjectAndShowCompleted(t *testing.T) {
 	t.Parallel()
 

@@ -7,8 +7,7 @@ test('focus refresh preserves a form dirtied while its fragment is in flight', a
     <ul>
       <li data-task-id="task-1" data-server-version="1">
         <div data-inline-task-edit-scope data-inline-task-edit-focus="title">
-          <button type="button" data-inline-task-edit-open data-inline-task-edit-focus="title" aria-expanded="false">Old title</button>
-          <form data-inline-task-edit-form data-inline-task-edit-kind="title" hidden>
+          <form data-inline-task-edit-form data-inline-task-edit-kind="title" data-inline-task-edit-persistent>
             <input type="hidden" name="expected_version" value="1">
             <input type="text" name="title" value="Old title" data-inline-task-edit-title>
           </form>
@@ -50,8 +49,8 @@ test('focus refresh preserves a form dirtied while its fragment is in flight', a
   await expect.poll(() => page.evaluate(() => window.__fragmentStarted)).toBe(true);
 
   const row = page.locator('[data-task-id="task-1"]');
-  await row.locator('[data-inline-task-edit-open]').click();
   const input = row.locator('[data-inline-task-edit-title]');
+  await input.click();
   await input.fill('Unsaved draft');
   await page.evaluate(() => window.__resolveFragment());
 

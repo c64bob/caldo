@@ -165,13 +165,15 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await gotoApp(page, '/search?q=%23Work');
   let inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Created' }).first();
   let inlineEditForm = inlineEditRow.locator('[data-inline-task-edit-form][data-inline-task-edit-kind="title"]');
-  await expect(inlineEditForm).toBeHidden();
+  await expect(inlineEditForm).toBeVisible();
   inlineEditForm = await openTaskRowEdit(inlineEditRow);
   await expect(inlineEditForm).toBeVisible();
   await expect(inlineEditForm.locator('[name="title"]')).toBeFocused();
+  await exerciseNativeTaskTitleSelection(page, inlineEditRow, inlineEditForm.locator('[name="title"]'));
   await inlineEditForm.locator('[name="title"]').fill('E2E Inline Edit Canceled');
   await inlineEditForm.locator('[name="title"]').press('Escape');
-  await expect(inlineEditForm).toBeHidden();
+  await expect(inlineEditForm).toBeVisible();
+  await expect(inlineEditForm.locator('[name="title"]')).toHaveValue('E2E Inline Created');
   await expect(inlineEditRow).toContainText('E2E Inline Created');
   await expect(inlineEditRow).not.toContainText('E2E Inline Edit Canceled');
 
@@ -179,6 +181,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await inlineEditForm.locator('[name="title"]').fill('E2E Inline Edited');
   await inlineEditForm.locator('[name="title"]').press('Enter');
   await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first()).toBeVisible();
+  if (process.env.CALDO_E2E_TITLE_ONLY === '1') return;
   inlineEditRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Inline Edited' }).first();
   await inlineEditRow.locator('.caldo-date-dropdown [data-date-hidden-input]').evaluate((input) => {
     input.value = '2099-06-12';
@@ -647,7 +650,9 @@ async function dragTaskRowToProject(page, row, projectName) {
   await expect(row).toBeVisible();
   await expect(row).toHaveAttribute('draggable', 'true');
   await expect(target).toBeVisible();
-  await row.dragTo(target);
+  const box = await row.boundingBox();
+  expect(box).not.toBeNull();
+  await row.dragTo(target, { sourcePosition: { x: box.width - 2, y: box.height / 2 } });
 }
 
 async function expectCurrentView(page, title) {
@@ -674,7 +679,7 @@ async function exerciseKeyboardFocusAccessibility(page, testInfo) {
 
   const stageRow = page.locator('[data-task-id]').filter({ hasText: 'Stage Seed Task' }).first();
   await expect(stageRow).toBeVisible();
-  await expectVisibleFocusIndicator(stageRow.locator('[data-inline-task-edit-open][data-inline-task-edit-focus="title"]').first());
+  await expectVisibleFocusIndicator(stageRow.locator('[data-inline-task-edit-title]').first());
   await expectVisibleFocusIndicator(stageRow.getByRole('button', { name: 'Details' }));
   await expectVisibleFocusIndicator(stageRow.getByRole('button', { name: /Favorit/ }).first());
 
@@ -1002,7 +1007,8 @@ async function exerciseMobileTaskEditing(page, testInfo, panelTaskID) {
   await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: `${browserArtifactDir(testInfo)}/mobile-task-inline-edit.png`, fullPage: true, caret: 'initial' });
   await inlineTitle.press('Escape');
-  await expect(row.locator('[data-inline-task-edit-form][data-inline-task-edit-kind="title"]').first()).toBeHidden();
+  await expect(row.locator('[data-inline-task-edit-form][data-inline-task-edit-kind="title"]').first()).toBeVisible();
+  await expect(inlineTitle).toHaveValue('E2E Panel Edited');
   await expect(row).toContainText('E2E Panel Edited');
 
   row = page.locator(`[data-task-id="${panelTaskID}"]`);
@@ -1019,16 +1025,53 @@ async function exerciseMobileTaskEditing(page, testInfo, panelTaskID) {
 }
 
 async function openTaskRowEdit(row, focusTarget = 'title') {
+  if (focusTarget === 'title') {
+    const form = row.locator('[data-inline-task-edit-form][data-inline-task-edit-kind="title"]').first();
+    const input = form.locator('[data-inline-task-edit-title]');
+    await input.click();
+    await expect(input).toBeFocused();
+    return form;
+  }
   await row.locator(`[data-inline-task-edit-open][data-inline-task-edit-focus="${focusTarget}"]`).first().click();
   const form = row.locator(`[data-inline-task-edit-form][data-inline-task-edit-kind="${focusTarget}"]`).first();
   await expect(form).toBeVisible();
   return form;
 }
 
+async function exerciseNativeTaskTitleSelection(page, row, input) {
+  const draft = 'E2E native cursor selection remains stable across repeated mouse clicks and drag selection';
+  await input.fill(draft);
+  await input.press('Home');
+  const box = await input.boundingBox();
+  expect(box).not.toBeNull();
+
+  await input.click({ position: { x: box.width * 0.2, y: box.height / 2 } });
+  const firstOffset = await input.evaluate((element) => element.selectionStart);
+  await input.click({ position: { x: box.width * 0.65, y: box.height / 2 } });
+  const secondOffset = await input.evaluate((element) => element.selectionStart);
+  expect(secondOffset).toBeGreaterThan(firstOffset);
+
+  await pageMouseDragSelection(page, box, 0.15, 0.55);
+  const selection = await input.evaluate((element) => ({ start: element.selectionStart, end: element.selectionEnd }));
+  expect(selection.end).toBeGreaterThan(selection.start);
+
+  await input.press('Escape');
+  await expect(input).toHaveValue('E2E Inline Created');
+  await expect(row).toHaveAttribute('draggable', 'true');
+  await input.click();
+}
+
+async function pageMouseDragSelection(page, box, startRatio, endRatio) {
+  await page.mouse.move(box.x + box.width * startRatio, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * endRatio, box.y + box.height / 2, { steps: 8 });
+  await page.mouse.up();
+}
+
 async function closeTaskRowEdit(row) {
   const titleInput = row.locator('[data-inline-task-edit-title]').first();
   await titleInput.press('Escape');
-  await expect(row.locator('[data-inline-task-edit-form][data-inline-task-edit-kind="title"]').first()).toBeHidden();
+  await expect(row.locator('[data-inline-task-edit-form][data-inline-task-edit-kind="title"]').first()).toBeVisible();
   await expect(row.getByRole('button', { name: 'Details' })).toBeVisible();
 }
 

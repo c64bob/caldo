@@ -8,6 +8,7 @@
   var undoExpiryTimer = 0;
   var focusRefreshState = { inFlight: false, pending: false, lastRun: 0 };
   var taskMoveDragState = null;
+  var titleSelectionDragRow = null;
   var explicitQuickAddPreviewRequests = new WeakSet();
 
   /* ── Toast notification system ───────────────────────────── */
@@ -1552,7 +1553,7 @@
 
   function visibleInlineEditForm(row) {
     return inlineEditForms(row).find(function (form) {
-      return !form.hidden;
+      return !form.hidden && !form.hasAttribute('data-inline-task-edit-persistent');
     }) || null;
   }
 
@@ -1759,6 +1760,14 @@
     var focusTarget = scope ? scope.getAttribute('data-inline-task-edit-focus') || 'title' : root.dataset.inlineTaskEditFocus || 'title';
     var trigger = scope ? scope.querySelector('[data-inline-task-edit-open]') : root.querySelector('[data-inline-task-edit-open][data-inline-task-edit-focus="' + focusTarget + '"]');
     form.reset();
+    if (form.hasAttribute('data-inline-task-edit-persistent')) {
+      if (shouldFocusTrigger) {
+        var persistentInput = form.querySelector('[data-inline-task-edit-title]');
+        if (persistentInput) persistentInput.blur();
+        root.focus({ preventScroll: true });
+      }
+      return;
+    }
     form.hidden = true;
     if (trigger) {
       trigger.hidden = false;
@@ -1769,36 +1778,7 @@
     }
   }
 
-  function textOffsetAtPoint(element, clientX, clientY) {
-    if (!element || typeof clientX !== 'number' || typeof clientY !== 'number') return null;
-    var node = null;
-    var nodeOffset = 0;
-    if (typeof document.caretPositionFromPoint === 'function') {
-      var position = document.caretPositionFromPoint(clientX, clientY);
-      if (position) {
-        node = position.offsetNode;
-        nodeOffset = position.offset;
-      }
-    } else if (typeof document.caretRangeFromPoint === 'function') {
-      var pointRange = document.caretRangeFromPoint(clientX, clientY);
-      if (pointRange) {
-        node = pointRange.startContainer;
-        nodeOffset = pointRange.startOffset;
-      }
-    }
-    if (!node || (node !== element && !element.contains(node))) return null;
-
-    var textRange = document.createRange();
-    textRange.selectNodeContents(element);
-    try {
-      textRange.setEnd(node, nodeOffset);
-    } catch (_) {
-      return null;
-    }
-    return textRange.toString().length;
-  }
-
-  function openInlineEdit(root, focusTarget, caretOffset) {
+  function openInlineEdit(root, focusTarget) {
     if (!root) return;
     focusTarget = focusTarget || 'title';
     var scope = root.querySelector('[data-inline-task-edit-scope][data-inline-task-edit-focus="' + focusTarget + '"]') || root.querySelector('[data-inline-task-edit-scope]');
@@ -1806,7 +1786,7 @@
     var trigger = scope ? scope.querySelector('[data-inline-task-edit-open]') : null;
     if (!form || !trigger) return;
     inlineEditForms(root).forEach(function (otherForm) {
-      if (otherForm !== form && !otherForm.hidden) {
+      if (otherForm !== form && !otherForm.hidden && !otherForm.hasAttribute('data-inline-task-edit-persistent')) {
         closeInlineEditForm(root, otherForm, false);
       }
     });
@@ -1821,17 +1801,13 @@
     if (input) {
       window.setTimeout(function () {
         input.focus();
-        if (focusTarget === 'title' && typeof caretOffset === 'number' && typeof input.setSelectionRange === 'function') {
-          var boundedOffset = Math.max(0, Math.min(caretOffset, input.value.length));
-          input.setSelectionRange(boundedOffset, boundedOffset);
-        }
       }, 0);
     }
   }
 
-  function closeInlineEdit(root) {
+  function closeInlineEdit(root, form) {
     if (!root) return;
-    var form = visibleInlineEditForm(root);
+    form = form || visibleInlineEditForm(root);
     if (!form) return;
     closeInlineEditForm(root, form, true);
     if (!visibleInlineEditForm(root)) {
@@ -3117,6 +3093,25 @@
   document.addEventListener('submit', handleQuickAddSaveSubmit, true);
   document.addEventListener('keydown', handleBulkSelectionKeydown, true);
 
+  function restoreTitleSelectionDragRow() {
+    if (titleSelectionDragRow && document.contains(titleSelectionDragRow) && taskCanDragMove(titleSelectionDragRow)) {
+      titleSelectionDragRow.setAttribute('draggable', 'true');
+    }
+    titleSelectionDragRow = null;
+  }
+
+  document.addEventListener('pointerdown', function (event) {
+    var titleInput = closestElement(event.target, '[data-inline-task-edit-title]');
+    var row = titleInput ? titleInput.closest('[data-task-drag-move]') : null;
+    if (!row) return;
+    restoreTitleSelectionDragRow();
+    titleSelectionDragRow = row;
+    row.setAttribute('draggable', 'false');
+  }, true);
+  document.addEventListener('pointerup', restoreTitleSelectionDragRow, true);
+  document.addEventListener('pointercancel', restoreTitleSelectionDragRow, true);
+  window.addEventListener('blur', restoreTitleSelectionDragRow);
+
   document.addEventListener('dragstart', function (event) {
     var row = closestElement(event.target, '[data-task-drag-move]');
     if (!taskCanDragMove(row)) return;
@@ -3247,10 +3242,7 @@
     if (inlineEditOpen && !closestElement(event.target, '[data-inline-task-edit-form]')) {
       event.preventDefault();
       var inlineEditFocus = inlineEditOpen.getAttribute('data-inline-task-edit-focus') || 'title';
-      var caretOffset = event.detail > 0 && inlineEditFocus === 'title'
-        ? textOffsetAtPoint(inlineEditOpen, event.clientX, event.clientY)
-        : null;
-      openInlineEdit(inlineEditOpen.closest('[data-task-id]'), inlineEditFocus, caretOffset);
+      openInlineEdit(inlineEditOpen.closest('[data-task-id]'), inlineEditFocus);
       return;
     }
 
@@ -3579,7 +3571,7 @@
     if (inlineEditForm) {
       if (event.key === 'Escape') {
         event.preventDefault();
-        closeInlineEdit(inlineEditForm.closest('[data-task-id]'));
+        closeInlineEdit(inlineEditForm.closest('[data-task-id]'), inlineEditForm);
         return;
       }
       if (event.key === 'Enter' && !event.shiftKey) {

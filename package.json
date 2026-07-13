@@ -8,12 +8,14 @@
     "test:e2e:performance": "CALDO_E2E_PERF=1 playwright test tests/e2e/performance.spec.js --project=chromium",
     "test:e2e:sync-longrun": "CALDO_E2E_SYNC_LONGRUN=1 playwright test tests/e2e/sync-longrun.spec.js --project=chromium",
     "test:e2e:webkit": "playwright test --project=webkit",
+    "test:e2e:firefox": "playwright test --project=firefox",
+    "test:e2e:firefox:title": "CALDO_E2E_TITLE_ONLY=1 playwright test tests/e2e/bulk-selection.spec.js tests/e2e/focus-refresh-dirty-race.spec.js tests/e2e/inline-title-caret.spec.js tests/e2e/mvp-flow.spec.js --project=firefox",
     "test:e2e:visual:webkit": "npm run test:e2e:webkit && node tests/e2e/visual-review.js --browser webkit",
-    "test:e2e:ci": "npm run test:e2e && npm run test:e2e:webkit",
+    "test:e2e:ci": "npm run test:e2e && npm run test:e2e:webkit && npm run test:e2e:firefox:title",
     "test:e2e:headed": "playwright test --project=chromium --headed",
     "test:e2e:webkit:headed": "playwright test --project=webkit --headed",
     "test:e2e:ui": "playwright test --ui",
-    "playwright:install": "playwright install chromium webkit"
+    "playwright:install": "playwright install chromium webkit firefox"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1"

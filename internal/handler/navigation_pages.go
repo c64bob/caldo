@@ -74,7 +74,7 @@ func ProjectTasksPage(deps dateViewDependencies) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout(project.DisplayName, view.ConfigurableTaskListPage(project.DisplayName, "Keine offenen Aufgaben in diesem Projekt.", groups, display)).Render(ctx, w); err != nil {
+		if err := view.BaseLayoutWithTopbarAction(project.DisplayName, view.TaskListDisplayControls(display), view.ConfigurableTaskListPage(project.DisplayName, "Keine offenen Aufgaben in diesem Projekt.", groups)).Render(ctx, w); err != nil {
 			http.Error(w, "render page", http.StatusInternalServerError)
 		}
 	}
@@ -228,7 +228,7 @@ func LabelTasksPage(deps dateViewDependencies) http.HandlerFunc {
 
 		ctx := view.WithNavigation(r.Context(), navigationSnapshotViewWithActiveLabel(snapshot, label.ID))
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout(label.Name, view.ConfigurableTaskListPage(label.Name, "Keine Aufgaben mit diesem Label.", groups, display)).Render(ctx, w); err != nil {
+		if err := view.BaseLayoutWithTopbarAction(label.Name, view.TaskListDisplayControls(display), view.ConfigurableTaskListPage(label.Name, "Keine Aufgaben mit diesem Label.", groups)).Render(ctx, w); err != nil {
 			http.Error(w, "render page", http.StatusInternalServerError)
 		}
 	}

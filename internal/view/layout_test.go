@@ -154,6 +154,51 @@ func TestBaseLayoutUsesSemanticTopbarHeading(t *testing.T) {
 	}
 }
 
+func TestBaseLayoutRendersOptionalTaskDisplayControlOnlyInTopbar(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	ctx = WithAssetManifest(ctx, assets.Manifest{
+		"app.css":       "app.hash.css",
+		"htmx.min.js":   "htmx.hash.js",
+		"htmx-sse.js":   "htmx-sse.hash.js",
+		"alpine.min.js": "alpine.hash.js",
+		"app.js":        "app.hash.js",
+	})
+
+	var rendered bytes.Buffer
+	component := BaseLayoutWithTopbarAction(
+		"Heute",
+		TaskListDisplayControls(TaskListDisplayView{}),
+		ConfigurableTaskListPage("Heute", "Keine Aufgaben", nil),
+	)
+	if err := component.Render(ctx, &rendered); err != nil {
+		t.Fatalf("render layout with topbar action: %v", err)
+	}
+
+	output := rendered.String()
+	if count := strings.Count(output, " data-task-display>"); count != 1 {
+		t.Fatalf("expected exactly one display control, got %d in %s", count, output)
+	}
+	actionsStart := strings.Index(output, `<div class="caldo-topbar-actions">`)
+	displayStart := strings.Index(output, " data-task-display>")
+	mainStart := strings.Index(output, `<main class="caldo-main">`)
+	if actionsStart < 0 || displayStart < actionsStart || mainStart < displayStart {
+		t.Fatalf("expected display control between topbar actions and main content: %s", output)
+	}
+	if strings.Contains(output[mainStart:], " data-task-display>") {
+		t.Fatalf("main content must not contain a display control: %s", output[mainStart:])
+	}
+
+	rendered.Reset()
+	if err := BaseLayout("Einstellungen", EmptyContent()).Render(ctx, &rendered); err != nil {
+		t.Fatalf("render layout without topbar action: %v", err)
+	}
+	if strings.Contains(rendered.String(), " data-task-display>") {
+		t.Fatalf("non-configurable page must not render a display control: %s", rendered.String())
+	}
+}
+
 func TestBaseLayoutUsesSyncStatusFromContext(t *testing.T) {
 	t.Parallel()
 

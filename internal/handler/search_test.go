@@ -40,6 +40,15 @@ func TestSearchRouteReturnsActiveTasksOnly(t *testing.T) {
 	}
 
 	body := responseRecorder.Body.String()
+	if count := strings.Count(body, " data-task-display>"); count != 1 {
+		t.Fatalf("response body must include one display control, got %d: %q", count, body)
+	}
+	topbarActions := strings.Index(body, `<div class="caldo-topbar-actions">`)
+	displayControl := strings.Index(body, " data-task-display>")
+	mainContent := strings.Index(body, `<main class="caldo-main">`)
+	if topbarActions < 0 || displayControl < topbarActions || mainContent < displayControl {
+		t.Fatalf("display control must render in topbar before main content: %q", body)
+	}
 	if !strings.Contains(body, "Überweisung Rechnung") {
 		t.Fatalf("response body missing active task title: %q", body)
 	}
@@ -131,6 +140,7 @@ func TestSearchResultsRouteRendersLivePartial(t *testing.T) {
 		`<main class="caldo-main"`,
 		`class="caldo-topbar-heading"`,
 		`id="global-search"`,
+		`data-task-display`,
 	} {
 		if strings.Contains(body, unwanted) {
 			t.Fatalf("live search response unexpectedly contains full page detail %q: %q", unwanted, body)

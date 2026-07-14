@@ -180,7 +180,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
 
   await gotoApp(page, '/search?q=%23Work');
   await expectNoBottomTaskCreator(page);
-  const quickAddOpen = page.locator('.caldo-topbar [data-quick-add-open]');
+  const quickAddOpen = page.locator('.caldo-sidebar [data-quick-add-open]');
   await expect(quickAddOpen).toBeVisible();
   await ensureBrowserCSRFCookie(page);
   await quickAddOpen.click();
@@ -746,6 +746,24 @@ async function expectNoBottomTaskCreator(page) {
   await expect(page.locator('[data-inline-task-create]:not([data-subtask-create])')).toHaveCount(0);
 }
 
+async function expectTopbarWithoutQuickAdd(page) {
+  await expect(page.locator('.caldo-topbar [data-quick-add-open], .caldo-topbar a[href="/quick-add"]')).toHaveCount(0);
+}
+
+async function expectSingleVisibleQuickAddTrigger(page) {
+  await expect(page.locator('[data-quick-add-open]:visible')).toHaveCount(1);
+}
+
+async function openQuickAddFromMobileNavigation(page) {
+  const navTrigger = page.getByRole('button', { name: 'Navigation öffnen' });
+  await navTrigger.click();
+  const mobileNav = page.locator('[data-mobile-nav-dialog]');
+  await expect(mobileNav).toBeVisible();
+  await expectSingleVisibleQuickAddTrigger(page);
+  await mobileNav.locator('[data-quick-add-open]').click();
+  await expect(mobileNav).toBeHidden();
+}
+
 async function expectEmptyStateWithoutTaskCreator(page) {
   const emptyState = page.locator('[data-empty-state]').filter({ visible: true }).first();
   await expect(emptyState).toBeVisible();
@@ -780,8 +798,10 @@ async function exerciseKeyboardFocusAccessibility(page, testInfo) {
   await expectIconButtonsHaveAccessibleNames(page);
 
   await expectVisibleFocusIndicator(page.locator('.caldo-topbar a[href="/search"]').first());
-  await expectVisibleFocusIndicator(page.locator('.caldo-topbar [data-quick-add-open]').first());
+  await expectVisibleFocusIndicator(page.locator('.caldo-sidebar [data-quick-add-open]').first());
   await expectVisibleFocusIndicator(page.locator('.caldo-sidebar [data-nav-system-filters] a[href="/today"]').first());
+  await expectTopbarWithoutQuickAdd(page);
+  await expectSingleVisibleQuickAddTrigger(page);
 
   const stageRow = page.locator('[data-task-id]').filter({ hasText: 'Stage Seed Task' }).first();
   await expect(stageRow).toBeVisible();
@@ -789,7 +809,7 @@ async function exerciseKeyboardFocusAccessibility(page, testInfo) {
   await expectVisibleFocusIndicator(stageRow.getByRole('button', { name: 'Details' }));
   await expectVisibleFocusIndicator(stageRow.getByRole('button', { name: /Favorit/ }).first());
 
-  const quickAddTrigger = page.locator('.caldo-topbar [data-quick-add-open]').first();
+  const quickAddTrigger = page.locator('.caldo-sidebar [data-quick-add-open]').first();
   await quickAddTrigger.focus();
   await page.keyboard.press('Enter');
   const quickAddDialog = page.locator('[data-quick-add-overlay]');
@@ -896,11 +916,12 @@ async function exerciseMobileNavigationAndSettings(page, testInfo) {
   mobileNavTrigger = page.getByRole('button', { name: 'Navigation öffnen' });
   await expect(mobileNavTrigger).toHaveAttribute('aria-expanded', 'false');
   await expect(page.locator('.caldo-topbar a[href="/search"]')).toBeVisible();
-  await expect(page.locator('.caldo-topbar a[href="/quick-add"]')).toBeVisible();
+  await expectTopbarWithoutQuickAdd(page);
   await exerciseMobileSettings(page, testInfo);
 
   await mobileNavTrigger.click();
   await expect(mobileNavDialog).toBeVisible();
+  await expectSingleVisibleQuickAddTrigger(page);
   await page.locator('[data-mobile-nav-dialog] [data-quick-add-open]').click();
   await expect(mobileNavDialog).toBeHidden();
   const quickAddOverlay = page.locator('[data-quick-add-overlay]');
@@ -966,7 +987,9 @@ async function exerciseTabletCoreViews(page, testInfo) {
     }
     await expect(page.getByRole('navigation', { name: 'Hauptnavigation' })).toBeVisible();
     await expect(page.locator('.caldo-topbar a[href="/search"]')).toBeVisible();
-    await expect(page.locator('.caldo-topbar a[href="/quick-add"]')).toBeVisible();
+    await expect(page.locator('.caldo-sidebar [data-quick-add-open]')).toBeVisible();
+    await expectTopbarWithoutQuickAdd(page);
+    await expectSingleVisibleQuickAddTrigger(page);
     await expect(page.locator('.caldo-topbar [data-theme-toggle]')).toBeVisible();
     await expect(page.locator('.caldo-topbar #sync-status')).toBeVisible();
     if (view.configurable) {
@@ -1036,7 +1059,7 @@ async function expectTabletTouchTargets(page) {
   const targets = [
     page.locator('.caldo-sidebar [data-nav-system-filters] a[href="/today"]').first(),
     page.locator('.caldo-topbar a[href="/search"]').first(),
-    page.locator('.caldo-topbar [data-quick-add-open]').first(),
+    page.locator('.caldo-sidebar [data-quick-add-open]').first(),
     page.locator('.caldo-topbar [data-theme-toggle]').first()
   ];
 
@@ -1397,7 +1420,7 @@ async function exerciseQuickAddOverlay(page) {
   await expect(correctedRow).toContainText('Wöchentlich');
   await expect(correctedRow).toContainText('Fällig 30.06.2099');
 
-  await page.locator('.caldo-topbar [data-quick-add-open]').click();
+  await page.locator('.caldo-sidebar [data-quick-add-open]').click();
   await input.fill('E2E Overlay Suggested #Work');
   await previewForm.getByRole('button', { name: 'Vorschau' }).click();
   saveForm = overlay.locator('[data-quick-add-overlay-save-form]');
@@ -1416,7 +1439,8 @@ async function exerciseQuickAddOverlay(page) {
 
   await page.setViewportSize(mobileViewport);
   await gotoApp(page, '/search?q=Stage');
-  await page.locator('.caldo-topbar [data-quick-add-open]').click();
+  await expectTopbarWithoutQuickAdd(page);
+  await openQuickAddFromMobileNavigation(page);
   await expect(overlay).toBeVisible();
   await expectElementWithinViewport(overlay, mobileViewport);
   await overlay.getByRole('button', { name: 'Schließen' }).click();

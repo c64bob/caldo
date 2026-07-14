@@ -154,6 +154,45 @@ func TestBaseLayoutUsesSemanticTopbarHeading(t *testing.T) {
 	}
 }
 
+func TestBaseLayoutKeepsQuickAddOutOfTopbar(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithCSRFToken(context.Background(), "token-123")
+	ctx = WithAssetManifest(ctx, assets.Manifest{
+		"app.css":       "app.hash.css",
+		"htmx.min.js":   "htmx.hash.js",
+		"htmx-sse.js":   "htmx-sse.hash.js",
+		"alpine.min.js": "alpine.hash.js",
+		"app.js":        "app.hash.js",
+	})
+
+	var rendered bytes.Buffer
+	if err := BaseLayoutWithTopbarAction("Heute", TaskListDisplayControls(TaskListDisplayView{}), EmptyContent()).Render(ctx, &rendered); err != nil {
+		t.Fatalf("render layout: %v", err)
+	}
+
+	output := rendered.String()
+	if count := strings.Count(output, `<a href="/quick-add"`); count != 2 {
+		t.Fatalf("expected sidebar and mobile Quick Add links only, got %d in %s", count, output)
+	}
+	topbarStart := strings.Index(output, `<header class="caldo-topbar">`)
+	topbarEnd := strings.Index(output, `</header>`)
+	if topbarStart < 0 || topbarEnd <= topbarStart {
+		t.Fatalf("expected topbar markup in %s", output)
+	}
+	topbar := output[topbarStart:topbarEnd]
+	for _, unwanted := range []string{`href="/quick-add"`, `data-quick-add-open`} {
+		if strings.Contains(topbar, unwanted) {
+			t.Fatalf("topbar contains Quick Add control %q in %s", unwanted, topbar)
+		}
+	}
+	for _, want := range []string{`data-task-display`, `href="/search"`, `id="sync-status"`, `data-theme-toggle`} {
+		if !strings.Contains(topbar, want) {
+			t.Fatalf("topbar lost action %q in %s", want, topbar)
+		}
+	}
+}
+
 func TestBaseLayoutRendersOptionalTaskDisplayControlOnlyInTopbar(t *testing.T) {
 	t.Parallel()
 

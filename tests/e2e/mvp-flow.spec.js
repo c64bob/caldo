@@ -1161,6 +1161,18 @@ async function exerciseKeyboardShortcuts(page) {
   await expect(page).toHaveURL(/\/search$/);
   await expectCurrentView(page, 'Suche');
 
+  await gotoApp(page, '/today');
+  await page.evaluate(() => {
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      key: '/',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true
+    }));
+  });
+  await expect(page).toHaveURL(/\/search$/);
+  await expect(page.locator('[data-shortcut-help-dialog]')).toBeHidden();
+
   const searchInput = page.locator('#global-search');
   await expect(searchInput).toBeFocused();
   await searchInput.fill('Stage');
@@ -1195,7 +1207,14 @@ async function exerciseKeyboardShortcuts(page) {
 
   const helpReturnTarget = page.locator('.caldo-sidebar [data-nav-system-filters] a[href="/today"]').first();
   await helpReturnTarget.focus();
-  await page.keyboard.press('Shift+/');
+  await page.evaluate(() => {
+    document.activeElement.dispatchEvent(new KeyboardEvent('keydown', {
+      key: '?',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true
+    }));
+  });
   const helpDialog = page.locator('[data-shortcut-help-dialog]');
   await expect(helpDialog).toBeVisible();
   await expect(helpDialog).toHaveAttribute('aria-labelledby', 'shortcut-help-title');

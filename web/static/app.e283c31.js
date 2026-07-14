@@ -4160,7 +4160,7 @@
     }
 
     var key = event.key.toLowerCase();
-    var helpShortcut = key === '?' || (event.shiftKey && key === '/');
+    var helpShortcut = key === '?';
     if (navState.pendingView) {
       var viewPath = shortcutViewPath(key);
       if (viewPath) {

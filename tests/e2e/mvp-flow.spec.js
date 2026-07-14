@@ -131,6 +131,8 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expectDisplayControlInTopbar(page);
   await gotoApp(page, '/filters');
 
+  await exerciseSavedFilterHelp(page);
+
   const emptyFilterCreateForm = page.locator('[data-saved-filter-create-form]');
   await emptyFilterCreateForm.locator('[name="name"]').fill('E2E Empty Filter');
   await emptyFilterCreateForm.locator('[name="query"]').fill('text:__caldo_no_match__');
@@ -744,6 +746,64 @@ async function expectCurrentView(page, title) {
 
 async function expectNoBottomTaskCreator(page) {
   await expect(page.locator('[data-inline-task-create]:not([data-subtask-create])')).toHaveCount(0);
+}
+
+async function exerciseSavedFilterHelp(page) {
+  const createForm = page.locator('[data-saved-filter-create-form]');
+  const createName = createForm.locator('[name="name"]');
+  const createQuery = createForm.locator('[name="query"]');
+  const createHelp = createForm.locator('[data-filter-help-popover]');
+  await expect(createName).toHaveAttribute('aria-describedby', 'saved-filter-create-help');
+  await expect(createQuery).toHaveAttribute('aria-describedby', 'saved-filter-create-help');
+  await expect(createHelp).toContainText('Name ist nur die Bezeichnung');
+  await expect(createHelp).toContainText('Query legt fest');
+  for (const token of ['today', 'overdue', 'upcoming', 'no date', '#Projekt', '@Label', 'priority:high', 'completed:false', 'text:foo', 'before:YYYY-MM-DD', 'after:YYYY-MM-DD', 'AND', 'OR', 'NOT']) {
+    await expect(createHelp).toContainText(token);
+  }
+
+  await createName.hover();
+  await expect(createHelp).toBeVisible();
+  await page.locator('.caldo-topbar-heading').hover();
+  await expect(createHelp).toBeHidden();
+  await createQuery.focus();
+  await expect(createHelp).toBeVisible();
+  await page.locator('.caldo-topbar-heading').click();
+  await expect(createHelp).toBeHidden();
+
+  const editForm = page.locator('[data-saved-filter-edit-form]').filter({ has: page.locator('[name="name"][value="E2E Work Filter"]') });
+  const editName = editForm.locator('[name="name"]');
+  const editHelp = editForm.locator('[data-filter-help-popover]');
+  await expect(editName).toHaveAttribute('aria-describedby', /^saved-filter-help-/);
+  await editName.hover();
+  await expect(editHelp).toBeVisible();
+  await page.locator('.caldo-topbar-heading').hover();
+  await expect(editHelp).toBeHidden();
+
+  await page.setViewportSize(mobileViewport);
+  const helpToggle = createForm.locator('[data-filter-help-toggle]').first();
+  await helpToggle.click();
+  await expect(helpToggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(createHelp).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.locator('.caldo-topbar-heading').click();
+  await expect(helpToggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(createHelp).toBeHidden();
+  await page.setViewportSize(desktopViewport);
+
+  const themeToggle = page.locator('[data-theme-toggle]');
+  await themeToggle.click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme-mode', 'dark');
+  await helpToggle.click();
+  await expect(createHelp).toBeVisible();
+  const darkColors = await createHelp.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { background: style.backgroundColor, color: style.color };
+  });
+  expect(darkColors.background).not.toBe('rgba(0, 0, 0, 0)');
+  expect(darkColors.color).not.toBe(darkColors.background);
+  await themeToggle.click();
+  await themeToggle.click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme-mode', 'system');
 }
 
 async function expectTopbarWithoutQuickAdd(page) {

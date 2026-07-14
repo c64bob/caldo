@@ -2840,7 +2840,7 @@
 	}
 
 	.caldo-bulk-bar {
-		@apply fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between gap-3 border-t px-3 py-2.5;
+		@apply fixed bottom-0 left-0 right-0 z-40 flex flex-col items-stretch gap-2 border-t px-3 py-2.5;
 		background: var(--caldo-surface);
 		box-shadow: 0 -4px 16px 0 rgb(0 0 0 / 0.08);
 		border-color: var(--caldo-border-strong);
@@ -2849,7 +2849,7 @@
 
 	@media (min-width: 640px) {
 		.caldo-bulk-bar {
-			@apply left-auto right-0 max-w-lg rounded-tl-lg px-4;
+			@apply left-auto right-0 max-w-4xl flex-row items-center justify-between rounded-tl-lg px-4;
 		}
 	}
 
@@ -2859,7 +2859,96 @@
 	}
 
 	.caldo-bulk-bar-actions {
-		@apply flex min-w-0 flex-wrap items-center gap-2;
+		@apply flex min-w-0 flex-wrap items-center gap-1.5;
+	}
+
+	.caldo-bulk-bar[data-bulk-running] .caldo-bulk-action {
+		pointer-events: none;
+		opacity: 0.6;
+	}
+
+	.caldo-bulk-clear {
+		@apply h-8 w-8;
+	}
+
+	.caldo-bulk-clear span {
+		@apply text-xl leading-none;
+	}
+
+	.caldo-bulk-action {
+		@apply relative;
+	}
+
+	.caldo-bulk-action > summary {
+		@apply list-none;
+	}
+
+	.caldo-bulk-action > summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.caldo-bulk-action[open] > summary {
+		background: var(--caldo-surface-muted);
+	}
+
+	.caldo-bulk-action-menu {
+		@apply fixed left-3 right-3 z-50 grid gap-1 rounded-md border p-2 shadow-lg;
+		bottom: 7.5rem;
+		background: var(--caldo-surface);
+		border-color: var(--caldo-border-strong);
+	}
+
+	@media (min-width: 640px) {
+		.caldo-bulk-action-menu {
+			@apply absolute bottom-full left-auto right-0 mb-2 w-72;
+		}
+	}
+
+	.caldo-bulk-menu-action {
+		@apply min-h-9 w-full rounded-sm px-2.5 py-2 text-left text-sm font-medium;
+		color: var(--caldo-text);
+	}
+
+	.caldo-bulk-menu-action:hover,
+	.caldo-bulk-menu-action:focus-visible {
+		background: var(--caldo-surface-muted);
+	}
+
+	.caldo-bulk-menu-action:focus-visible {
+		outline: 2px solid var(--caldo-focus);
+		outline-offset: 1px;
+		box-shadow: var(--caldo-focus-ring);
+	}
+
+	.caldo-bulk-menu-action-danger {
+		color: var(--caldo-danger);
+	}
+
+	.caldo-bulk-menu-divider {
+		@apply my-1 border-t;
+		border-color: var(--caldo-border);
+	}
+
+	.caldo-bulk-menu-field {
+		@apply grid gap-1 px-1 text-xs font-medium;
+		color: var(--caldo-text-muted);
+	}
+
+	.caldo-bulk-menu-field-row,
+	.caldo-bulk-label-actions {
+		@apply flex min-w-0 items-center gap-2;
+	}
+
+	.caldo-bulk-menu-field-row .caldo-input {
+		@apply min-w-0 flex-1;
+	}
+
+	.caldo-bulk-label-menu {
+		@apply gap-3;
+	}
+
+	.caldo-bulk-label-actions {
+		@apply justify-end;
 	}
 
 	/* Task hover preview */

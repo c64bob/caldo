@@ -62,7 +62,9 @@
 
     // Enforce maxVisible: remove oldest excess
     while (container.children.length > toastDefaults.maxVisible) {
-      dismissToast(container.children[0]);
+      var oldest = container.children[0];
+      clearTimeout(oldest.__caldoTimer);
+      oldest.remove();
     }
 
     if (duration > 0) {
@@ -74,6 +76,12 @@
   /* ── Bulk selection ──────────────────────────────────────── */
 
   var bulkSelection = { ids: [], lastClicked: null, running: false };
+
+  function bulkTaskRow(taskID) {
+    return taskRows().find(function (row) {
+      return taskRowID(row) === taskID;
+    }) || null;
+  }
 
   function bulkSelectedSet() {
     var set = {};
@@ -109,13 +117,42 @@
       existing.setAttribute('aria-label', 'Mehrfachbearbeitung');
       document.body.appendChild(existing);
     }
+    existing.toggleAttribute('data-bulk-running', bulkSelection.running);
     var count = bulkSelection.ids.length;
     var disabled = bulkSelection.running ? ' disabled' : '';
     existing.innerHTML =
       '<span class="caldo-bulk-bar-count">' + count + ' Aufgabe' + (count === 1 ? '' : 'n') + ' ausgewählt</span>' +
       '<div class="caldo-bulk-bar-actions">' +
-      '<button type="button" class="caldo-button caldo-button-ghost" data-bulk-select-all' + disabled + '>Alle abwählen</button>' +
+      '<button type="button" class="caldo-icon-button caldo-bulk-clear" data-bulk-select-all aria-label="Alle abwählen" title="Alle abwählen"' + disabled + '><span aria-hidden="true">×</span></button>' +
       '<button type="button" class="caldo-button caldo-button-primary" data-bulk-complete' + disabled + '>' + (bulkSelection.running ? 'Speichern ...' : 'Erledigen') + '</button>' +
+      '<details class="caldo-bulk-action" data-bulk-action-menu>' +
+      '<summary class="caldo-button caldo-button-ghost">Fälligkeit</summary>' +
+      '<div class="caldo-bulk-action-menu" role="group" aria-label="Fälligkeit für ausgewählte Aufgaben ändern">' +
+      '<button type="button" class="caldo-bulk-menu-action" data-bulk-due-date="today"' + disabled + '>Heute</button>' +
+      '<button type="button" class="caldo-bulk-menu-action" data-bulk-due-date="tomorrow"' + disabled + '>Morgen</button>' +
+      '<button type="button" class="caldo-bulk-menu-action" data-bulk-due-date="day-after-tomorrow"' + disabled + '>Übermorgen</button>' +
+      '<button type="button" class="caldo-bulk-menu-action" data-bulk-due-date="next-monday"' + disabled + '>Nächster Montag</button>' +
+      '<button type="button" class="caldo-bulk-menu-action" data-bulk-due-date="next-weekend"' + disabled + '>Nächstes Wochenende</button>' +
+      '<div class="caldo-bulk-menu-divider"></div>' +
+      '<label class="caldo-bulk-menu-field"><span>Benutzerdefiniertes Datum</span><span class="caldo-bulk-menu-field-row"><input type="date" class="caldo-input" data-bulk-due-custom' + disabled + '><button type="button" class="caldo-button caldo-button-primary" data-bulk-due-custom-apply' + disabled + '>Anwenden</button></span></label>' +
+      '<div class="caldo-bulk-menu-divider"></div>' +
+      '<button type="button" class="caldo-bulk-menu-action caldo-bulk-menu-action-danger" data-bulk-due-date="clear"' + disabled + '>Kein Datum</button>' +
+      '</div></details>' +
+      '<details class="caldo-bulk-action" data-bulk-action-menu>' +
+      '<summary class="caldo-button caldo-button-ghost">Priorität</summary>' +
+      '<div class="caldo-bulk-action-menu" role="group" aria-label="Priorität für ausgewählte Aufgaben ändern">' +
+      '<button type="button" class="caldo-bulk-menu-action caldo-task-priority-p1" data-bulk-priority="1"' + disabled + '>P1 Hoch</button>' +
+      '<button type="button" class="caldo-bulk-menu-action caldo-task-priority-p2" data-bulk-priority="5"' + disabled + '>P2 Mittel</button>' +
+      '<button type="button" class="caldo-bulk-menu-action caldo-task-priority-p3" data-bulk-priority="9"' + disabled + '>P3 Niedrig</button>' +
+      '<div class="caldo-bulk-menu-divider"></div>' +
+      '<button type="button" class="caldo-bulk-menu-action" data-bulk-priority=""' + disabled + '>Keine Priorität</button>' +
+      '</div></details>' +
+      '<details class="caldo-bulk-action caldo-bulk-label-action" data-bulk-action-menu data-bulk-label-action>' +
+      '<summary class="caldo-button caldo-button-ghost">Labels</summary>' +
+      '<div class="caldo-bulk-action-menu caldo-bulk-label-menu" role="group" aria-label="Labels für ausgewählte Aufgaben bearbeiten">' +
+      '<label class="caldo-bulk-menu-field"><span>Labels, durch Komma getrennt</span><input type="text" class="caldo-input" autocomplete="off" data-bulk-label-input' + disabled + '></label>' +
+      '<div class="caldo-bulk-label-actions"><button type="button" class="caldo-button caldo-button-primary" data-bulk-label-mode="add"' + disabled + '>Hinzufügen</button><button type="button" class="caldo-button caldo-button-ghost" data-bulk-label-mode="remove"' + disabled + '>Entfernen</button></div>' +
+      '</div></details>' +
       '</div>';
   }
 
@@ -153,52 +190,278 @@
     updateBulkSelectionVisuals();
   }
 
-  function bulkCompleteTasks() {
+  function bulkRequest(taskID, method, action, fields) {
+    var row = bulkTaskRow(taskID);
+    if (!row) return Promise.resolve({ taskID: taskID, ok: false, row: null });
+    var params = new URLSearchParams();
+    params.set('expected_version', String(taskRowVersion(row) || ''));
+    Object.keys(fields || {}).forEach(function (name) {
+      params.set(name, fields[name]);
+    });
+    return window.fetch(action, {
+      method: method,
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'text/html', 'X-CSRF-Token': csrfToken(), 'X-Tab-ID': tabID },
+      body: params.toString()
+    }).then(function (response) {
+      return { taskID: taskID, ok: response.ok, status: response.status, row: row };
+    }).catch(function () {
+      return { taskID: taskID, ok: false, status: 0, row: row };
+    });
+  }
+
+  function bulkResultMessage(succeededCount, failedCount, completion) {
+    var succeededNoun = succeededCount + ' Aufgabe' + (succeededCount === 1 ? '' : 'n');
+    var failedNoun = failedCount + ' Aufgabe' + (failedCount === 1 ? '' : 'n');
+    var succeededVerb = completion ? ' erledigt' : ' aktualisiert';
+    var failedVerb = completion ? ' erledigt' : ' aktualisiert';
+    if (failedCount > 0) {
+      var failedMessage = failedNoun + (failedCount === 1 ? ' konnte' : ' konnten') + ' nicht ' + failedVerb.trim() + ' werden.';
+      return succeededCount > 0 ? succeededNoun + succeededVerb + ', ' + failedMessage : failedMessage;
+    }
+    return succeededNoun + succeededVerb + '.';
+  }
+
+  function bulkPresentationURL() {
+    var url;
+    try {
+      url = new URL(window.location.href);
+    } catch (_) {
+      return window.location.href;
+    }
+    var searchInput = document.querySelector('[data-live-search-input]');
+    if (url.pathname === '/search' && searchInput) {
+      url.searchParams.set('q', searchInput.value || '');
+    }
+    return url.toString();
+  }
+
+  function findTaskRow(root, taskID) {
+    if (!root) return null;
+    var rows = root.querySelectorAll('[data-task-id]:not([data-task-detail-subtask])');
+    for (var index = 0; index < rows.length; index += 1) {
+      if (taskRowID(rows[index]) === taskID) return rows[index];
+    }
+    return null;
+  }
+
+  function failedBulkRowTarget(nextPage, oldRow) {
+    var oldGroup = oldRow ? oldRow.closest('[data-task-group]') : null;
+    if (oldGroup) {
+      var groupKey = oldGroup.getAttribute('data-task-group');
+      var groups = nextPage.querySelectorAll('[data-task-group]');
+      for (var index = 0; index < groups.length; index += 1) {
+        if (groups[index].getAttribute('data-task-group') === groupKey) {
+          var groupedList = groups[index].querySelector('[data-search-results], [data-date-view-results]');
+          if (groupedList) return groupedList;
+        }
+      }
+    }
+    var list = nextPage.querySelector('[data-search-results], [data-date-view-results]');
+    if (list) return list;
+    var emptyState = nextPage.querySelector('.caldo-state');
+    if (emptyState) emptyState.remove();
+    list = document.createElement('ul');
+    list.className = 'caldo-list caldo-task-list';
+    if (oldRow && oldRow.parentElement && oldRow.parentElement.hasAttribute('data-search-results')) {
+      list.setAttribute('data-search-results', '');
+    } else {
+      list.setAttribute('data-date-view-results', '');
+    }
+    nextPage.appendChild(list);
+    return list;
+  }
+
+  function replaceBulkPresentation(html, failed) {
+    if (!html) return false;
+    var parsed = new DOMParser().parseFromString(html, 'text/html');
+    var currentPage = document.querySelector('.caldo-content .caldo-page');
+    var nextPage = parsed.querySelector('.caldo-content .caldo-page');
+    if (!currentPage || !nextPage) return false;
+    failed.forEach(function (result) {
+      var oldRow = result.row && document.contains(result.row) ? result.row : bulkTaskRow(result.taskID);
+      if (!oldRow) return;
+      var nextRow = findTaskRow(nextPage, result.taskID);
+      if (nextRow) {
+        nextRow.replaceWith(oldRow);
+      } else {
+        failedBulkRowTarget(nextPage, oldRow).appendChild(oldRow);
+      }
+    });
+    currentPage.replaceWith(nextPage);
+    initializeTaskCompletionControls(nextPage);
+    if (window.htmx && typeof window.htmx.process === 'function') {
+      window.htmx.process(nextPage);
+    }
+    return true;
+  }
+
+  function refreshSucceededBulkRows(succeeded) {
+    return Promise.all(succeeded.map(function (result) {
+      var row = result.row && document.contains(result.row) ? result.row : bulkTaskRow(result.taskID);
+      return row ? fetchTaskFragment(row) : Promise.resolve(null);
+    }));
+  }
+
+  function refreshBulkPresentation(succeeded, failed) {
+    return window.fetch(bulkPresentationURL(), {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { 'Accept': 'text/html', 'X-Tab-ID': tabID }
+    }).then(function (response) {
+      if (!response.ok) throw response;
+      return response.text();
+    }).then(function (html) {
+      if (!replaceBulkPresentation(html, failed)) {
+        return refreshSucceededBulkRows(succeeded);
+      }
+      return null;
+    }).catch(function () {
+      return refreshSucceededBulkRows(succeeded);
+    });
+  }
+
+  function runBulkTaskAction(options) {
     if (bulkSelection.ids.length === 0 || bulkSelection.running) return;
     var ids = bulkSelection.ids.slice();
+    var dirtyRow = ids.map(bulkTaskRow).find(function (row) {
+      return row && rowHasDirtyOpenForm(row);
+    });
+    if (dirtyRow) {
+      showToast('Offene Änderungen zuerst speichern oder verwerfen.', 'error');
+      return;
+    }
     bulkSelection.running = true;
+    beginWriteRequest('Speichern ...');
     updateBulkSelectionVisuals();
     var requests = ids.map(function (taskID) {
-      var row = document.querySelector('[data-task-id="' + taskID + '"]');
-      if (!row) return Promise.resolve({ taskID: taskID, ok: false });
-      var form = row.querySelector('form[data-task-action-form]');
-      if (!form) return Promise.resolve({ taskID: taskID, ok: false });
-      var versionInput = form.querySelector('input[name="expected_version"]');
-      var params = new URLSearchParams();
-      params.set('expected_version', versionInput ? versionInput.value : '');
-      return fetch(form.getAttribute('action'), {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'text/html', 'X-CSRF-Token': csrfToken(), 'X-Tab-ID': tabID },
-        body: params.toString()
-      }).then(function (response) {
-        return { taskID: taskID, ok: response.ok, row: row };
-      }).catch(function () {
-        return { taskID: taskID, ok: false, row: row };
-      });
+      try {
+        return options.request(taskID);
+      } catch (_) {
+        return Promise.resolve({ taskID: taskID, ok: false, row: bulkTaskRow(taskID) });
+      }
     });
     Promise.all(requests).then(function (results) {
       var succeeded = results.filter(function (result) { return result.ok; });
       var failed = results.filter(function (result) { return !result.ok; });
-      succeeded.forEach(function (result) {
-        if (result.row && document.contains(result.row)) result.row.remove();
-      });
-      bulkSelection.running = false;
+      if (options.removeSucceeded) {
+        succeeded.forEach(function (result) {
+          if (result.row && document.contains(result.row)) result.row.remove();
+        });
+      }
       bulkSelection.ids = failed.map(function (result) { return result.taskID; });
       bulkSelection.lastClicked = bulkSelection.ids.length ? bulkSelection.ids[bulkSelection.ids.length - 1] : null;
-      updateBulkSelectionVisuals();
-
-      if (succeeded.length > 0) refreshUndoNotification();
-      if (failed.length > 0) {
-        var failedMessage = failed.length === 1 ? '1 Aufgabe konnte nicht erledigt werden.' : failed.length + ' Aufgaben konnten nicht erledigt werden.';
-        if (succeeded.length > 0) {
-          failedMessage = succeeded.length + ' Aufgabe' + (succeeded.length === 1 ? '' : 'n') + ' erledigt, ' + failedMessage;
+      var refresh = options.refreshPresentation ? refreshBulkPresentation(succeeded, failed) : Promise.resolve();
+      return refresh.then(function () {
+        var message = bulkResultMessage(succeeded.length, failed.length, !!options.completion);
+        bulkSelection.running = false;
+        finishWriteRequest();
+        updateBulkSelectionVisuals();
+        if (succeeded.length > 0) refreshUndoNotification();
+        if (failed.length > 0) {
+          setWriteStatus('error', message);
+          showToast(message, 'error');
+          return;
         }
-        showToast(failedMessage, 'error');
-        return;
-      }
-      showToast(succeeded.length + ' Aufgabe' + (succeeded.length === 1 ? '' : 'n') + ' erledigt.', 'success');
+        setWriteStatus('saved', message);
+        clearSavedStatusSoon();
+        showToast(message, 'success');
+      });
+    }).catch(function () {
+      bulkSelection.running = false;
+      finishWriteRequest();
+      updateBulkSelectionVisuals();
+      setWriteStatus('error', 'Mehrfachbearbeitung fehlgeschlagen. Änderungen prüfen.');
+      showToast('Mehrfachbearbeitung fehlgeschlagen. Änderungen prüfen.', 'error');
     });
+  }
+
+  function bulkCompleteTasks() {
+    runBulkTaskAction({
+      completion: true,
+      removeSucceeded: true,
+      request: function (taskID) {
+        var row = bulkTaskRow(taskID);
+        var form = row ? row.querySelector('form[data-task-action-form]') : null;
+        if (!form) return Promise.resolve({ taskID: taskID, ok: false, row: row });
+        return bulkRequest(taskID, 'POST', form.getAttribute('action'), {});
+      }
+    });
+  }
+
+  function bulkPatchTasks(fieldsForRow) {
+    runBulkTaskAction({
+      refreshPresentation: true,
+      request: function (taskID) {
+        var row = bulkTaskRow(taskID);
+        return bulkRequest(taskID, 'PATCH', '/tasks/' + encodeURIComponent(taskID), fieldsForRow(row));
+      }
+    });
+  }
+
+  function bulkDueDate(token) {
+    if (token === 'clear') return '';
+    var date = new Date();
+    var day = date.getDay();
+    if (token === 'tomorrow') {
+      date.setDate(date.getDate() + 1);
+    } else if (token === 'day-after-tomorrow') {
+      date.setDate(date.getDate() + 2);
+    } else if (token === 'next-monday') {
+      date.setDate(date.getDate() + (((1 + 7 - day) % 7) || 7));
+    } else if (token === 'next-weekend') {
+      date.setDate(date.getDate() + (((6 + 7 - day) % 7) || 7));
+    }
+    return formatLocalCalendarDate(date);
+  }
+
+  function parseBulkLabels(raw) {
+    var labels = [];
+    var seen = {};
+    String(raw || '').split(',').forEach(function (part) {
+      var label = part.trim();
+      var key = label.toLowerCase();
+      if (!label || seen[key]) return;
+      seen[key] = true;
+      labels.push(label);
+    });
+    return labels;
+  }
+
+  function bulkLabelInput(details) {
+    var input = details ? details.querySelector('[data-bulk-label-input]') : null;
+    var labels = parseBulkLabels(input ? input.value : '');
+    if (labels.some(function (label) { return label.toUpperCase() === 'STARRED'; })) {
+      showToast('STARRED ist reserviert und wird über P1 gesteuert.', 'error');
+      if (input) input.focus();
+      return null;
+    }
+    if (labels.length === 0) {
+      showToast('Mindestens ein Label eingeben.', 'error');
+      if (input) input.focus();
+      return null;
+    }
+    return labels;
+  }
+
+  function bulkLabelsForRow(row, requested, mode) {
+    var labelsInput = row ? row.querySelector('[data-task-labels-input]') : null;
+    var current = parseBulkLabels(labelsInput ? labelsInput.value : '');
+    var requestedSet = {};
+    requested.forEach(function (label) { requestedSet[label.toLowerCase()] = true; });
+    if (mode === 'remove') {
+      return current.filter(function (label) { return !requestedSet[label.toLowerCase()]; });
+    }
+    var currentSet = {};
+    current.forEach(function (label) { currentSet[label.toLowerCase()] = true; });
+    requested.forEach(function (label) {
+      var key = label.toLowerCase();
+      if (!currentSet[key]) {
+        currentSet[key] = true;
+        current.push(label);
+      }
+    });
+    return current;
   }
 
   function activateBulkSelection(row, extendRange) {
@@ -214,6 +477,15 @@
   }
 
   function handleBulkSelectionClick(event) {
+    var actionSummary = closestElement(event.target, '[data-bulk-action-menu] > summary');
+    if (actionSummary) {
+      var currentMenu = actionSummary.closest('[data-bulk-action-menu]');
+      Array.prototype.forEach.call(document.querySelectorAll('.caldo-bulk-bar [data-bulk-action-menu][open]'), function (menu) {
+        if (menu !== currentMenu) menu.removeAttribute('open');
+      });
+      return false;
+    }
+
     var clearButton = closestElement(event.target, '[data-bulk-select-all]');
     if (clearButton) {
       event.preventDefault();
@@ -224,6 +496,49 @@
     if (completeButton) {
       event.preventDefault();
       bulkCompleteTasks();
+      return true;
+    }
+
+    var dueButton = closestElement(event.target, '[data-bulk-due-date]');
+    if (dueButton) {
+      event.preventDefault();
+      var dueDate = bulkDueDate(dueButton.getAttribute('data-bulk-due-date'));
+      bulkPatchTasks(function () { return { due_date: dueDate }; });
+      return true;
+    }
+
+    var customDueButton = closestElement(event.target, '[data-bulk-due-custom-apply]');
+    if (customDueButton) {
+      event.preventDefault();
+      var dueDetails = customDueButton.closest('[data-bulk-action-menu]');
+      var customDue = dueDetails ? dueDetails.querySelector('[data-bulk-due-custom]') : null;
+      if (!customDue || !customDue.value) {
+        showToast('Benutzerdefiniertes Datum auswählen.', 'error');
+        if (customDue) customDue.focus();
+        return true;
+      }
+      bulkPatchTasks(function () { return { due_date: customDue.value }; });
+      return true;
+    }
+
+    var priorityButton = closestElement(event.target, '[data-bulk-priority]');
+    if (priorityButton) {
+      event.preventDefault();
+      var priority = priorityButton.getAttribute('data-bulk-priority') || '';
+      bulkPatchTasks(function () { return { priority: priority }; });
+      return true;
+    }
+
+    var labelButton = closestElement(event.target, '[data-bulk-label-mode]');
+    if (labelButton) {
+      event.preventDefault();
+      var labelDetails = labelButton.closest('[data-bulk-action-menu]');
+      var requestedLabels = bulkLabelInput(labelDetails);
+      if (!requestedLabels) return true;
+      var labelMode = labelButton.getAttribute('data-bulk-label-mode');
+      bulkPatchTasks(function (row) {
+        return { labels: bulkLabelsForRow(row, requestedLabels, labelMode).join(',') };
+      });
       return true;
     }
 

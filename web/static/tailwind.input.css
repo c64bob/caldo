@@ -322,6 +322,17 @@
 		}
 	}
 
+	.caldo-content:has(> .caldo-task-list-page),
+	.caldo-task-list-page {
+		@apply w-full;
+		max-width: none;
+	}
+
+	.caldo-task-list-page > form[role="search"],
+	.caldo-task-list-page [data-search-save-filter-form] {
+		@apply w-full max-w-6xl;
+	}
+
 	.caldo-page-title {
 		@apply font-semibold tracking-normal;
 		font-size: 1.0625rem;

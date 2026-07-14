@@ -369,6 +369,9 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   detailRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Panel Edited' }).first();
   await expect(detailRow).toBeVisible();
 
+  await exerciseTaskListWorkspaceWidth(page, testInfo);
+  detailRow = page.locator('[data-task-id]').filter({ hasText: 'E2E Panel Edited' }).first();
+
   const panelTaskID = await detailRow.getAttribute('data-task-id');
   await ensureBrowserCSRFCookie(page);
   await expect(detailRow.getByRole('button', { name: 'Unteraufgabe hinzufügen' })).toHaveCount(0);
@@ -1065,6 +1068,136 @@ async function exerciseTabletCoreViews(page, testInfo) {
       caret: 'initial'
     });
   }
+}
+
+async function exerciseTaskListWorkspaceWidth(page, testInfo) {
+  const taskTitle = 'E2E Panel Edited';
+  const searchPath = '/search?q=%23Work';
+  const viewports = [
+    { name: 'tablet', width: 834, height: 1112 },
+    { name: 'desktop-1280', width: 1280, height: 900 },
+    { name: 'desktop-1440', width: 1440, height: 1000 },
+    { name: 'wide-1920', width: 1920, height: 1080 }
+  ];
+  const widths = {};
+
+  for (const viewport of viewports) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await gotoApp(page, searchPath);
+    const row = page.locator('[data-task-id]').filter({ hasText: taskTitle }).first();
+    await expect(row).toBeVisible();
+    await expect(page.locator('.caldo-content > [data-task-list-page]')).toHaveCount(1);
+    await expectNoHorizontalOverflow(page);
+    const geometry = await taskListWorkspaceGeometry(row);
+    expect(Math.abs(geometry.rowRight - geometry.mainInnerRight), `${viewport.name} task row should end at the main content boundary`).toBeLessThanOrEqual(1.5);
+    expect(Math.abs(geometry.pageRight - geometry.mainInnerRight), `${viewport.name} task page should fill the main content boundary`).toBeLessThanOrEqual(1.5);
+    expect(geometry.dateRight, `${viewport.name} rich task should expose a due date`).not.toBeNull();
+    expect(geometry.dateRight).toBeLessThanOrEqual(geometry.rowRight + 1);
+    expect(geometry.rowRight - geometry.dateRight).toBeLessThanOrEqual(8);
+    if (viewport.width >= 1024) {
+      expect(geometry.titleRight).toBeLessThanOrEqual(geometry.metaLeft + 1);
+    }
+    if (viewport.width === 1920) {
+      const searchFormWidth = await page.locator('[data-task-list-page] > form[role="search"]').evaluate((form) => form.getBoundingClientRect().width);
+      const saveFilterWidth = await page.locator('[data-search-save-filter-form]').evaluate((form) => form.getBoundingClientRect().width);
+      expect(searchFormWidth, 'search controls should retain their readable measure').toBeLessThanOrEqual(1153);
+      expect(saveFilterWidth, 'saved-filter form should retain its readable measure').toBeLessThanOrEqual(1153);
+    }
+    widths[viewport.name] = geometry.rowWidth;
+  }
+
+  expect(widths['desktop-1440']).toBeGreaterThan(widths['desktop-1280'] + 100);
+  expect(widths['wide-1920']).toBeGreaterThan(widths['desktop-1440'] + 400);
+
+  const projectHref = await sidebarProjectHref(page, 'Work');
+  const labelHref = await sidebarNavigationHref(page, '[data-nav-labels]', 'browser');
+  const savedFilterHref = await sidebarNavigationHref(page, '[data-nav-user-filters]', 'E2E Work Filter');
+  for (const view of [
+    { name: 'no-date', path: '/no-date', title: 'Stage Seed Task' },
+    { name: 'project', path: projectHref },
+    { name: 'label', path: labelHref },
+    { name: 'saved-filter', path: savedFilterHref }
+  ]) {
+    await gotoApp(page, view.path);
+    const row = page.locator('[data-task-id]').filter({ hasText: view.title || taskTitle }).first();
+    await expect(row, `${view.name} should render the rich task`).toBeVisible();
+    await expect(page.locator('.caldo-content > [data-task-list-page]')).toHaveCount(1);
+    const geometry = await taskListWorkspaceGeometry(row);
+    expect(Math.abs(geometry.rowRight - geometry.mainInnerRight), `${view.name} row should fill the workspace`).toBeLessThanOrEqual(1.5);
+    await expectNoHorizontalOverflow(page);
+  }
+
+  await gotoApp(page, searchPath);
+  const display = page.locator('[data-task-display]');
+  await display.locator('summary').click();
+  const displayForm = display.locator('[data-task-display-form]');
+  await displayForm.locator('[name="group_by"]').selectOption('priority');
+  await displayForm.getByRole('button', { name: 'Anwenden' }).click();
+  const groupedRow = page.locator('[data-task-id]').filter({ hasText: taskTitle }).first();
+  await expect(groupedRow).toBeVisible();
+  await expect(page.locator('[data-task-group] .caldo-task-group-heading').first()).toBeVisible();
+  const groupedGeometry = await taskListWorkspaceGeometry(groupedRow);
+  expect(groupedGeometry.groupHeadingRight).not.toBeNull();
+  expect(Math.abs(groupedGeometry.groupHeadingRight - groupedGeometry.mainInnerRight), 'group heading should align with grouped task rows').toBeLessThanOrEqual(1.5);
+  await groupedRow.locator('[data-inline-task-edit-title]').evaluate((input) => {
+    input.value = 'E2E Panel Edited with a deliberately long task title that uses all available workspace width before truncating';
+  });
+  await groupedRow.locator('.caldo-task-description').evaluate((description) => {
+    description.textContent = 'A deliberately long visible task note for wide-screen browser QA, with enough content to demonstrate that task notes use the additional horizontal space before wrapping onto another line.';
+  });
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({ path: `${browserArtifactDir(testInfo)}/task-list-full-width-1920.png`, fullPage: true, caret: 'initial' });
+
+  await page.locator('[data-task-display] summary').click();
+  await page.locator('[data-task-display-form]').getByRole('button', { name: 'Zurücksetzen' }).click();
+  await expect(page.locator('[data-task-groups]')).toBeVisible();
+
+  await gotoApp(page, '/settings');
+  await expect(page.locator('[data-task-list-page]')).toHaveCount(0);
+  const settingsWidth = await page.locator('.caldo-content > .caldo-page').evaluate((pageRoot) => pageRoot.getBoundingClientRect().width);
+  expect(settingsWidth, 'settings should retain its narrow form measure').toBeLessThanOrEqual(769);
+  await expectNoHorizontalOverflow(page);
+
+  await page.setViewportSize(mobileViewport);
+  await gotoApp(page, searchPath);
+  await expect(page.locator('[data-task-id]').filter({ hasText: taskTitle }).first()).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.setViewportSize(desktopViewport);
+  await gotoApp(page, searchPath);
+}
+
+async function taskListWorkspaceGeometry(row) {
+  return row.evaluate((taskRow) => {
+    const main = taskRow.closest('main');
+    const pageRoot = taskRow.closest('[data-task-list-page]');
+    const date = taskRow.querySelector('.caldo-task-date-slot');
+    const title = taskRow.querySelector('.caldo-task-title-line');
+    const meta = taskRow.querySelector('.caldo-task-meta-line');
+    const groupHeading = taskRow.closest('[data-task-group]')?.querySelector('.caldo-task-group-heading');
+    const rowRect = taskRow.getBoundingClientRect();
+    const mainRect = main.getBoundingClientRect();
+    const pageRect = pageRoot.getBoundingClientRect();
+    const mainStyle = getComputedStyle(main);
+    return {
+      rowWidth: rowRect.width,
+      rowRight: rowRect.right,
+      mainInnerRight: mainRect.right - Number.parseFloat(mainStyle.paddingRight || '0'),
+      pageRight: pageRect.right,
+      dateRight: date ? date.getBoundingClientRect().right : null,
+      titleRight: title ? title.getBoundingClientRect().right : null,
+      metaLeft: meta ? meta.getBoundingClientRect().left : null,
+      groupHeadingRight: groupHeading ? groupHeading.getBoundingClientRect().right : null
+    };
+  });
+}
+
+async function sidebarNavigationHref(page, sectionSelector, label) {
+  const link = page.locator(`.caldo-sidebar ${sectionSelector} a`).filter({ hasText: label }).first();
+  await link.scrollIntoViewIfNeeded();
+  await expect(link).toBeVisible();
+  const href = await link.getAttribute('href');
+  expect(href, `navigation link for ${label} should have href`).toBeTruthy();
+  return href;
 }
 
 async function exerciseTabletConflictViews(page, testInfo, conflictHref) {

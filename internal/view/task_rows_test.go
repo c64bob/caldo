@@ -962,6 +962,61 @@ func TestTaskRecurrenceSupportsMVPEditablePatterns(t *testing.T) {
 	}
 }
 
+func TestTaskRecurrenceSectionIsCollapsedWithCurrentSummary(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		rrule       string
+		wantSummary string
+		wantComplex bool
+	}{
+		{name: "none", wantSummary: "Nicht eingerichtet"},
+		{name: "editable", rrule: "FREQ=WEEKLY;INTERVAL=2", wantSummary: "Wöchentlich · alle 2"},
+		{name: "complex", rrule: "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=1", wantSummary: "Komplexe Wiederholung", wantComplex: true},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var rendered bytes.Buffer
+			err := TaskRow(TaskRowView{
+				ID:            "task-recurrence-" + tt.name,
+				ProjectID:     "project-1",
+				Title:         "Recurrence " + tt.name,
+				Status:        "needs-action",
+				SyncStatus:    "synced",
+				ServerVersion: 2,
+				RRule:         tt.rrule,
+			}).Render(context.Background(), &rendered)
+			if err != nil {
+				t.Fatalf("render task row: %v", err)
+			}
+			output := rendered.String()
+			start := strings.Index(output, `data-task-recurrence-section`)
+			if start < 0 {
+				t.Fatalf("expected recurrence disclosure in %s", output)
+			}
+			tagStart := strings.LastIndex(output[:start], "<details")
+			tagEnd := strings.Index(output[start:], ">")
+			if tagStart < 0 || tagEnd < 0 {
+				t.Fatalf("expected complete recurrence details tag in %s", output)
+			}
+			detailsTag := output[tagStart : start+tagEnd+1]
+			if strings.Contains(detailsTag, " open") {
+				t.Fatalf("recurrence disclosure must be collapsed by default: %s", detailsTag)
+			}
+			if !strings.Contains(output, tt.wantSummary) {
+				t.Fatalf("expected recurrence summary %q in %s", tt.wantSummary, output)
+			}
+			if got := strings.Contains(output, "Komplexe Wiederholung wird unverändert erhalten."); got != tt.wantComplex {
+				t.Fatalf("complex recurrence explanation present = %t, want %t in %s", got, tt.wantComplex, output)
+			}
+		})
+	}
+}
+
 func TestTaskRowRendersConflictDetailPanelReadOnly(t *testing.T) {
 	t.Parallel()
 

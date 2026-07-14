@@ -417,6 +417,20 @@ func taskCanCreateSubtask(task TaskRowView) bool {
 	return !task.IsSubtask && taskCanToggleCompletion(task)
 }
 
+func taskRecurrenceSummary(task TaskRowView) string {
+	recurrence := taskRecurrence(task)
+	if !recurrence.Editable {
+		return "Komplexe Wiederholung"
+	}
+	if recurrence.Frequency == "NONE" {
+		return "Nicht eingerichtet"
+	}
+	if recurrence.Label != "" {
+		return recurrence.Label
+	}
+	return "Nicht eingerichtet"
+}
+
 func taskNeedsCompletionDecision(task TaskRowView) bool {
 	return !taskIsCompleted(task) && !task.IsSubtask && taskCanToggleCompletion(task) && task.OpenSubtaskCount > 0
 }

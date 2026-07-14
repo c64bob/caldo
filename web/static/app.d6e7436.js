@@ -1885,6 +1885,13 @@
     }
   }
 
+  function resetTaskDetailDisclosures(dialog) {
+    if (!dialog) return;
+    dialog.querySelectorAll('[data-task-recurrence-section]').forEach(function (section) {
+      section.removeAttribute('open');
+    });
+  }
+
   function markTaskRecurrenceUpdate(control) {
     var form = control ? control.closest('[data-task-detail-form]') : null;
     var marker = form ? form.querySelector('[data-task-recurrence-update]') : null;
@@ -1910,6 +1917,7 @@
     dialog.dataset.taskDetailBound = 'true';
     dialog.addEventListener('close', function () {
       restoreEditableControlDragRow();
+      resetTaskDetailDisclosures(dialog);
       var form = dialog.querySelector('[data-task-detail-form]');
       if (form) {
         form.reset();
@@ -1936,6 +1944,7 @@
     var dialog = controlledTaskDialog(trigger, task, '[data-task-detail-dialog]');
     if (!dialog) return;
     bindTaskDetail(dialog);
+    resetTaskDetailDisclosures(dialog);
     dialog.__caldoReturnFocus = returnFocus || trigger;
     dialog.__caldoReturnFocus.setAttribute('aria-expanded', 'true');
     if (typeof dialog.showModal === 'function') {
@@ -2039,6 +2048,7 @@
   function closeTaskDetail(dialog) {
     if (!dialog) return;
     restoreEditableControlDragRow();
+    resetTaskDetailDisclosures(dialog);
     if (typeof dialog.close === 'function' && dialog.open) {
       dialog.close();
       return;

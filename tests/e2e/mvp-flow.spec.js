@@ -304,7 +304,15 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await detailDialog.locator('[name="priority"]').selectOption('1');
   await detailDialog.locator('[name="labels"]').fill('panel, browser');
   await expect(detailDialog.locator('[data-task-labels-input]')).toHaveValue('panel, browser');
+  const recurrenceSection = detailDialog.locator('[data-task-recurrence-section]');
+  await expect(recurrenceSection).not.toHaveAttribute('open', '');
+  await recurrenceSection.locator('summary').click();
   await detailDialog.locator('[name="repeat_freq"]').selectOption('DAILY');
+  await expect(detailDialog.locator('[data-task-recurrence-update]')).toBeEnabled();
+  await recurrenceSection.locator('summary').click();
+  await expect(recurrenceSection).not.toHaveAttribute('open', '');
+  await expect(detailDialog.locator('[name="repeat_freq"]')).toHaveValue('DAILY');
+  await expect(detailDialog.locator('[data-task-recurrence-update]')).toBeEnabled();
   await detailDialog.getByRole('button', { name: 'Speichern' }).focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Panel Edited' }).first()).toBeVisible();
@@ -314,6 +322,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(detailRow).toContainText('P1');
   await expect(detailRow).toContainText('panel');
   await expect(detailRow).toContainText('browser');
+  await expect(detailRow).toContainText('Täglich');
   await openLabelDetail(page, 'inline');
   await expect(page.locator('[data-task-id]').filter({ hasText: 'E2E Panel Edited' })).toHaveCount(0);
   await expect(page.getByText('Keine Aufgaben mit diesem Label.')).toBeVisible();

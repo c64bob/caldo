@@ -231,7 +231,11 @@
     if (!row) return false;
     var explicitControl = closestElement(event.target, '[data-bulk-select-control]');
     var modifierSelection = event.shiftKey || event.ctrlKey || event.metaKey;
-    if ((explicitControl || modifierSelection) && row.querySelector('[data-bulk-select-control]')) {
+    if (explicitControl && row.querySelector('[data-bulk-select-control]')) {
+      activateBulkSelection(row, event.shiftKey);
+      return true;
+    }
+    if (modifierSelection && row.querySelector('[data-bulk-select-control]')) {
       event.preventDefault();
       activateBulkSelection(row, event.shiftKey);
       return true;

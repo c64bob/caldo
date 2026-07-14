@@ -25,6 +25,15 @@ test('bulk selection is reachable and reports partial completion failures', asyn
   const firstControl = firstRow.getByRole('checkbox', { name: /Mehrfachbearbeitung/ });
   const secondControl = secondRow.getByRole('checkbox', { name: /Mehrfachbearbeitung/ });
 
+  await firstControl.click();
+  await expect(firstControl).toBeChecked();
+  await expect(firstRow).toHaveClass(/caldo-task-row-selected/);
+  await expect(page.getByRole('region', { name: 'Mehrfachbearbeitung' })).toContainText('1 Aufgabe ausgewählt');
+  await firstControl.click();
+  await expect(firstControl).not.toBeChecked();
+  await expect(firstRow).not.toHaveClass(/caldo-task-row-selected/);
+  await expect(page.getByRole('region', { name: 'Mehrfachbearbeitung' })).toHaveCount(0);
+
   await firstRow.getByRole('textbox', { name: 'Erste Aufgabe' }).click({ modifiers: ['Control'] });
   await expect(firstControl).toBeChecked();
   await expect(firstRow.locator('[data-inline-task-edit-form]')).toBeVisible();

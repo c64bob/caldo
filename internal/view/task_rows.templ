@@ -271,10 +271,22 @@ templ TaskRow(task TaskRowView) {
 										<button type="button" class="caldo-date-quick-action" role="menuitem" tabindex="-1" data-date-dropdown-action data-date-days="next-monday">Nächster Montag</button>
 										<button type="button" class="caldo-date-quick-action" role="menuitem" tabindex="-1" data-date-dropdown-action data-date-days="next-weekend">Nächstes Wochenende</button>
 										<div class="caldo-date-dropdown-divider"></div>
-										<label class="caldo-date-quick-action caldo-date-custom" role="menuitem" tabindex="-1">
-											<input type="date" class="caldo-date-custom-input" data-date-custom-input/>
-											<span>Benutzerdefiniertes Datum</span>
-										</label>
+										<button
+											type="button"
+											class="caldo-date-quick-action caldo-date-custom"
+											role="menuitem"
+											tabindex="-1"
+											data-date-custom-trigger
+											aria-controls={ taskDOMID("task-date-custom", task) }
+										>Benutzerdefiniertes Datum</button>
+										<input
+											id={ taskDOMID("task-date-custom", task) }
+											type="date"
+											class="caldo-date-custom-input"
+											aria-label="Benutzerdefiniertes Datum auswählen"
+											data-date-custom-input
+											hidden
+										/>
 										<div class="caldo-date-dropdown-divider"></div>
 										<button type="button" class="caldo-date-quick-action caldo-date-clear" role="menuitem" tabindex="-1" data-date-dropdown-action data-date-days="clear">Kein Datum</button>
 									</div>

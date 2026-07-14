@@ -210,6 +210,41 @@ func TestConflictDetailPageRendersDeletedSideAsMissing(t *testing.T) {
 	}
 }
 
+func TestConflictDescriptionDisplaysUseSafeMarkdownAndKeepManualTextRaw(t *testing.T) {
+	t.Parallel()
+
+	localDescription := `Local **strong**\nline\, two with https://example.com/local`
+	remoteDescription := `Remote *emphasis* and <script>alert(1)</script> [unsafe](javascript:alert(1))`
+	component := ConflictDetailPage(db.ConflictDetail{
+		ID:           "conflict-markdown",
+		TaskID:       sql.NullString{Valid: true, String: "task-markdown"},
+		ProjectName:  "Work",
+		ConflictType: "field_conflict",
+		LocalVTODO:   sql.NullString{Valid: true, String: "BEGIN:VTODO\r\nSUMMARY:Local\r\nDESCRIPTION:" + localDescription + "\r\nEND:VTODO\r\n"},
+		RemoteVTODO:  sql.NullString{Valid: true, String: "BEGIN:VTODO\r\nSUMMARY:Remote\r\nDESCRIPTION:" + remoteDescription + "\r\nEND:VTODO\r\n"},
+	}, nil)
+
+	var rendered bytes.Buffer
+	if err := component.Render(context.Background(), &rendered); err != nil {
+		t.Fatalf("render conflict detail: %v", err)
+	}
+	output := rendered.String()
+	for _, want := range []string{
+		`Local <strong>strong</strong><br>line, two with <a href="https://example.com/local" target="_blank" rel="noopener noreferrer" class="caldo-task-description-link">https://example.com/local</a>`,
+		`Remote <em>emphasis</em> and &lt;script&gt;alert(1)&lt;/script&gt; [unsafe](javascript:alert(1))`,
+		`data-conflict-description-rendered`,
+		`name="description_manual"`,
+		`>Remote *emphasis* and &lt;script&gt;alert(1)&lt;/script&gt; [unsafe](javascript:alert(1))</textarea>`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected conflict description rendering to include %q in %s", want, output)
+		}
+	}
+	if strings.Contains(output, `<script>`) || strings.Contains(output, `href="javascript:`) {
+		t.Fatalf("conflict description rendered unsafe markup: %s", output)
+	}
+}
+
 func TestConflictDueDateTimeUsesBrowserLocalMetadata(t *testing.T) {
 	t.Parallel()
 

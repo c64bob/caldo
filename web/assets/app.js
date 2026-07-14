@@ -274,8 +274,7 @@
       return;
     }
 
-    if (text.length > 300) text = text.slice(0, 297) + '…';
-    renderHoverPreview(row, 'Beschreibung', text);
+    renderHoverPreview(row, 'Beschreibung', desc);
   }
 
   function fetchTaskPreview(taskID, row) {
@@ -290,12 +289,20 @@
       var desc = tpl.content.querySelector('.caldo-task-description');
       var text = desc ? (desc.textContent || '').trim() : '';
       if (!text || !document.contains(row)) return;
-      if (text.length > 300) text = text.slice(0, 297) + '…';
-      renderHoverPreview(row, 'Beschreibung', text);
+      renderHoverPreview(row, 'Beschreibung', desc);
     }).catch(function () {});
   }
 
-  function renderHoverPreview(row, label, text) {
+  function cloneRenderedDescription(target, source) {
+    if (!target || !source) return false;
+    target.replaceChildren();
+    Array.prototype.forEach.call(source.childNodes, function (node) {
+      target.appendChild(node.cloneNode(true));
+    });
+    return true;
+  }
+
+  function renderHoverPreview(row, label, description) {
     if (hoverPreviewState.el) return;
     var preview = document.createElement('div');
     preview.className = 'caldo-task-hover-preview';
@@ -304,7 +311,7 @@
     title.textContent = label;
     var body = document.createElement('div');
     body.className = 'caldo-task-hover-preview-description';
-    body.textContent = text;
+    cloneRenderedDescription(body, description);
     preview.appendChild(title);
     preview.appendChild(body);
     row.classList.add('caldo-task-row-relative');
@@ -2850,7 +2857,10 @@
       }
       var optionISO = option.getAttribute('data-conflict-option-display-iso') || '';
       var optionDisplay = option.getAttribute('data-conflict-option-display') || option.textContent.trim();
-      target.textContent = optionISO ? formatBrowserDateTimeFromISO(optionISO) || optionDisplay : optionDisplay;
+      var renderedDescription = field === 'description' ? option.querySelector('[data-conflict-description-rendered]') : null;
+      if (!cloneRenderedDescription(target, renderedDescription)) {
+        target.textContent = optionISO ? formatBrowserDateTimeFromISO(optionISO) || optionDisplay : optionDisplay;
+      }
       if (optionISO) {
         target.setAttribute('data-conflict-preview-iso', optionISO);
       } else {

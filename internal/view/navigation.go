@@ -311,13 +311,24 @@ func labelDeletePath(item NavigationOverviewItem) string {
 	return "/labels/" + url.PathEscape(item.ID)
 }
 
-func labelDeleteValue(item NavigationOverviewItem) string {
-	return item.DeleteValue
+func labelDeleteDialogID(item NavigationOverviewItem) string {
+	return "label-delete-dialog-" + item.ID
+}
+
+func labelDeleteTitleID(item NavigationOverviewItem) string {
+	return "label-delete-title-" + item.ID
+}
+
+func labelDeleteDescriptionID(item NavigationOverviewItem) string {
+	return "label-delete-description-" + item.ID
 }
 
 func labelDeleteConfirmationText(item NavigationOverviewItem) string {
-	if item.DeleteTaskCount == 1 {
-		return "Dieses Label wird aus 1 Aufgabe entfernt. Zum Löschen " + item.Name + " eingeben."
+	if item.DeleteTaskCount == 0 {
+		return "Möchtest du das Label „" + item.Name + "“ wirklich löschen? Es wird aus keiner Aufgabe entfernt."
 	}
-	return "Dieses Label wird aus " + strconv.Itoa(item.DeleteTaskCount) + " Aufgaben entfernt. Zum Löschen " + item.Name + " eingeben."
+	if item.DeleteTaskCount == 1 {
+		return "Möchtest du das Label „" + item.Name + "“ wirklich löschen? Es wird aus 1 Aufgabe entfernt."
+	}
+	return "Möchtest du das Label „" + item.Name + "“ wirklich löschen? Es wird aus " + strconv.Itoa(item.DeleteTaskCount) + " Aufgaben entfernt."
 }

@@ -30,7 +30,6 @@ type labelsPageState struct {
 	RenameValue   string
 	DeleteLabelID string
 	DeleteError   string
-	DeleteValue   string
 }
 
 type labelTaskWriteError struct {
@@ -88,12 +87,11 @@ func LabelDelete(deps labelUpdateDependencies) http.HandlerFunc {
 			return
 		}
 
-		confirmation := strings.TrimSpace(formValues.Get("confirmation_name"))
-		if err := deleteLabel(r.Context(), r, deps, labelID, confirmation); err != nil {
+		confirmed := formValues.Get("confirmed") == "true"
+		if err := deleteLabel(r.Context(), r, deps, labelID, confirmed); err != nil {
 			renderLabelsPage(w, r, deps.database, labelsPageState{
 				DeleteLabelID: labelID,
 				DeleteError:   labelMutationErrorMessage("gelöscht", err),
-				DeleteValue:   confirmation,
 			}, http.StatusOK)
 			return
 		}
@@ -162,12 +160,12 @@ func renameLabel(ctx context.Context, r *http.Request, deps labelUpdateDependenc
 	return deps.database.DeleteUnusedLabel(ctx, label.ID)
 }
 
-func deleteLabel(ctx context.Context, r *http.Request, deps labelUpdateDependencies, labelID string, confirmation string) error {
+func deleteLabel(ctx context.Context, r *http.Request, deps labelUpdateDependencies, labelID string, confirmed bool) error {
 	label, tasks, err := loadLabelMutationBase(ctx, deps.database, labelID)
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(confirmation) != label.Name {
+	if !confirmed {
 		return errLabelConfirmationFailed
 	}
 	if len(tasks) == 0 {
@@ -334,7 +332,7 @@ func labelMutationErrorMessage(action string, err error) string {
 	case errors.Is(err, errLabelNameReserved):
 		return "dieser labelname ist reserviert"
 	case errors.Is(err, errLabelConfirmationFailed):
-		return "bestätigung stimmt nicht mit dem labelnamen überein"
+		return "löschung muss bestätigt werden"
 	case errors.Is(err, db.ErrLabelNotFound):
 		return "label wurde nicht gefunden"
 	case errors.Is(err, db.ErrTaskVersionMismatch):

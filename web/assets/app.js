@@ -1851,6 +1851,33 @@
     setErrorMessage(error, message);
   }
 
+  function completeTaskFromDetail(trigger) {
+    var dialog = trigger ? trigger.closest('[data-task-detail-dialog]') : null;
+    var form = dialog ? dialog.querySelector('[data-task-detail-form]') : null;
+    if (!dialog || !form) return;
+    if (formIsDirty(form)) {
+      setTaskDetailError(dialog, 'Ungespeicherte Änderungen zuerst speichern oder mit Schließen verwerfen.');
+      return;
+    }
+
+    var row = trigger.closest('[data-task-id]');
+    var decisionTrigger = row ? row.querySelector('.caldo-task-row-grid [data-task-complete-open]') : null;
+    if (decisionTrigger) {
+      closeTaskDetail(dialog);
+      openTaskComplete(decisionTrigger);
+      return;
+    }
+
+    var completionForm = row ? row.querySelector('.caldo-task-row-grid [data-task-action-form]') : null;
+    if (!completionForm) {
+      setTaskDetailError(dialog, 'Aufgabe konnte nicht erledigt werden.');
+      return;
+    }
+    setTaskDetailError(dialog, '');
+    completionForm.__caldoTaskDetailDialog = dialog;
+    submitForm(completionForm);
+  }
+
   function resetTaskRecurrenceUpdate(form) {
     var marker = form ? form.querySelector('[data-task-recurrence-update]') : null;
     if (marker) {
@@ -3077,7 +3104,13 @@
       var failedTaskAction = closestElement(event.detail && event.detail.elt, '[data-task-action-form]');
       if (failedTaskAction) {
         var actionStatus = event.detail && event.detail.xhr ? event.detail.xhr.status : 0;
-        setTaskActionError(failedTaskAction.closest('[data-task-id]'), taskActionFailureMessage(actionStatus));
+        var detailDialog = failedTaskAction.__caldoTaskDetailDialog;
+        var actionMessage = detailDialog ? taskCompleteFailureMessage(actionStatus) : taskActionFailureMessage(actionStatus);
+        setTaskActionError(failedTaskAction.closest('[data-task-id]'), actionMessage);
+        if (detailDialog && document.contains(detailDialog)) {
+          setTaskDetailError(detailDialog, actionMessage);
+        }
+        failedTaskAction.__caldoTaskDetailDialog = null;
         return;
       }
       var failedConflictResolution = conflictResolutionFormFor(event.detail && event.detail.elt);
@@ -3380,6 +3413,13 @@
     if (taskDetailClose) {
       event.preventDefault();
       closeTaskDetail(taskDetailClose.closest('[data-task-detail-dialog]'));
+      return;
+    }
+
+    var taskDetailComplete = closestElement(event.target, '[data-task-detail-complete]');
+    if (taskDetailComplete) {
+      event.preventDefault();
+      completeTaskFromDetail(taskDetailComplete);
       return;
     }
 

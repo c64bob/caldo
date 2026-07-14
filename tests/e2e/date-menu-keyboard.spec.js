@@ -17,12 +17,18 @@ test('D opens a keyboard-navigable due-date menu', async ({ page }) => {
           <button type="button" role="menuitem" tabindex="-1" data-date-dropdown-action data-date-days="2">Übermorgen</button>
           <button type="button" role="menuitem" tabindex="-1" data-date-dropdown-action data-date-days="next-monday">Nächster Montag</button>
           <button type="button" role="menuitem" tabindex="-1" data-date-dropdown-action data-date-days="next-weekend">Nächstes Wochenende</button>
-          <label role="menuitem" tabindex="-1">Benutzerdefiniertes Datum<input type="date" data-date-custom-input></label>
+          <button type="button" role="menuitem" tabindex="-1" data-date-custom-trigger>Benutzerdefiniertes Datum</button>
+          <input type="date" data-date-custom-input aria-label="Benutzerdefiniertes Datum auswählen" hidden>
           <button type="button" role="menuitem" tabindex="-1" data-date-dropdown-action data-date-days="clear">Kein Datum</button>
         </div>
       </div>
     </div>
   `);
+  await page.evaluate(() => {
+    HTMLInputElement.prototype.showPicker = function () {
+      this.dataset.pickerOpened = 'true';
+    };
+  });
   await page.addScriptTag({ path: appScript });
 
   const trigger = page.locator('[data-date-dropdown-trigger]');
@@ -49,7 +55,28 @@ test('D opens a keyboard-navigable due-date menu', async ({ page }) => {
 
   await page.keyboard.press('d');
   await expect(menu.getByRole('menuitem', { name: 'Heute' })).toBeFocused();
+  await page.keyboard.press('End');
+  await page.keyboard.press('ArrowUp');
+  await expect(menu.getByRole('menuitem', { name: 'Benutzerdefiniertes Datum' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  const customInput = page.getByLabel('Benutzerdefiniertes Datum auswählen');
+  await expect(customInput).toBeVisible();
+  await expect(customInput).toBeFocused();
+  await expect(customInput).toHaveAttribute('data-picker-opened', 'true');
+  await customInput.fill('2099-06-12');
+  await expect(page.locator('[data-date-hidden-input]')).toHaveValue('2099-06-12');
+  await expect(page.locator('form')).toHaveAttribute('data-submitted', 'true');
+  await expect(menu).toBeHidden();
+  await expect(trigger).toBeFocused();
+
+  await trigger.focus();
+  await page.keyboard.press('d');
+  await expect(menu.getByRole('menuitem', { name: 'Heute' })).toBeFocused();
+  await menu.getByRole('menuitem', { name: 'Benutzerdefiniertes Datum' }).click();
+  await expect(customInput).toBeVisible();
+  await expect(customInput).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(menu).toBeHidden();
   await expect(trigger).toBeFocused();
+  await expect(page.locator('[data-date-hidden-input]')).toHaveValue('2099-06-12');
 });

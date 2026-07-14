@@ -3477,7 +3477,12 @@
     if (!dropdown) return;
     var menu = dropdown.querySelector('.caldo-date-dropdown-menu');
     var trigger = dropdown.querySelector('[data-date-dropdown-trigger]');
+    var customInput = dropdown.querySelector('[data-date-custom-input]');
     if (menu) menu.hidden = true;
+    if (customInput) {
+      customInput.hidden = true;
+      customInput.value = '';
+    }
     if (trigger) {
       trigger.setAttribute('aria-expanded', 'false');
       if (restoreFocus) trigger.focus();
@@ -3514,6 +3519,21 @@
     var month = String(date.getMonth() + 1).padStart(2, '0');
     var day = String(date.getDate()).padStart(2, '0');
     return year + '-' + month + '-' + day;
+  }
+
+  function openCustomDateInput(trigger) {
+    var dropdown = trigger ? trigger.closest('.caldo-date-dropdown') : null;
+    var input = dropdown ? dropdown.querySelector('[data-date-custom-input]') : null;
+    if (!input) return;
+    input.hidden = false;
+    input.focus();
+    if (typeof input.showPicker === 'function') {
+      try {
+        input.showPicker();
+      } catch (_) {
+        // The focused visible input remains a usable fallback.
+      }
+    }
   }
 
   document.addEventListener('click', function (event) {
@@ -3561,6 +3581,14 @@
 
       form.requestSubmit();
       closeDateDropdown(dropdown, true);
+      return;
+    }
+
+    var customTrigger = closestElement(event.target, '[data-date-custom-trigger]');
+    if (customTrigger) {
+      event.preventDefault();
+      event.stopPropagation();
+      openCustomDateInput(customTrigger);
       return;
     }
 

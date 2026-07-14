@@ -707,55 +707,58 @@ templ TaskDetailPanel(task TaskRowView) {
 						<input type="text" name="labels" value={ taskEditableLabels(task) } class="caldo-input" autocomplete="off" disabled?={ !taskCanDetailEdit(task) } data-task-labels-input/>
 					</label>
 				</div>
-				<section class="caldo-task-detail-section" aria-label="Wiederholung">
-					<div class="caldo-task-detail-section-heading">
-						<h3>Wiederholung</h3>
+				<details class="caldo-task-detail-section caldo-task-detail-recurrence" data-task-recurrence-section>
+					<summary class="caldo-task-detail-section-summary">
+						<span class="caldo-task-detail-section-title">Wiederholung</span>
+						<span class="caldo-task-detail-recurrence-summary">{ taskRecurrenceSummary(task) }</span>
+					</summary>
+					<div class="caldo-task-detail-recurrence-body">
+						if taskRecurrence(task).Editable {
+							<input type="hidden" name="repeat_update" value="1" disabled data-task-recurrence-update/>
+							<div class="caldo-task-detail-grid">
+								<label class="caldo-task-detail-field">
+									<span>Rhythmus</span>
+									<select name="repeat_freq" class="caldo-select" disabled?={ !taskCanDetailEdit(task) } data-task-recurrence-control>
+										for _, option := range taskRecurrenceFrequencyOptions() {
+											<option value={ option.Value } selected?={ option.Value == taskRecurrence(task).Frequency }>{ option.Label }</option>
+										}
+									</select>
+								</label>
+								<label class="caldo-task-detail-field">
+									<span>Intervall</span>
+									<input type="number" min="1" step="1" name="repeat_interval" value={ taskRecurrence(task).Interval } class="caldo-input" disabled?={ !taskCanDetailEdit(task) } data-task-recurrence-control/>
+								</label>
+								<label class="caldo-task-detail-field">
+									<span>Wochentag</span>
+									<select name="repeat_byday" class="caldo-select" disabled?={ !taskCanDetailEdit(task) } data-task-recurrence-control>
+										for _, option := range taskByDayOptions() {
+											<option value={ option.Value } selected?={ option.Value == taskRecurrence(task).ByDay }>{ option.Label }</option>
+										}
+									</select>
+								</label>
+								<label class="caldo-task-detail-field">
+									<span>Ende</span>
+									<select name="repeat_end" class="caldo-select" disabled?={ !taskCanDetailEdit(task) } data-task-recurrence-control>
+										for _, option := range taskRecurrenceEndOptions() {
+											<option value={ option.Value } selected?={ option.Value == taskRecurrence(task).End }>{ option.Label }</option>
+										}
+									</select>
+								</label>
+								<label class="caldo-task-detail-field">
+									<span>Bis</span>
+									<input type="date" name="repeat_until" value={ taskRecurrence(task).Until } class="caldo-input" disabled?={ !taskCanDetailEdit(task) } data-task-recurrence-control/>
+								</label>
+								<label class="caldo-task-detail-field">
+									<span>Anzahl</span>
+									<input type="number" min="1" step="1" name="repeat_count" value={ taskRecurrence(task).Count } class="caldo-input" disabled?={ !taskCanDetailEdit(task) } data-task-recurrence-control/>
+								</label>
+							</div>
+						} else {
+							<p class="caldo-task-detail-static">{ taskRecurrence(task).Label }</p>
+							<p class="caldo-meta">Komplexe Wiederholung wird unverändert erhalten.</p>
+						}
 					</div>
-					if taskRecurrence(task).Editable {
-						<input type="hidden" name="repeat_update" value="1" disabled data-task-recurrence-update/>
-						<div class="caldo-task-detail-grid">
-							<label class="caldo-task-detail-field">
-								<span>Rhythmus</span>
-								<select name="repeat_freq" class="caldo-select" disabled?={ !taskCanDetailEdit(task) } data-task-recurrence-control>
-									for _, option := range taskRecurrenceFrequencyOptions() {
-										<option value={ option.Value } selected?={ option.Value == taskRecurrence(task).Frequency }>{ option.Label }</option>
-									}
-								</select>
-							</label>
-							<label class="caldo-task-detail-field">
-								<span>Intervall</span>
-								<input type="number" min="1" step="1" name="repeat_interval" value={ taskRecurrence(task).Interval } class="caldo-input" disabled?={ !taskCanDetailEdit(task) } data-task-recurrence-control/>
-							</label>
-							<label class="caldo-task-detail-field">
-								<span>Wochentag</span>
-								<select name="repeat_byday" class="caldo-select" disabled?={ !taskCanDetailEdit(task) } data-task-recurrence-control>
-									for _, option := range taskByDayOptions() {
-										<option value={ option.Value } selected?={ option.Value == taskRecurrence(task).ByDay }>{ option.Label }</option>
-									}
-								</select>
-							</label>
-							<label class="caldo-task-detail-field">
-								<span>Ende</span>
-								<select name="repeat_end" class="caldo-select" disabled?={ !taskCanDetailEdit(task) } data-task-recurrence-control>
-									for _, option := range taskRecurrenceEndOptions() {
-										<option value={ option.Value } selected?={ option.Value == taskRecurrence(task).End }>{ option.Label }</option>
-									}
-								</select>
-							</label>
-							<label class="caldo-task-detail-field">
-								<span>Bis</span>
-								<input type="date" name="repeat_until" value={ taskRecurrence(task).Until } class="caldo-input" disabled?={ !taskCanDetailEdit(task) } data-task-recurrence-control/>
-							</label>
-							<label class="caldo-task-detail-field">
-								<span>Anzahl</span>
-								<input type="number" min="1" step="1" name="repeat_count" value={ taskRecurrence(task).Count } class="caldo-input" disabled?={ !taskCanDetailEdit(task) } data-task-recurrence-control/>
-							</label>
-						</div>
-					} else {
-						<p class="caldo-task-detail-static">{ taskRecurrence(task).Label }</p>
-						<p class="caldo-meta">Komplexe Wiederholung wird unverändert erhalten.</p>
-					}
-				</section>
+				</details>
 				<section class="caldo-task-detail-section" aria-label="Anhänge">
 					<div class="caldo-task-detail-section-heading">
 						<h3>Anhänge</h3>

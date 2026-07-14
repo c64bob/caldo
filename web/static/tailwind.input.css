@@ -1879,6 +1879,32 @@
 		border-color: var(--caldo-border);
 	}
 
+	.caldo-task-detail-section-summary {
+		@apply flex min-w-0 cursor-pointer items-center justify-between gap-3 rounded-sm;
+		color: var(--caldo-text);
+	}
+
+	.caldo-task-detail-section-summary:focus-visible {
+		outline: 2px solid var(--caldo-focus);
+		outline-offset: 2px;
+		box-shadow: var(--caldo-focus-ring);
+	}
+
+	.caldo-task-detail-section-title {
+		@apply font-semibold leading-5 tracking-wider uppercase;
+		font-size: 0.6875rem;
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-task-detail-recurrence-summary {
+		@apply min-w-0 truncate text-xs;
+		color: var(--caldo-text-muted);
+	}
+
+	.caldo-task-detail-recurrence-body {
+		@apply min-w-0 space-y-3;
+	}
+
 	.caldo-task-detail-subtasks {
 		@apply px-4 pb-3;
 	}

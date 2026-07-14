@@ -1072,6 +1072,49 @@
     closeDialog(dialog);
   }
 
+  function openLabelDeleteDialog(trigger) {
+    if (!trigger) return;
+    var dialogID = trigger.getAttribute('aria-controls');
+    var dialog = dialogID ? document.getElementById(dialogID) : null;
+    if (!dialog || dialog.hasAttribute('open')) return;
+    dialog.__caldoReturnFocus = trigger;
+    trigger.setAttribute('aria-expanded', 'true');
+    showDialog(dialog);
+    focusFirstDialogControl(dialog, '[data-label-delete-cancel]');
+  }
+
+  function closeLabelDeleteDialog(dialog) {
+    if (!dialog || !dialog.hasAttribute('open')) return;
+    closeDialog(dialog);
+  }
+
+  function bindLabelDeleteDialogs() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-label-delete-dialog]'), function (dialog) {
+      if (dialog.dataset.labelDeleteBound !== 'true') {
+        dialog.dataset.labelDeleteBound = 'true';
+        dialog.addEventListener('close', function () {
+          var trigger = dialog.__caldoReturnFocus;
+          if (trigger && document.contains(trigger)) {
+            trigger.setAttribute('aria-expanded', 'false');
+          }
+          returnDialogFocus(dialog);
+        });
+        dialog.addEventListener('click', function (event) {
+          if (event.target === dialog) {
+            closeLabelDeleteDialog(dialog);
+          }
+        });
+      }
+
+      if (dialog.hasAttribute('data-label-delete-reopen')) {
+        dialog.removeAttribute('data-label-delete-reopen');
+        var row = dialog.closest('.caldo-list-row');
+        var trigger = row ? row.querySelector('[data-label-delete-open]') : null;
+        openLabelDeleteDialog(trigger);
+      }
+    });
+  }
+
   function bindApplicationDialogs() {
     var mobileNav = document.querySelector('[data-mobile-nav-dialog]');
     if (mobileNav && mobileNav.dataset.mobileNavBound !== 'true') {
@@ -1097,6 +1140,8 @@
         returnDialogFocus(help);
       });
     }
+
+    bindLabelDeleteDialogs();
   }
 
   function quickAddOverlay() {
@@ -3460,6 +3505,7 @@
     initializeSetupImport(targetElement || document);
     initializeConflictManualPreviews(targetElement || document);
     initializeConflictSplitConfirmations(targetElement || document);
+    bindApplicationDialogs();
   });
 
   document.body.addEventListener('htmx:afterSettle', function (event) {
@@ -3912,6 +3958,20 @@
       return;
     }
 
+    var labelDeleteOpen = closestElement(event.target, '[data-label-delete-open]');
+    if (labelDeleteOpen) {
+      event.preventDefault();
+      openLabelDeleteDialog(labelDeleteOpen);
+      return;
+    }
+
+    var labelDeleteClose = closestElement(event.target, '[data-label-delete-close]');
+    if (labelDeleteClose) {
+      event.preventDefault();
+      closeLabelDeleteDialog(labelDeleteClose.closest('[data-label-delete-dialog]'));
+      return;
+    }
+
     var mobileNavClose = closestElement(event.target, '[data-mobile-nav-close]');
     if (mobileNavClose) {
       event.preventDefault();
@@ -4245,6 +4305,13 @@
     if (taskDeleteDialog && taskDeleteDialog.open && event.key === 'Escape' && typeof taskDeleteDialog.close !== 'function') {
       event.preventDefault();
       closeTaskDelete(taskDeleteDialog);
+      return;
+    }
+
+    var labelDeleteDialog = closestElement(event.target, '[data-label-delete-dialog]');
+    if (labelDeleteDialog && labelDeleteDialog.open && event.key === 'Escape' && typeof labelDeleteDialog.close !== 'function') {
+      event.preventDefault();
+      closeLabelDeleteDialog(labelDeleteDialog);
       return;
     }
 

@@ -207,30 +207,60 @@ templ LabelRenameForm(item NavigationOverviewItem) {
 }
 
 templ LabelDeleteForm(item NavigationOverviewItem) {
-	<details class="space-y-2" open?={ item.DeleteError != "" } data-label-delete-panel>
-		<summary class="caldo-button caldo-button-danger">Label löschen</summary>
-		<form
-			class="space-y-2"
-			method="post"
-			action={ labelDeletePath(item) }
-			hx-delete={ labelDeletePath(item) }
-			hx-target="body"
-			hx-swap="outerHTML"
-			hx-push-url="false"
-			hx-disabled-elt="find button"
-			hx-headers={ "{\"X-CSRF-Token\":\"" + CSRFToken(ctx) + "\"}" }
-			data-label-delete-form
-		>
-			if item.DeleteError != "" {
-				<p class="caldo-alert caldo-alert-error" data-label-delete-error role="alert" aria-live="polite">{ item.DeleteError }</p>
-			}
-			<p class="caldo-meta" data-label-delete-summary>{ labelDeleteConfirmationText(item) }</p>
-			<label class="caldo-label" for={ "label-delete-" + item.ID }>Bestätigung</label>
-			<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-				<input id={ "label-delete-" + item.ID } class="caldo-input sm:max-w-sm" type="text" name="confirmation_name" value={ labelDeleteValue(item) } autocomplete="off" required data-label-delete-confirmation/>
-				<button type="submit" class="caldo-button caldo-button-danger-solid">Endgültig löschen</button>
-				<span class="htmx-indicator caldo-meta" aria-live="polite">Löscht ...</span>
+	<button
+		type="button"
+		class="caldo-button caldo-button-danger"
+		data-label-delete-open
+		aria-controls={ labelDeleteDialogID(item) }
+		aria-haspopup="dialog"
+		aria-expanded="false"
+	>Label löschen</button>
+	<dialog
+		id={ labelDeleteDialogID(item) }
+		class="caldo-task-delete-dialog"
+		data-label-delete-dialog
+		data-label-delete-reopen?={ item.DeleteError != "" }
+		aria-labelledby={ labelDeleteTitleID(item) }
+		aria-describedby={ labelDeleteDescriptionID(item) }
+	>
+		<div class="caldo-task-delete-shell">
+			<header class="caldo-task-delete-header">
+				<div class="caldo-task-delete-heading">
+					<p class="caldo-meta">Label</p>
+					<h2 id={ labelDeleteTitleID(item) } class="caldo-task-delete-title">Label löschen</h2>
+				</div>
+				<button type="button" class="caldo-icon-button caldo-task-delete-close" data-label-delete-close aria-label="Löschen abbrechen">
+					<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+						<path d="M18 6 6 18"></path>
+						<path d="m6 6 12 12"></path>
+					</svg>
+				</button>
+			</header>
+			<div class="caldo-task-delete-body">
+				<p id={ labelDeleteDescriptionID(item) } class="caldo-task-delete-copy" data-label-delete-summary>{ labelDeleteConfirmationText(item) }</p>
+				if item.DeleteError != "" {
+					<p class="caldo-alert caldo-alert-error caldo-task-delete-error" data-label-delete-error role="alert" aria-live="polite">{ item.DeleteError }</p>
+				}
+				<form
+					method="post"
+					action={ labelDeletePath(item) }
+					hx-delete={ labelDeletePath(item) }
+					hx-target="body"
+					hx-swap="outerHTML"
+					hx-sync="this:drop"
+					hx-push-url="false"
+					hx-disabled-elt="find button"
+					hx-headers={ "{\"X-CSRF-Token\":\"" + CSRFToken(ctx) + "\"}" }
+					data-label-delete-form
+				>
+					<input type="hidden" name="confirmed" value="true"/>
+					<div class="caldo-task-delete-actions">
+						<button type="button" class="caldo-button caldo-button-ghost" data-label-delete-close data-label-delete-cancel>Nein</button>
+						<button type="submit" class="caldo-button caldo-button-primary caldo-button-danger-solid">Ja, löschen</button>
+						<span class="htmx-indicator caldo-meta" aria-live="polite">Löscht ...</span>
+					</div>
+				</form>
 			</div>
-		</form>
-	</details>
+		</div>
+	</dialog>
 }

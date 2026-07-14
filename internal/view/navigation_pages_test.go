@@ -293,15 +293,43 @@ func TestLabelsOverviewPageRendersManagementForms(t *testing.T) {
 		`hx-patch="/labels/label-1"`,
 		`name="name" value="Büro"`,
 		`Label umbenennen`,
+		`data-label-delete-open`,
+		`aria-haspopup="dialog"`,
+		`data-label-delete-dialog`,
 		`data-label-delete-form`,
 		`hx-delete="/labels/label-1"`,
-		`name="confirmation_name"`,
-		`Dieses Label wird aus 2 Aufgaben entfernt. Zum Löschen Büro eingeben.`,
-		`Endgültig löschen`,
+		`hx-sync="this:drop"`,
+		`name="confirmed" value="true"`,
+		`Möchtest du das Label „Büro“ wirklich löschen? Es wird aus 2 Aufgaben entfernt.`,
+		`>Nein</button>`,
+		`>Ja, löschen</button>`,
 		`X-CSRF-Token&#34;:&#34;token-123`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("labels page missing %q in %s", want, body)
+		}
+	}
+	if strings.Contains(body, `name="confirmation_name"`) || strings.Contains(body, `data-label-delete-confirmation`) {
+		t.Fatalf("labels page still renders typed-name confirmation in %s", body)
+	}
+}
+
+func TestLabelDeleteConfirmationTextDescribesAffectedTasks(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		count int
+		want  string
+	}{
+		{count: 0, want: `Möchtest du das Label „Büro“ wirklich löschen? Es wird aus keiner Aufgabe entfernt.`},
+		{count: 1, want: `Möchtest du das Label „Büro“ wirklich löschen? Es wird aus 1 Aufgabe entfernt.`},
+		{count: 3, want: `Möchtest du das Label „Büro“ wirklich löschen? Es wird aus 3 Aufgaben entfernt.`},
+	}
+
+	for _, test := range tests {
+		item := NavigationOverviewItem{Name: "Büro", DeleteTaskCount: test.count}
+		if got := labelDeleteConfirmationText(item); got != test.want {
+			t.Errorf("count %d: got %q, want %q", test.count, got, test.want)
 		}
 	}
 }
@@ -319,7 +347,6 @@ func TestLabelsOverviewPageRendersFeedback(t *testing.T) {
 		RenameError:     "label konnte nicht umbenannt werden",
 		RenameValue:     "Buro",
 		DeleteError:     "bestätigung stimmt nicht überein",
-		DeleteValue:     "Buro",
 	}}, LabelFeedback{PageSuccess: "label wurde gelöscht"}).Render(context.Background(), &output)
 	if err != nil {
 		t.Fatalf("render labels page: %v", err)
@@ -334,7 +361,7 @@ func TestLabelsOverviewPageRendersFeedback(t *testing.T) {
 		`value="Buro"`,
 		`data-label-delete-error`,
 		`bestätigung stimmt nicht überein`,
-		`open`,
+		`data-label-delete-reopen`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("labels page missing %q in %s", want, body)

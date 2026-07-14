@@ -71,7 +71,7 @@ func TestLabelDeleteRemovesLabelFromAffectedTasksViaCalDAV(t *testing.T) {
 
 	stub := &stubTaskUpdateTodoClient{updateETag: `"etag-deleted"`}
 	h := LabelDelete(labelUpdateDependencies{database: database, encryptionKey: key, todos: stub})
-	request := labelMutationRequest(http.MethodDelete, "/labels/label-home", "label-home", url.Values{"confirmation_name": {"home"}})
+	request := labelMutationRequest(http.MethodDelete, "/labels/label-home", "label-home", url.Values{"confirmed": {"true"}})
 	responseRecorder := httptest.NewRecorder()
 
 	h.ServeHTTP(responseRecorder, request)
@@ -95,6 +95,14 @@ func TestLabelDeleteRemovesLabelFromAffectedTasksViaCalDAV(t *testing.T) {
 	}
 	if strings.Contains(rawVTODO, "home") || !strings.Contains(rawVTODO, "CATEGORIES:other") {
 		t.Fatalf("delete raw vtodo did not remove only target label: %q", rawVTODO)
+	}
+	if err := database.Conn.QueryRowContext(context.Background(), `SELECT raw_vtodo FROM tasks WHERE id = 'task-1';`).Scan(&rawVTODO); err != nil {
+		t.Fatalf("query first raw vtodo: %v", err)
+	}
+	for _, want := range []string{"CATEGORIES:STARRED", "X-KEEP:1"} {
+		if !strings.Contains(rawVTODO, want) {
+			t.Fatalf("delete raw vtodo did not preserve %q in %q", want, rawVTODO)
+		}
 	}
 }
 
@@ -132,7 +140,7 @@ func TestLabelRenameShowsVisibleErrorWhenCalDAVWriteFails(t *testing.T) {
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM labels WHERE name = 'home' COLLATE NOCASE;`, 1)
 }
 
-func TestLabelDeleteRequiresMatchingConfirmation(t *testing.T) {
+func TestLabelDeleteRequiresExplicitConfirmation(t *testing.T) {
 	t.Parallel()
 
 	database := openLabelUpdateHandlerDB(t)
@@ -144,7 +152,7 @@ func TestLabelDeleteRequiresMatchingConfirmation(t *testing.T) {
 
 	stub := &stubTaskUpdateTodoClient{updateETag: `"etag-deleted"`}
 	h := LabelDelete(labelUpdateDependencies{database: database, encryptionKey: key, todos: stub})
-	request := labelMutationRequest(http.MethodDelete, "/labels/label-home", "label-home", url.Values{"confirmation_name": {"wrong"}})
+	request := labelMutationRequest(http.MethodDelete, "/labels/label-home", "label-home", url.Values{"confirmation_name": {"home"}})
 	responseRecorder := httptest.NewRecorder()
 
 	h.ServeHTTP(responseRecorder, request)
@@ -152,11 +160,73 @@ func TestLabelDeleteRequiresMatchingConfirmation(t *testing.T) {
 	if responseRecorder.Code != http.StatusOK {
 		t.Fatalf("unexpected status: got %d body=%q", responseRecorder.Code, responseRecorder.Body.String())
 	}
-	if !strings.Contains(responseRecorder.Body.String(), `data-label-delete-error`) || !strings.Contains(responseRecorder.Body.String(), "bestätigung stimmt nicht mit dem labelnamen überein") {
+	if !strings.Contains(responseRecorder.Body.String(), `data-label-delete-error`) || !strings.Contains(responseRecorder.Body.String(), "löschung muss bestätigt werden") {
 		t.Fatalf("expected confirmation error, got %q", responseRecorder.Body.String())
+	}
+	if !strings.Contains(responseRecorder.Body.String(), `data-label-delete-reopen`) {
+		t.Fatalf("expected failed confirmation dialog to reopen, got %q", responseRecorder.Body.String())
 	}
 	if stub.updateCalls != 0 {
 		t.Fatalf("expected no CalDAV writes, got %d", stub.updateCalls)
+	}
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM labels WHERE name = 'home' COLLATE NOCASE;`, 1)
+}
+
+func TestLabelDeleteRemovesUnusedLabelWithoutCalDAVWrite(t *testing.T) {
+	t.Parallel()
+
+	database := openLabelUpdateHandlerDB(t)
+	if _, err := database.Conn.ExecContext(context.Background(), `INSERT INTO labels (id, name, created_at) VALUES ('label-unused', 'unused', CURRENT_TIMESTAMP);`); err != nil {
+		t.Fatalf("seed unused label: %v", err)
+	}
+
+	stub := &stubTaskUpdateTodoClient{updateETag: `"not-used"`}
+	h := LabelDelete(labelUpdateDependencies{database: database, todos: stub})
+	request := labelMutationRequest(http.MethodDelete, "/labels/label-unused", "label-unused", url.Values{"confirmed": {"true"}})
+	responseRecorder := httptest.NewRecorder()
+
+	h.ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusOK || !strings.Contains(responseRecorder.Body.String(), "label wurde gelöscht") {
+		t.Fatalf("expected successful unused-label deletion, got status=%d body=%q", responseRecorder.Code, responseRecorder.Body.String())
+	}
+	if stub.updateCalls != 0 {
+		t.Fatalf("expected no CalDAV writes, got %d", stub.updateCalls)
+	}
+	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM labels WHERE id = 'label-unused';`, 0)
+}
+
+func TestLabelDeleteShowsVisibleSafeErrorWhenCalDAVWriteFails(t *testing.T) {
+	t.Parallel()
+
+	database := openLabelUpdateHandlerDB(t)
+	seedLabelUpdateHandlerData(t, database)
+	key := bytes.Repeat([]byte{0x35}, 32)
+	if err := database.SaveCalDAVCredentials(context.Background(), key, db.CalDAVCredentials{URL: "https://dav.example", Username: "alice", Password: "secret"}); err != nil {
+		t.Fatalf("save credentials: %v", err)
+	}
+
+	stub := &stubTaskUpdateTodoClient{updateErr: errors.New("upstream rejected private task")}
+	h := LabelDelete(labelUpdateDependencies{database: database, encryptionKey: key, todos: stub})
+	request := labelMutationRequest(http.MethodDelete, "/labels/label-home", "label-home", url.Values{"confirmed": {"true"}})
+	responseRecorder := httptest.NewRecorder()
+
+	h.ServeHTTP(responseRecorder, request)
+
+	body := responseRecorder.Body.String()
+	if responseRecorder.Code != http.StatusOK || !strings.Contains(body, `data-label-delete-error`) || !strings.Contains(body, "label konnte nicht vollständig gelöscht werden (0 von 2 Aufgaben aktualisiert)") {
+		t.Fatalf("expected visible delete error, got status=%d body=%q", responseRecorder.Code, body)
+	}
+	if !strings.Contains(body, `data-label-delete-reopen`) {
+		t.Fatalf("expected failed delete dialog to reopen, got %q", body)
+	}
+	for _, leaked := range []string{"upstream rejected", "private task", "https://dav.example", "secret"} {
+		if strings.Contains(body, leaked) {
+			t.Fatalf("label error leaked %q in body %q", leaked, body)
+		}
+	}
+	if stub.updateCalls != 1 {
+		t.Fatalf("expected one attempted CalDAV write, got %d", stub.updateCalls)
 	}
 	assertSingleIntResult(t, database, `SELECT COUNT(*) FROM labels WHERE name = 'home' COLLATE NOCASE;`, 1)
 }

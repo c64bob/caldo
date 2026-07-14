@@ -161,7 +161,6 @@ func renderLabelsPage(w http.ResponseWriter, r *http.Request, database *db.Datab
 		}
 		if labels[index].ID == pageState.DeleteLabelID {
 			labels[index].DeleteError = pageState.DeleteError
-			labels[index].DeleteValue = pageState.DeleteValue
 		}
 	}
 

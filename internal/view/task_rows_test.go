@@ -418,6 +418,7 @@ func TestTaskPriorityInlineEditorRendersPersistentNativeSelect(t *testing.T) {
 		`data-inline-task-edit-persistent`,
 		`data-inline-task-priority-select`,
 		`name="priority"`,
+		`autocomplete="off"`,
 		`caldo-task-priority-select`,
 		`caldo-task-priority-select-caret`,
 		`caldo-task-priority-p1`,

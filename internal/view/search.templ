@@ -45,7 +45,7 @@ templ SearchLiveResults(query string, results []TaskRowView, saveFilter SearchSa
 			@SearchSaveFilterForm(saveFilter)
 		}
 		if strings.TrimSpace(query) == "" {
-			@EmptyStateWithAction("Noch keine Suche", "Gib einen Suchbegriff ein.", "Aufgabe erstellen", "/quick-add")
+			@EmptyState("Noch keine Suche", "Gib einen Suchbegriff ein.")
 		} else if len(results) == 0 {
 			@EmptyState("Keine aktiven Aufgaben gefunden", "Passe den Suchbegriff oder Projekt- und Labeltokens an.")
 		} else {
@@ -64,7 +64,7 @@ templ ConfigurableSearchLiveResults(query string, groups []TaskListGroupView, sa
 			@SearchSaveFilterForm(saveFilter)
 		}
 		if strings.TrimSpace(query) == "" {
-			@EmptyStateWithAction("Noch keine Suche", "Gib einen Suchbegriff ein.", "Aufgabe erstellen", "/quick-add")
+			@EmptyState("Noch keine Suche", "Gib einen Suchbegriff ein.")
 		} else if len(groups) == 0 {
 			@EmptyState("Keine aktiven Aufgaben gefunden", "Passe den Suchbegriff oder Projekt- und Labeltokens an.")
 		} else {

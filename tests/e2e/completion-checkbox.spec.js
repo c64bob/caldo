@@ -39,6 +39,30 @@ test('failed direct completion restores the checkbox and pending-write state', a
   expect(pageErrors).toEqual([]);
 });
 
+test('restored checkbox state is reconciled from the persisted task status', async ({ page }) => {
+  await page.setContent(`
+    <ul>
+      <li data-task-id="task-next" data-task-status="needs-action">
+        <input type="checkbox" checked data-task-completion-state-control aria-label="Next task">
+      </li>
+      <li data-task-id="task-completed" data-task-status="completed">
+        <input type="checkbox" data-task-completion-state-control aria-label="Completed task">
+      </li>
+    </ul>
+  `);
+
+  await page.addScriptTag({ path: appScript });
+
+  const nextTask = page.getByRole('checkbox', { name: 'Next task' });
+  const completedTask = page.getByRole('checkbox', { name: 'Completed task' });
+  await expect(nextTask).not.toBeChecked();
+  await expect(completedTask).toBeChecked();
+
+  await nextTask.evaluate((control) => { control.checked = true; });
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow')));
+  await expect(nextTask).not.toBeChecked();
+});
+
 async function setCompletionFixture(page) {
   await page.route('http://caldo.test/', async (route) => {
     await route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><html><body></body></html>' });
@@ -60,7 +84,7 @@ async function setCompletionFixture(page) {
         >
           <input type="hidden" name="expected_version" value="1">
           <label>
-            <input type="checkbox" data-task-completion-checkbox aria-label="Aufgabe erledigen">
+            <input type="checkbox" data-task-completion-checkbox data-task-completion-state-control aria-label="Aufgabe erledigen">
           </label>
         </form>
         <p data-task-action-error role="alert" hidden></p>

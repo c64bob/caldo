@@ -30,6 +30,7 @@ templ TaskRow(task TaskRowView) {
 			<form
 				method="post"
 				action={ taskCompletionPath(task) }
+				autocomplete="off"
 				hx-post={ taskCompletionPath(task) }
 				hx-swap="none"
 				hx-disabled-elt="find input[data-task-completion-checkbox]"
@@ -51,8 +52,10 @@ templ TaskRow(task TaskRowView) {
 						<input
 							type="checkbox"
 							class="caldo-task-checkbox-input"
+							autocomplete="off"
 							aria-label={ taskCompletionLabel(task) }
 							checked?={ taskIsCompleted(task) }
+							data-task-completion-state-control
 						/>
 							<span class={ "caldo-task-checkbox", taskCheckboxPriorityClass(task) } aria-hidden="true">
 								<span aria-hidden="true" class="caldo-task-checkbox-mark"></span>
@@ -66,10 +69,12 @@ templ TaskRow(task TaskRowView) {
 						<input
 							type="checkbox"
 							class="caldo-task-checkbox-input"
+							autocomplete="off"
 							aria-label={ taskCompletionLabel(task) }
 							checked?={ taskIsCompleted(task) }
 							disabled?={ !taskCanToggleCompletion(task) }
 							data-task-completion-checkbox
+							data-task-completion-state-control
 						/>
 							<span class={ "caldo-task-checkbox", taskCheckboxPriorityClass(task) } aria-hidden="true">
 								<span aria-hidden="true" class="caldo-task-checkbox-mark"></span>
@@ -529,6 +534,7 @@ templ TaskDetailSubtask(task TaskRowView) {
 		<form
 			method="post"
 			action={ taskCompletionPath(task) }
+			autocomplete="off"
 			hx-post={ taskCompletionPath(task) }
 			hx-swap="none"
 			hx-disabled-elt="find input[data-task-completion-checkbox]"
@@ -542,10 +548,12 @@ templ TaskDetailSubtask(task TaskRowView) {
 				<input
 					type="checkbox"
 					class="caldo-task-checkbox-input"
+					autocomplete="off"
 					aria-label={ taskCompletionLabel(task) }
 					checked?={ taskIsCompleted(task) }
 					disabled?={ !taskCanToggleCompletion(task) }
 					data-task-completion-checkbox
+					data-task-completion-state-control
 				/>
 				<span class={ "caldo-task-checkbox", taskCheckboxPriorityClass(task) } aria-hidden="true">
 					<span aria-hidden="true" class="caldo-task-checkbox-mark"></span>

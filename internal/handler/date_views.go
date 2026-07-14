@@ -45,7 +45,7 @@ func Today(deps dateViewDependencies) http.HandlerFunc {
 			renderPageError(w, r, "Heute", "Heute laden", http.StatusInternalServerError)
 			return
 		}
-		if err := view.BaseLayout("Heute", view.ConfigurableTaskListPage("Heute", "Keine fälligen oder überfälligen Aufgaben.", groups, display)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayoutWithTopbarAction("Heute", view.TaskListDisplayControls(display), view.ConfigurableTaskListPage("Heute", "Keine fälligen oder überfälligen Aufgaben.", groups)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -74,7 +74,7 @@ func Upcoming(deps dateViewDependencies) http.HandlerFunc {
 			renderPageError(w, r, "Demnächst", "Demnächst laden", http.StatusInternalServerError)
 			return
 		}
-		if err := view.BaseLayout("Demnächst", view.ConfigurableTaskListPage("Demnächst", "Keine demnächst fälligen Aufgaben.", groups, display)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayoutWithTopbarAction("Demnächst", view.TaskListDisplayControls(display), view.ConfigurableTaskListPage("Demnächst", "Keine demnächst fälligen Aufgaben.", groups)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -103,7 +103,7 @@ func Overdue(deps dateViewDependencies) http.HandlerFunc {
 			renderPageError(w, r, "Überfällig", "Überfällig laden", http.StatusInternalServerError)
 			return
 		}
-		if err := view.BaseLayout("Überfällig", view.ConfigurableTaskListPage("Überfällig", "Keine überfälligen Aufgaben.", groups, display)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayoutWithTopbarAction("Überfällig", view.TaskListDisplayControls(display), view.ConfigurableTaskListPage("Überfällig", "Keine überfälligen Aufgaben.", groups)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -132,7 +132,7 @@ func Favorites(deps dateViewDependencies) http.HandlerFunc {
 			renderPageError(w, r, "Favoriten", "Favoriten laden", http.StatusInternalServerError)
 			return
 		}
-		if err := view.BaseLayout("Favoriten", view.ConfigurableTaskListPage("Favoriten", "Keine favorisierten Aufgaben.", groups, display)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayoutWithTopbarAction("Favoriten", view.TaskListDisplayControls(display), view.ConfigurableTaskListPage("Favoriten", "Keine favorisierten Aufgaben.", groups)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -161,7 +161,7 @@ func NoDate(deps dateViewDependencies) http.HandlerFunc {
 			renderPageError(w, r, "Ohne Datum", "Ohne Datum laden", http.StatusInternalServerError)
 			return
 		}
-		if err := view.BaseLayout("Ohne Datum", view.ConfigurableTaskListPage("Ohne Datum", "Keine Aufgaben ohne Datum.", groups, display)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayoutWithTopbarAction("Ohne Datum", view.TaskListDisplayControls(display), view.ConfigurableTaskListPage("Ohne Datum", "Keine Aufgaben ohne Datum.", groups)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
@@ -190,7 +190,7 @@ func Completed(deps dateViewDependencies) http.HandlerFunc {
 			renderPageError(w, r, "Erledigt", "Erledigte Aufgaben laden", http.StatusInternalServerError)
 			return
 		}
-		if err := view.BaseLayout("Erledigt", view.ConfigurableTaskListPage("Erledigte Aufgaben", "Erledigte Aufgaben sind ausgeblendet.", groups, display)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayoutWithTopbarAction("Erledigt", view.TaskListDisplayControls(display), view.ConfigurableTaskListPage("Erledigte Aufgaben", "Erledigte Aufgaben sind ausgeblendet.", groups)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}

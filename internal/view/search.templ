@@ -9,10 +9,9 @@ templ SearchPage(query string, results []TaskRowView, saveFilter SearchSaveFilte
 	</section>
 }
 
-templ ConfigurableSearchPage(query string, groups []TaskListGroupView, display TaskListDisplayView, saveFilter SearchSaveFilterView) {
+templ ConfigurableSearchPage(query string, groups []TaskListGroupView, saveFilter SearchSaveFilterView) {
 	<section class="caldo-page">
 		@SearchForm(query)
-		@TaskListDisplayControls(display)
 		@ConfigurableSearchLiveResults(query, groups, saveFilter)
 	</section>
 }

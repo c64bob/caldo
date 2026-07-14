@@ -32,7 +32,7 @@ func Search(deps searchDependencies) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := view.BaseLayout("Suche", view.ConfigurableSearchPage(data.query, data.groups, data.display, data.saveFilter)).Render(r.Context(), w); err != nil {
+		if err := view.BaseLayoutWithTopbarAction("Suche", view.TaskListDisplayControls(data.display), view.ConfigurableSearchPage(data.query, data.groups, data.saveFilter)).Render(r.Context(), w); err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}

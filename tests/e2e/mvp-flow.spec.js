@@ -69,6 +69,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
 
   await gotoApp(page, '/search?q=Stage');
   await expectCurrentView(page, 'Suche');
+  await expectDisplayControlInTopbar(page);
   await expect(page.locator('[data-search-results]').filter({ hasText: 'Stage Seed Task' })).toBeVisible();
   await exerciseTaskListDisplayPreferences(page);
   await exerciseKeyboardShortcuts(page);
@@ -100,6 +101,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await emptyProjectNav.click();
   await expect(page).toHaveURL(/\/projects\/[^/]+$/);
   await expectCurrentView(page, 'E2E Empty Project');
+  await expectDisplayControlInTopbar(page);
   await expect(page.locator('.caldo-sidebar [data-nav-projects] a[aria-current="page"]').filter({ hasText: 'E2E Empty Project' })).toBeVisible();
   await expect(page.getByText('Keine offenen Aufgaben in diesem Projekt.')).toBeVisible();
   await expectNoBottomTaskCreator(page);
@@ -110,6 +112,10 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await searchSaveFilterForm.getByRole('button', { name: 'Filter anlegen' }).click();
   await expect(page.locator('[data-saved-filter-list]').filter({ hasText: 'E2E Work Filter' })).toBeVisible();
   await expect(page.locator('[data-nav-user-filters] a').filter({ hasText: 'E2E Work Filter' })).toHaveCount(2);
+  const savedFilterLink = page.locator('.caldo-sidebar [data-nav-user-filters] a').filter({ hasText: 'E2E Work Filter' }).first();
+  await savedFilterLink.click();
+  await expect(page).toHaveURL(/\/filters\/[^/]+$/);
+  await expectDisplayControlInTopbar(page);
   await gotoApp(page, '/filters');
   const invalidFilterCreateForm = page.locator('[data-saved-filter-create-form]');
   await invalidFilterCreateForm.locator('[name="name"]').fill('E2E Broken Filter');
@@ -127,7 +133,10 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expectVisibleFormErrorsAssociated(page);
   await expect(page.locator('[data-saved-filter-list]').filter({ hasText: 'E2E Broken Filter' })).toHaveCount(0);
   await expect(page.locator('[data-nav-user-filters] a').filter({ hasText: 'E2E Broken Filter' })).toHaveCount(0);
+  await openLabelDetail(page, 'reviewed');
+  await expectDisplayControlInTopbar(page);
   await gotoApp(page, '/today');
+  await expectDisplayControlInTopbar(page);
   await expectNoBottomTaskCreator(page);
   await captureBaselineSet(page, testInfo, 'today');
   await gotoApp(page, '/upcoming');
@@ -703,6 +712,17 @@ async function expectNoBottomTaskCreator(page) {
   await expect(page.locator('[data-inline-task-create]:not([data-subtask-create])')).toHaveCount(0);
 }
 
+async function expectDisplayControlInTopbar(page) {
+  const display = page.locator('[data-task-display]');
+  await expect(display).toHaveCount(1);
+  await expect(page.locator('.caldo-topbar [data-task-display]')).toHaveCount(1);
+  await expect(page.locator('.caldo-main [data-task-display]')).toHaveCount(0);
+  const trigger = display.locator('summary');
+  await expect(trigger).toBeVisible();
+  await expect(trigger).toHaveAttribute('aria-label', 'Anzeigeoptionen');
+  await expect(trigger).toHaveAttribute('title', 'Anzeigeoptionen');
+}
+
 async function openLabelDetail(page, labelName) {
   await gotoApp(page, '/labels');
   const link = page.locator('[data-navigation-overview] a[href^="/labels/"]').filter({ hasText: labelName }).first();
@@ -764,6 +784,8 @@ async function exerciseKeyboardFocusAccessibility(page, testInfo) {
 async function exerciseTaskListDisplayPreferences(page) {
   await page.setViewportSize(mobileViewport);
   await ensureBrowserCSRFCookie(page);
+  await expectDisplayControlInTopbar(page);
+  await expectNoHorizontalOverflow(page);
 
   const display = page.locator('[data-task-display]');
   const trigger = display.locator('summary');
@@ -884,13 +906,13 @@ async function exerciseTabletCoreViews(page, testInfo) {
   const defaultProjectHref = await sidebarProjectHref(page, 'E2E Setup Inbox');
   const emptyProjectHref = await sidebarProjectHref(page, 'E2E Empty Project');
   const coreViews = [
-    { name: 'inbox-equivalent-default-project', pathname: defaultProjectHref, heading: 'E2E Setup Inbox' },
-    { pathname: '/today', heading: 'Heute' },
-    { name: 'project-detail', pathname: emptyProjectHref, heading: 'E2E Empty Project', content: 'Keine offenen Aufgaben in diesem Projekt.' },
-    { pathname: '/search?q=Stage', heading: 'Suche', content: 'Stage Seed Task' },
-    { pathname: '/quick-add', heading: 'Quick Add', content: 'Aufgabe' },
-    { pathname: '/conflicts', heading: 'Konflikte', content: 'Keine ungelösten Konflikte' },
-    { pathname: '/settings', heading: 'Einstellungen' }
+    { name: 'inbox-equivalent-default-project', pathname: defaultProjectHref, heading: 'E2E Setup Inbox', configurable: true },
+    { pathname: '/today', heading: 'Heute', configurable: true },
+    { name: 'project-detail', pathname: emptyProjectHref, heading: 'E2E Empty Project', content: 'Keine offenen Aufgaben in diesem Projekt.', configurable: true },
+    { pathname: '/search?q=Stage', heading: 'Suche', content: 'Stage Seed Task', configurable: true },
+    { pathname: '/quick-add', heading: 'Quick Add', content: 'Aufgabe', configurable: false },
+    { pathname: '/conflicts', heading: 'Konflikte', content: 'Keine ungelösten Konflikte', configurable: false },
+    { pathname: '/settings', heading: 'Einstellungen', configurable: false }
   ];
 
   for (const view of coreViews) {
@@ -905,6 +927,11 @@ async function exerciseTabletCoreViews(page, testInfo) {
     await expect(page.locator('.caldo-topbar a[href="/quick-add"]')).toBeVisible();
     await expect(page.locator('.caldo-topbar [data-theme-toggle]')).toBeVisible();
     await expect(page.locator('.caldo-topbar #sync-status')).toBeVisible();
+    if (view.configurable) {
+      await expectDisplayControlInTopbar(page);
+    } else {
+      await expect(page.locator('[data-task-display]')).toHaveCount(0);
+    }
     await expectNoHorizontalOverflow(page);
     await expectTabletTouchTargets(page);
     await page.screenshot({

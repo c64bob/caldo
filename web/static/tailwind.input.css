@@ -254,7 +254,18 @@
 
 	.caldo-topbar-actions {
 		@apply grid w-full min-w-0 gap-1.5;
-		grid-template-columns: auto auto auto auto;
+		grid-auto-flow: column;
+		grid-auto-columns: max-content;
+		justify-content: start;
+	}
+
+	.caldo-topbar-actions .caldo-task-display-menu {
+		left: 0;
+		right: auto;
+	}
+
+	.caldo-topbar-actions .caldo-task-display-trigger span {
+		display: none;
 	}
 
 	.caldo-topbar-actions > .caldo-button {
@@ -268,6 +279,10 @@
 	@media (min-width: 640px) {
 		.caldo-topbar-actions {
 			@apply flex w-auto max-w-full flex-wrap items-center justify-end gap-2;
+		}
+
+		.caldo-topbar-actions .caldo-task-display-trigger span {
+			display: block;
 		}
 
 		.caldo-topbar-actions > .caldo-sync-status {

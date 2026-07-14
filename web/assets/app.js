@@ -290,6 +290,7 @@
     });
     currentPage.replaceWith(nextPage);
     initializeTaskCompletionControls(nextPage);
+    initializeTaskPriorityControls(nextPage);
     if (window.htmx && typeof window.htmx.process === 'function') {
       window.htmx.process(nextPage);
     }
@@ -1833,6 +1834,18 @@
     });
   }
 
+  function initializeTaskPriorityControls(root) {
+    var controls = (root || document).querySelectorAll('[data-inline-task-priority-select]');
+    Array.prototype.forEach.call(controls, function (control) {
+      var selectedOption = Array.prototype.find.call(control.options, function (option) {
+        return option.defaultSelected;
+      });
+      if (!selectedOption) return;
+      control.value = selectedOption.value;
+      updateInlinePriorityAppearance(control);
+    });
+  }
+
   function taskRowID(row) {
     return row ? row.getAttribute('data-task-id') || '' : '';
   }
@@ -3363,6 +3376,7 @@
     var targetElement = event.detail && event.detail.target instanceof Element ? event.detail.target : null;
     initializeFormErrors(targetElement || document);
     initializeTaskCompletionControls(targetElement || document);
+    initializeTaskPriorityControls(targetElement || document);
     initializeLocalDateTimes(targetElement || document);
     initializeSetupImport(targetElement || document);
     initializeConflictManualPreviews(targetElement || document);
@@ -4057,6 +4071,7 @@
   window.addEventListener('pageshow', function () {
     window.setTimeout(function () {
       initializeTaskCompletionControls(document);
+      initializeTaskPriorityControls(document);
     }, 0);
   });
   document.addEventListener('visibilitychange', function () {
@@ -4209,6 +4224,7 @@
   consumeRememberedWriteStatus();
   initializeFormErrors();
   initializeTaskCompletionControls(document);
+  initializeTaskPriorityControls(document);
   bindApplicationDialogs();
   bindQuickAddOverlay();
   initializeThemeController();

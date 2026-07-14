@@ -3,14 +3,14 @@ package view
 import "strings"
 
 templ SearchPage(query string, results []TaskRowView, saveFilter SearchSaveFilterView) {
-	<section class="caldo-page">
+	<section class="caldo-page caldo-task-list-page" data-task-list-page>
 		@SearchForm(query)
 		@SearchLiveResults(query, results, saveFilter)
 	</section>
 }
 
 templ ConfigurableSearchPage(query string, groups []TaskListGroupView, saveFilter SearchSaveFilterView) {
-	<section class="caldo-page">
+	<section class="caldo-page caldo-task-list-page" data-task-list-page>
 		@SearchForm(query)
 		@ConfigurableSearchLiveResults(query, groups, saveFilter)
 	</section>

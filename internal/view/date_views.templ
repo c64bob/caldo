@@ -1,7 +1,7 @@
 package view
 
 templ DateScopedTasksPage(heading string, emptyMessage string, tasks []TaskRowView) {
-	<section class="caldo-page">
+	<section class="caldo-page caldo-task-list-page" data-task-list-page>
 		if len(tasks) == 0 {
 			@EmptyState(emptyMessage, "Es gibt in dieser Ansicht gerade nichts zu bearbeiten.")
 		} else {
@@ -15,7 +15,7 @@ templ DateScopedTasksPage(heading string, emptyMessage string, tasks []TaskRowVi
 }
 
 templ ConfigurableTaskListPage(heading string, emptyMessage string, groups []TaskListGroupView) {
-	<section class="caldo-page">
+	<section class="caldo-page caldo-task-list-page" data-task-list-page>
 		if len(groups) == 0 {
 			@EmptyState(emptyMessage, "Es gibt in dieser Ansicht gerade nichts zu bearbeiten.")
 		} else {

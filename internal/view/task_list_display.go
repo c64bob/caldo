@@ -217,10 +217,18 @@ func BuildTaskListGroups(tasks []TaskRowView, display TaskListDisplayView, refer
 func buildTaskListBundles(tasks []TaskRowView) []taskListBundle {
 	bundles := make([]taskListBundle, 0, len(tasks))
 	indexByKey := make(map[string]int, len(tasks))
+	visibleParents := make(map[string]struct{}, len(tasks))
+	for _, task := range tasks {
+		if !task.IsSubtask && strings.TrimSpace(task.ID) != "" {
+			visibleParents[task.ID] = struct{}{}
+		}
+	}
 	for index, task := range tasks {
 		key := task.ID
 		if task.IsSubtask && strings.TrimSpace(task.ParentID) != "" {
-			key = task.ParentID
+			if _, ok := visibleParents[task.ParentID]; ok {
+				key = task.ParentID
+			}
 		}
 		bundleIndex, ok := indexByKey[key]
 		if !ok {

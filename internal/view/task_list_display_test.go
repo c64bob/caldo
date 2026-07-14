@@ -119,6 +119,44 @@ func TestBuildTaskListGroupsLeavesOrphanedResultsAtTopLevel(t *testing.T) {
 	}
 }
 
+func TestBuildTaskListGroupsGroupsOrphanedSiblingsByTheirOwnPriority(t *testing.T) {
+	t.Parallel()
+	tasks := []TaskRowView{
+		{ID: "child-none", ParentID: "filtered-parent", ParentTitle: "Filtered parent", IsSubtask: true},
+		{ID: "child-p1", ParentID: "filtered-parent", ParentTitle: "Filtered parent", IsSubtask: true, Priority: 1, HasPriority: true},
+		{ID: "child-p3", ParentID: "filtered-parent", ParentTitle: "Filtered parent", IsSubtask: true, Priority: 9, HasPriority: true},
+	}
+	display := TaskListDisplayView{Preference: model.TaskViewPreference{SortBy: model.TaskSortDefault, SortOrder: model.TaskSortAscending, GroupBy: model.TaskGroupPriority}}
+
+	groups := BuildTaskListGroups(tasks, display, time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC))
+	if len(groups) != 3 {
+		t.Fatalf("group count=%d want=3: %#v", len(groups), groups)
+	}
+	if groups[0].Label != "P1" || groups[1].Label != "P3" || groups[2].Label != "Keine Priorität" {
+		t.Fatalf("unexpected group labels: %#v", groups)
+	}
+	assertTaskIDs(t, groups[0].Tasks, []string{"child-p1"})
+	assertTaskIDs(t, groups[1].Tasks, []string{"child-p3"})
+	assertTaskIDs(t, groups[2].Tasks, []string{"child-none"})
+	for _, group := range groups {
+		if group.Tasks[0].ParentVisible {
+			t.Fatalf("orphaned child %q must remain top-level", group.Tasks[0].ID)
+		}
+	}
+}
+
+func TestBuildTaskListGroupsSortsOrphanedSiblingsIndependently(t *testing.T) {
+	t.Parallel()
+	tasks := []TaskRowView{
+		{ID: "child-later", ParentID: "filtered-parent", IsSubtask: true, DueISODate: "2026-07-12"},
+		{ID: "child-earlier", ParentID: "filtered-parent", IsSubtask: true, DueISODate: "2026-07-11"},
+	}
+	display := TaskListDisplayView{Preference: model.TaskViewPreference{SortBy: model.TaskSortDue, SortOrder: model.TaskSortAscending, GroupBy: model.TaskGroupNone}}
+
+	groups := BuildTaskListGroups(tasks, display, time.Date(2026, 7, 10, 0, 0, 0, 0, time.UTC))
+	assertTaskIDs(t, groups[0].Tasks, []string{"child-earlier", "child-later"})
+}
+
 func TestBuildTaskListGroupsReversesOnlyPrimarySortKey(t *testing.T) {
 	t.Parallel()
 	tasks := []TaskRowView{

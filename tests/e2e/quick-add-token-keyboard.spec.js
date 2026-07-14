@@ -5,10 +5,11 @@ const appScript = path.resolve(__dirname, '../../web/assets/app.js');
 
 test('Quick Add project and label suggestions support input-owned keyboard selection', async ({ page }) => {
   await page.setContent(`
-    <dialog open data-quick-add-overlay>
+    <dialog open data-quick-add-overlay data-quick-add-root>
       <form data-quick-add-overlay-form onsubmit="event.preventDefault()">
         <div>
           <input
+            data-quick-add-input
             data-quick-add-overlay-input
             role="combobox"
             aria-autocomplete="list"

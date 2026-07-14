@@ -164,7 +164,8 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expect(quickAddInput).toBeFocused();
   await quickAddInput.fill('E2E Inline Created #Work');
   await quickAddInput.press('Enter');
-  await quickAddOverlay.locator('[data-quick-add-overlay-save-form]').getByRole('button', { name: 'Speichern' }).click();
+  await expect(quickAddInput).toHaveValue('E2E Inline Created #Work ');
+  await quickAddInput.press('Enter');
   await expect(quickAddOverlay).toBeHidden();
   await expect(page.locator('[data-write-status]')).toContainText('Gespeichert');
   await waitForSearchResult(page, 'E2E Inline Created');
@@ -1276,7 +1277,7 @@ async function exerciseQuickAddOverlay(page) {
   await page.keyboard.type('n');
   await expect(input).toHaveValue('n');
   await input.fill('E2E Overlay Failed');
-  await page.keyboard.press('Enter');
+  await previewForm.getByRole('button', { name: 'Vorschau' }).click();
   let saveForm = overlay.locator('[data-quick-add-overlay-save-form]');
   await expect(saveForm).toBeVisible();
   // Input-first: corrections hidden, reveal via toggle
@@ -1296,7 +1297,7 @@ async function exerciseQuickAddOverlay(page) {
   await expect(page).toHaveURL(searchURL);
 
   await input.fill('E2E Overlay Chips #Work @urgent morgen wöchentlich !2');
-  await page.keyboard.press('Enter');
+  await previewForm.getByRole('button', { name: 'Vorschau' }).click();
   saveForm = overlay.locator('[data-quick-add-overlay-save-form]');
   await expect(overlay.locator('[data-quick-add-chips]')).toContainText('Work');
   await expect(overlay.locator('[data-quick-add-chips]')).toContainText('urgent');

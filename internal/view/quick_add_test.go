@@ -62,7 +62,9 @@ func TestQuickAddOverlayUsesDistinctPreviewTarget(t *testing.T) {
 		`aria-controls="quick-add-token-suggestions"`,
 		`hx-target="#quick-add-overlay-preview"`,
 		`hx-trigger="input changed delay:200ms from:#quick-add-overlay-text, submit"`,
+		`hx-sync="this:replace"`,
 		`name="surface" value="overlay"`,
+		`data-quick-add-input`,
 		`aria-describedby="quick-add-overlay-error"`,
 		`id="quick-add-overlay-error"`,
 		`data-quick-add-overlay-error`,
@@ -79,7 +81,7 @@ func TestQuickAddOverlayPreviewUsesOverlayTargetAndSaveHook(t *testing.T) {
 	t.Parallel()
 
 	ctx := WithCSRFToken(context.Background(), "token-123")
-	component := QuickAddOverlayPreview(parser.QuickAddDraft{Title: "Overlay Task", ProjectID: "project-1"}, "")
+	component := QuickAddOverlayPreview(parser.QuickAddDraft{Title: "Overlay Task", ProjectID: "project-1"}, "Overlay Task")
 
 	var rendered bytes.Buffer
 	if err := component.Render(ctx, &rendered); err != nil {
@@ -90,6 +92,7 @@ func TestQuickAddOverlayPreviewUsesOverlayTargetAndSaveHook(t *testing.T) {
 	for _, want := range []string{
 		`id="quick-add-overlay-preview"`,
 		`data-quick-add-overlay-save-form`,
+		`data-quick-add-source-text="Overlay Task"`,
 		`hx-post="/tasks"`,
 		`X-CSRF-Token`,
 		`token-123`,

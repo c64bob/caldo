@@ -10,6 +10,7 @@
   var taskMoveDragState = null;
   var editableControlDragRow = null;
   var explicitQuickAddPreviewRequests = new WeakSet();
+  var quickAddEnterPreviewRequests = new WeakMap();
 
   /* ── Toast notification system ───────────────────────────── */
 
@@ -1113,6 +1114,7 @@
 
   function resetQuickAddOverlay(dialog) {
     if (!dialog) return;
+    setQuickAddEnterPending(dialog, false);
     var form = dialog.querySelector('[data-quick-add-overlay-form]');
     var preview = dialog.querySelector('#quick-add-overlay-preview');
     if (form) {
@@ -1196,14 +1198,22 @@
   }
 
   function rememberQuickAddPreviewFocusIntent(detail) {
-    if (!detail || !detail.xhr) return;
+    if (!detail || !detail.xhr) return true;
     var previewForm = closestElement(detail.elt, '.caldo-quick-add-form');
-    if (!previewForm || previewForm.getAttribute('action') !== '/quick-add/preview') return;
+    if (!previewForm || previewForm.getAttribute('action') !== '/quick-add/preview') return true;
     var requestConfig = detail.requestConfig || {};
     var triggeringEvent = requestConfig.triggeringEvent || detail.triggeringEvent;
     if (triggeringEvent && triggeringEvent.type === 'submit') {
       explicitQuickAddPreviewRequests.add(detail.xhr);
     }
+    var enterIntent = previewForm.__caldoQuickAddEnterIntent;
+    if (enterIntent && triggeringEvent && triggeringEvent.type === 'submit') {
+      previewForm.__caldoQuickAddEnterIntent = null;
+      quickAddEnterPreviewRequests.set(detail.xhr, enterIntent);
+      return true;
+    }
+    var root = closestElement(previewForm, '[data-quick-add-root]');
+    return !(root && root.dataset.quickAddEnterPending === 'true');
   }
 
   function pad2(value) {
@@ -1595,6 +1605,72 @@
       return requestQuickAddSubmit(saveForm);
     }
     return requestQuickAddSubmit(dialog.querySelector('[data-quick-add-overlay-form]'));
+  }
+
+  function setQuickAddEnterPending(root, pending) {
+    if (!root) return;
+    root.dataset.quickAddEnterPending = pending ? 'true' : 'false';
+    var input = root.querySelector('[data-quick-add-input]');
+    if (!input) return;
+    if (pending) {
+      input.setAttribute('aria-busy', 'true');
+    } else {
+      input.removeAttribute('aria-busy');
+    }
+  }
+
+  function quickAddSaveFormCanSubmit(form) {
+    if (!form || !validateQuickAddSaveForm(form)) return false;
+    if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+      if (typeof form.reportValidity === 'function') form.reportValidity();
+      return false;
+    }
+    return true;
+  }
+
+  function submitQuickAddFromInput(input) {
+    var root = closestElement(input, '[data-quick-add-root]');
+    if (!root || root.dataset.quickAddEnterPending === 'true') return !!root;
+    var text = (input.value || '').trim();
+    var preview = root.querySelector('[data-quick-add-preview]');
+    var saveForm = preview ? preview.querySelector('[data-quick-add-save-form]') : null;
+    var previewText = preview ? (preview.getAttribute('data-quick-add-source-text') || '').trim() : '';
+
+    if (saveForm && previewText === text) {
+      if (!quickAddSaveFormCanSubmit(saveForm)) return true;
+      setQuickAddEnterPending(root, true);
+      if (!requestQuickAddSubmit(saveForm)) setQuickAddEnterPending(root, false);
+      return true;
+    }
+
+    var previewForm = closestElement(input, '.caldo-quick-add-form');
+    if (!previewForm) return false;
+    setQuickAddEnterPending(root, true);
+    previewForm.__caldoQuickAddEnterIntent = { root: root, input: input, text: text };
+    if (!requestQuickAddSubmit(previewForm)) {
+      previewForm.__caldoQuickAddEnterIntent = null;
+      setQuickAddEnterPending(root, false);
+    }
+    return true;
+  }
+
+  function finishQuickAddEnterPreview(detail) {
+    if (!detail || !detail.xhr || !quickAddEnterPreviewRequests.has(detail.xhr)) return false;
+    var intent = quickAddEnterPreviewRequests.get(detail.xhr);
+    quickAddEnterPreviewRequests.delete(detail.xhr);
+    var root = intent.root;
+    var input = intent.input;
+    var preview = root && root.querySelector('[data-quick-add-preview]');
+    var currentText = input ? (input.value || '').trim() : '';
+    var previewText = preview ? (preview.getAttribute('data-quick-add-source-text') || '').trim() : '';
+    var saveForm = preview ? preview.querySelector('[data-quick-add-save-form]') : null;
+
+    if (!root || !document.contains(root) || currentText !== intent.text || previewText !== intent.text || !quickAddSaveFormCanSubmit(saveForm)) {
+      setQuickAddEnterPending(root, false);
+      return true;
+    }
+    if (!requestQuickAddSubmit(saveForm)) setQuickAddEnterPending(root, false);
+    return true;
   }
 
   function quickAddTokenListFor(target) {
@@ -3307,7 +3383,10 @@
   });
 
   document.body.addEventListener('htmx:beforeRequest', function (event) {
-    rememberQuickAddPreviewFocusIntent(event.detail);
+    if (!rememberQuickAddPreviewFocusIntent(event.detail)) {
+      event.preventDefault();
+      return;
+    }
     var method = ((event.detail && event.detail.requestConfig && event.detail.requestConfig.verb) || '').toUpperCase();
     if (method === 'GET') {
       var target = event.detail && event.detail.target;
@@ -3384,6 +3463,7 @@
   });
 
   document.body.addEventListener('htmx:afterSettle', function (event) {
+    if (finishQuickAddEnterPreview(event.detail)) return;
     if (!event.detail || !event.detail.xhr || !explicitQuickAddPreviewRequests.has(event.detail.xhr)) return;
     var requestElement = event.detail && event.detail.elt;
     var targetElement = event.detail && event.detail.target instanceof Element ? event.detail.target : null;
@@ -3404,6 +3484,8 @@
 
     if (!successful) {
       setWriteStatus('error', 'Speichern fehlgeschlagen. Änderungen prüfen.');
+      var failedQuickAddRoot = closestElement(event.detail && event.detail.elt, '[data-quick-add-root]');
+      if (failedQuickAddRoot) setQuickAddEnterPending(failedQuickAddRoot, false);
       var failedQuickAddOverlaySave = closestElement(event.detail && event.detail.elt, '[data-quick-add-overlay-save-form]');
       if (failedQuickAddOverlaySave) {
         setQuickAddOverlayError(failedQuickAddOverlaySave.closest('[data-quick-add-overlay]'), 'Aufgabe konnte nicht gespeichert werden.');
@@ -3490,6 +3572,11 @@
       closeQuickAddOverlay(successfulQuickAddOverlaySave.closest('[data-quick-add-overlay]'), true);
       refreshUndoNotification();
       return;
+    }
+
+    var successfulQuickAddSave = closestElement(event.detail && event.detail.elt, '[data-quick-add-save-form]');
+    if (successfulQuickAddSave) {
+      setQuickAddEnterPending(closestElement(successfulQuickAddSave, '[data-quick-add-root]'), false);
     }
 
     var successfulTaskComplete = closestElement(event.detail && event.detail.elt, '[data-task-complete-form]');
@@ -4101,6 +4188,13 @@
         event.preventDefault();
         return;
       }
+    }
+
+    var quickAddInput = closestElement(event.target, '[data-quick-add-input]');
+    if (quickAddInput && event.key === 'Enter' && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey && !event.isComposing && event.keyCode !== 229) {
+      event.preventDefault();
+      submitQuickAddFromInput(quickAddInput);
+      return;
     }
 
     var inlineCreate = closestElement(event.target, '[data-inline-task-create]');

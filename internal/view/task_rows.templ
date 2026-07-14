@@ -778,6 +778,9 @@ templ TaskDetailPanel(task TaskRowView) {
 				</section>
 				<div class="caldo-task-detail-actions">
 					<button type="submit" class="caldo-button caldo-button-primary" disabled?={ !taskCanDetailEdit(task) }>Speichern</button>
+					if taskCanCompleteFromDetail(task) {
+						<button type="button" class="caldo-button caldo-button-secondary" data-task-detail-complete>Erledigt</button>
+					}
 					if taskCanDelete(task) {
 						<button
 							type="button"

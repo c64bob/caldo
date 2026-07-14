@@ -830,6 +830,8 @@ func TestTaskRowRendersDetailPanelForSyncedTask(t *testing.T) {
 		`rel="noopener noreferrer"`,
 		`Anhang vorhanden (inline/binary)`,
 		`data-task-detail-error`,
+		`data-task-detail-complete`,
+		`>Erledigt</button>`,
 		`X-CSRF-Token`,
 	} {
 		if !strings.Contains(output, want) {
@@ -838,6 +840,44 @@ func TestTaskRowRendersDetailPanelForSyncedTask(t *testing.T) {
 	}
 	if strings.Contains(output, `name="labels" value="Büro, urgent, STARRED"`) {
 		t.Fatalf("reserved favorite category must not render in the label editor: %s", output)
+	}
+}
+
+func TestTaskDetailCompleteActionOnlyRendersForSyncedOpenTasks(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		status     string
+		syncStatus string
+		want       bool
+	}{
+		{name: "open synced", status: "needs-action", syncStatus: "synced", want: true},
+		{name: "completed synced", status: "completed", syncStatus: "synced", want: false},
+		{name: "open pending", status: "needs-action", syncStatus: "pending", want: false},
+		{name: "open conflict", status: "needs-action", syncStatus: "conflict", want: false},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var rendered bytes.Buffer
+			err := TaskRow(TaskRowView{
+				ID:            "task-detail-complete",
+				ProjectID:     "project-1",
+				Title:         "Detail completion",
+				Status:        tt.status,
+				SyncStatus:    tt.syncStatus,
+				ServerVersion: 2,
+			}).Render(context.Background(), &rendered)
+			if err != nil {
+				t.Fatalf("render task row: %v", err)
+			}
+			if got := strings.Contains(rendered.String(), "data-task-detail-complete"); got != tt.want {
+				t.Fatalf("detail completion action present = %t, want %t in %s", got, tt.want, rendered.String())
+			}
+		})
 	}
 }
 

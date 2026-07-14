@@ -398,6 +398,10 @@ func taskCanDelete(task TaskRowView) bool {
 	return taskCanToggleCompletion(task)
 }
 
+func taskCanCompleteFromDetail(task TaskRowView) bool {
+	return !taskIsCompleted(task) && taskCanToggleCompletion(task)
+}
+
 func taskCanDragMove(task TaskRowView) bool {
 	return taskCanToggleCompletion(task) && strings.TrimSpace(task.ProjectID) != ""
 }

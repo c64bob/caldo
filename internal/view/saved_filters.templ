@@ -32,16 +32,19 @@ templ SavedFilterCreateForm(create SavedFilterCreateFormView) {
 		if create.Error != "" {
 			<p class="caldo-alert caldo-alert-error" data-saved-filter-create-error role="alert" aria-live="polite">{ create.Error }</p>
 		}
-		<div class="grid gap-3 lg:grid-cols-[minmax(12rem,18rem)_1fr_auto] lg:items-end">
-			<div class="space-y-1">
-				<label class="caldo-label" for="saved-filter-create-name">Name</label>
-				<input id="saved-filter-create-name" class="caldo-input" type="text" name="name" value={ create.Name } autocomplete="off" required/>
+		<div class="caldo-filter-help-scope" data-filter-help-scope>
+			<div class="grid gap-3 lg:grid-cols-[minmax(12rem,18rem)_1fr_auto] lg:items-end">
+				<div class="space-y-1" data-filter-help-field>
+					@SavedFilterFieldLabel("Name", "saved-filter-create-name", "saved-filter-create-help")
+					<input id="saved-filter-create-name" class="caldo-input" type="text" name="name" value={ create.Name } autocomplete="off" aria-describedby="saved-filter-create-help" data-filter-help-input required/>
+				</div>
+				<div class="space-y-1" data-filter-help-field>
+					@SavedFilterFieldLabel("Query", "saved-filter-create-query", "saved-filter-create-help")
+					<input id="saved-filter-create-query" class="caldo-input" type="text" name="query" value={ create.Query } autocomplete="off" aria-describedby="saved-filter-create-help" data-filter-help-input required/>
+				</div>
+				<button type="submit" class="caldo-button caldo-button-primary">Filter anlegen</button>
 			</div>
-			<div class="space-y-1">
-				<label class="caldo-label" for="saved-filter-create-query">Query</label>
-				<input id="saved-filter-create-query" class="caldo-input" type="text" name="query" value={ create.Query } autocomplete="off" required/>
-			</div>
-			<button type="submit" class="caldo-button caldo-button-primary">Filter anlegen</button>
+			@SavedFilterHelp("saved-filter-create-help")
 		</div>
 		<label class="inline-flex items-center gap-2 text-sm">
 			<input class="caldo-check" type="checkbox" name="favorite" value="1" checked?={ create.IsFavorite }/>
@@ -82,22 +85,60 @@ templ SavedFilterEditForm(item SavedFilterItemView) {
 		if item.EditError != "" {
 			<p class="caldo-alert caldo-alert-error" data-saved-filter-edit-error role="alert" aria-live="polite">{ item.EditError }</p>
 		}
-		<div class="grid gap-3 lg:grid-cols-[minmax(12rem,18rem)_1fr_auto] lg:items-end">
-			<div class="space-y-1">
-				<label class="caldo-label" for={ "saved-filter-name-" + item.ID }>Name</label>
-				<input id={ "saved-filter-name-" + item.ID } class="caldo-input" type="text" name="name" value={ savedFilterEditName(item) } autocomplete="off" required/>
+		<div class="caldo-filter-help-scope" data-filter-help-scope>
+			<div class="grid gap-3 lg:grid-cols-[minmax(12rem,18rem)_1fr_auto] lg:items-end">
+				<div class="space-y-1" data-filter-help-field>
+					@SavedFilterFieldLabel("Name", "saved-filter-name-" + item.ID, savedFilterEditHelpID(item))
+					<input id={ "saved-filter-name-" + item.ID } class="caldo-input" type="text" name="name" value={ savedFilterEditName(item) } autocomplete="off" aria-describedby={ savedFilterEditHelpID(item) } data-filter-help-input required/>
+				</div>
+				<div class="space-y-1" data-filter-help-field>
+					@SavedFilterFieldLabel("Query", "saved-filter-query-" + item.ID, savedFilterEditHelpID(item))
+					<input id={ "saved-filter-query-" + item.ID } class="caldo-input" type="text" name="query" value={ savedFilterEditQuery(item) } autocomplete="off" aria-describedby={ savedFilterEditHelpID(item) } data-filter-help-input required/>
+				</div>
+				<button type="submit" class="caldo-button caldo-button-secondary">Speichern</button>
 			</div>
-			<div class="space-y-1">
-				<label class="caldo-label" for={ "saved-filter-query-" + item.ID }>Query</label>
-				<input id={ "saved-filter-query-" + item.ID } class="caldo-input" type="text" name="query" value={ savedFilterEditQuery(item) } autocomplete="off" required/>
-			</div>
-			<button type="submit" class="caldo-button caldo-button-secondary">Speichern</button>
+			@SavedFilterHelp(savedFilterEditHelpID(item))
 		</div>
 		<label class="inline-flex items-center gap-2 text-sm">
 			<input class="caldo-check" type="checkbox" name="favorite" value="1" checked?={ savedFilterEditFavorite(item) }/>
 			<span>Favorisieren</span>
 		</label>
 	</form>
+}
+
+templ SavedFilterFieldLabel(label string, inputID string, helpID string) {
+	<div class="caldo-filter-help-label-row">
+		<label class="caldo-label" for={ inputID }>{ label }</label>
+		<button
+			type="button"
+			class="caldo-icon-button caldo-filter-help-toggle"
+			data-filter-help-toggle
+			aria-controls={ helpID }
+			aria-expanded="false"
+			aria-label={ Text(ctx).FilterHelpToggle + ": " + label }
+		>
+			<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<circle cx="12" cy="12" r="10"></circle>
+				<path d="M12 16v-4"></path>
+				<path d="M12 8h.01"></path>
+			</svg>
+		</button>
+	</div>
+}
+
+templ SavedFilterHelp(helpID string) {
+	<aside id={ helpID } class="caldo-filter-help" data-filter-help-popover role="note">
+		<p class="caldo-filter-help-title">{ Text(ctx).FilterHelpTitle }</p>
+		<p>{ Text(ctx).FilterHelpName }</p>
+		<p>{ Text(ctx).FilterHelpQuery }</p>
+		<dl class="caldo-filter-help-syntax">
+			<div><dt>{ Text(ctx).FilterHelpDates }</dt><dd><code>today</code>, <code>overdue</code>, <code>upcoming</code>, <code>no date</code></dd></div>
+			<div><dt>{ Text(ctx).FilterHelpScope }</dt><dd><code>#Projekt</code>, <code>{ "@Label" }</code></dd></div>
+			<div><dt>{ Text(ctx).FilterHelpFields }</dt><dd><code>priority:high</code>, <code>completed:false</code>, <code>text:foo</code>, <code>before:YYYY-MM-DD</code>, <code>after:YYYY-MM-DD</code></dd></div>
+			<div><dt>{ Text(ctx).FilterHelpBoolean }</dt><dd><code>AND</code>, <code>OR</code>, <code>NOT</code></dd></div>
+		</dl>
+		<p class="caldo-filter-help-example">{ Text(ctx).FilterHelpExample }</p>
+	</aside>
 }
 
 templ SavedFilterDeleteForm(item SavedFilterItemView) {

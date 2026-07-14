@@ -1088,6 +1088,74 @@
     closeDialog(dialog);
   }
 
+  function cancelFilterHelpHover(scope) {
+    if (!scope) return;
+    if (scope.__caldoFilterHelpHoverTimer) {
+      clearTimeout(scope.__caldoFilterHelpHoverTimer);
+      scope.__caldoFilterHelpHoverTimer = null;
+    }
+    scope.removeAttribute('data-filter-help-hover');
+  }
+
+  function scheduleFilterHelpHover(scope) {
+    if (!scope || scope.__caldoFilterHelpHoverTimer || scope.getAttribute('data-filter-help-hover') === 'true') return;
+    scope.__caldoFilterHelpHoverTimer = setTimeout(function () {
+      scope.__caldoFilterHelpHoverTimer = null;
+      if (document.contains(scope) && !scope.hasAttribute('data-filter-help-suppressed')) {
+        closeOtherFilterHelpScopes(scope);
+        scope.setAttribute('data-filter-help-hover', 'true');
+      }
+    }, 250);
+  }
+
+  function setFilterHelpFocused(scope) {
+    if (!scope) return;
+    if (scope.__caldoFilterHelpFocusTimer) {
+      clearTimeout(scope.__caldoFilterHelpFocusTimer);
+      scope.__caldoFilterHelpFocusTimer = null;
+    }
+    scope.setAttribute('data-filter-help-focus', 'true');
+  }
+
+  function scheduleFilterHelpFocusClose(scope) {
+    if (!scope) return;
+    if (scope.__caldoFilterHelpFocusTimer) clearTimeout(scope.__caldoFilterHelpFocusTimer);
+    scope.__caldoFilterHelpFocusTimer = setTimeout(function () {
+      scope.__caldoFilterHelpFocusTimer = null;
+      var activeInput = document.activeElement instanceof Element ? document.activeElement.closest('[data-filter-help-input]') : null;
+      if (!activeInput || !scope.contains(activeInput)) {
+        scope.removeAttribute('data-filter-help-focus');
+      }
+    }, 150);
+  }
+
+  function setFilterHelpOpen(scope, open, suppressHover) {
+    if (!scope) return;
+    cancelFilterHelpHover(scope);
+    if (open) {
+      scope.setAttribute('data-filter-help-open', 'true');
+      scope.removeAttribute('data-filter-help-suppressed');
+    } else {
+      scope.removeAttribute('data-filter-help-open');
+      if (suppressHover) {
+        scope.setAttribute('data-filter-help-suppressed', 'true');
+      } else {
+        scope.removeAttribute('data-filter-help-suppressed');
+      }
+    }
+    Array.prototype.forEach.call(scope.querySelectorAll('[data-filter-help-toggle]'), function (toggle) {
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  }
+
+  function closeOtherFilterHelpScopes(activeScope) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-filter-help-scope][data-filter-help-open="true"], [data-filter-help-scope][data-filter-help-hover="true"]'), function (scope) {
+      if (scope !== activeScope) {
+        setFilterHelpOpen(scope, false, false);
+      }
+    });
+  }
+
   function bindLabelDeleteDialogs() {
     Array.prototype.forEach.call(document.querySelectorAll('[data-label-delete-dialog]'), function (dialog) {
       if (dialog.dataset.labelDeleteBound !== 'true') {
@@ -3802,7 +3870,52 @@
 
   document.addEventListener('dragend', clearTaskMoveDragState);
 
+  document.addEventListener('pointerover', function (event) {
+    var field = closestElement(event.target, '[data-filter-help-field]');
+    var scope = field ? field.closest('[data-filter-help-scope]') : null;
+    if (!scope) return;
+    scope.removeAttribute('data-filter-help-suppressed');
+    scheduleFilterHelpHover(scope);
+  }, true);
+
+  document.addEventListener('pointerout', function (event) {
+    var field = closestElement(event.target, '[data-filter-help-field]');
+    var help = closestElement(event.target, '[data-filter-help-popover]');
+    var scope = (field || help) ? (field || help).closest('[data-filter-help-scope]') : null;
+    if (!scope) return;
+    var related = event.relatedTarget instanceof Element ? event.relatedTarget : null;
+    if (related && scope.contains(related) && (related.closest('[data-filter-help-field]') || related.closest('[data-filter-help-popover]'))) return;
+    cancelFilterHelpHover(scope);
+  }, true);
+
+  document.addEventListener('focusin', function (event) {
+    var input = closestElement(event.target, '[data-filter-help-input]');
+    var scope = input ? input.closest('[data-filter-help-scope]') : null;
+    if (!scope) return;
+    scope.removeAttribute('data-filter-help-suppressed');
+    setFilterHelpFocused(scope);
+  }, true);
+
+  document.addEventListener('focusout', function (event) {
+    var input = closestElement(event.target, '[data-filter-help-input]');
+    var scope = input ? input.closest('[data-filter-help-scope]') : null;
+    scheduleFilterHelpFocusClose(scope);
+  }, true);
+
   document.addEventListener('click', function (event) {
+    var filterHelpToggle = closestElement(event.target, '[data-filter-help-toggle]');
+    var filterHelpScope = closestElement(event.target, '[data-filter-help-scope]');
+    closeOtherFilterHelpScopes(filterHelpScope);
+    if (filterHelpToggle) {
+      event.preventDefault();
+      var filterHelpWasOpen = filterHelpScope && filterHelpScope.getAttribute('data-filter-help-open') === 'true';
+      setFilterHelpOpen(filterHelpScope, !filterHelpWasOpen, filterHelpWasOpen);
+      return;
+    }
+    if (!filterHelpScope) {
+      closeOtherFilterHelpScopes(null);
+    }
+
     if (handleBulkSelectionClick(event)) return;
 
     var quickAddAppendLabel = closestElement(event.target, '[data-quick-add-append-label]');
@@ -4229,6 +4342,13 @@
 
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Tab' && trapFocusInDialog(topOpenDialog(), event)) {
+      return;
+    }
+
+    var filterHelpScope = closestElement(event.target, '[data-filter-help-scope]');
+    if (filterHelpScope && event.key === 'Escape' && filterHelpScope.getAttribute('data-filter-help-open') === 'true') {
+      event.preventDefault();
+      setFilterHelpOpen(filterHelpScope, false, true);
       return;
     }
 

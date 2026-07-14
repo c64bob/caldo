@@ -572,6 +572,67 @@
 		overflow-wrap: anywhere;
 	}
 
+	.caldo-filter-help-scope {
+		@apply min-w-0;
+	}
+
+	.caldo-filter-help-label-row {
+		@apply flex min-w-0 items-center justify-between gap-2;
+	}
+
+	.caldo-filter-help-toggle {
+		@apply h-7 w-7;
+		color: var(--caldo-text-subtle);
+	}
+
+	.caldo-filter-help {
+		@apply mt-2 hidden min-w-0 space-y-2 rounded-md border p-3 text-xs leading-5;
+		background: var(--caldo-surface-muted);
+		border-color: var(--caldo-border-strong);
+		color: var(--caldo-text-muted);
+		box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+	}
+
+	.caldo-filter-help-scope[data-filter-help-open="true"] .caldo-filter-help,
+	.caldo-filter-help-scope[data-filter-help-hover="true"] .caldo-filter-help,
+	.caldo-filter-help-scope:not([data-filter-help-suppressed="true"])[data-filter-help-focus="true"] .caldo-filter-help {
+		display: block;
+	}
+
+	.caldo-filter-help-scope[data-filter-help-suppressed="true"] .caldo-filter-help {
+		display: none;
+	}
+
+	.caldo-filter-help-title {
+		@apply font-semibold;
+		color: var(--caldo-text);
+	}
+
+	.caldo-filter-help-syntax {
+		@apply grid gap-1.5;
+	}
+
+	.caldo-filter-help-syntax > div {
+		@apply grid min-w-0 gap-0.5 sm:grid-cols-[8rem_minmax(0,1fr)];
+	}
+
+	.caldo-filter-help-syntax dt {
+		@apply font-medium;
+		color: var(--caldo-text);
+	}
+
+	.caldo-filter-help code,
+	.caldo-filter-help-example {
+		overflow-wrap: anywhere;
+	}
+
+	.caldo-filter-help code {
+		@apply rounded px-1 py-0.5;
+		background: var(--caldo-surface);
+		box-shadow: inset 0 0 0 1px var(--caldo-border);
+		color: var(--caldo-text);
+	}
+
 	.caldo-settings-sync-summary {
 		@apply mt-3 grid gap-2 rounded-md border p-3 text-sm;
 		background: var(--caldo-surface-muted);

@@ -1496,6 +1496,17 @@
     return Array.prototype.slice.call(document.querySelectorAll('[data-task-id]:not([data-task-detail-subtask])'));
   }
 
+  function initializeTaskCompletionControls(root) {
+    var controls = (root || document).querySelectorAll('[data-task-completion-state-control]');
+    Array.prototype.forEach.call(controls, function (control) {
+      var row = control.closest('[data-task-id]');
+      if (!row) return;
+      var completed = (row.getAttribute('data-task-status') || '').trim().toLowerCase() === 'completed';
+      control.checked = completed;
+      control.defaultChecked = completed;
+    });
+  }
+
   function taskRowID(row) {
     return row ? row.getAttribute('data-task-id') || '' : '';
   }
@@ -2983,6 +2994,7 @@
   document.body.addEventListener('htmx:afterSwap', function (event) {
     var targetElement = event.detail && event.detail.target instanceof Element ? event.detail.target : null;
     initializeFormErrors(targetElement || document);
+    initializeTaskCompletionControls(targetElement || document);
     initializeLocalDateTimes(targetElement || document);
     initializeSetupImport(targetElement || document);
     initializeConflictManualPreviews(targetElement || document);
@@ -3624,6 +3636,11 @@
   });
 
   window.addEventListener('focus', scheduleFocusRefresh);
+  window.addEventListener('pageshow', function () {
+    window.setTimeout(function () {
+      initializeTaskCompletionControls(document);
+    }, 0);
+  });
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible') {
       scheduleFocusRefresh();
@@ -3773,6 +3790,7 @@
 
   consumeRememberedWriteStatus();
   initializeFormErrors();
+  initializeTaskCompletionControls(document);
   bindApplicationDialogs();
   bindQuickAddOverlay();
   initializeThemeController();

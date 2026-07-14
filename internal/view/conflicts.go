@@ -622,6 +622,10 @@ func conflictCellClass(cell conflictComparisonCell) string {
 	return strings.Join(classes, " ")
 }
 
+func conflictCellIsDescription(cell conflictComparisonCell) bool {
+	return strings.HasSuffix(cell.Key, "-description")
+}
+
 func conflictManualOptionClass(option conflictManualOption) string {
 	classes := []string{"caldo-conflict-manual-option"}
 	if !option.Present {

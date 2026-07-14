@@ -159,6 +159,8 @@ templ ConflictManualResolutionForm(conflict db.ConflictDetail, projectOptions []
 								<span class="caldo-conflict-manual-value">
 									if option.DisplayDateTime.ISO != "" {
 										@LocalDateTime(option.DisplayDateTime)
+									} else if field.Name == "description" {
+										<span data-conflict-description-rendered>@TaskDescriptionMarkdown(option.DisplayValue)</span>
 									} else {
 										{ option.DisplayValue }
 									}
@@ -195,6 +197,8 @@ templ ConflictManualResolutionForm(conflict db.ConflictDetail, projectOptions []
 						<dd data-conflict-preview-value={ row.Name } data-conflict-preview-iso={ row.DateTime.ISO }>
 							if row.DateTime.ISO != "" {
 								@LocalDateTime(row.DateTime)
+							} else if row.Name == "description" {
+								@TaskDescriptionMarkdown(row.Value)
 							} else {
 								{ row.Value }
 							}
@@ -344,6 +348,8 @@ templ ConflictValueCell(cell conflictComparisonCell) {
 		<span>
 			if cell.DateTime.ISO != "" {
 				@LocalDateTime(cell.DateTime)
+			} else if conflictCellIsDescription(cell) {
+				@TaskDescriptionMarkdown(cell.Value)
 			} else {
 				{ cell.Value }
 			}

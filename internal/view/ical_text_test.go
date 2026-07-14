@@ -1,10 +1,40 @@
 package view
 
 import (
+	"bytes"
+	"context"
+	"strings"
 	"testing"
 
 	"caldo/internal/model"
 )
+
+func TestNextcloudDescriptionFixtureAtParserViewBoundary(t *testing.T) {
+	t.Parallel()
+
+	raw := strings.Join([]string{
+		"BEGIN:VCALENDAR",
+		"BEGIN:VTODO",
+		"UID:nextcloud-synthetic",
+		`DESCRIPTION:First line\n**Second line**\, with https://example.com/spec`,
+		"END:VTODO",
+		"END:VCALENDAR",
+	}, "\r\n")
+	fields := model.ParseVTODOFields(raw)
+	wantRawDescription := `First line\n**Second line**\, with https://example.com/spec`
+	if fields.Description != wantRawDescription {
+		t.Fatalf("parsed description = %q, want raw parser boundary value %q", fields.Description, wantRawDescription)
+	}
+
+	var rendered bytes.Buffer
+	if err := TaskDescriptionMarkdown(fields.Description).Render(context.Background(), &rendered); err != nil {
+		t.Fatalf("render description: %v", err)
+	}
+	wantDisplay := `First line<br><strong>Second line</strong>, with <a href="https://example.com/spec" target="_blank" rel="noopener noreferrer" class="caldo-task-description-link">https://example.com/spec</a>`
+	if rendered.String() != wantDisplay {
+		t.Fatalf("rendered description = %q, want %q", rendered.String(), wantDisplay)
+	}
+}
 
 func TestICalendarTextDisplay(t *testing.T) {
 	t.Parallel()

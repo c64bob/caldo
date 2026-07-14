@@ -32,6 +32,10 @@ func savedFilterPath(item SavedFilterItemView) string {
 	return "/filters/" + url.PathEscape(item.ID)
 }
 
+func savedFilterEditHelpID(item SavedFilterItemView) string {
+	return "saved-filter-help-" + item.ID
+}
+
 func savedFilterExpectedVersion(item SavedFilterItemView) string {
 	return strconv.Itoa(item.ServerVersion)
 }

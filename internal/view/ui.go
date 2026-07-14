@@ -117,6 +117,15 @@ type Texts struct {
 	Filters                  string
 	AllFilters               string
 	NoSavedFilters           string
+	FilterHelpTitle          string
+	FilterHelpToggle         string
+	FilterHelpName           string
+	FilterHelpQuery          string
+	FilterHelpDates          string
+	FilterHelpScope          string
+	FilterHelpFields         string
+	FilterHelpBoolean        string
+	FilterHelpExample        string
 	Labels                   string
 	AllLabels                string
 	NoLabels                 string
@@ -263,6 +272,15 @@ var germanTexts = Texts{ // #nosec G101 -- text catalog values are UI labels, no
 	Filters:                  "Filter",
 	AllFilters:               "Alle Filter",
 	NoSavedFilters:           "Keine gespeicherten Filter",
+	FilterHelpTitle:          "So funktionieren Filter",
+	FilterHelpToggle:         "Filterhilfe anzeigen",
+	FilterHelpName:           "Name ist nur die Bezeichnung der gespeicherten Ansicht.",
+	FilterHelpQuery:          "Query legt fest, welche Aufgaben in der Ansicht erscheinen.",
+	FilterHelpDates:          "Datum",
+	FilterHelpScope:          "Projekt und Label",
+	FilterHelpFields:         "Felder",
+	FilterHelpBoolean:        "Verknüpfung",
+	FilterHelpExample:        "Beispiel: today AND @Büro",
 	Labels:                   "Labels",
 	AllLabels:                "Alle Labels",
 	NoLabels:                 "Keine Labels",
@@ -409,6 +427,15 @@ var englishTexts = Texts{ // #nosec G101 -- text catalog values are UI labels, n
 	Filters:                  "Filters",
 	AllFilters:               "All filters",
 	NoSavedFilters:           "No saved filters",
+	FilterHelpTitle:          "How filters work",
+	FilterHelpToggle:         "Show filter help",
+	FilterHelpName:           "Name is only the label of the saved view.",
+	FilterHelpQuery:          "Query determines which tasks appear in the view.",
+	FilterHelpDates:          "Dates",
+	FilterHelpScope:          "Project and label",
+	FilterHelpFields:         "Fields",
+	FilterHelpBoolean:        "Combining expressions",
+	FilterHelpExample:        "Example: today AND @Office",
 	Labels:                   "Labels",
 	AllLabels:                "All labels",
 	NoLabels:                 "No labels",

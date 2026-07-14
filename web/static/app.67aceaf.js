@@ -8,7 +8,7 @@
   var undoExpiryTimer = 0;
   var focusRefreshState = { inFlight: false, pending: false, lastRun: 0 };
   var taskMoveDragState = null;
-  var titleSelectionDragRow = null;
+  var editableControlDragRow = null;
   var explicitQuickAddPreviewRequests = new WeakSet();
 
   /* ── Toast notification system ───────────────────────────── */
@@ -1875,6 +1875,7 @@
     if (!dialog || dialog.dataset.taskDetailBound === 'true') return;
     dialog.dataset.taskDetailBound = 'true';
     dialog.addEventListener('close', function () {
+      restoreEditableControlDragRow();
       var form = dialog.querySelector('[data-task-detail-form]');
       if (form) {
         form.reset();
@@ -2003,6 +2004,7 @@
 
   function closeTaskDetail(dialog) {
     if (!dialog) return;
+    restoreEditableControlDragRow();
     if (typeof dialog.close === 'function' && dialog.open) {
       dialog.close();
       return;
@@ -3202,24 +3204,33 @@
   document.addEventListener('submit', handleQuickAddSaveSubmit, true);
   document.addEventListener('keydown', handleBulkSelectionKeydown, true);
 
-  function restoreTitleSelectionDragRow() {
-    if (titleSelectionDragRow && document.contains(titleSelectionDragRow) && taskCanDragMove(titleSelectionDragRow)) {
-      titleSelectionDragRow.setAttribute('draggable', 'true');
+  function restoreEditableControlDragRow() {
+    if (editableControlDragRow && document.contains(editableControlDragRow) && taskCanDragMove(editableControlDragRow)) {
+      editableControlDragRow.setAttribute('draggable', 'true');
     }
-    titleSelectionDragRow = null;
+    editableControlDragRow = null;
+  }
+
+  function editableControlInDraggableTask(target) {
+    return closestElement(target, [
+      '[data-inline-task-edit-title]',
+      '[data-task-detail-dialog] input:not([type="hidden"])',
+      '[data-task-detail-dialog] textarea',
+      '[data-task-detail-dialog] select'
+    ].join(', '));
   }
 
   document.addEventListener('pointerdown', function (event) {
-    var titleInput = closestElement(event.target, '[data-inline-task-edit-title]');
-    var row = titleInput ? titleInput.closest('[data-task-drag-move]') : null;
+    var control = editableControlInDraggableTask(event.target);
+    var row = control ? control.closest('[data-task-drag-move]') : null;
     if (!row) return;
-    restoreTitleSelectionDragRow();
-    titleSelectionDragRow = row;
+    restoreEditableControlDragRow();
+    editableControlDragRow = row;
     row.setAttribute('draggable', 'false');
   }, true);
-  document.addEventListener('pointerup', restoreTitleSelectionDragRow, true);
-  document.addEventListener('pointercancel', restoreTitleSelectionDragRow, true);
-  window.addEventListener('blur', restoreTitleSelectionDragRow);
+  document.addEventListener('pointerup', restoreEditableControlDragRow, true);
+  document.addEventListener('pointercancel', restoreEditableControlDragRow, true);
+  window.addEventListener('blur', restoreEditableControlDragRow);
 
   document.addEventListener('dragstart', function (event) {
     var row = closestElement(event.target, '[data-task-drag-move]');

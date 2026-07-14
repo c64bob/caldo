@@ -6,6 +6,7 @@ const appScript = path.resolve(__dirname, '../../web/assets/app.js');
 const htmxScript = path.resolve(__dirname, '../../web/static/htmx.449317a.min.js');
 const appStyles = path.resolve(__dirname, '../../web/static', manifest['app.css']);
 const title = 'Alpha Bravo Charlie Delta Echo Foxtrot';
+const detailDescription = 'First detail line with enough text for selection\nSecond detail line for another caret target';
 
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 800, height: 600 });
@@ -59,8 +60,27 @@ test.beforeEach(async ({ page }) => {
                 </div>
               </div>
               <p id="task-edit-error-task-1" data-inline-task-edit-error role="alert" hidden></p>
+              <button
+                type="button"
+                data-task-detail-open
+                aria-controls="task-detail-task-1"
+                aria-expanded="false"
+              >Details</button>
             </div>
           </div>
+          <dialog id="task-detail-task-1" data-task-detail-dialog>
+            <form data-task-detail-form>
+              <input data-task-detail-title name="title" type="text" value="${title}">
+              <textarea name="description">${detailDescription}</textarea>
+              <input name="labels" type="text" value="alpha, bravo, charlie">
+              <input name="due_date" type="date" value="2099-06-12">
+              <select name="priority">
+                <option value="0">Keine</option>
+                <option value="1" selected>Hoch</option>
+              </select>
+              <button type="button" data-task-detail-close>Schließen</button>
+            </form>
+          </dialog>
         </li>
       </ul>
     </main>
@@ -104,6 +124,75 @@ test('persistent title input uses native mouse and keyboard selection', async ({
   await expect.poll(() => input.evaluate((element) => element.selectionEnd - element.selectionStart)).toBe(title.length);
 });
 
+test('task detail controls preserve native pointer behavior inside a draggable row', async ({ page }) => {
+  const row = page.locator('[data-task-id="task-1"]');
+  const detail = await openTaskDetail(row);
+  const detailTitle = detail.locator('[data-task-detail-title]');
+  const description = detail.locator('[name="description"]');
+
+  await expect(row).toHaveAttribute('draggable', 'true');
+  await expect(detailTitle).toHaveJSProperty('selectionStart', 0);
+
+  const titleOffsets = await clickAtFractions(detailTitle, [0.75, 0.2, 0.5]);
+  expect(titleOffsets[1]).toBeLessThan(titleOffsets[0]);
+  expect(titleOffsets[2]).toBeGreaterThan(titleOffsets[1]);
+  await expect(row).toHaveAttribute('draggable', 'true');
+
+  const descriptionOffsets = await clickAtFractions(description, [0.7, 0.15]);
+  expect(descriptionOffsets[1]).toBeLessThan(descriptionOffsets[0]);
+
+  const descriptionBox = await description.boundingBox();
+  expect(descriptionBox).not.toBeNull();
+  await page.mouse.move(descriptionBox.x + descriptionBox.width * 0.12, descriptionBox.y + 12);
+  await page.mouse.down();
+  await expect(row).toHaveAttribute('draggable', 'false');
+  await page.mouse.move(descriptionBox.x + descriptionBox.width * 0.62, descriptionBox.y + 12, { steps: 8 });
+  await page.mouse.up();
+  await expect(row).toHaveAttribute('draggable', 'true');
+  const draggedSelection = await description.evaluate((element) => ({
+    start: element.selectionStart,
+    end: element.selectionEnd
+  }));
+  expect(draggedSelection.end).toBeGreaterThan(draggedSelection.start);
+
+  await description.press('Home');
+  await description.press('Shift+End');
+  await expect.poll(() => description.evaluate((element) => element.selectionEnd - element.selectionStart)).toBeGreaterThan(0);
+
+  for (const control of [detail.locator('[name="labels"]'), detail.locator('[name="due_date"]'), detail.locator('[name="priority"]')]) {
+    const box = await control.boundingBox();
+    expect(box).not.toBeNull();
+    await page.mouse.move(box.x + 5, box.y + box.height / 2);
+    await page.mouse.down();
+    await expect(row).toHaveAttribute('draggable', 'false');
+    await page.mouse.up();
+    await expect(row).toHaveAttribute('draggable', 'true');
+  }
+});
+
+test('closing or cancelling detail interaction restores row dragging', async ({ page }) => {
+  const row = page.locator('[data-task-id="task-1"]');
+  let detail = await openTaskDetail(row);
+  const description = detail.locator('[name="description"]');
+  const box = await description.boundingBox();
+  expect(box).not.toBeNull();
+
+  await page.mouse.move(box.x + 10, box.y + 10);
+  await page.mouse.down();
+  await expect(row).toHaveAttribute('draggable', 'false');
+  await detail.evaluate((dialog) => dialog.close());
+  await expect(row).toHaveAttribute('draggable', 'true');
+  await page.mouse.up();
+
+  detail = await openTaskDetail(row);
+  await page.mouse.move(box.x + 12, box.y + 12);
+  await page.mouse.down();
+  await expect(row).toHaveAttribute('draggable', 'false');
+  await description.dispatchEvent('pointercancel');
+  await expect(row).toHaveAttribute('draggable', 'true');
+  await page.mouse.up();
+});
+
 test('Escape restores the original title without hiding the field', async ({ page }) => {
   const row = page.locator('[data-task-id="task-1"]');
   const form = row.locator('[data-inline-task-edit-form]');
@@ -144,4 +233,22 @@ test('failed save keeps the title editable with native caret behavior', async ({
 
 async function selectionStart(input) {
   return input.evaluate((element) => element.selectionStart);
+}
+
+async function clickAtFractions(control, fractions) {
+  const box = await control.boundingBox();
+  expect(box).not.toBeNull();
+  const offsets = [];
+  for (const fraction of fractions) {
+    await control.click({ position: { x: box.width * fraction, y: Math.min(box.height / 2, 12) } });
+    offsets.push(await selectionStart(control));
+  }
+  return offsets;
+}
+
+async function openTaskDetail(row) {
+  await row.locator('[data-task-detail-open]').click();
+  const detail = row.locator('[data-task-detail-dialog]');
+  await expect(detail).toBeVisible();
+  return detail;
 }

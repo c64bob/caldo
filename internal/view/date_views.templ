@@ -3,7 +3,7 @@ package view
 templ DateScopedTasksPage(heading string, emptyMessage string, tasks []TaskRowView) {
 	<section class="caldo-page">
 		if len(tasks) == 0 {
-			@EmptyStateWithAction(emptyMessage, "Es gibt in dieser Ansicht gerade nichts zu bearbeiten.", "Aufgabe erstellen", "/quick-add")
+			@EmptyState(emptyMessage, "Es gibt in dieser Ansicht gerade nichts zu bearbeiten.")
 		} else {
 			<ul class="caldo-list caldo-task-list" data-date-view-results>
 				for _, task := range tasks {
@@ -17,7 +17,7 @@ templ DateScopedTasksPage(heading string, emptyMessage string, tasks []TaskRowVi
 templ ConfigurableTaskListPage(heading string, emptyMessage string, groups []TaskListGroupView) {
 	<section class="caldo-page">
 		if len(groups) == 0 {
-			@EmptyStateWithAction(emptyMessage, "Es gibt in dieser Ansicht gerade nichts zu bearbeiten.", "Aufgabe erstellen", "/quick-add")
+			@EmptyState(emptyMessage, "Es gibt in dieser Ansicht gerade nichts zu bearbeiten.")
 		} else {
 			@TaskListGroups(groups, "date")
 		}

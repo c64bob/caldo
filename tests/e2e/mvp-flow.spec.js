@@ -20,6 +20,8 @@ const tabletViewport = { width: 834, height: 1112 };
 const mobileViewport = { width: 390, height: 844 };
 const narrowMobileViewport = { width: 320, height: 720 };
 
+test.setTimeout(120_000);
+
 test('MVP setup, sync, write-through, and conflict flow works in a browser session', async ({ page }, testInfo) => {
   fs.mkdirSync(browserBaselineDir(testInfo), { recursive: true });
   const state = readState();
@@ -67,6 +69,16 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
     return remoteState.calendars.some((calendar) => calendar.display_name === 'E2E Setup Inbox');
   }).toBe(true);
 
+  await gotoApp(page, '/today');
+  await expect(page.getByText('Keine fälligen oder überfälligen Aufgaben.')).toBeVisible();
+  await expectEmptyStateWithoutTaskCreator(page);
+  await gotoApp(page, '/completed');
+  await expect(page.getByText('Erledigte Aufgaben sind ausgeblendet.')).toBeVisible();
+  await expectEmptyStateWithoutTaskCreator(page);
+  await gotoApp(page, '/search');
+  await expect(page.getByText('Noch keine Suche')).toBeVisible();
+  await expectEmptyStateWithoutTaskCreator(page);
+
   await gotoApp(page, '/search?q=Stage');
   await expectCurrentView(page, 'Suche');
   await expectDisplayControlInTopbar(page);
@@ -104,6 +116,7 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await expectDisplayControlInTopbar(page);
   await expect(page.locator('.caldo-sidebar [data-nav-projects] a[aria-current="page"]').filter({ hasText: 'E2E Empty Project' })).toBeVisible();
   await expect(page.getByText('Keine offenen Aufgaben in diesem Projekt.')).toBeVisible();
+  await expectEmptyStateWithoutTaskCreator(page);
   await expectNoBottomTaskCreator(page);
   await gotoApp(page, '/search?q=%23Work');
   const searchSaveFilterForm = page.locator('[data-search-save-filter-form]');
@@ -116,6 +129,18 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
   await savedFilterLink.click();
   await expect(page).toHaveURL(/\/filters\/[^/]+$/);
   await expectDisplayControlInTopbar(page);
+  await gotoApp(page, '/filters');
+
+  const emptyFilterCreateForm = page.locator('[data-saved-filter-create-form]');
+  await emptyFilterCreateForm.locator('[name="name"]').fill('E2E Empty Filter');
+  await emptyFilterCreateForm.locator('[name="query"]').fill('text:__caldo_no_match__');
+  await emptyFilterCreateForm.getByRole('button', { name: 'Filter anlegen' }).click();
+  const emptyFilterRow = page.locator('[data-saved-filter-list] .caldo-list-row').filter({ hasText: 'E2E Empty Filter' });
+  await expect(emptyFilterRow).toBeVisible();
+  await emptyFilterRow.locator('.caldo-list-link').click();
+  await expect(page.getByText('Keine Aufgaben für diesen Filter.')).toBeVisible();
+  await expectEmptyStateWithoutTaskCreator(page);
+
   await gotoApp(page, '/filters');
   const invalidFilterCreateForm = page.locator('[data-saved-filter-create-form]');
   await invalidFilterCreateForm.locator('[name="name"]').fill('E2E Broken Filter');
@@ -457,7 +482,8 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
     expected_version: String(version),
     title: 'E2E Local Edited',
     description: 'edited through browser qa',
-    status: 'needs-action'
+    status: 'needs-action',
+    labels: 'e2e-empty-label'
   }, { tabID: 'e2e-edit' });
   expect(response.status()).toBe(200);
   await expectSearchResult(page, 'E2E Local Edited');
@@ -502,6 +528,13 @@ test('MVP setup, sync, write-through, and conflict flow works in a browser sessi
     expected_version: String(version)
   }, { tabID: 'e2e-complete' });
   expect(response.status()).toBe(200);
+
+  await gotoApp(page, '/labels');
+  const emptyLabelLink = page.locator('[data-navigation-overview] .caldo-list-link').filter({ hasText: 'e2e-empty-label' }).first();
+  await expect(emptyLabelLink).toBeVisible();
+  await emptyLabelLink.click();
+  await expect(page.getByText('Keine Aufgaben mit diesem Label.')).toBeVisible();
+  await expectEmptyStateWithoutTaskCreator(page);
 
   version = await taskVersion(page, createdID);
   response = await appFormRequest(page, 'POST', `/tasks/${createdID}/reopen`, {
@@ -711,6 +744,14 @@ async function expectCurrentView(page, title) {
 
 async function expectNoBottomTaskCreator(page) {
   await expect(page.locator('[data-inline-task-create]:not([data-subtask-create])')).toHaveCount(0);
+}
+
+async function expectEmptyStateWithoutTaskCreator(page) {
+  const emptyState = page.locator('[data-empty-state]').filter({ visible: true }).first();
+  await expect(emptyState).toBeVisible();
+  await expect(emptyState.locator('a[href="/quick-add"], [data-quick-add-open]')).toHaveCount(0);
+  await expect(emptyState.getByText('Aufgabe erstellen', { exact: true })).toHaveCount(0);
+  await expect(page.locator('.caldo-sidebar [data-quick-add-open]')).toBeVisible();
 }
 
 async function expectDisplayControlInTopbar(page) {

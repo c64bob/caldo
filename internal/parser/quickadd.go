@@ -71,6 +71,11 @@ func parseQuickAddAt(input string, now time.Time, language string) QuickAddDraft
 				draft.Priority = priority
 				continue
 			}
+		default:
+			if priority, ok := normalizePriorityShortcut(token); ok {
+				draft.Priority = priority
+				continue
+			}
 		}
 
 		titleTokens = append(titleTokens, token)
@@ -195,6 +200,19 @@ func weekdayToICal(wd time.Weekday) string {
 		return "SU"
 	default:
 		return ""
+	}
+}
+
+func normalizePriorityShortcut(token string) (string, bool) {
+	switch strings.ToLower(strings.TrimSpace(token)) {
+	case "p1":
+		return "high", true
+	case "p2":
+		return "medium", true
+	case "p3":
+		return "low", true
+	default:
+		return "", false
 	}
 }
 

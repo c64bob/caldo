@@ -110,16 +110,40 @@ func TestNewRouterServesEventsThroughMiddleware(t *testing.T) {
 	}
 }
 
-func TestNewRouterRendersBaseLayoutOnRoot(t *testing.T) {
+func TestNewRouterRedirectsRootToToday(t *testing.T) {
 	t.Parallel()
 
-	manifest := testManifest(t)
 	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
 	responseRecorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/", nil)
 	request.Header.Set("X-Forwarded-User", "alice")
 
-	NewRouter(logger, "X-Forwarded-User", manifest, true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
+	NewRouter(logger, "X-Forwarded-User", testManifest(t), true, []byte("12345678901234567890123456789012"), nil, context.Background(), nil).ServeHTTP(responseRecorder, request)
+
+	if responseRecorder.Code != http.StatusFound {
+		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusFound)
+	}
+	if got := responseRecorder.Header().Get("Location"); got != "/today" {
+		t.Fatalf("unexpected redirect location: got %q want %q", got, "/today")
+	}
+}
+
+func TestNewRouterRendersBaseLayoutOnToday(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.OpenSQLite(filepath.Join(t.TempDir(), "caldo.db"))
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+
+	manifest := testManifest(t)
+	logger := logging.New(bytes.NewBuffer(nil), "production", "info")
+	responseRecorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/today", nil)
+	request.Header.Set("X-Forwarded-User", "alice")
+
+	NewRouter(logger, "X-Forwarded-User", manifest, true, []byte("12345678901234567890123456789012"), database, context.Background(), nil).ServeHTTP(responseRecorder, request)
 
 	if responseRecorder.Code != http.StatusOK {
 		t.Fatalf("unexpected status code: got %d want %d", responseRecorder.Code, http.StatusOK)

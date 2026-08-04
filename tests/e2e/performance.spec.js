@@ -91,7 +91,7 @@ async function completeSetup(page, state, measurements) {
   const started = Date.now();
   await page.getByRole('button', { name: 'Weiter zum Import' }).click();
   await expect(page.locator('[data-setup-import]')).toBeVisible();
-  await expect(page).toHaveURL(/\/$/, { timeout: 120_000 });
+  await expect(page).toHaveURL(/\/today$/, { timeout: 120_000 });
   record(measurements, 'initial_import', 'setup_to_home', Date.now() - started, targets.initialImportMs);
   await expect(page.locator('.caldo-sidebar [data-nav-projects] a')).toHaveCount(expectedProjectLinks);
 }

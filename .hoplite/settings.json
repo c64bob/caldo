@@ -1,0 +1,26 @@
+{
+	"version": 1,
+	"ports": {
+		"preview": 3000,
+		"additional": {}
+	},
+	"scripts": {
+		"setup": {
+			"enabled": true,
+			"command": "command -v go >/dev/null || (curl -sSL https://go.dev/dl/go1.26.5.linux-amd64.tar.gz -o /tmp/go.tgz && sudo tar -C /usr/local -xzf /tmp/go.tgz && sudo ln -sf /usr/local/go/bin/go /usr/local/bin/go); mkdir -p /tmp/caldo-preview; go build ./..."
+		},
+		"run": {
+			"enabled": true,
+			"command": "STAGE_CALDAV_ADDR=127.0.0.1:8180 STAGE_CALDAV_USERNAME=stage STAGE_CALDAV_PASSWORD=stage STAGE_CALDAV_ADMIN_TOKEN=stage-admin go run ./cmd/stagecaldav & sleep 2; APP_ENV=test BASE_URL=https://caldo.preview.test DB_PATH=/tmp/caldo-preview/caldo.db ENCRYPTION_KEY=MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI= PROXY_USER_HEADER=X-Forwarded-User PORT=3001 go run ./cmd/caldo & sleep 3; node -e 'const http=require(\"http\");http.createServer((q,s)=>{q.headers[\"x-forwarded-user\"]=\"preview-user\";const p=http.request({host:\"127.0.0.1\",port:3001,path:q.url,method:q.method,headers:q.headers},r=>{s.writeHead(r.statusCode,r.headers);r.pipe(s)});p.on(\"error\",()=>{s.writeHead(502);s.end(\"upstream unavailable\")});q.pipe(p)}).listen(3000,\"0.0.0.0\")'"
+		},
+		"archive": {
+			"enabled": true,
+			"command": null
+		},
+		"check": {
+			"enabled": true,
+			"command": null
+		}
+	},
+	"mcpServers": []
+}

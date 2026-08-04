@@ -118,7 +118,7 @@ async function completeSetup(page, state) {
   await ensureBrowserCSRFCookie(page);
   await page.getByRole('button', { name: 'Weiter zum Import' }).click();
   await expect(page.locator('[data-setup-import]')).toBeVisible();
-  await expect(page).toHaveURL(/\/$/, { timeout: 60_000 });
+  await expect(page).toHaveURL(/\/today$/, { timeout: 60_000 });
 }
 
 async function createLocalTask(page, title, tabID) {

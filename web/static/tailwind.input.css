@@ -285,6 +285,11 @@
 			display: block;
 		}
 
+		.caldo-topbar-actions .caldo-task-display-menu {
+			left: auto;
+			right: 0;
+		}
+
 		.caldo-topbar-actions > .caldo-sync-status {
 			@apply col-auto;
 		}

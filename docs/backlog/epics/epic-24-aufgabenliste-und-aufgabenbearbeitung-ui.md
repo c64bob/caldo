@@ -17,3 +17,4 @@ Die taegliche Aufgabenarbeit wird in der Oberflaeche vollstaendig, schnell und v
 - Story 24.6: Prioritaet, Labels, Favorit und Faelligkeit in der Aufgabenzeile
 - Story 24.7: Unteraufgaben visuell gruppieren
 - Story 24.8: Undo- und Wiederherstellungs-UI
+- Story 24.10: Ruhige Aufgabenzeilen mit Hover-Aktionen

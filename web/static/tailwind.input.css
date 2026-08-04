@@ -1080,6 +1080,22 @@
 		@apply opacity-100;
 	}
 
+	/* Ruhige Zeilen: reine Bedien-Affordanzen ohne Informationswert erst bei
+	   Hover/Fokus zeigen. Nur auf Hover-Geräten; Touch behält alles sichtbar. */
+	@media (hover: hover) {
+		.caldo-task-select-control,
+		.caldo-task-meta-empty {
+			@apply opacity-0 transition-opacity duration-100;
+		}
+		.caldo-task-row:hover .caldo-task-select-control,
+		.caldo-task-row:focus-within .caldo-task-select-control,
+		.caldo-bulk-select-active .caldo-task-select-control,
+		.caldo-task-row:hover .caldo-task-meta-empty,
+		.caldo-task-row:focus-within .caldo-task-meta-empty {
+			@apply opacity-100;
+		}
+	}
+
 	.caldo-task-row-grid {
 		@apply grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] gap-1.5 px-1;
 	}

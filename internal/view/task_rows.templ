@@ -383,7 +383,10 @@ templ TaskPriorityInlineEditor(task TaskRowView) {
 		data-inline-task-edit-persistent
 		data-inline-task-edit-scope
 		data-inline-task-edit-focus="priority"
-		class="caldo-task-inline-edit-form caldo-task-priority-inline-form"
+		class={
+			"caldo-task-inline-edit-form caldo-task-priority-inline-form",
+			templ.KV("caldo-task-meta-empty", !taskHasPriorityValue(task)),
+		}
 		aria-label={ "Priorität bearbeiten: " + taskPriorityEditLabel(task) }
 		aria-describedby={ taskDOMID("task-edit-error", task) }
 	>
@@ -408,7 +411,14 @@ templ TaskPriorityInlineEditor(task TaskRowView) {
 }
 
 templ TaskLabelsInlineEditor(task TaskRowView) {
-	<div class="caldo-task-meta-edit-shell caldo-task-labels-edit-shell" data-inline-task-edit-scope data-inline-task-edit-focus="labels">
+	<div
+		class={
+			"caldo-task-meta-edit-shell caldo-task-labels-edit-shell",
+			templ.KV("caldo-task-meta-empty", len(taskLabelChips(task)) == 0),
+		}
+		data-inline-task-edit-scope
+		data-inline-task-edit-focus="labels"
+	>
 		<button
 			type="button"
 			class="caldo-task-labels-edit-trigger"

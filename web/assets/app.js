@@ -92,6 +92,7 @@
 
   function updateBulkSelectionVisuals() {
     var selected = bulkSelectedSet();
+    document.body.classList.toggle('caldo-bulk-select-active', bulkSelection.ids.length > 0);
     taskRows().forEach(function (row) {
       var id = taskRowID(row);
       var isSelected = !!selected[id];

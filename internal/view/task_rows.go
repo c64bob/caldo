@@ -688,6 +688,10 @@ func taskPriorityValue(task TaskRowView) string {
 	return strconv.Itoa(task.Priority)
 }
 
+func taskHasPriorityValue(task TaskRowView) bool {
+	return taskPriorityValue(task) != ""
+}
+
 type taskPriorityOption struct {
 	Value string
 	Label string

@@ -1268,6 +1268,17 @@
     return false;
   }
 
+  function suppressEmptyQuickAddPreviewRequest(detail) {
+    if (!detail || !detail.elt) return false;
+    var previewForm = closestElement(detail.elt, '.caldo-quick-add-form');
+    if (!previewForm || previewForm.getAttribute('action') !== '/quick-add/preview') return false;
+    var requestConfig = detail.requestConfig || {};
+    var triggeringEvent = requestConfig.triggeringEvent || detail.triggeringEvent;
+    if (triggeringEvent && triggeringEvent.type === 'submit') return false;
+    var input = previewForm.querySelector('[data-quick-add-input]');
+    return !input || (input.value || '').trim() === '';
+  }
+
   function rememberQuickAddPreviewFocusIntent(detail) {
     if (!detail || !detail.xhr) return true;
     var previewForm = closestElement(detail.elt, '.caldo-quick-add-form');
@@ -3454,6 +3465,10 @@
   });
 
   document.body.addEventListener('htmx:beforeRequest', function (event) {
+    if (suppressEmptyQuickAddPreviewRequest(event.detail)) {
+      event.preventDefault();
+      return;
+    }
     if (!rememberQuickAddPreviewFocusIntent(event.detail)) {
       event.preventDefault();
       return;

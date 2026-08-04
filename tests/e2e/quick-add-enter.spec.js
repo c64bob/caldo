@@ -50,6 +50,53 @@ for (const surface of ['overlay', 'page']) {
   });
 }
 
+test('Quick Add debounced preview skips empty input but keeps explicit submits', async ({ page }) => {
+  const previewTexts = [];
+
+  await page.route('http://caldo.test/quick-add/preview', async (route) => {
+    const values = new URLSearchParams(route.request().postData() || '');
+    const text = (values.get('text') || '').trim();
+    previewTexts.push(text);
+    await route.fulfill({
+      status: text === '' ? 400 : 200,
+      contentType: 'text/html',
+      body: text === '' ? '<div id="quick-add-overlay-preview"></div>' : quickAddPreviewFixture('overlay', text)
+    });
+  });
+  await page.route('http://caldo.test/', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><html><body></body></html>' });
+  });
+
+  await page.goto('http://caldo.test/');
+  await page.setContent(quickAddDebouncedRootFixture());
+  await page.addScriptTag({ path: htmxScript });
+  await page.addScriptTag({ path: appScript });
+  await page.evaluate(() => window.htmx.process(document.body));
+
+  const input = page.locator('[data-quick-add-input]');
+  await input.fill('Draft task');
+  await expect.poll(() => previewTexts).toEqual(['Draft task']);
+
+  await input.fill('');
+  await page.waitForTimeout(300);
+  expect(previewTexts).toEqual(['Draft task']);
+
+  await page.getByRole('button', { name: 'Preview' }).click();
+  await expect.poll(() => previewTexts).toEqual(['Draft task', '']);
+});
+
+function quickAddDebouncedRootFixture() {
+  return `
+    <dialog open data-quick-add-overlay data-quick-add-root>
+      <form class="caldo-quick-add-form" action="/quick-add/preview" hx-post="/quick-add/preview" hx-target="#quick-add-overlay-preview" hx-trigger="input changed delay:100ms from:#quick-add-debounced-text, submit" hx-swap="outerHTML" hx-sync="this:replace">
+        <input id="quick-add-debounced-text" name="text" data-quick-add-input aria-label="Task">
+        <button type="submit">Preview</button>
+      </form>
+      <div id="quick-add-overlay-preview"></div>
+    </dialog>
+  `;
+}
+
 function quickAddRootFixture(surface) {
   const rootStart = surface === 'overlay'
     ? '<dialog open data-quick-add-overlay data-quick-add-root>'

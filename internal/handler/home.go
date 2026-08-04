@@ -2,14 +2,9 @@ package handler
 
 import (
 	"net/http"
-
-	"caldo/internal/view"
 )
 
-// Home renders a minimal example page using the base layout.
+// Home redirects the root path to the Heute view.
 func Home(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := view.BaseLayout("Caldo", view.SearchPage("", nil, view.SearchSaveFilterView{})).Render(r.Context(), w); err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
+	http.Redirect(w, r, "/today", http.StatusFound)
 }

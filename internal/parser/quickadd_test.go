@@ -53,6 +53,31 @@ func TestParseQuickAddParsesNumericPriorityTokens(t *testing.T) {
 	}
 }
 
+func TestParseQuickAddParsesTodoistPriorityShortcuts(t *testing.T) {
+	tests := map[string]string{"p1": "high", "P1": "high", "p2": "medium", "p3": "low"}
+	for input, want := range tests {
+		draft := ParseQuickAdd("Task " + input)
+		if draft.Priority != want {
+			t.Fatalf("priority for %s: got %q want %q", input, draft.Priority, want)
+		}
+		if draft.Title != "Task" {
+			t.Fatalf("title for %s: got %q want %q", input, draft.Title, "Task")
+		}
+	}
+}
+
+func TestParseQuickAddKeepsPriorityShortcutLikeWordsInTitle(t *testing.T) {
+	for _, input := range []string{"Task p4", "Task p10", "Task px", "Task pep1"} {
+		draft := ParseQuickAdd(input)
+		if draft.Priority != "" {
+			t.Fatalf("priority for %q: got %q want empty", input, draft.Priority)
+		}
+		if draft.Title != input {
+			t.Fatalf("title for %q: got %q", input, draft.Title)
+		}
+	}
+}
+
 func TestParseQuickAddNaturalDueDateEnglishGerman(t *testing.T) {
 	now := time.Date(2026, time.March, 4, 10, 0, 0, 0, time.UTC)
 

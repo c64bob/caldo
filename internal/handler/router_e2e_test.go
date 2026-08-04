@@ -104,8 +104,13 @@ func TestRouterMVPFlowAgainstFakeCalDAVServer(t *testing.T) {
 	}
 
 	rr = e2eRequest(t, router, secret, http.MethodGet, "/", nil, "")
+	if rr.Code != http.StatusFound || rr.Header().Get("Location") != "/today" {
+		t.Fatalf("root after setup: got status=%d location=%q body=%q", rr.Code, rr.Header().Get("Location"), rr.Body.String())
+	}
+
+	rr = e2eRequest(t, router, secret, http.MethodGet, "/today", nil, "")
 	if rr.Code != http.StatusOK {
-		t.Fatalf("root after setup: got status=%d body=%q", rr.Code, rr.Body.String())
+		t.Fatalf("today after setup: got status=%d body=%q", rr.Code, rr.Body.String())
 	}
 
 	rr = e2eRequest(t, router, secret, http.MethodPost, "/tasks/", url.Values{"title": {"Local Created"}}, "tab-create")

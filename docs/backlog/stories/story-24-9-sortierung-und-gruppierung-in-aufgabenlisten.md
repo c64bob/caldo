@@ -1,5 +1,10 @@
+# Story 24.9 — Sortierung und Gruppierung in Aufgabenlisten
+
 ## Name
-Story 24.9 - Sortierung und Gruppierung in Aufgabenlisten
+Story 24.9 — Sortierung und Gruppierung in Aufgabenlisten
+
+## Status
+Umgesetzt
 
 ## Ziel
 Aufgabenlisten koennen pro Ansicht Todoist-nah sortiert und gruppiert werden, ohne die gespeicherten CalDAV-Aufgabendaten zu veraendern.

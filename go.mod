@@ -4,7 +4,7 @@ go 1.26.5
 
 require (
 	github.com/a-h/templ v0.3.1020
-	github.com/go-chi/chi/v5 v5.3.1
+	github.com/go-chi/chi/v5 v5.3.2
 	github.com/google/uuid v1.6.0
 	modernc.org/sqlite v1.55.0
 )
